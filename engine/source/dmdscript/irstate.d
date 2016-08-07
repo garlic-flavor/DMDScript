@@ -18,9 +18,9 @@
 
 module dmdscript.irstate;
 
-import std.c.stdarg;
-import std.c.stdlib;
-import std.c.string;
+import core.stdc.stdarg;
+import core.sys.posix.stdlib;
+import core.stdc.string;
 import dmdscript.outbuffer;
 import core.memory;
 import core.stdc.stdio;

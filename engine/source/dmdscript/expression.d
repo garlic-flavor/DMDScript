@@ -23,6 +23,7 @@ import std.string;
 import std.range;
 import std.exception;
 import std.stdio;
+import std.ascii;
 
 import dmdscript.script;
 import dmdscript.lexer;

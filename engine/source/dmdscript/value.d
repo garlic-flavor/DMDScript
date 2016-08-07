@@ -21,7 +21,8 @@ import undead.date;
 import std.math;
 import std.string;
 import std.stdio;
-import std.c.string;
+import std.conv;
+import core.stdc.string;
 
 import dmdscript.script;
 import dmdscript.dobject;
@@ -561,7 +562,7 @@ struct Value
                       }
                   }
               }
-              str = p[0 .. std.c.string.strlen(p)].idup;
+              str = p[0 .. core.stdc.string.strlen(p)].idup;
           }
           //writefln("str = '%s'", str);
           return str; }

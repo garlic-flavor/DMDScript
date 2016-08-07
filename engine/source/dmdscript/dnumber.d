@@ -18,8 +18,9 @@
 module dmdscript.dnumber;
 
 import std.math;
-import std.c.stdlib;
+import core.sys.posix.stdlib;
 import std.exception;
+import std.string;
 
 import dmdscript.script;
 import dmdscript.dobject;

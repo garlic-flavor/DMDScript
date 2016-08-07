@@ -18,7 +18,7 @@
 module dmdscript.ddeclaredfunction;
 
 import std.stdio;
-import std.c.stdlib;
+import core.sys.posix.stdlib;
 import std.exception;
 import dmdscript.script;
 import dmdscript.dobject;

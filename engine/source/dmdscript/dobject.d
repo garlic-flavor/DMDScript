@@ -18,9 +18,11 @@
 module dmdscript.dobject;
 
 import std.string;
-import std.c.stdarg;
-import std.c.string;
+import core.stdc.stdarg;
+import core.stdc.string;
 import std.exception;
+import std.format;
+import std.utf;
 
 import dmdscript.script;
 import dmdscript.value;
