@@ -17,7 +17,6 @@
 
 module dmdscript.value;
 
-// import undead.date;
 import std.math;
 import std.string;
 import std.stdio;
