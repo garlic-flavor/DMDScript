@@ -18,6 +18,8 @@
 
 module dmdscript.dregexp;
 
+import std.algorithm;
+import std.regex;
 private import undead.regexp;
 
 import dmdscript.script;

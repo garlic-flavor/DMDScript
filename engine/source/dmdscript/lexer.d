@@ -27,7 +27,10 @@ import std.string;
 import std.utf;
 import std.outbuffer;
 import std.ascii;
-import std.c.stdlib;
+import std.format;
+import std.uni;
+import core.sys.posix.stdlib;
+import core.stdc.string;
 
 import dmdscript.script;
 import dmdscript.text;
@@ -264,7 +267,7 @@ class Lexer
         if(!inited)
             init();
 
-        std.c.string.memset(&token, 0, token.sizeof);
+        core.stdc.string.memset(&token, 0, token.sizeof);
         this.useStringtable = useStringtable;
         this.sourcename = sourcename;
         if(!base.length || (base[$ - 1] != 0 && base[$ - 1] != 0x1A))
@@ -1452,7 +1455,7 @@ class Lexer
 
                 Ldouble:
                 // convert double
-                realvalue = std.c.stdlib.strtod(toStringz(start[0 .. p - start]), null);
+                realvalue = core.sys.posix.stdlib.strtod(toStringz(start[0 .. p - start]), null);
                 t.realvalue = realvalue;
                 return TOKreal;
             }

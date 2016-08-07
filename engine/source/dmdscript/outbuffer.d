@@ -21,9 +21,9 @@ private
 {
     import core.memory;
     import std.string;
-    import std.c.stdio;
-    import std.c.stdlib;
-    import std.c.stdarg;
+    import core.stdc.stdio;
+    import core.sys.posix.stdlib;
+    import core.stdc.stdarg;
 }
 
 /*********************************************

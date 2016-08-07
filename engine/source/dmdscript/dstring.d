@@ -20,12 +20,15 @@ module dmdscript.dstring;
 
 import undead.regexp;
 import std.utf;
-import std.c.stdlib;
-import std.c.string;
+import core.sys.posix.stdlib;
+import core.stdc.string;
 import std.exception;
 import std.algorithm;
 import std.range;
 import std.stdio;
+import std.string;
+import std.utf;
+import std.math;
 
 import dmdscript.script;
 import dmdscript.dobject;
@@ -38,6 +41,7 @@ import dmdscript.text;
 import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.dnative;
+import dmdscript.utf;
 
 //alias script.tchar tchar;
 

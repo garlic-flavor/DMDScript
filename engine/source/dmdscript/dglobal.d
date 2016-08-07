@@ -18,12 +18,15 @@
 module dmdscript.dglobal;
 
 import std.uri;
-import std.c.stdlib;
-import std.c.string;
+import core.sys.posix.stdlib;
+import core.stdc.string;
+import core.stdc.stdio;
 import std.stdio;
 import std.algorithm;
 import std.math;
 import std.exception;
+import std.utf;
+import std.string;
 
 import dmdscript.script;
 import dmdscript.protoerror;
@@ -45,6 +48,7 @@ import dmdscript.dnumber;
 import dmdscript.dboolean;
 import dmdscript.dfunction;
 import dmdscript.dnative;
+import dmdscript.utf;
 
 immutable(char)[] arg0string(Value[] arglist)
 {
@@ -637,25 +641,25 @@ void* Dglobal_readln(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, 
     {
         version(linux)
         {
-            c = std.c.stdio.getchar();
+            c = core.stdc.stdio.getchar();
             if(c == EOF)
                 break;
         }
         else version(Windows)
         {
-            c = std.c.stdio.getchar();
+            c = core.stdc.stdio.getchar();
             if(c == EOF)
                 break;
         }
         else version(OSX)
         {
-            c = std.c.stdio.getchar();
+            c = core.stdc.stdio.getchar();
             if(c == EOF)
                 break;
         }
         else version(FreeBSD)
         {
-            c = std.c.stdio.getchar();
+            c = core.stdc.stdio.getchar();
             if(c == EOF)
                 break;
         }

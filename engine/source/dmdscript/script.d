@@ -19,8 +19,9 @@ module dmdscript.script;
 
 import std.ascii;
 import std.string;
-import std.c.stdlib;
-import std.c.stdarg;
+import core.stdc.stdlib;
+import core.stdc.stdarg;
+import core.sys.posix.stdlib;
 
 /* =================== Configuration ======================= */
 
@@ -77,6 +78,8 @@ alias int d_int32;
 alias uint d_uint32;
 alias ushort d_uint16;
 alias immutable(char)[] d_string;
+alias d_time = long;
+enum d_time_nan = long.min;
 
 import dmdscript.value;
 import dmdscript.dobject;
@@ -293,7 +296,7 @@ d_number StringNumericLiteral(d_string string, out size_t endidx, int parsefloat
         const (char) * s = std.string.toStringz(string[i .. len]);
 
         //endptr = s;//Fixed: No need to fill endptr prior to stdtod
-        number = std.c.stdlib.strtod(s, &endptr);
+        number = core.sys.posix.stdlib.strtod(s, &endptr);
         endidx = (endptr - s) + i;
 
         //printf("s = '%s', endidx = %d, eoff = %d, number = %g\n", s, endidx, eoff, number);
