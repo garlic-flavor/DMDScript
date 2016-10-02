@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /* Digital Mars DMDScript source code.
  * Copyright (c) 2000-2002 by Chromium Communications
  * D version Copyright (c) 2004-2010 by Digital Mars
