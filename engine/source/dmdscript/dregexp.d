@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /* Digital Mars DMDScript source code.
  * Copyright (c) 2000-2002 by Chromium Communications
  * D version Copyright (c) 2004-2010 by Digital Mars
@@ -20,8 +19,6 @@
 module dmdscript.dregexp;
 
 import std.algorithm;
-import std.regex;
-private import undead.regexp;
 
 import dmdscript.script;
 import dmdscript.dobject;
@@ -366,12 +363,12 @@ void* Dregexp_prototype_compile(Dobject pthis, CallContext *cc, Dobject othis, V
         {
             r.compile(pattern, attributes);
         }
-        catch(RegExpException e)
+        catch(RegexException e)
         {
             // Affect source, global and ignoreCase properties
             dr.source.putVstring(r.pattern);
-            dr.global.putVboolean((r.attributes & RegExp.REA.global) != 0);
-            dr.ignoreCase.putVboolean((r.attributes & RegExp.REA.ignoreCase) != 0);
+            dr.global.putVboolean(r.global);
+            dr.ignoreCase.putVboolean(r.ignoreCase);
         }
         //writef("r.attributes = x%x\n", r.attributes);
     }
@@ -450,9 +447,9 @@ class Dregexp : Dobject
         {
             source.putVstring(pattern);
             //writef("source = '%s'\n", source.x.string.toDchars());
-            global.putVboolean((re.attributes & RegExp.REA.global) != 0);
-            ignoreCase.putVboolean((re.attributes & RegExp.REA.ignoreCase) != 0);
-            multiline.putVboolean((re.attributes & RegExp.REA.multiline) != 0);
+            global.putVboolean(re.global);
+            ignoreCase.putVboolean(re.ignoreCase);
+            multiline.putVboolean(re.multiline);
         }
         else
         {
@@ -543,12 +540,9 @@ class Dregexp : Dobject
             dc = cast(DregexpConstructor)Dregexp.getConstructor();
 
             // Decide if we are multiline
-            if(dr.multiline.dbool)
-                r.attributes |= RegExp.REA.multiline;
-            else
-                r.attributes &= ~RegExp.REA.multiline;
+            r.multiline = 0 != dr.multiline.dbool;
 
-            if(r.attributes & RegExp.REA.global && rettype != EXEC_INDEX)
+            if(r.global && rettype != EXEC_INDEX)
                 lasti = cast(int)dr.lastIndex.toInteger();
             else
                 lasti = 0;
@@ -558,54 +552,47 @@ class Dregexp : Dobject
                 Value* lastv;
                 uint nmatches;
 
-                if(r.attributes & RegExp.REA.global && rettype != EXEC_INDEX)
+                if(r.global && rettype != EXEC_INDEX)
                 {
-                    dr.lastIndex.putVnumber(r.pmatch[0].rm_eo);
+                    dr.lastIndex.putVnumber(r.lastIndex);
                 }
 
                 dc.input.putVstring(r.input);
 
-                s = r.input[r.pmatch[0].rm_so .. r.pmatch[0].rm_eo];
-                dc.lastMatch.putVstring(s);
+                dc.lastMatch.putVstring(r.lastMatch);
 
-                s = r.input[0 .. r.pmatch[0].rm_so];
-                dc.leftContext.putVstring(s);
+                dc.leftContext.putVstring(r.leftContext);
 
-                s = r.input[r.pmatch[0].rm_eo .. $];
-                dc.rightContext.putVstring(s);
+                dc.rightContext.putVstring(r.rightContext);
 
-                dc.index.putVnumber(r.pmatch[0].rm_so);
-                dc.lastIndex.putVnumber(r.pmatch[0].rm_eo);
+                dc.index.putVnumber(r.index);
+                dc.lastIndex.putVnumber(r.lastIndex);
 
                 // Fill in $1..$9
                 lastv = &vundefined;
-                nmatches = 0;
+                nmatches = r.nmatches;
                 for(i = 1; i <= 9; i++)
                 {
-                    if(i <= r.re_nsub)
+                    auto n = i;
+                    // Use last 9 entries for $1 .. $9
+                    if (9 < nmatches)
+                        n += nmatches - 9;
+
+                    if (n <= nmatches)
                     {
-                        int n;
-
-                        // Use last 9 entries for $1..$9
-                        n = i;
-                        if(r.re_nsub > 9)
-                            n += (r.re_nsub - 9);
-
-                        if(r.pmatch[n].rm_so != -1)
-                        {
-                            s = r.input[r.pmatch[n].rm_so .. r.pmatch[n].rm_eo];
+                        s = r.captures(n);
+                        if (s !is null)
                             dc.dollar[i].putVstring(s);
-                            nmatches = i;
-                        }
                         else
-                            dc.dollar[i].putVundefined();
+                            dc.dollar[i].putVundefined;
                         lastv = dc.dollar[i];
                     }
                     else
-                        dc.dollar[i].putVundefined();
+                        dc.dollar[i].putVundefined;
                 }
+
                 // Last substring in $1..$9, or "" if none
-                if(r.re_nsub)
+                if(0 < nmatches)
                     Value.copy(dc.lastParen, lastv);
                 else
                     dc.lastParen.putVstring(null);
@@ -617,30 +604,31 @@ class Dregexp : Dobject
                     Darray a = new Darray();
 
                     a.Put(TEXT_input, r.input, 0);
-                    a.Put(TEXT_index, r.pmatch[0].rm_so, 0);
-                    a.Put(TEXT_lastIndex, r.pmatch[0].rm_eo, 0);
+                    a.Put(TEXT_index, r.index, 0);
+                    a.Put(TEXT_lastIndex, r.lastIndex, 0);
 
                     a.Put(cast(d_uint32)0, dc.lastMatch, cast(uint)0);
 
                     // [1]..[nparens]
-                    for(i = 1; i <= r.re_nsub; i++)
+                    if (nmatches < 9)
+                        nmatches = 9;
+                    for(i = 1; i <= nmatches; i++)
                     {
-                        if(i > nmatches)
+                        if(i > r.nmatches)
                             a.Put(i, TEXT_, 0);
 
                         // Reuse values already put into dc.dollar[]
-                        else if(r.re_nsub <= 9)
+                        else if(r.nmatches <= 9)
                             a.Put(i, dc.dollar[i], 0);
-                        else if(i > r.re_nsub - 9)
-                            a.Put(i, dc.dollar[i - (r.re_nsub - 9)], 0);
-                        else if(r.pmatch[i].rm_so == -1)
+                        else if(i > r.nmatches - 9)
+                            a.Put(i, dc.dollar[i - (r.nmatches - 9)], 0);
+                        else if(r.captures(i) is null)
                         {
                             a.Put(i, &vundefined, 0);
                         }
                         else
                         {
-                            s = r.input[r.pmatch[i].rm_so .. r.pmatch[i].rm_eo];
-                            a.Put(i, s, 0);
+                            a.Put(i, r.captures(i), 0);
                         }
                     }
                     ret.putVobject(a);
@@ -655,7 +643,7 @@ class Dregexp : Dobject
                     break;
 
                 case EXEC_INDEX:
-                    ret.putVnumber(r.pmatch[0].rm_so);
+                    ret.putVnumber(r.index);
                     break;
 
                 default:
@@ -722,5 +710,150 @@ class Dregexp : Dobject
         }
 
         Dregexp_constructor.Put(TEXT_prototype, Dregexp_prototype, DontEnum | DontDelete | ReadOnly);
+    }
+}
+
+package
+{
+    import std.regex;
+
+    class RegExp
+    {
+        string pattern, flags;
+        bool global, ignoreCase, multiline;
+        int errors;
+
+        this(string pattern, string attributes)
+        {
+            compile(pattern, attributes);
+        }
+
+        void compile(string pattern, string attributes)
+        {
+            import std.string : replace;
+
+            this.pattern = pattern;
+            flags = attributes;
+            foreach(c; attributes)
+            {
+                switch(c)
+                {
+                case 'g':
+                    global = true;
+                    break;
+                case 'i':
+                    ignoreCase = true;
+                    break;
+                case 'm':
+                    multiline = true;
+                    break;
+                default:
+                }
+            }
+
+            if (global)
+                attributes = attributes.replace("g", "");
+
+            try
+            {
+                r = regex(pattern, attributes);
+            }
+            catch
+            {
+                errors = 1;
+            }
+            m.destroy;
+            src = null;
+        }
+
+        bool test(string str, size_t startIndex)
+        {
+            assert(r !is typeof(r).init);
+            if (src is null || m is typeof(m).init || str !is src)
+            {
+                src = str;
+
+                if (global)
+                {
+                    m = str.matchAll(r);
+                }
+                else
+                {
+                    m = str.match(r);
+                }
+            }
+            assert(m !is typeof(m).init);
+
+            for (; !m.empty && m.hit.ptr < &str[startIndex]; m.popFront){}
+
+            return !m.empty;
+        }
+
+        @property
+        size_t index()
+        {
+            assert(m !is typeof(m).init && !m.empty);
+            return cast(size_t)(m.hit.ptr - src.ptr);
+        }
+
+        @property
+        size_t lastIndex()
+        {
+            assert(m !is typeof(m).init && !m.empty);
+            return cast(size_t)(m.post.ptr - src.ptr);
+        }
+
+        @property
+        string input()
+        {
+            return src;
+        }
+
+        @property
+        string lastMatch()
+        {
+            assert(m !is typeof(m).init && !m.empty);
+            return m.hit;
+        }
+
+        @property
+        string leftContext()
+        {
+            assert(m !is typeof(m).init && !m.empty);
+            return m.pre;
+        }
+
+        @property
+        string rightContext()
+        {
+            assert(m !is typeof(m).init && !m.empty);
+            return m.post;
+        }
+
+        @property
+        string captures(size_t i)
+        {
+            assert(m !is typeof(m).init && !m.empty);
+
+            if (i < m.front.length)
+            {
+                return m.front[i];
+            }
+
+            return null;
+        }
+
+        @property
+        size_t nmatches()
+        {
+            assert(m !is typeof(m).init && !m.empty);
+
+            return m.front.length - 1;
+        }
+
+    private:
+        Regex!char r;
+        RegexMatch!string m;
+        string src, target;
     }
 }
