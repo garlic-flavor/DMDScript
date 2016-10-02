@@ -1569,7 +1569,8 @@ private
 
     d_time getUTCtime()
     {
-        return Clock.currTime.toDtime;
+        auto ct = Clock.currTime;
+        return ct.toDtime;
     }
 
     d_time localTimetoUTC(in d_time t)
