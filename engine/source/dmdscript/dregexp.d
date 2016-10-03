@@ -768,23 +768,11 @@ package
 
         bool test(string str, size_t startIndex)
         {
+            src = str;
+
             assert(r !is typeof(r).init);
-            if (src is null || m is typeof(m).init || str !is src)
-            {
-                src = str;
-
-                if (global)
-                {
-                    m = str.matchAll(r);
-                }
-                else
-                {
-                    m = str.match(r);
-                }
-            }
+            m = str[startIndex..$].match(r);
             assert(m !is typeof(m).init);
-
-            for (; !m.empty && m.hit.ptr < &str[startIndex]; m.popFront){}
 
             return !m.empty;
         }
@@ -792,14 +780,14 @@ package
         @property
         size_t index()
         {
-            assert(m !is typeof(m).init && !m.empty);
+            assert(m !is typeof(m).init && src !is null && !m.empty);
             return cast(size_t)(m.hit.ptr - src.ptr);
         }
 
         @property
         size_t lastIndex()
         {
-            assert(m !is typeof(m).init && !m.empty);
+            assert(m !is typeof(m).init && src !is null && !m.empty);
             return cast(size_t)(m.post.ptr - src.ptr);
         }
 
@@ -819,8 +807,8 @@ package
         @property
         string leftContext()
         {
-            assert(m !is typeof(m).init && !m.empty);
-            return m.pre;
+            assert(m !is typeof(m).init && src !is null && !m.empty);
+            return src[0..(m.hit.ptr - src.ptr)];
         }
 
         @property
@@ -854,6 +842,6 @@ package
     private:
         Regex!char r;
         RegexMatch!string m;
-        string src, target;
+        string src;
     }
 }

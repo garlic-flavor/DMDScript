@@ -18,7 +18,6 @@
 
 module dmdscript.dstring;
 
-import undead.regexp;
 import std.utf;
 import core.sys.posix.stdlib;
 import core.stdc.string;
@@ -512,7 +511,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
             if(!ret.string)             // if match failed
                 break;
 
-            m = re.re_nsub;
+            m = re.nmatches;
             if(f)
             {
                 Value* alist;
@@ -522,10 +521,9 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
                 alist[0].putVstring(ret.string);
                 for(i = 0; i < m; i++)
                 {
-                    alist[1 + i].putVstring(
-                        string[re.pmatch[1 + i].rm_so .. re.pmatch[1 + i].rm_eo]);
+                    alist[1 + i].putVstring(string[re.captures(1 + i)]);
                 }
-                alist[m + 1].putVnumber(re.pmatch[0].rm_so);
+                alist[m + 1].putVnumber(re.index);
                 alist[m + 2].putVstring(string);
                 f.Call(cc, f, ret, alist[0 .. m + 3]);
                 replacement = ret.toString();
@@ -533,15 +531,16 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
             else
             {
                 newstring = replaceValue.toString();
-                replacement = re.replace(newstring);
+                replacement = replace(re, newstring);
             }
-            ptrdiff_t starti = re.pmatch[0].rm_so + offset;
-            ptrdiff_t endi = re.pmatch[0].rm_eo + offset;
+            ptrdiff_t starti = re.index;
+            ptrdiff_t endi = re.lastIndex;
             result = string[0 .. starti] ~
                      replacement ~
                      string[endi .. $];
 
-            if(re.attributes & RegExp.REA.global)
+//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+            if(re.global)
             {
                 offset += replacement.length - (endi - starti);
 
