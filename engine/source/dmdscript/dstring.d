@@ -486,7 +486,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
     int m;
     int i;
     int lasti;
-    regmatch_t[1] pmatch;
+    d_string[1] pmatch;
     Dfunction f;
     Value* v;
 
@@ -521,7 +521,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
                 alist[0].putVstring(ret.string);
                 for(i = 0; i < m; i++)
                 {
-                    alist[1 + i].putVstring(string[re.captures(1 + i)]);
+                    alist[1 + i].putVstring(re.captures(1 + i));
                 }
                 alist[m + 1].putVnumber(re.index);
                 alist[m + 2].putVstring(string);
@@ -531,7 +531,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
             else
             {
                 newstring = replaceValue.toString();
-                replacement = replace(re, newstring);
+                replacement = re.replace(newstring);
             }
             ptrdiff_t starti = re.index;
             ptrdiff_t endi = re.lastIndex;
@@ -539,7 +539,6 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
                      replacement ~
                      string[endi .. $];
 
-//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             if(re.global)
             {
                 offset += replacement.length - (endi - starti);
@@ -563,14 +562,13 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
         ptrdiff_t match = std.string.indexOf(string, searchString);
         if(match >= 0)
         {
-            pmatch[0].rm_so = match;
-            pmatch[0].rm_eo = match + searchString.length;
+            pmatch[0] = string[match .. match + searchString.length];
             if(f)
             {
                 Value[3] alist;
 
                 alist[0].putVstring(searchString);
-                alist[1].putVnumber(pmatch[0].rm_so);
+                alist[1].putVnumber(match);
                 alist[2].putVstring(string);
                 f.Call(cc, f, ret, alist);
                 replacement = ret.toString();
@@ -578,7 +576,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
             else
             {
                 newstring = replaceValue.toString();
-                replacement = RegExp.replace3(newstring, string, pmatch);
+                replacement = RegExp.replace3(newstring, string, pmatch[]);
             }
             result = string[0 .. match] ~
                      replacement ~
@@ -778,8 +776,8 @@ void* Dstring_prototype_split(Dobject pthis, CallContext *cc, Dobject othis, Val
                 {
                     if(re.test(S, q))
                     {
-                        q = re.pmatch[0].rm_so;
-                        e = re.pmatch[0].rm_eo;
+                        q = re.index;
+                        e = re.lastIndex;
                         if(e != p)
                         {
                             T = S[p .. q];
@@ -788,10 +786,10 @@ void* Dstring_prototype_split(Dobject pthis, CallContext *cc, Dobject othis, Val
                             if(A.length.number == lim)
                                 goto Lret;
                             p = e;
-                            for(uint i = 0; i < re.re_nsub; i++)
+                            for(uint i = 0; i < re.nmatches; i++)
                             {
-                                ptrdiff_t so = re.pmatch[1 + i].rm_so;
-                                ptrdiff_t eo = re.pmatch[1 + i].rm_eo;
+                                ptrdiff_t so = re.capturesIndex(1 + i);
+                                ptrdiff_t eo = re.capturesLastIndex(1 + i);
 
                                 //writefln("i = %d, nsub = %s, so = %s, eo = %s, S.length = %s", i, re.re_nsub, so, eo, S.length);
                                 if(so != -1 && eo != -1)

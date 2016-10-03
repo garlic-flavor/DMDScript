@@ -780,14 +780,14 @@ package
         @property
         size_t index()
         {
-            assert(m !is typeof(m).init && src !is null && !m.empty);
+            assert(m !is typeof(m).init && !m.empty && src !is null);
             return cast(size_t)(m.hit.ptr - src.ptr);
         }
 
         @property
         size_t lastIndex()
         {
-            assert(m !is typeof(m).init && src !is null && !m.empty);
+            assert(m !is typeof(m).init && !m.empty && src !is null);
             return cast(size_t)(m.post.ptr - src.ptr);
         }
 
@@ -807,7 +807,7 @@ package
         @property
         string leftContext()
         {
-            assert(m !is typeof(m).init && src !is null && !m.empty);
+            assert(m !is typeof(m).init && !m.empty && src !is null);
             return src[0..(m.hit.ptr - src.ptr)];
         }
 
@@ -818,17 +818,30 @@ package
             return m.post;
         }
 
-        @property
         string captures(size_t i)
         {
             assert(m !is typeof(m).init && !m.empty);
+            assert(i < m.front.length);
 
+            return m.front[i];
+        }
+
+        sizediff_t capturesIndex(size_t i)
+        {
+            assert(m !is typeof(m).init && !m.empty && src !is null);
             if (i < m.front.length)
-            {
-                return m.front[i];
-            }
+                return m.front[i].ptr - src.ptr;
+            else
+                return -1;
+        }
 
-            return null;
+        sizediff_t capturesLastIndex(size_t i)
+        {
+            assert(m !is typeof(m).init && !m.empty && src !is null);
+            if (i < m.front.length)
+                return m.front[i].ptr - src.ptr + m.front[i].length;
+            else
+                return -1;
         }
 
         @property
@@ -838,6 +851,99 @@ package
 
             return m.front.length - 1;
         }
+
+        string replace(string fmt)
+        {
+            auto m2 = new string[m.front.length];
+
+            for (size_t i = 0; i < m.front.length; ++i)
+                m2[i] = m.front[i];
+
+            return replace3(fmt, src, m2);
+        }
+
+        // from undead.regexp.RegExp.replace3
+        static string replace3(string fmt, string src, string[] m)
+        {
+            import std.array : Appender;
+            assert(src !is null && 0 < m.length);
+            assert(src.ptr <= m[0].ptr &&
+                   m[0].ptr + m[0].length <= src.ptr + src.length);
+
+            Appender!string result;
+            int i;
+            char c, c2;
+
+            result.reserve = fmt.length;
+            for (size_t f = 0; f < fmt.length; ++f)
+            {
+                c = fmt[f];
+            L1:
+                if (c != '$')
+                {
+                    result.put(c);
+                    continue;
+                }
+                ++f;
+                if (f == fmt.length)
+                {
+                    result.put(c);
+                    break;
+                }
+
+                c = fmt[f];
+                switch (c)
+                {
+                case '&':
+                    result.put(m[0]);
+                    break;
+                case '`':
+                    result.put(src[0..(m[0].ptr - src.ptr)]);
+                    break;
+                case '\'':
+                    result.put(src[m[0].ptr - src.ptr + m[0].length .. $]);
+                    break;
+
+                case '0': .. case '9':
+                    i = c - '0';
+                    if (f+1 == fmt.length)
+                    {
+                        if (i == 0)
+                        {
+                            result.put('$');
+                            result.put(c);
+                        }
+                    }
+                    else
+                    {
+                        c2 = fmt[f+1];
+                        if (c2 >= '0' && c2 <= '9')
+                        {
+                            i = (c - '0') * 10 + (c2 - '0');
+                            ++f;
+                        }
+                        if (i == 0)
+                        {
+                            result.put('$');
+                            result.put(c);
+                            c = c2;
+                            goto L1;
+                        }
+                    }
+
+                    if (i < m.length)
+                        result.put(m[i]);
+                    break;
+
+                default:
+                    result.put('$');
+                    result.put(c);
+                    break;
+                }
+            }
+            return result.data;
+        }
+
 
     private:
         Regex!char r;
