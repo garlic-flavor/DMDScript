@@ -25,7 +25,7 @@ import dmdscript.identifier;
 import dmdscript.RandAA;
 
 import core.stdc.string;
-import std.stdio;
+debug import std.stdio;
 
 // attribute flags
 enum

@@ -17,7 +17,7 @@
 
 module dmdscript.ddeclaredfunction;
 
-import std.stdio;
+debug import std.stdio;
 import core.sys.posix.stdlib;
 import std.exception;
 import dmdscript.script;

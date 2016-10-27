@@ -22,8 +22,8 @@ import std.algorithm;
 import std.string;
 import std.range;
 import std.exception;
-import std.stdio;
 import std.ascii;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.lexer;
@@ -121,7 +121,7 @@ class Expression
 
     void toIR(IRstate *irs, uint ret)
     {
-        writef("Expression::toIR('%s')\n", toString());
+        debug writef("Expression::toIR('%s')\n", toString());
     }
 
     void toLvalue(IRstate *irs, out uint base, IR *property, out int opoff)

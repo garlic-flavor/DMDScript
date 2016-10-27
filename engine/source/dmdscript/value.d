@@ -639,7 +639,7 @@ struct Value
               if(a)                             // if exception was thrown
               {
                   /*return a;*/
-                  writef("Vobject.toSource() failed with %x\n", a);
+                  debug writef("Vobject.toSource() failed with %x\n", a);
               }
               else if(ret.isPrimitive())
                   return ret.toString();
@@ -784,7 +784,7 @@ struct Value
         case V_OBJECT:      s = TypeObject;    break;
         case V_ITER:        s = TypeIterator;  break;
         default:
-            writefln("vtype = %d", vtype);
+            debug writefln("vtype = %d", vtype);
             assert(0);
         }
         return s;
@@ -804,7 +804,7 @@ struct Value
         case V_STRING:      s = TEXT_string;        break;
         case V_OBJECT:      s = object.getTypeof(); break;
         default:
-            writefln("vtype = %d", vtype);
+            debug writefln("vtype = %d", vtype);
             assert(0);
         }
         return s;

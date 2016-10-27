@@ -17,13 +17,13 @@
 
 module dmdscript.statement;
 
-import std.stdio;
 import std.string;
 import std.math;
 import std.format;
 import std.traits;
 import std.exception;
 import std.utf;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.value;
@@ -79,13 +79,13 @@ class TopStatement
 
     Statement semantic(Scope *sc)
     {
-        writefln("TopStatement.semantic(%p)", this);
+        debug writefln("TopStatement.semantic(%p)", this);
         return null;
     }
 
     void toIR(IRstate *irs)
     {
-        writefln("TopStatement.toIR(%p)", this);
+        debug writefln("TopStatement.toIR(%p)", this);
     }
 
     void error(Scope *sc, int msgnum)
@@ -148,13 +148,13 @@ class Statement : TopStatement
 
     override Statement semantic(Scope *sc)
     {
-        writef("Statement.semantic(%p)\n", this);
+        debug writef("Statement.semantic(%p)\n", this);
         return this;
     }
 
     override void toIR(IRstate *irs)
     {
-        writef("Statement.toIR(%p)\n", this);
+        debug writef("Statement.toIR(%p)\n", this);
     }
 
     uint getBreak()

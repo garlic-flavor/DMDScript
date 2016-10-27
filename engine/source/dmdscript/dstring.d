@@ -24,11 +24,11 @@ import core.stdc.string;
 import std.exception;
 import std.algorithm;
 import std.range;
-import std.stdio;
 import std.string;
 import std.utf;
 import std.math;
 import std.traits;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.dobject;

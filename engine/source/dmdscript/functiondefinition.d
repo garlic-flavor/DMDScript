@@ -18,7 +18,7 @@
 
 module dmdscript.functiondefinition;
 
-import std.stdio;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.identifier;

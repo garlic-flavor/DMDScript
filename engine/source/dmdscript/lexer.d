@@ -22,7 +22,6 @@ module dmdscript.lexer;
 
 import std.range;
 import std.algorithm;
-import std.stdio;
 import std.string;
 import std.utf;
 import std.outbuffer;
@@ -33,6 +32,7 @@ import std.exception;
 import std.traits;
 import core.sys.posix.stdlib;
 import core.stdc.string;
+import std.stdio;
 
 import dmdscript.script;
 import dmdscript.text;

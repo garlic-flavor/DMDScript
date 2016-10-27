@@ -18,7 +18,7 @@
 
 module dmdscript.program;
 
-import std.stdio;
+debug import std.stdio;
 import core.sys.posix.stdlib;
 
 import dmdscript.script;

@@ -23,9 +23,8 @@ import core.sys.posix.stdlib;
 import core.stdc.string;
 import dmdscript.outbuffer;
 import core.memory;
-import core.stdc.stdio;
 
-import std.stdio;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.statement;
@@ -57,9 +56,14 @@ struct IRstate
     void validate()
     {
         assert(codebuf.offset <= codebuf.data.length);
-        if(codebuf.data.length > codebuf.data.capacity)
-            printf("ptr %p, length %d, capacity %d\n", codebuf.data.ptr, codebuf.data.length, core.memory.GC.sizeOf(codebuf.data.ptr));
-        assert(codebuf.data.length <= codebuf.data.capacity);
+        debug
+        {
+            if(codebuf.data.length > codebuf.data.capacity)
+            {
+                writeln("ptr %p, length %d, capacity %d", codebuf.data.ptr, codebuf.data.length, core.memory.GC.sizeOf(codebuf.data.ptr));
+                assert(0);
+            }
+        }
         for(uint u = 0; u < codebuf.offset; )
         {
             IR* code = cast(IR*)(codebuf.data.ptr + u);

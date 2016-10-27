@@ -18,7 +18,7 @@
 
 module dmdscript.symbol;
 
-import std.stdio;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.identifier;
@@ -104,8 +104,11 @@ class ScopeSymbol : Symbol
         //writef("ScopeSymbol::search(%s, '%s')\n", toString(), ident.toString());
         // Look in symbols declared in this module
         s = symtab ? symtab.lookup(ident) : null;
-        if(s)
-            writef("\ts = '%s.%s'\n", toString(), s.toString());
+        debug
+        {
+            if(s)
+                writef("\ts = '%s.%s'\n", toString(), s.toString());
+        }
         return s;
     }
 }

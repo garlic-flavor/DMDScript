@@ -26,7 +26,7 @@ import std.exception;
 import std.utf;
 import std.string;
 import std.traits;
-debug import std.stdio;
+import std.stdio;
 
 import dmdscript.script;
 import dmdscript.protoerror;

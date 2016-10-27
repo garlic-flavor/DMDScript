@@ -18,10 +18,10 @@
 
 module dmdscript.opcodes;
 
-import std.stdio;
 import core.stdc.string;
 import std.string;
 import std.conv;
+import std.stdio;
 
 import dmdscript.script;
 import dmdscript.dobject;

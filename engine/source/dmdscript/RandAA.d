@@ -795,8 +795,8 @@ public:
     }
 }
 
-import std.random, std.exception, std.stdio;
 /*
+import std.random, std.exception, std.stdio;
    // Test it out.
    void unit_tests() {
     string[string] builtin;
