@@ -23,6 +23,7 @@ import core.stdc.string;
 import std.exception;
 import std.format;
 import std.utf;
+import std.traits;
 
 import dmdscript.script;
 import dmdscript.value;
@@ -46,7 +47,6 @@ import dmdscript.derror;
 import dmdscript.dnative;
 
 import dmdscript.protoerror;
-import dmdscript.utf;
 
 class ErrorValue: Exception {
     Value value;
@@ -620,15 +620,15 @@ class Dobject
         Dobject o;
         ErrInfo errinfo;
         //perrinfo.message = null;
-        d_string buffer = null;
+        Unqual!(ForeachType!d_string)[] buffer = null;
 
         void putc(dchar c)
         {
-            dmdscript.utf.encode(buffer, c);
+            std.utf.encode(buffer, c);
         }
 
         std.format.doFormat(&putc, _arguments, _argptr);
-        errinfo.message = buffer;
+        errinfo.message = buffer.assumeUnique;
 
         o = new referenceerror.D0(&errinfo);
         Value* v = new Value;
@@ -645,15 +645,15 @@ class Dobject
         Dobject o;
 
         //perrinfo.message = null;
-        d_string buffer = null;
+        Unqual!(ForeachType!d_string)[] buffer = null;
 
         void putc(dchar c)
         {
-            dmdscript.utf.encode(buffer, c);
+            std.utf.encode(buffer, c);
         }
 
         std.format.doFormat(&putc, _arguments, _argptr);
-        perrinfo.message = buffer;
+        perrinfo.message = buffer.assumeUnique;
 
         o = new rangeerror.D0(perrinfo);
         Value* v = new Value;

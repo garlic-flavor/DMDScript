@@ -20,13 +20,13 @@ module dmdscript.dglobal;
 import std.uri;
 import core.sys.posix.stdlib;
 import core.stdc.string;
-import core.stdc.stdio;
-import std.stdio;
 import std.algorithm;
 import std.math;
 import std.exception;
 import std.utf;
 import std.string;
+import std.traits;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.protoerror;
@@ -48,7 +48,6 @@ import dmdscript.dnumber;
 import dmdscript.dboolean;
 import dmdscript.dfunction;
 import dmdscript.dnative;
-import dmdscript.utf;
 
 immutable(char)[] arg0string(Value[] arglist)
 {
@@ -394,7 +393,7 @@ void* Dglobal_unescape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 {
     // ECMA 15.1.2.5
     d_string s;
-    d_string R;
+    Unqual!(ForeachType!d_string)[] R; // char[] type is assumed.
 
     s = arg0string(arglist);
     //writefln("Dglobal.unescape(s = '%s')", s);
@@ -415,7 +414,7 @@ void* Dglobal_unescape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 
                     if(i == 6)
                     {
-                        dmdscript.utf.encode(R, cast(dchar)u);
+                        std.utf.encode(R, cast(dchar)u);
                         k += 5;
                         goto L1;
                     }
@@ -442,7 +441,7 @@ void* Dglobal_unescape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 
                     if(i == 3)
                     {
-                        dmdscript.utf.encode(R, cast(dchar)u);
+                        std.utf.encode(R, cast(dchar)u);
                         k += 2;
                         goto L1;
                     }
@@ -464,7 +463,7 @@ void* Dglobal_unescape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
         ;
     }
 
-    ret.putVstring(R);
+    ret.putVstring(R.assumeUnique);
     return null;
 }
 
@@ -635,7 +634,7 @@ void* Dglobal_readln(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, 
 {
     // Our own extension
     dchar c;
-    d_string s;
+    Unqual!(ForeachType!d_string)[] s;
 
     for(;; )
     {
@@ -669,9 +668,9 @@ void* Dglobal_readln(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, 
         }
         if(c == '\n')
             break;
-        dmdscript.utf.encode(s, c);
+        std.utf.encode(s, c);
     }
-    ret.putVstring(s);
+    ret.putVstring(s.assumeUnique);
     return null;
 }
 

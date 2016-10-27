@@ -29,6 +29,8 @@ import std.outbuffer;
 import std.ascii;
 import std.format;
 import std.uni;
+import std.exception;
+import std.traits;
 import core.sys.posix.stdlib;
 import core.stdc.string;
 
@@ -37,7 +39,6 @@ import dmdscript.text;
 import dmdscript.identifier;
 import dmdscript.scopex;
 import dmdscript.errmsgs;
-import dmdscript.utf;
 
 /* Tokens:
         (	)
@@ -314,7 +315,7 @@ class Lexer
         immutable(tchar) * s;
         immutable(tchar) * slinestart;
         immutable(tchar) * slineend;
-        d_string buf;
+        Unqual!(ForeachType!d_string)[] buf;
 
         //FuncLog funclog(L"Lexer.error()");
         //writefln("TEXT START ------------\n%ls\nTEXT END ------------------", base);
@@ -347,11 +348,11 @@ class Lexer
         }
         slineend = s;
 
-        buf = std.string.format("%s(%d) : Error: ", sourcename, linnum);
+        buf = std.string.format("%s(%d) : Error: ", sourcename, linnum).dup;
 
         void putc(dchar c)
         {
-            dmdscript.utf.encode(buf, c);
+            std.utf.encode(buf, c);
         }
 
         std.format.doFormat(&putc, _arguments, _argptr);
@@ -360,7 +361,7 @@ class Lexer
         {
             uint len;
 
-            errinfo.message = buf;
+            errinfo.message = buf.assumeUnique;
             errinfo.linnum = linnum;
             errinfo.charpos = p - slinestart;
 
@@ -502,6 +503,7 @@ class Lexer
         tchar c;
         dchar d;
         d_string id;
+        Unqual!(ForeachType!d_string)[] buf;
 
         //writefln("Lexer.scan()");
         t.sawLineTerminator = null;
@@ -584,7 +586,9 @@ class Lexer
                               p = ps;
                               break;
                           }
-                          dmdscript.utf.encode(id, d);
+                          buf = null;
+                          std.utf.encode(buf, d);
+                          id ~= buf;
                           for(;; )
                           {
                               d = get(p);
@@ -594,7 +598,11 @@ class Lexer
                                   p++;
                                   d = unicode();
                                   if(isidletter(d))
-                                      dmdscript.utf.encode(id, d);
+                                  {
+                                      buf = null;
+                                      std.utf.encode(buf, d);
+                                      id ~= buf;
+                                  }
                                   else
                                   {
                                       p = pstart;
@@ -603,7 +611,9 @@ class Lexer
                               }
                               else if(isidletter(d))
                               {
-                                  dmdscript.utf.encode(id, d);
+                                  buf = null;
+                                  std.utf.encode(buf, d);
+                                  id ~= buf;
                                   p = inc(p);
                               }
                               else
@@ -1171,7 +1181,7 @@ class Lexer
     {
         tchar c;
         dchar d;
-        d_string stringbuffer;
+        Unqual!(ForeachType!d_string)[] stringbuffer = null;
 
         //printf("Lexer.string('%c')\n", quote);
         p++;
@@ -1184,7 +1194,7 @@ class Lexer
             case '\'':
                 p++;
                 if(c == quote)
-                    return stringbuffer;
+                    return stringbuffer.assumeUnique;
                 break;
 
             case '\\':
@@ -1193,7 +1203,7 @@ class Lexer
                     d = unicode();
                 else
                     d = escapeSequence();
-                dmdscript.utf.encode(stringbuffer, d);
+                std.utf.encode(stringbuffer, d);
                 continue;
 
             case '\n':

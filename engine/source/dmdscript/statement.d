@@ -21,6 +21,9 @@ import std.stdio;
 import std.string;
 import std.math;
 import std.format;
+import std.traits;
+import std.exception;
+import std.utf;
 
 import dmdscript.script;
 import dmdscript.value;
@@ -34,7 +37,6 @@ import dmdscript.lexer;
 import dmdscript.errmsgs;
 import dmdscript.functiondefinition;
 import dmdscript.opcodes;
-import dmdscript.utf;
 
 enum
 {
@@ -93,7 +95,7 @@ class TopStatement
 
     void error(Scope *sc, ...)
     {
-        d_string buf;
+        Unqual!(ForeachType!d_string)[] buf;
         d_string sourcename;
 
         if(sc.funcdef)
@@ -103,11 +105,11 @@ class TopStatement
             else if(sc.funcdef.name)
                 sourcename ~= sc.funcdef.name.toString();
         }
-        buf = std.string.format("%s(%d) : Error: ", sourcename, loc);
+        buf = std.string.format("%s(%d) : Error: ", sourcename, loc).dup;
 
         void putc(dchar c)
         {
-            dmdscript.utf.encode(buf, c);
+            std.utf.encode(buf, c);
         }
 
         std.format.doFormat(&putc, _arguments, _argptr);
@@ -115,7 +117,7 @@ class TopStatement
 
         if(!sc.errinfo.message)
         {
-            sc.errinfo.message = buf;
+            sc.errinfo.message = buf.assumeUnique;
             sc.errinfo.linnum = loc;
             sc.errinfo.srcline = Lexer.locToSrcline(sc.getSource().ptr, loc);
         }

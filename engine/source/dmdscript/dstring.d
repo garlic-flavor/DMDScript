@@ -28,6 +28,7 @@ import std.stdio;
 import std.string;
 import std.utf;
 import std.math;
+import std.traits;
 
 import dmdscript.script;
 import dmdscript.dobject;
@@ -40,7 +41,6 @@ import dmdscript.text;
 import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.dnative;
-import dmdscript.utf;
 
 //alias script.tchar tchar;
 
@@ -49,7 +49,7 @@ import dmdscript.utf;
 void* Dstring_fromCharCode(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
 {
     // ECMA 15.5.3.2
-    d_string s;
+    Unqual!(ForeachType!d_string)[] s = null;
 
     for(size_t i = 0; i < arglist.length; i++)
     {
@@ -69,10 +69,10 @@ void* Dstring_fromCharCode(Dobject pthis, CallContext *cc, Dobject othis, Value 
                                       "String", "fromCharCode()",
                                       u);
         }
-        dmdscript.utf.encode(s, u);
+        std.utf.encode(s, u);
         //writefln("s[0] = %x, s = '%s'", s[0], s);
     }
-    ret.putVstring(s);
+    ret.putVstring(s.assumeUnique);
     return null;
 }
 
