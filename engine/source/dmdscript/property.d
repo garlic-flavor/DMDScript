@@ -87,10 +87,10 @@ struct PropTable
      * Return null if not found.
      */
 
-    Property *getProperty(d_string name)
+    Property* getProperty(d_string name)
     {
         Value* v;
-        Property *p;
+        Property* p;
 
         v = get(name, Value.calcHash(name));
         if(!v)
@@ -105,8 +105,8 @@ struct PropTable
     Value* get(Value* key, hash_t hash)
     {
         uint i;
-        Property *p;
-        PropTable *t;
+        Property* p;
+        PropTable* t;
 
         //writefln("get(key = '%s', hash = x%x)", key.toString(), hash);
         assert(key.toHash() == hash);
@@ -204,8 +204,8 @@ struct PropTable
         //writeln(cast(void*)table);
         //p = *key in table;
         p = table.findExistingAlt(*key,hash);
-        
- 
+
+
         if(p)
         {
             Lx:
@@ -244,12 +244,13 @@ struct PropTable
             p.attributes = (attributes & ~DontOverride) | (p.attributes & (DontDelete | DontEnum));
             return null;
         }
-		else{		
+        else
+        {
             //table[*key] = Property(attributes & ~DontOverride,*value);
             auto v = Property(attributes & ~DontOverride,*value);
-			table.insertAlt(*key, v, hash);
-			return null; // success
-		}
+            table.insertAlt(*key, v, hash);
+            return null; // success
+        }
     }
 
     Value* put(d_string name, Value* value, uint attributes)
@@ -286,8 +287,8 @@ struct PropTable
     int canput(Value* key, hash_t hash)
     {
         initialize();
-        Property *p;
-        PropTable *t;
+        Property* p;
+        PropTable* t;
 
         t = &this;
         do
@@ -316,7 +317,7 @@ struct PropTable
     int del(Value* key)
     {
         initialize();
-        Property *p;
+        Property* p;
 
         //writef("PropTable::del('%ls')\n", d_string_ptr(key.toString()));
         p = *key in table;

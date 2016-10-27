@@ -32,7 +32,7 @@ import dmdscript.errmsgs;
 
 class Symbol
 {
-    Identifier *ident;
+    Identifier* ident;
 
     this()
     {
@@ -60,12 +60,12 @@ class Symbol
         return ident ? "__ident" : "__anonymous";
     }
 
-    void semantic(Scope *sc)
+    void semantic(Scope* sc)
     {
         assert(0);
     }
 
-    Symbol search(Identifier *ident)
+    Symbol search(Identifier* ident)
     {
         assert(0);
         //error(DTEXT("%s.%s is undefined"),toString(), ident.toString());
@@ -85,19 +85,19 @@ class Symbol
 class ScopeSymbol : Symbol
 {
     Symbol[] members;           // all Symbol's in this scope
-    SymbolTable *symtab;        // member[] sorted into table
+    SymbolTable* symtab;        // member[] sorted into table
 
     this()
     {
         super();
     }
 
-    this(Identifier * id)
+    this(Identifier* id)
     {
         super(id);
     }
 
-    override Symbol search(Identifier *ident)
+    override Symbol search(Identifier* ident)
     {
         Symbol s;
 
@@ -120,12 +120,12 @@ class ScopeSymbol : Symbol
 
 struct SymbolTable
 {
-           Symbol[Identifier *] members;
+           Symbol[Identifier*] members;
 
     // Look up Identifier. Return Symbol if found, NULL if not.
-    Symbol lookup(Identifier *ident)
+    Symbol lookup(Identifier* ident)
     {
-        Symbol *ps;
+        Symbol* ps;
 
         ps = ident in members;
         if(ps)
@@ -136,7 +136,7 @@ struct SymbolTable
     // Insert Symbol in table. Return NULL if already there.
     Symbol insert(Symbol s)
     {
-        Symbol *ps;
+        Symbol* ps;
 
         ps = s.ident in members;
         if(ps)
@@ -169,7 +169,7 @@ class FunctionSymbol : ScopeSymbol
     IR *code;
     uint nlocals;
 
-    this(Loc loc, Identifier * ident, Identifier *[] parameters,
+    this(Loc loc, Identifier* ident, Identifier*[] parameters,
          TopStatement[] topstatements)
     {
         super(ident);
@@ -178,7 +178,7 @@ class FunctionSymbol : ScopeSymbol
         this.topstatements = topstatements;
     }
 
-    override void semantic(Scope *sc)
+    override void semantic(Scope* sc)
     {
     }
 }
@@ -190,7 +190,7 @@ class LabelSymbol : Symbol
 { Loc loc;
   LabelStatement statement;
 
-  this(Loc loc, Identifier * ident, LabelStatement statement)
+  this(Loc loc, Identifier* ident, LabelStatement statement)
   {
       super(ident);
       this.loc = loc;

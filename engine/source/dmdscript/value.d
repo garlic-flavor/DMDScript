@@ -85,7 +85,7 @@ struct Value
     void throwRefError() const{
         throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], text));
     }
-    
+
     void putSignalingUndefined(d_string id){
         vtype = V_REF_ERROR;
         text = id;
@@ -179,7 +179,7 @@ struct Value
     in { }
     out { assert(memcmp(to, from, Value.sizeof) == 0); }
     body
- 
+
     {
         /+version(all /*UseAsm*/)
         {
@@ -986,7 +986,7 @@ struct Value
         return h;
     }
 
-    Value* Put(d_string PropertyName, Value* value)
+    Status* Put(d_string PropertyName, Value* value)
     {
         if(vtype == V_OBJECT)
             return object.Put(PropertyName, value, 0);
@@ -1001,7 +1001,7 @@ struct Value
         }
     }
 
-    Value* Put(d_uint32 index, Value* vindex, Value* value)
+    Status* Put(d_uint32 index, Value* vindex, Value* value)
     {
         if(vtype == V_OBJECT)
             return object.Put(index, vindex, value, 0);
@@ -1084,7 +1084,7 @@ struct Value
         }
     }
  +/
-    void* Construct(CallContext *cc, Value *ret, Value[] arglist)
+    Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         if(vtype == V_OBJECT)
             return object.Construct(cc, ret, arglist);
@@ -1101,11 +1101,11 @@ struct Value
         }
     }
 
-    void* Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         if(vtype == V_OBJECT)
         {
-            void* a;
+            Status* a;
 
             a = object.Call(cc, othis, ret, arglist);
             //if (a) writef("Vobject.Call() returned %x\n", a);
@@ -1125,7 +1125,7 @@ struct Value
         }
     }
 
-    Value* putIterator(Value* v)
+    Status* putIterator(Value* v)
     {
         if(vtype == V_OBJECT)
             return object.putIterator(v);
@@ -1139,7 +1139,7 @@ struct Value
     }
 
 
-    void getErrInfo(ErrInfo *perrinfo, int linnum)
+    void getErrInfo(ErrInfo* perrinfo, int linnum)
     {
         if(vtype == V_OBJECT)
             object.getErrInfo(perrinfo, linnum);
@@ -1157,7 +1157,7 @@ struct Value
 
     void dump()
     {
-        uint *v = cast(uint *)&this;
+        uint* v = cast(uint*)&this;
 
         writef("v[%x] = %8x, %8x, %8x, %8x\n", cast(uint)v, v[0], v[1], v[2], v[3]);
     }
@@ -1188,5 +1188,8 @@ Value* signalingUndefined(string id){
 }
 
 
-
-
+struct Status
+{
+    Value entity;
+    alias entity this;
+}

@@ -575,11 +575,11 @@ public:
                 }
             }
             return (flag == USED) ? &vals[pos] : null;
-	}
-	void insertAlt(ref K key, ref V val, hash_t hashFull){
-		assignNoRehashCheck(key, val, hashFull);
-		rehash();
-	}
+        }
+    void insertAlt(ref K key, ref V val, hash_t hashFull){
+        assignNoRehashCheck(key, val, hashFull);
+        rehash();
+    }
 
     ///
     void opIndexAssign(V val, K index)

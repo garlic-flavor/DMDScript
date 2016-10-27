@@ -49,7 +49,7 @@ class DnumberConstructor : Dfunction
         Put(TEXT_POSITIVE_INFINITY, d_number.infinity, attributes);
     }
 
-    override void* Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.7.2
         d_number n;
@@ -61,7 +61,7 @@ class DnumberConstructor : Dfunction
         return null;
     }
 
-    override void* Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.7.1
         d_number n;
@@ -75,7 +75,7 @@ class DnumberConstructor : Dfunction
 
 /* ===================== Dnumber_prototype_toString =============== */
 
-void* Dnumber_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dnumber_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.7.4.2
     d_string s;
@@ -124,7 +124,7 @@ void* Dnumber_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, 
 
 /* ===================== Dnumber_prototype_toLocaleString =============== */
 
-void* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.7.4.3
     d_string s;
@@ -153,7 +153,7 @@ void* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext *cc, Dobject o
 
 /* ===================== Dnumber_prototype_valueOf =============== */
 
-void* Dnumber_prototype_valueOf(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dnumber_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // othis must be a Number
     if(!othis.isClass(TEXT_Number))
@@ -218,7 +218,7 @@ number_t deconstruct_real(d_number x, int f, out int pe)
 
 /* ===================== Dnumber_prototype_toFixed =============== */
 
-void* Dnumber_prototype_toFixed(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.7.4.5
     Value* v;
@@ -228,12 +228,12 @@ void* Dnumber_prototype_toFixed(Dobject pthis, CallContext *cc, Dobject othis, V
     int dup;
 
     if(arglist.length)
-	{
-		v = &arglist[0];
-		fractionDigits =  v.toInteger();
-	}
-	else
-		fractionDigits = 0;
+    {
+        v = &arglist[0];
+        fractionDigits =  v.toInteger();
+    }
+    else
+        fractionDigits = 0;
     if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
     {
         ErrInfo errinfo;
@@ -339,7 +339,7 @@ void* Dnumber_prototype_toFixed(Dobject pthis, CallContext *cc, Dobject othis, V
 
 /* ===================== Dnumber_prototype_toExponential =============== */
 
-void* Dnumber_prototype_toExponential(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.7.4.6
     Value* varg;
@@ -349,11 +349,11 @@ void* Dnumber_prototype_toExponential(Dobject pthis, CallContext *cc, Dobject ot
     d_string result;
 
     if(arglist.length)
-	{
-		varg = &arglist[0];
-		fractionDigits = varg.toInteger();
-	}else
-		fractionDigits = FIXED_DIGITS;
+    {
+        varg = &arglist[0];
+        fractionDigits = varg.toInteger();
+    }else
+        fractionDigits = FIXED_DIGITS;
     v = &othis.value;
     x = v.toNumber();
     if(isNaN(x))
@@ -476,7 +476,7 @@ void* Dnumber_prototype_toExponential(Dobject pthis, CallContext *cc, Dobject ot
 
 /* ===================== Dnumber_prototype_toPrecision =============== */
 
-void* Dnumber_prototype_toPrecision(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dnumber_prototype_toPrecision(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.7.4.7
     Value* varg;

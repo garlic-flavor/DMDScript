@@ -38,7 +38,7 @@ import dmdscript.property;
 class Program
 {
     uint errors;        // if any errors in file
-    CallContext *callcontext;
+    CallContext* callcontext;
     FunctionDefinition globalfunction;
     static Program program;//per thread global associated data
 
@@ -59,7 +59,7 @@ class Program
 
         callcontext = new CallContext();
 
-        CallContext *cc = callcontext;
+        CallContext* cc = callcontext;
 
         // Do object inits
         dobject_init();
@@ -172,8 +172,8 @@ class Program
 
         Value[] locals;
         Value ret;
-        Value* result;
-        CallContext *cc = callcontext;
+        Status* result;
+        CallContext* cc = callcontext;
         Darray arguments;
         Dobject dglobal = cc.global;
         //Program program_save;
@@ -215,7 +215,7 @@ class Program
 
         setProgram(this);
         ret.putVundefined();
-        result = cast(Value*)IR.call(cc, cc.global, globalfunction.code, &ret, locals.ptr);
+        result = IR.call(cc, cc.global, globalfunction.code, &ret, locals.ptr);
         if(result)
         {
             ErrInfo errinfo;

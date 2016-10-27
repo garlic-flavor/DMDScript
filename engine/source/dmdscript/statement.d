@@ -133,7 +133,7 @@ class TopStatement
 
 class Statement : TopStatement
 {
-    LabelSymbol *label;
+    LabelSymbol* label;
 
     this(Loc loc)
     {
@@ -198,13 +198,13 @@ class EmptyStatement : Statement
         buf ~= ";\n";
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         //writef("EmptyStatement.semantic(%p)\n", this);
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
     }
 }
@@ -230,7 +230,7 @@ class ExpStatement : Statement
         buf ~= ";\n";
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         //writef("exp = '%s'\n", exp.toString());
         //writef("ExpStatement.semantic(this = %x, exp = %x, exp.vptr = %x, %x, %x)\n", this, exp, ((uint *)exp)[0], /*(*(uint **)exp)[12],*/ *(uint *)(*(uint **)exp)[12]);
@@ -245,7 +245,7 @@ class ExpStatement : Statement
         return new ImpliedReturnStatement(loc, exp);
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         //writef("ExpStatement.toIR(%p)\n", exp);
         if(exp)
@@ -266,10 +266,10 @@ class ExpStatement : Statement
 class VarDeclaration
 {
     Loc loc;
-    Identifier *name;
+    Identifier* name;
     Expression init;
 
-    this(Loc loc, Identifier * name, Expression init)
+    this(Loc loc, Identifier* name, Expression init)
     {
         this.loc = loc;
         this.init = init;
@@ -289,7 +289,7 @@ class VarStatement : Statement
         st = VARSTATEMENT;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         FunctionDefinition fd;
         uint i;
@@ -336,7 +336,7 @@ class VarStatement : Statement
         }
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint i;
         uint ret;
@@ -382,7 +382,7 @@ class BlockStatement : Statement
         super(loc);
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         uint i;
 
@@ -425,7 +425,7 @@ class BlockStatement : Statement
         buf ~= "}\n";
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         foreach(TopStatement s; statements)
         {
@@ -448,8 +448,8 @@ class LabelStatement : Statement
     uint breakIP;
     ScopeStatement scopeContext;
     Scope whichScope;
-    
-    this(Loc loc, Identifier * ident, Statement statement)
+
+    this(Loc loc, Identifier* ident, Statement statement)
     {
         //writef("LabelStatement.LabelStatement(%p, '%s', %p)\n", this, ident.toChars(), statement);
         super(loc);
@@ -460,7 +460,7 @@ class LabelStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         LabelSymbol ls;
 
@@ -502,7 +502,7 @@ class LabelStatement : Statement
             buf ~= '\n';
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         gotoIP = irs.getIP();
         statement.toIR(irs);
@@ -546,7 +546,7 @@ class IfStatement : Statement
         this.elsebody = elsebody;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         //writef("IfStatement.semantic(%p)\n", sc);
         assert(condition);
@@ -569,7 +569,7 @@ class IfStatement : Statement
 
 
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint u1;
@@ -626,7 +626,7 @@ class SwitchStatement : Statement
         cases = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         condition = condition.semantic(sc);
 
@@ -645,7 +645,7 @@ class SwitchStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint udefault;
@@ -737,7 +737,7 @@ class CaseStatement : Statement
         patchIP = ~0u;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         //writef("CaseStatement.semantic(%p)\n", sc);
         exp = exp.semantic(sc);
@@ -767,7 +767,7 @@ class CaseStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         caseIP = irs.getIP();
     }
@@ -785,7 +785,7 @@ class DefaultStatement : Statement
         defaultIP = ~0u;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(sc.switchTarget)
         {
@@ -806,7 +806,7 @@ class DefaultStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         defaultIP = irs.getIP();
     }
@@ -832,7 +832,7 @@ class DoStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         Statement continueSave = sc.continueTarget;
         Statement breakSave = sc.breakTarget;
@@ -857,7 +857,7 @@ class DoStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint u1;
@@ -922,7 +922,7 @@ class WhileStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         Statement continueSave = sc.continueTarget;
         Statement breakSave = sc.breakTarget;
@@ -947,7 +947,7 @@ class WhileStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint u1;
@@ -1020,7 +1020,7 @@ class ForStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         Statement continueSave = sc.continueTarget;
         Statement breakSave = sc.breakTarget;
@@ -1051,7 +1051,7 @@ class ForStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint u1;
         uint u2 = 0;    // unneeded initialization keeps lint happy
@@ -1160,7 +1160,7 @@ class ForInStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         Statement continueSave = sc.continueTarget;
         Statement breakSave = sc.breakTarget;
@@ -1203,7 +1203,7 @@ class ForInStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint e;
         uint iter;
@@ -1315,7 +1315,7 @@ class WithStatement : ScopeStatement
         this.bdy = bdy;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         exp = exp.semantic(sc);
 
@@ -1345,7 +1345,7 @@ class WithStatement : ScopeStatement
 
 
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint marksave = irs.mark();
@@ -1371,17 +1371,17 @@ class WithStatement : ScopeStatement
 
 class ContinueStatement : Statement
 {
-    Identifier *ident;
+    Identifier* ident;
     Statement target;
 
-    this(Loc loc, Identifier * ident)
+    this(Loc loc, Identifier* ident)
     {
         super(loc);
         this.ident = ident;
         target = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(ident == null)
         {
@@ -1408,7 +1408,7 @@ class ContinueStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         ScopeStatement w;
         ScopeStatement tw;
@@ -1434,19 +1434,19 @@ class ContinueStatement : Statement
 
 class BreakStatement : Statement
 {
-    Identifier *ident;
+    Identifier* ident;
     Statement target;
 
-    this(Loc loc, Identifier * ident)
+    this(Loc loc, Identifier* ident)
     {
         super(loc);
         this.ident = ident;
         target = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
-//	writef("BreakStatement.semantic(%p)\n", sc);
+//      writef("BreakStatement.semantic(%p)\n", sc);
         if(ident == null)
         {
             target = sc.breakTarget;
@@ -1476,12 +1476,12 @@ class BreakStatement : Statement
                 if(ls.statement.whichScope == *sc)
                     error(sc,errmsgtbl[ERR_CANT_BREAK_INTERNAL],ls.ident.value.text);
                 target = ls.statement;
-            }                
+            }
         }
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         ScopeStatement w;
         ScopeStatement tw;
@@ -1509,7 +1509,7 @@ class BreakStatement : Statement
 
 class GotoStatement : Statement
 {
-    Identifier *ident;
+    Identifier* ident;
     LabelSymbol label;
 
     this(Loc loc, Identifier * ident)
@@ -1519,7 +1519,7 @@ class GotoStatement : Statement
         label = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         LabelSymbol ls;
 
@@ -1533,7 +1533,7 @@ class GotoStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         assert(label);
 
@@ -1576,7 +1576,7 @@ class ReturnStatement : Statement
         this.exp = exp;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(exp)
             exp = exp.semantic(sc);
@@ -1597,7 +1597,7 @@ class ReturnStatement : Statement
         buf ~= ";\n";
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         ScopeStatement w;
         int npops;
@@ -1650,7 +1650,7 @@ class ImpliedReturnStatement : Statement
         this.exp = exp;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(exp)
             exp = exp.semantic(sc);
@@ -1664,7 +1664,7 @@ class ImpliedReturnStatement : Statement
         buf ~= ";\n";
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         if(exp)
         {
@@ -1693,7 +1693,7 @@ class ThrowStatement : Statement
         this.exp = exp;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(exp)
             exp = exp.semantic(sc);
@@ -1713,7 +1713,7 @@ class ThrowStatement : Statement
         buf ~= ";\n";
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint e;
 
@@ -1738,7 +1738,7 @@ class TryStatement : ScopeStatement
     Statement finalbdy;
 
     this(Loc loc, Statement bdy,
-         Identifier * catchident, Statement catchbdy,
+         Identifier* catchident, Statement catchbdy,
          Statement finalbdy)
     {
         super(loc);
@@ -1750,7 +1750,7 @@ class TryStatement : ScopeStatement
             npops = 2;          // 2 items in scope chain
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         enclosingScope = sc.scopeContext;
         sc.scopeContext = this;
@@ -1791,7 +1791,7 @@ class TryStatement : ScopeStatement
         }
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint f;
         uint c;

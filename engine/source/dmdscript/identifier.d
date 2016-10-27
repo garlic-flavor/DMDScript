@@ -27,14 +27,14 @@ import dmdscript.value;
 
 struct Identifier
 {
-    Value    value;
+    Value value;
 
     d_string toString()
     {
         return value.text;
     }
 
-    const bool opEquals(ref const (Identifier)id)
+    const bool opEquals(ref const(Identifier) id)
     {
         return this is id || value.text == id.value.text;
     }

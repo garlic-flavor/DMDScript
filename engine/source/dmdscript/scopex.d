@@ -30,9 +30,9 @@ struct Scope
 
     d_string           src;          // source text
     Program            program;      // Root module
-    ScopeSymbol *      scopesym;     // current symbol
+    ScopeSymbol*       scopesym;     // current symbol
     FunctionDefinition funcdef;      // what function we're in
-    SymbolTable **     plabtab;      // pointer to label symbol table
+    SymbolTable**      plabtab;      // pointer to label symbol table
     uint               nestDepth;    // static nesting level
     //
     ScopeStatement     scopeContext; // nesting of scope statements
@@ -116,7 +116,7 @@ struct Scope
     }
 
 
-    Symbol search(Identifier *ident)
+    Symbol search(Identifier* ident)
     {
         Symbol s;
         Scope* sc;
@@ -140,9 +140,9 @@ struct Scope
         return scopesym.symtab.insert(s);
     }
 
-    LabelSymbol searchLabel(Identifier *ident)
+    LabelSymbol searchLabel(Identifier* ident)
     {
-        SymbolTable *st;
+        SymbolTable* st;
         LabelSymbol ls;
 
         //writef("Scope::searchLabel('%ls')\n", ident.toDchars());

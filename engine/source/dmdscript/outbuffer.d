@@ -108,7 +108,7 @@ class OutBuffer
     void write(ubyte b)         /// ditto
         {
             reserve(ubyte.sizeof);
-            *cast(ubyte *)&data[offset] = b;
+            *cast(ubyte*)&data[offset] = b;
             offset += ubyte.sizeof;
         }
 

@@ -64,7 +64,7 @@ class Expression
      * Determine types, fold constants, e
      */
 
-    Expression semantic(Scope *sc)
+    Expression semantic(Scope* sc)
     {
         return this;
     }
@@ -82,7 +82,7 @@ class Expression
         buf ~= toString();
     }
 
-    void checkLvalue(Scope *sc)
+    void checkLvalue(Scope* sc)
     {
         d_string buf;
 
@@ -119,12 +119,12 @@ class Expression
         return false;
     }
 
-    void toIR(IRstate *irs, uint ret)
+    void toIR(IRstate* irs, uint ret)
     {
         debug writef("Expression::toIR('%s')\n", toString());
     }
 
-    void toLvalue(IRstate *irs, out uint base, IR *property, out int opoff)
+    void toLvalue(IRstate* irs, out uint base, IR* property, out int opoff)
     {
         base = irs.alloc(1);
         toIR(irs, base);
@@ -163,7 +163,7 @@ class RealExpression : Expression
         buf ~= std.string.format("%g", value);
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         //writef("RealExpression::toIR(%g)\n", value);
 
@@ -177,15 +177,15 @@ class RealExpression : Expression
 
 class IdentifierExpression : Expression
 {
-    Identifier *ident;
+    Identifier* ident;
 
-    this(Loc loc, Identifier * ident)
+    this(Loc loc, Identifier*  ident)
     {
         super(loc, TOKidentifier);
         this.ident = ident;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         return this;
     }
@@ -195,7 +195,7 @@ class IdentifierExpression : Expression
         return ident.toString();
     }
 
-    override void checkLvalue(Scope *sc)
+    override void checkLvalue(Scope* sc)
     {
     }
 
@@ -209,7 +209,7 @@ class IdentifierExpression : Expression
         return ident == ie.ident;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         Identifier* id = ident;
 
@@ -220,7 +220,7 @@ class IdentifierExpression : Expression
             irs.gen1(loc,IRcheckref, cast(uint)id);
     }
 
-    override void toLvalue(IRstate *irs, out uint base, IR *property, out int opoff)
+    override void toLvalue(IRstate* irs, out uint base, IR* property, out int opoff)
     {
         //irs.gen1(loc, IRthis, base);
         property.id = ident;
@@ -243,12 +243,12 @@ class ThisExpression : Expression
         return TEXT_this;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         return this;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         if(ret)
             irs.gen1(loc, IRthis, ret);
@@ -269,7 +269,7 @@ class NullExpression : Expression
         return TEXT_null;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         if(ret)
             irs.gen1(loc, IRnull, ret);
@@ -314,7 +314,7 @@ class StringExpression : Expression
         buf ~= '"';
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         static assert((Identifier*).sizeof == uint.sizeof);
         if(ret)
@@ -343,7 +343,7 @@ class RegExpLiteral : Expression
         buf ~= str;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         d_string pattern;
         d_string attribute = null;
@@ -409,7 +409,7 @@ class BooleanExpression : Expression
         return true;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         if(ret)
             irs.gen2(loc, IRboolean, ret, boolean);
@@ -428,7 +428,7 @@ class ArrayLiteral : Expression
         this.elements = elements;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         foreach(ref Expression e; elements)
         {
@@ -454,7 +454,7 @@ class ArrayLiteral : Expression
         buf ~= ']';
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint argc;
         uint argv;
@@ -524,7 +524,7 @@ class Field
     Identifier* ident;
     Expression exp;
 
-    this(Identifier * ident, Expression exp)
+    this(Identifier*  ident, Expression exp)
     {
         this.ident = ident;
         this.exp = exp;
@@ -543,7 +543,7 @@ class ObjectLiteral : Expression
         this.fields = fields;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         foreach(Field f; fields)
         {
@@ -569,7 +569,7 @@ class ObjectLiteral : Expression
         buf ~= '}';
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint b;
 
@@ -604,7 +604,7 @@ class FunctionLiteral : Expression
       this.func = func;
   }
 
-  override Expression semantic(Scope *sc)
+  override Expression semantic(Scope* sc)
   {
       func = cast(FunctionDefinition)(func.semantic(sc));
       return this;
@@ -615,9 +615,10 @@ class FunctionLiteral : Expression
       func.toBuffer(buf);
   }
 
-  override void toIR(IRstate *irs, uint ret)
+  override void toIR(IRstate* irs, uint ret)
   {
       func.toIR(null);
+      static assert((IRstate*).sizeof == uint.sizeof);
       irs.gen2(loc, IRobject, ret, cast(uint)cast(void*)func);
   }
 }
@@ -634,7 +635,7 @@ class UnaExp : Expression
         this.e1 = e1;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         e1 = e1.semantic(sc);
         return this;
@@ -662,7 +663,7 @@ class BinExp : Expression
         this.e2 = e2;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         e1 = e1.semantic(sc);
         e2 = e2.semantic(sc);
@@ -678,7 +679,7 @@ class BinExp : Expression
         e2.toBuffer(buf);
     }
 
-    void binIR(IRstate *irs, uint ret, uint ircode)
+    void binIR(IRstate* irs, uint ret, uint ircode)
     {
         uint b;
         uint c;
@@ -723,7 +724,7 @@ class PreExp : UnaExp
         this.ircode = ircode;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         super.semantic(sc);
         e1.checkLvalue(sc);
@@ -736,7 +737,7 @@ class PreExp : UnaExp
         buf ~= Token.toString(op);
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint base;
         IR property;
@@ -764,7 +765,7 @@ class PostIncExp : UnaExp
         super(loc, TOKplusplus, e);
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         super.semantic(sc);
         e1.checkLvalue(sc);
@@ -777,7 +778,7 @@ class PostIncExp : UnaExp
         buf ~= Token.toString(op);
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint base;
         IR property;
@@ -812,7 +813,7 @@ class PostDecExp : UnaExp
         super(loc, TOKplusplus, e);
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         super.semantic(sc);
         e1.checkLvalue(sc);
@@ -825,7 +826,7 @@ class PostDecExp : UnaExp
         buf ~= Token.toString(op);
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint base;
         IR property;
@@ -855,15 +856,15 @@ class PostDecExp : UnaExp
 
 class DotExp : UnaExp
 {
-    Identifier *ident;
+    Identifier* ident;
 
-    this(Loc loc, Expression e, Identifier * ident)
+    this(Loc loc, Expression e, Identifier*  ident)
     {
         super(loc, TOKdot, e);
         this.ident = ident;
     }
 
-    override void checkLvalue(Scope *sc)
+    override void checkLvalue(Scope* sc)
     {
     }
 
@@ -874,7 +875,7 @@ class DotExp : UnaExp
         buf ~= ident.toString();
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint base;
 
@@ -901,7 +902,7 @@ class DotExp : UnaExp
         }
     }
 
-    override void toLvalue(IRstate *irs, out uint base, IR *property, out int opoff)
+    override void toLvalue(IRstate* irs, out uint base, IR* property, out int opoff)
     {
         base = irs.alloc(1);
         e1.toIR(irs, base);
@@ -923,7 +924,7 @@ class CallExp : UnaExp
         this.arguments = arguments;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         IdentifierExpression ie;
 
@@ -964,7 +965,7 @@ class CallExp : UnaExp
         buf ~= ')';
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         // ret = base.property(argc, argv)
         // CALL ret,base,property,argc,argv
@@ -1025,7 +1026,7 @@ class AssertExp : UnaExp
         buf ~= ')';
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint linnum;
         uint u;
@@ -1057,7 +1058,7 @@ class NewExp : UnaExp
         this.arguments = arguments;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         e1 = e1.semantic(sc);
         for(size_t a = 0; a < arguments.length; a++)
@@ -1081,7 +1082,7 @@ class NewExp : UnaExp
         buf ~= ')';
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         // ret = new b(argc, argv)
         // CALL ret,b,argc,argv
@@ -1130,7 +1131,7 @@ class XUnaExp : UnaExp
         this.ircode = ircode;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         e1.toIR(irs, ret);
         if(ret)
@@ -1159,7 +1160,7 @@ class DeleteExp : UnaExp
         super(loc, TOKdelete, e);
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         e1.checkLvalue(sc);
         lval = sc.errinfo.message == null;
@@ -1169,7 +1170,7 @@ class DeleteExp : UnaExp
         return this;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint base;
         IR property;
@@ -1199,12 +1200,12 @@ class CommaExp : BinExp
         super(loc, TOKcomma, e1, e2);
     }
 
-    override void checkLvalue(Scope *sc)
+    override void checkLvalue(Scope* sc)
     {
         e2.checkLvalue(sc);
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         e1.toIR(irs, 0);
         e2.toIR(irs, ret);
@@ -1220,13 +1221,13 @@ class ArrayExp : BinExp
         super(loc, TOKarray, e1, e2);
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         checkLvalue(sc);
         return this;
     }
 
-    override void checkLvalue(Scope *sc)
+    override void checkLvalue(Scope* sc)
     {
     }
 
@@ -1238,7 +1239,7 @@ class ArrayExp : BinExp
         buf ~= ']';
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint base;
         IR property;
@@ -1260,7 +1261,7 @@ class ArrayExp : BinExp
         }
     }
 
-    override void toLvalue(IRstate *irs, out uint base, IR *property, out int opoff)
+    override void toLvalue(IRstate* irs, out uint base, IR* property, out int opoff)
     {
         uint index;
 
@@ -1282,7 +1283,7 @@ class AssignExp : BinExp
         super(loc, TOKassign, e1, e2);
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         //writefln("AssignExp.semantic()");
         super.semantic(sc);
@@ -1291,7 +1292,7 @@ class AssignExp : BinExp
         return this;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint b;
 
@@ -1379,14 +1380,14 @@ class AddAssignExp : BinExp
         super(loc, TOKplusass, e1, e2);
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         super.semantic(sc);
         e1.checkLvalue(sc);
         return this;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         /*if(ret == 0 && e2.op == TOKreal &&
            (cast(RealExpression)e2).value == 1)//disabled for better standard conformance
@@ -1437,14 +1438,14 @@ class BinAssignExp : BinExp
         this.ircode = ircode;
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         super.semantic(sc);
         e1.checkLvalue(sc);
         return this;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint b;
         uint c;
@@ -1483,12 +1484,12 @@ class AddExp : BinExp
         super(loc, TOKplus, e1, e2);
     }
 
-    override Expression semantic(Scope *sc)
+    override Expression semantic(Scope* sc)
     {
         return this;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         binIR(irs, ret, IRadd);
     }
@@ -1506,7 +1507,7 @@ class XBinExp : BinExp
         this.ircode = ircode;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         binIR(irs, ret, ircode);
     }
@@ -1521,7 +1522,7 @@ class OrOrExp : BinExp
         super(loc, TOKoror, e1, e2);
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint u;
         uint b;
@@ -1551,7 +1552,7 @@ class AndAndExp : BinExp
         super(loc, TOKandand, e1, e2);
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint u;
         uint b;
@@ -1591,7 +1592,7 @@ class CmpExp : BinExp
         return true;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         binIR(irs, ret, ircode);
     }
@@ -1605,7 +1606,7 @@ class InExp : BinExp
     {
         super(loc, TOKin, e1, e2);
     }
-	override void toIR(IRstate *irs, uint ret)
+	override void toIR(IRstate* irs, uint ret)
     {
         binIR(irs, ret, IRin);
     }
@@ -1623,7 +1624,7 @@ class CondExp : BinExp
         this.econd = econd;
     }
 
-    override void toIR(IRstate *irs, uint ret)
+    override void toIR(IRstate* irs, uint ret)
     {
         uint u1;
         uint u2;

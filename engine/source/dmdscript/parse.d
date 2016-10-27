@@ -275,7 +275,7 @@ class Parser : Lexer
     Statement parseStatement()
     {
         Statement s;
-        Token *t;
+        Token* t;
         Loc loc;
 
         //writefln("parseStatement()");
@@ -474,10 +474,10 @@ class Parser : Lexer
           bdy = parseStatement();
           check(TOKwhile);
           condition = parseParenExp();
-		  //We do what most browsers now do, ie allow missing ';' 
-		  //like " do{ statement; }while(e) statement; " and that even w/o linebreak
-		  if(token.value == TOKsemicolon)
-			  nextToken();
+          //We do what most browsers now do, ie allow missing ';' 
+          //like " do{ statement; }while(e) statement; " and that even w/o linebreak
+          if(token.value == TOKsemicolon)
+              nextToken();
           //parseOptionalSemi();
           s = new DoStatement(loc, bdy, condition);
           break; }
@@ -557,7 +557,7 @@ class Parser : Lexer
           break; }
 
         case TOKbreak:
-        { Identifier *ident;
+        { Identifier* ident;
 
           nextToken();
           if(token.sawLineTerminator && token.value != TOKsemicolon)
@@ -579,7 +579,7 @@ class Parser : Lexer
           break; }
 
         case TOKcontinue:
-        { Identifier *ident;
+        { Identifier* ident;
 
           nextToken();
           if(token.sawLineTerminator && token.value != TOKsemicolon)
@@ -601,7 +601,7 @@ class Parser : Lexer
           break; }
 
         case TOKgoto:
-        { Identifier *ident;
+        { Identifier* ident;
 
           nextToken();
           if(token.value != TOKidentifier)
@@ -643,7 +643,7 @@ class Parser : Lexer
 
         case TOKtry:
         { Statement bdy;
-          Identifier *catchident;
+          Identifier* catchident;
           Statement catchbody;
           Statement finalbody;
 
@@ -879,7 +879,7 @@ class Parser : Lexer
                     // Allow things like [1,2,,,3,]
                     // Like Explorer 4, and unlike Netscape, the
                     // trailing , indicates another null element.
-					//Netscape was right - FIXED
+                    //Netscape was right - FIXED
                     elements ~= cast(Expression)null;
                 else if(token.value == TOKrbracket)
                 {

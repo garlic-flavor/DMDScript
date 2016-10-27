@@ -281,13 +281,13 @@ struct IRstate
     void optimize()
     {
         // Determine the length of the code array
-        IR *c;
-        IR *c2;
-        IR *code;
+        IR* c;
+        IR* c2;
+        IR* code;
         uint length;
         uint i;
 
-        code = cast(IR *)codebuf.data;
+        code = cast(IR*)codebuf.data;
         for(c = code; c.opcode != IRend; c += IR.size(c.opcode))
         {
         }

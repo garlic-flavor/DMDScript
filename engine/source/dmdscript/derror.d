@@ -39,7 +39,7 @@ class DerrorConstructor : Dfunction
         super(1, Dfunction_prototype);
     }
 
-    override void* Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.7.2
         Dobject o;
@@ -74,7 +74,7 @@ class DerrorConstructor : Dfunction
         return null;
     }
 
-    override void* Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA v3 15.11.1
         return Construct(cc, ret, arglist);
@@ -84,7 +84,7 @@ class DerrorConstructor : Dfunction
 
 /* ===================== Derror_prototype_toString =============== */
 
-void* Derror_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Derror_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.11.4.3
     // Return implementation defined string

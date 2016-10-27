@@ -48,7 +48,7 @@ class DfunctionConstructor : Dfunction
         //Put(TEXT_prototype, Dfunction::getPrototype(), attributes);
     }
 
-    override void *Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.3.2.1
         immutable(char)[] bdy;
@@ -101,12 +101,12 @@ class DfunctionConstructor : Dfunction
 
         ret.putVundefined();
         o = new syntaxerror.D0(&errinfo);
-        Value* v = new Value;
+        auto v = new Status;
         v.putVobject(o);
         return v;
     }
 
-    override void *Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.3.1
         return Construct(cc, ret, arglist);
@@ -116,7 +116,7 @@ class DfunctionConstructor : Dfunction
 
 /* ===================== Dfunction_prototype_toString =============== */
 
-void* Dfunction_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     immutable(char)[] s;
     Dfunction f;
@@ -147,14 +147,14 @@ void* Dfunction_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis
 
 /* ===================== Dfunction_prototype_apply =============== */
 
-void* Dfunction_prototype_apply(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.3.4.3
 
     Value* thisArg;
     Value* argArray;
     Dobject o;
-    void* v;
+    Status* v;
 
     thisArg = &vundefined;
     argArray = &vundefined;
@@ -231,12 +231,12 @@ void* Dfunction_prototype_apply(Dobject pthis, CallContext *cc, Dobject othis, V
 
 /* ===================== Dfunction_prototype_call =============== */
 
-void* Dfunction_prototype_call(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dfunction_prototype_call(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.3.4.4
     Value* thisArg;
     Dobject o;
-    void* v;
+    Status* v;
 
     if(arglist.length == 0)
     {
@@ -279,7 +279,7 @@ class DfunctionPrototype : Dfunction
         DnativeFunction.initialize(this, nfd, attributes);
     }
 
-    override void *Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA v3 15.3.4
         // Accept any arguments and return "undefined"
@@ -324,7 +324,7 @@ class Dfunction : Dobject
       return s;
   }
 
-  override void *HasInstance(Value* ret, Value* v)
+  override Status* HasInstance(Value* ret, Value* v)
   {
       // ECMA v3 15.3.5.3
       Dobject V;

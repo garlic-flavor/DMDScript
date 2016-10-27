@@ -158,17 +158,17 @@ int ishex(dchar c)
 
 struct Token
 {
-    Token *next;
-           immutable(tchar) *ptr;       // pointer to first character of this token within buffer
+    Token* next;
+    immutable(tchar) *ptr;       // pointer to first character of this token within buffer
     uint   linnum;
     TOK    value;
-           immutable(tchar) *sawLineTerminator; // where we saw the last line terminator
+    immutable(tchar) *sawLineTerminator; // where we saw the last line terminator
     union
     {
         number_t    intvalue;
         real_t      realvalue;
         d_string    str;
-        Identifier *ident;
+        Identifier* ident;
     };
 
     static d_string[TOKmax] tochars;
@@ -236,8 +236,8 @@ class Lexer
     d_string sourcename;        // for error message strings
 
     d_string base;              // pointer to start of buffer
-    immutable(char) * end;      // past end of buffer
-    immutable(char) * p;        // current character
+    immutable(char)* end;      // past end of buffer
+    immutable(char)* p;        // current character
     uint currentline;
     Token token;
     OutBuffer stringbuffer;
@@ -247,9 +247,9 @@ class Lexer
     static bool inited;
 
 
-    Token*  allocToken()
+    Token* allocToken()
     {
-        Token *t;
+        Token* t;
 
         if(freelist)
         {
@@ -433,7 +433,7 @@ class Lexer
 
     TOK nextToken()
     {
-        Token *t;
+        Token* t;
 
         if(token.next)
         {
@@ -450,9 +450,9 @@ class Lexer
         return token.value;
     }
 
-    Token *peek(Token *ct)
+    Token* peek(Token* ct)
     {
-        Token *t;
+        Token* t;
 
         if(ct.next)
             t = ct.next;
@@ -466,7 +466,7 @@ class Lexer
         return t;
     }
 
-    void insertSemicolon(immutable(tchar) *loc)
+    void insertSemicolon(immutable(tchar)* loc)
     {
         // Push current token back into the input, and
         // create a new current token that is a semicolon
@@ -498,7 +498,7 @@ class Lexer
      * Turn next token in buffer into a token.
      */
 
-    void scan(Token *t)
+    void scan(Token* t)
     {
         tchar c;
         dchar d;
@@ -699,11 +699,10 @@ class Lexer
                     do{
                         r.popFront();
                         j = startsWith(r,'\n','\r','\0',0x1A,'\u2028','\u2029');
-                        
                     }while(!j);
                     p = &r[0];
                     switch(j){
-                        case 1: 
+                        case 1:
                             currentline++;
                             goto case;
                         case 2: case 5: case 6:
@@ -713,7 +712,7 @@ class Lexer
                             t.value = TOKeof;
                             return;
                         default:
-                            assert(0);                            
+                            assert(0);
                     }
                     p = inc(p);
                     continue;

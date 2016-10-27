@@ -54,6 +54,12 @@ class ErrorValue: Exception {
         super("DMDScript exception");
         value = *vptr;
     }
+
+    this(Status* s)
+    {
+        super("DMDScript exception");
+        value = *s;
+    }
 }
 //debug = LOG;
 
@@ -68,7 +74,7 @@ class DobjectConstructor : Dfunction
             Put(TEXT_prototype, Dobject_prototype, DontEnum | DontDelete | ReadOnly);
     }
 
-    override void *Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         Dobject o;
         Value* v;
@@ -98,10 +104,10 @@ class DobjectConstructor : Dfunction
         return null;
     }
 
-    override void *Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         Dobject o;
-        void *result;
+        Status* result;
 
         // ECMA 15.2.1
         if(arglist.length == 0)
@@ -129,7 +135,7 @@ class DobjectConstructor : Dfunction
 
 /* ===================== Dobject_prototype_toString ================ */
 
-void* Dobject_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     d_string s;
     d_string str;
@@ -150,7 +156,7 @@ void* Dobject_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, 
 
 /* ===================== Dobject_prototype_toLocaleString ================ */
 
-void* Dobject_prototype_toLocaleString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.2.4.3
     //	"This function returns the result of calling toString()."
@@ -161,7 +167,7 @@ void* Dobject_prototype_toLocaleString(Dobject pthis, CallContext *cc, Dobject o
     v = othis.Get(TEXT_toString);
     if(v && !v.isPrimitive())   // if it's an Object
     {
-        void *a;
+        Status* a;
         Dobject o;
 
         o = v.object;
@@ -174,7 +180,7 @@ void* Dobject_prototype_toLocaleString(Dobject pthis, CallContext *cc, Dobject o
 
 /* ===================== Dobject_prototype_valueOf ================ */
 
-void* Dobject_prototype_valueOf(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     ret.putVobject(othis);
     return null;
@@ -182,7 +188,7 @@ void* Dobject_prototype_valueOf(Dobject pthis, CallContext *cc, Dobject othis, V
 
 /* ===================== Dobject_prototype_toSource ================ */
 
-void* Dobject_prototype_toSource(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dobject_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     d_string buf;
     int any;
@@ -210,7 +216,7 @@ void* Dobject_prototype_toSource(Dobject pthis, CallContext *cc, Dobject othis, 
 
 /* ===================== Dobject_prototype_hasOwnProperty ================ */
 
-void* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.2.4.5
     Value* v;
@@ -222,7 +228,7 @@ void* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext *cc, Dobject o
 
 /* ===================== Dobject_prototype_isPrototypeOf ================ */
 
-void* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.2.4.6
     d_boolean result = false;
@@ -252,7 +258,7 @@ void* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext *cc, Dobject ot
 
 /* ===================== Dobject_prototype_propertyIsEnumerable ================ */
 
-void* Dobject_prototype_propertyIsEnumerable(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dobject_prototype_propertyIsEnumerable(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.2.4.7
     Value* v;
@@ -353,7 +359,7 @@ class Dobject
         return proptable.get(vindex, Value.calcHash(index));
     }
 
-    Value* Put(d_string PropertyName, Value* value, uint attributes)
+    Status* Put(d_string PropertyName, Value* value, uint attributes)
     {
         // ECMA 8.6.2.2
         //writef("Dobject.Put(this = %p)\n", this);
@@ -361,7 +367,7 @@ class Dobject
         return null;
     }
 
-    Value* Put(Identifier* key, Value* value, uint attributes)
+    Status* Put(Identifier* key, Value* value, uint attributes)
     {
         // ECMA 8.6.2.2
         //writef("Dobject.Put(this = %p)\n", this);
@@ -369,7 +375,7 @@ class Dobject
         return null;
     }
 
-    Value* Put(d_string PropertyName, Dobject o, uint attributes)
+    Status* Put(d_string PropertyName, Dobject o, uint attributes)
     {
         // ECMA 8.6.2.2
         Value v;
@@ -379,7 +385,7 @@ class Dobject
         return null;
     }
 
-    Value* Put(d_string PropertyName, d_number n, uint attributes)
+    Status* Put(d_string PropertyName, d_number n, uint attributes)
     {
         // ECMA 8.6.2.2
         Value v;
@@ -389,7 +395,7 @@ class Dobject
         return null;
     }
 
-    Value* Put(d_string PropertyName, d_string s, uint attributes)
+    Status* Put(d_string PropertyName, d_string s, uint attributes)
     {
         // ECMA 8.6.2.2
         Value v;
@@ -399,21 +405,21 @@ class Dobject
         return null;
     }
 
-    Value* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
+    Status* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
     {
         // ECMA 8.6.2.2
         proptable.put(vindex, Value.calcHash(index), value, attributes);
         return null;
     }
 
-    Value* Put(d_uint32 index, Value* value, uint attributes)
+    Status* Put(d_uint32 index, Value* value, uint attributes)
     {
         // ECMA 8.6.2.2
         proptable.put(index, value, attributes);
         return null;
     }
 
-    Value* PutDefault(Value* value)
+    Status* PutDefault(Value* value)
     {
         // Not ECMA, Microsoft extension
         //writef("Dobject.PutDefault(this = %p)\n", this);
@@ -421,7 +427,7 @@ class Dobject
         return RuntimeError(&errinfo, ERR_NO_DEFAULT_PUT);
     }
 
-    Value* put_Value(Value* ret, Value[] arglist)
+    Status* put_Value(Value* ret, Value[] arglist)
     {
         // Not ECMA, Microsoft extension
         //writef("Dobject.put_Value(this = %p)\n", this);
@@ -468,7 +474,7 @@ class Dobject
         return true;
     }
 
-    void *DefaultValue(Value* ret, d_string Hint)
+    Status* DefaultValue(Value* ret, d_string Hint)
     {
         Dobject o;
         Value* v;
@@ -500,7 +506,7 @@ class Dobject
             //writefln("\tv = %x", cast(uint)v);
             if(v && !v.isPrimitive())   // if it's an Object
             {
-                void *a;
+                Status* a;
                 CallContext *cc;
 
                 //writefln("\tfound default value");
@@ -509,7 +515,7 @@ class Dobject
                 a = o.Call(cc, this, ret, null);
                 if(a)                   // if exception was thrown
                     return a;
-                if(ret.isPrimitive())
+                if(ret.isPrimitive)
                     return null;
             }
             i ^= 1;
@@ -520,19 +526,19 @@ class Dobject
         //return RuntimeError(&errinfo, DTEXT("no Default Value for object"));
     }
 
-    void *Construct(CallContext *cc, Value *ret, Value[] arglist)
+    Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         ErrInfo errinfo;
         return RuntimeError(&errinfo, errmsgtbl[ERR_S_NO_CONSTRUCT], classname);
     }
 
-    void *Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         ErrInfo errinfo;
         return RuntimeError(&errinfo, errmsgtbl[ERR_S_NO_CALL], classname);
     }
 
-    void *HasInstance(Value* ret, Value* v)
+    Status* HasInstance(Value* ret, Value* v)
     {   // ECMA v3 8.6.2
         ErrInfo errinfo;
         return RuntimeError(&errinfo, errmsgtbl[ERR_S_NO_INSTANCE], classname);
@@ -575,7 +581,7 @@ class Dobject
         return false;
     }
 
-    void getErrInfo(ErrInfo *perrinfo, int linnum)
+    void getErrInfo(ErrInfo* perrinfo, int linnum)
     {
         ErrInfo errinfo;
         Value v;
@@ -586,12 +592,12 @@ class Dobject
             *perrinfo = errinfo;
     }
 
-    static Value* RuntimeError(ErrInfo *perrinfo, int msgnum)
+    static Status* RuntimeError(ErrInfo* perrinfo, int msgnum)
     {
         return RuntimeError(perrinfo, errmsgtbl[msgnum]);
     }
 
-    static Value* RuntimeError(ErrInfo *perrinfo, ...)
+    static Status* RuntimeError(ErrInfo* perrinfo, ...)
     {
         Dobject o;
 
@@ -606,16 +612,16 @@ class Dobject
         std.format.doFormat(&putc, _arguments, _argptr);
         perrinfo.message = assumeUnique(buffer);
         o = new typeerror.D0(perrinfo);
-        Value* v = new Value;
+        auto v = new Status;
         v.putVobject(o);
         return v;
     }
-    static Value* ReferenceError(ErrInfo *perrinfo, int msgnum)
+    static Status* ReferenceError(ErrInfo* perrinfo, int msgnum)
     {
         return ReferenceError(perrinfo, errmsgtbl[msgnum]);
     }
 
-    static Value* ReferenceError(...)
+    static Status* ReferenceError(...)
     {
         Dobject o;
         ErrInfo errinfo;
@@ -631,16 +637,16 @@ class Dobject
         errinfo.message = buffer.assumeUnique;
 
         o = new referenceerror.D0(&errinfo);
-        Value* v = new Value;
+        auto v = new Status;
         v.putVobject(o);
         return v;
     }
-    static Value* RangeError(ErrInfo *perrinfo, int msgnum)
+    static Status* RangeError(ErrInfo* perrinfo, int msgnum)
     {
         return RangeError(perrinfo, errmsgtbl[msgnum]);
     }
 
-    static Value* RangeError(ErrInfo *perrinfo, ...)
+    static Status* RangeError(ErrInfo* perrinfo, ...)
     {
         Dobject o;
 
@@ -656,12 +662,12 @@ class Dobject
         perrinfo.message = buffer.assumeUnique;
 
         o = new rangeerror.D0(perrinfo);
-        Value* v = new Value;
+        auto v = new Status;
         v.putVobject(o);
         return v;
     }
 
-    Value* putIterator(Value* v)
+    Status* putIterator(Value* v)
     {
         Iterator* i = new Iterator;
 
@@ -736,11 +742,10 @@ void dobject_init()
     Ddate.initialize();
     Dregexp.initialize();
     Derror.initialize();
-	
-	// Call registered initializer for each object type
+
+    // Call registered initializer for each object type
     foreach(void function() fpinit; threadInitTable)
         (*fpinit)();
-	
 }
 /*Not used anyway
 void dobject_term()

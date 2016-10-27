@@ -102,7 +102,7 @@ struct CallContext
     Dobject            caller;           // caller function object
     FunctionDefinition callerf;
 
-    Value value;                // place to store exception; must be same size as Value
+    Status value;                // place to store exception; must be same size as Value
     uint               linnum;     // source line number of exception (1 based, 0 if not available)
 
     int                Interrupt;  // !=0 if cancelled due to interrupt
