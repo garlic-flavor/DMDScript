@@ -675,7 +675,7 @@ public:
         size_t i = findExisting(index);
         if(i == size_t.max)
         {
-            throw new KeyError("Could not find key " ~ to !string(index));
+            throw new KeyError("Could not find key " ~ to!string(index));
         }
         else
         {

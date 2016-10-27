@@ -87,7 +87,7 @@ class Darguments : Dobject
                : Dobject.Get(index, vindex);
     }
 
-    override Value* Put(string PropertyName, Value* value, uint attributes)
+    override Value* Put(d_string PropertyName, Value* value, uint attributes)
     {
         d_uint32 index;
 
@@ -107,7 +107,7 @@ class Darguments : Dobject
             return Dobject.Put(key, value, attributes);
     }
 
-    override Value* Put(string PropertyName, Dobject o, uint attributes)
+    override Value* Put(d_string PropertyName, Dobject o, uint attributes)
     {
         d_uint32 index;
 
@@ -117,7 +117,7 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, o, attributes);
     }
 
-    override Value* Put(string PropertyName, d_number n, uint attributes)
+    override Value* Put(d_string PropertyName, d_number n, uint attributes)
     {
         d_uint32 index;
 

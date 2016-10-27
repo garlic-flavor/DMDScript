@@ -49,7 +49,7 @@ import dmdscript.dboolean;
 import dmdscript.dfunction;
 import dmdscript.dnative;
 
-immutable(char)[] arg0string(Value[] arglist)
+d_string arg0string(Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &vundefined;
     return v.toString();
@@ -189,22 +189,22 @@ void* Dglobal_parseInt(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
     int sign = 1;
     d_number number;
     size_t i;
-    d_string string;
+    d_string str;
 
-    string = arg0string(arglist);
+    str = arg0string(arglist);
 
     //writefln("Dglobal_parseInt('%s')", string);
 
-    while(i < string.length)
+    while(i < str.length)
     {
         size_t idx = i;
-        dchar c = std.utf.decode(string, idx);
+        dchar c = std.utf.decode(str, idx);
         if(!isStrWhiteSpaceChar(c))
             break;
         i = idx;
     }
-    s = string.ptr + i;
-    i = string.length - i;
+    s = str.ptr + i;
+    i = str.length - i;
 
     if(i)
     {
@@ -284,7 +284,7 @@ void* Dglobal_parseInt(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 
     version(none)     // ECMA says to silently ignore trailing characters
     {
-        while(z - &string[0] < string.length)
+        while(z - &str[0] < str.length)
         {
             if(!isStrWhiteSpaceChar(*z))
             {
@@ -308,8 +308,8 @@ void* Dglobal_parseFloat(Dobject pthis, CallContext *cc, Dobject othis, Value* r
     d_number n;
     size_t endidx;
 
-    d_string string = arg0string(arglist);
-    n = StringNumericLiteral(string, endidx, 1);
+    d_string str = arg0string(arglist);
+    n = StringNumericLiteral(str, endidx, 1);
 
     ret.putVnumber(n);
     return null;

@@ -474,7 +474,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
     // ECMA v3 15.5.4.11
     // String.prototype.replace(searchValue, replaceValue)
 
-    d_string string;
+    d_string str;
     d_string searchString;
     d_string newstring;
     Value *searchValue;
@@ -491,7 +491,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
     Value* v;
 
     v = &othis.value;
-    string = v.toString();
+    str = v.toString();
     searchValue = (arglist.length >= 1) ? &arglist[0] : &vundefined;
     replaceValue = (arglist.length >= 2) ? &arglist[1] : &vundefined;
     r = Dregexp.isRegExp(searchValue);
@@ -502,7 +502,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
 
         re = r.re;
         i = 0;
-        result = string;
+        result = str;
 
         r.lastIndex.putVnumber(0);
         for(;; )
@@ -524,7 +524,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
                     alist[1 + i].putVstring(re.captures(1 + i));
                 }
                 alist[m + 1].putVnumber(re.index);
-                alist[m + 2].putVstring(string);
+                alist[m + 2].putVstring(str);
                 f.Call(cc, f, ret, alist[0 .. m + 3]);
                 replacement = ret.toString();
             }
@@ -535,9 +535,9 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
             }
             ptrdiff_t starti = re.index;
             ptrdiff_t endi = re.lastIndex;
-            result = string[0 .. starti] ~
+            result = str[0 .. starti] ~
                      replacement ~
-                     string[endi .. $];
+                     str[endi .. $];
 
             if(re.global)
             {
@@ -559,32 +559,32 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
     else
     {
         searchString = searchValue.toString();
-        ptrdiff_t match = std.string.indexOf(string, searchString);
+        ptrdiff_t match = std.string.indexOf(str, searchString);
         if(match >= 0)
         {
-            pmatch[0] = string[match .. match + searchString.length];
+            pmatch[0] = str[match .. match + searchString.length];
             if(f)
             {
                 Value[3] alist;
 
                 alist[0].putVstring(searchString);
                 alist[1].putVnumber(match);
-                alist[2].putVstring(string);
+                alist[2].putVstring(str);
                 f.Call(cc, f, ret, alist);
                 replacement = ret.toString();
             }
             else
             {
                 newstring = replaceValue.toString();
-                replacement = RegExp.replace3(newstring, string, pmatch[]);
+                replacement = RegExp.replace3(newstring, str, pmatch[]);
             }
-            result = string[0 .. match] ~
+            result = str[0 .. match] ~
                      replacement ~
-                     string[match + searchString.length .. $];
+                     str[match + searchString.length .. $];
         }
         else
         {
-            result = string;
+            result = str;
         }
     }
 

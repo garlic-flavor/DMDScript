@@ -1099,11 +1099,11 @@ class Darray : Dobject
         return Put(PropertyName, &v, attributes);
     }
 
-    override Value* Put(d_string PropertyName, d_string string, uint attributes)
+    override Value* Put(d_string PropertyName, d_string str, uint attributes)
     {
         Value v;
 
-        v.putVstring(string);
+        v.putVstring(str);
         return Put(PropertyName, &v, attributes);
     }
 
@@ -1128,7 +1128,7 @@ class Darray : Dobject
         return null;
     }
 
-    final Value* Put(d_uint32 index, d_string string, uint attributes)
+    final Value* Put(d_uint32 index, d_string str, uint attributes)
     {
         if(index >= ulength)
         {
@@ -1136,7 +1136,7 @@ class Darray : Dobject
             length.number = ulength;
         }
 
-        proptable.put(index, string, attributes);
+        proptable.put(index, str, attributes);
         return null;
     }
 

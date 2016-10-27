@@ -132,7 +132,7 @@ class DobjectConstructor : Dfunction
 void* Dobject_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
 {
     d_string s;
-    d_string string;
+    d_string str;
 
     //debug (LOG) writef("Dobject.prototype.toString(ret = %x)\n", ret);
 
@@ -143,8 +143,8 @@ void* Dobject_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, 
         string = TEXT_bobjectb;
     else
  +/
-    string = std.string.format("[object %s]", s);
-    ret.putVstring(string);
+    str = std.string.format("[object %s]", s);
+    ret.putVstring(str);
     return null;
 }
 

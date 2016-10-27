@@ -280,19 +280,19 @@ class NullExpression : Expression
 
 class StringExpression : Expression
 {
-    d_string string;
+    private d_string str;
 
-    this(Loc loc, d_string string)
+    this(Loc loc, d_string str)
     {
         //writefln("StringExpression('%s')", string);
         super(loc, TOKstring);
-        this.string = string;
+        this.str = str;
     }
 
     override void toBuffer(ref tchar[] buf)
     {
         buf ~= '"';
-        foreach(dchar c; string)
+        foreach(dchar c; str)
         {
             switch(c)
             {
@@ -319,7 +319,7 @@ class StringExpression : Expression
         static assert((Identifier*).sizeof == uint.sizeof);
         if(ret)
         {
-            uint u = cast(uint)Identifier.build(string);
+            uint u = cast(uint)Identifier.build(str);
             irs.gen2(loc, IRstring, ret, u);
         }
     }
@@ -329,18 +329,18 @@ class StringExpression : Expression
 
 class RegExpLiteral : Expression
 {
-    d_string string;
+    private d_string str;
 
-    this(Loc loc, d_string string)
+    this(Loc loc, d_string str)
     {
         //writefln("RegExpLiteral('%s')", string);
         super(loc, TOKregexp);
-        this.string = string;
+        this.str = str;
     }
 
     override void toBuffer(ref tchar[] buf)
     {
-        buf ~= string;
+        buf ~= str;
     }
 
     override void toIR(IRstate *irs, uint ret)
@@ -357,14 +357,14 @@ class RegExpLiteral : Expression
         //	/pattern/attribute
 
         // Parse out pattern and attribute strings
-        assert(string[0] == '/');
-        e = std.string.lastIndexOf(string, '/');
+        assert(str[0] == '/');
+        e = std.string.lastIndexOf(str, '/');
         assert(e != -1);
-        pattern = string[1 .. e];
+        pattern = str[1 .. e];
         argc = 1;
-        if(e + 1 < string.length)
+        if(e + 1 < str.length)
         {
-            attribute = string[e + 1 .. $];
+            attribute = str[e + 1 .. $];
             argc++;
         }
 

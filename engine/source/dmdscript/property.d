@@ -272,13 +272,13 @@ struct PropTable
         return put(&key, Value.calcHash(index), value, attributes);
     }
 
-    Value* put(d_uint32 index, d_string string, uint attributes)
+    Value* put(d_uint32 index, d_string str, uint attributes)
     {
         Value key;
         Value value;
 
         key.putVnumber(index);
-        value.putVstring(string);
+        value.putVstring(str);
 
         return put(&key, Value.calcHash(index), &value, attributes);
     }

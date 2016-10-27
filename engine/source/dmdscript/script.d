@@ -207,7 +207,7 @@ int StringToIndex(d_string name, out d_uint32 index)
  *			1: convert per ECMA 15.1.2.3 (global.parseFloat())
  */
 
-d_number StringNumericLiteral(d_string string, out size_t endidx, int parsefloat)
+d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
 {
     // Convert StringNumericLiteral using ECMA 9.3.1
     d_number number;
@@ -215,11 +215,11 @@ d_number StringNumericLiteral(d_string string, out size_t endidx, int parsefloat
     size_t i;
     size_t len;
     size_t eoff;
-	if(!string.length)
-		return 0;
+    if(!str.length)
+        return 0;
     // Skip leading whitespace
-    eoff = string.length;
-    foreach(size_t j, dchar c; string)
+    eoff = str.length;
+    foreach(size_t j, dchar c; str)
     {
         if(!isStrWhiteSpaceChar(c))
         {
@@ -227,14 +227,14 @@ d_number StringNumericLiteral(d_string string, out size_t endidx, int parsefloat
             break;
         }
     }
-    string = string[eoff .. $];
-    len = string.length;
+    str = str[eoff .. $];
+    len = str.length;
 
     // Check for [+|-]
     i = 0;
     if(len)
     {
-        switch(string[0])
+        switch(str[0])
         {
         case '+':
             sign = 0;
@@ -254,13 +254,13 @@ d_number StringNumericLiteral(d_string string, out size_t endidx, int parsefloat
 
     size_t inflen = TEXT_Infinity.length;
     if(len - i >= inflen &&
-       string[i .. i + inflen] == TEXT_Infinity)
+       str[i .. i + inflen] == TEXT_Infinity)
     {
         number = sign ? -d_number.infinity : d_number.infinity;
         endidx = eoff + i + inflen;
     }
     else if(len - i >= 2 &&
-            string[i] == '0' && (string[i + 1] == 'x' || string[i + 1] == 'X'))
+            str[i] == '0' && (str[i + 1] == 'x' || str[i + 1] == 'X'))
     {
         // Check for 0[x|X]HexDigit...
         number = 0;
@@ -275,7 +275,7 @@ d_number StringNumericLiteral(d_string string, out size_t endidx, int parsefloat
             {
                 tchar c;
 
-                c = string[i];          // don't need to decode UTF here
+                c = str[i];          // don't need to decode UTF here
                 if('0' <= c && c <= '9')
                     number = number * 16 + (c - '0');
                 else if('a' <= c && c <= 'f')
@@ -293,7 +293,7 @@ d_number StringNumericLiteral(d_string string, out size_t endidx, int parsefloat
     else
     {
         char* endptr;
-        const (char) * s = std.string.toStringz(string[i .. len]);
+        const (char) * s = std.string.toStringz(str[i .. len]);
 
         //endptr = s;//Fixed: No need to fill endptr prior to stdtod
         number = core.sys.posix.stdlib.strtod(s, &endptr);

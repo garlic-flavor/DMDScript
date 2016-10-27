@@ -50,14 +50,14 @@ enum TIMEFORMAT
     UTCString,
 }
 
-d_time parseDateString(CallContext *cc, string s)
+d_time parseDateString(CallContext *cc, d_string s)
 {
     return s.parse;
 }
 
-string dateToString(CallContext *cc, d_time t, TIMEFORMAT tf)
+d_string dateToString(CallContext *cc, d_time t, TIMEFORMAT tf)
 {
-    string p;
+    d_string p;
 
     if(t == d_time_nan)
         p = "Invalid Date";
@@ -113,7 +113,7 @@ string dateToString(CallContext *cc, d_time t, TIMEFORMAT tf)
 void* Ddate_parse(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.9.4.2
-    string s;
+    d_string s;
     d_time n;
 
     if(arglist.length == 0)
