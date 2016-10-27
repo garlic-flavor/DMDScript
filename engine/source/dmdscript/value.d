@@ -208,7 +208,7 @@ struct Value
         }
     }
 
-    void* toPrimitive(Value* v, d_string PreferredType)
+    void toPrimitive(Value* v, d_string PreferredType)
     {
         if(vtype == V_OBJECT)
         {
@@ -241,7 +241,6 @@ struct Value
         {
             copy(v, &this);
         }
-        return null;
     }
 
 
@@ -310,12 +309,13 @@ struct Value
         case V_OBJECT:
         { Value val;
           Value* v;
-          void* a;
+          // void* a;
 
           //writefln("Vobject.toNumber()");
           v = &val;
-          a = toPrimitive(v, TypeNumber);
-          /*if(a)//rerr
+          toPrimitive(v, TypeNumber);
+          /*a = toPrimitive(v, TypeNumber);
+          if(a)//rerr
                   return d_number.nan;*/
           if(v.isPrimitive())
               return v.toNumber();
@@ -570,10 +570,10 @@ struct Value
         case V_OBJECT:
         { Value val;
           Value* v = &val;
-          void* a;
+          // void* a;
 
           //writef("Vobject.toString()\n");
-          a = toPrimitive(v, TypeString);
+          toPrimitive(v, TypeString);
           //assert(!a);
           if(v.isPrimitive())
               return v.toString();

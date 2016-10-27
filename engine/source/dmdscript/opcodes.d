@@ -1502,22 +1502,24 @@ struct IR
                     }
                     else if(ty == TypeObject)
                     {
-                        v = cast(Value*)c.toPrimitive(c, null);
-                        if(v)
-                        {
-                            a = v;
-                            goto Lthrow;
-                        }
+                        c.toPrimitive(c, null);
+                        // v = cast(Value*)c.toPrimitive(c, null);
+                        // if(v)
+                        // {
+                        //     a = v;
+                        //     goto Lthrow;
+                        // }
                         goto Lagain;
                     }
                     else if(tx == TypeObject)
                     {
-                        v = cast(Value*)b.toPrimitive(b, null);
-                        if(v)
-                        {
-                            a = v;
-                            goto Lthrow;
-                        }
+                        b.toPrimitive(b, null);
+                        // v = cast(Value*)b.toPrimitive(b, null);
+                        // if(v)
+                        // {
+                        //     a = v;
+                        //     goto Lthrow;
+                        // }
                         goto Lagain;
                     }
                     else
