@@ -446,7 +446,7 @@ void* Dstring_prototype_match(Dobject pthis, CallContext *cc, Dobject othis, Val
         {
             r.lastIndex.putVnumber(i);
             Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_STRING);
-            if(!ret.string)             // if match failed
+            if(!ret.text)             // if match failed
             {
                 r.lastIndex.putVnumber(i);
                 break;
@@ -508,7 +508,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
         for(;; )
         {
             Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_STRING);
-            if(!ret.string)             // if match failed
+            if(!ret.text)             // if match failed
                 break;
 
             m = re.nmatches;
@@ -518,7 +518,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
 
                 alist = cast(Value *)alloca((m + 3) * Value.sizeof);
                 assert(alist);
-                alist[0].putVstring(ret.string);
+                alist[0].putVstring(ret.text);
                 for(i = 0; i < m; i++)
                 {
                     alist[1 + i].putVstring(re.captures(1 + i));

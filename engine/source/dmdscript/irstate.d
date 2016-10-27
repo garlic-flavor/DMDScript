@@ -388,7 +388,7 @@ struct IRstate
                     IR *ci = local[i];
                     if(ci &&
                        (ci.opcode == IRgetscope || ci.opcode == IRputscope) &&
-                       (ci + 2).id.value.string == cs.value.string
+                       (ci + 2).id.value.text == cs.value.text
                        )
                     {
                         if(cimax)

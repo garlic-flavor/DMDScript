@@ -264,7 +264,7 @@ class DdateConstructor : Dfunction
             arglist[0].toPrimitive(ret, null);
             if(ret.getType() == TypeString)
             {
-                n = parseDateString(cc, ret.string);
+                n = parseDateString(cc, ret.text);
             }
             else
             {

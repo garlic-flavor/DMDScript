@@ -70,7 +70,7 @@ struct Value
     {
         d_boolean dbool;        // can be true or false
         d_number  number;
-        d_string string;
+        d_string  text;
         Dobject   object;
         d_int32   int32;
         d_uint32  uint32;
@@ -83,18 +83,18 @@ struct Value
             throwRefError();
     }
     void throwRefError() const{
-        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],string));
+        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], text));
     }
     
     void putSignalingUndefined(d_string id){
         vtype = V_REF_ERROR;
-        string = id;
+        text = id;
     }
     void putVundefined()
     {
         vtype = V_UNDEFINED;
         hash = 0;
-        string = null;
+        text = null;
     }
 
     void putVnull()
@@ -127,14 +127,14 @@ struct Value
     {
         vtype = V_STRING;
         hash = 0;
-        string = s;
+        text = s;
     }
 
     void putVstring(d_string s, uint hash)
     {
         vtype = V_STRING;
         this.hash = hash;
-        this.string = s;
+        this.text = s;
     }
 
     void putVobject(Dobject o)
@@ -260,7 +260,7 @@ struct Value
         case V_NUMBER:
             return !(number == 0.0 || isNaN(number));
         case V_STRING:
-            return string.length ? true : false;
+            return text.length ? true : false;
         case V_OBJECT:
             return true;
         default:
@@ -291,12 +291,12 @@ struct Value
             size_t len;
             size_t endidx;
 
-            len = string.length;
-            n = StringNumericLiteral(string, endidx, 0);
+            len = text.length;
+            n = StringNumericLiteral(text, endidx, 0);
 
             // Consume trailing whitespace
             //writefln("n = %s, string = '%s', endidx = %s, length = %s", n, string, endidx, string.length);
-            foreach(dchar c; string[endidx .. $])
+            foreach(dchar c; text[endidx .. $])
             {
                 if(!isStrWhiteSpaceChar(c))
                 {
@@ -566,7 +566,7 @@ struct Value
           //writefln("str = '%s'", str);
           return str; }
         case V_STRING:
-            return string;
+            return text;
         case V_OBJECT:
         { Value val;
           Value* v = &val;
@@ -613,7 +613,7 @@ struct Value
         case V_STRING:
         { d_string s;
 
-          s = "\"" ~ string ~ "\"";
+          s = "\"" ~ text ~ "\"";
           return s; }
         case V_OBJECT:
         { Value* v;
@@ -669,7 +669,7 @@ struct Value
         case V_NUMBER:
             return new Dnumber(number);
         case V_STRING:
-            return new Dstring(string);
+            return new Dstring(text);
         case V_OBJECT:
             return object;
         default:
@@ -732,26 +732,26 @@ struct Value
             }
             else if(v.vtype == V_STRING)
             {
-                return stringcmp((cast(Value*)&this).toString(), v.string);    //TODO: remove this hack!
+                return stringcmp((cast(Value*)&this).toString(), v.text);    //TODO: remove this hack!
             }
             break;
         case V_STRING:
             if(v.vtype == V_STRING)
             {
                 //writefln("'%s'.compareTo('%s')", string, v.string);
-                int len = string.length - v.string.length;
+                int len = text.length - v.text.length;
                 if(len == 0)
                 {
-                    if(string.ptr == v.string.ptr)
+                    if(text.ptr == v.text.ptr)
                         return 0;
-                    len = memcmp(string.ptr, v.string.ptr, string.length);
+                    len = memcmp(text.ptr, v.text.ptr, text.length);
                 }
                 return len;
             }
             else if(v.vtype == V_NUMBER)
             {
-                //writefln("'%s'.compareTo(%g)\n", string, v.number);
-                return stringcmp(string, (cast(Value*)&v).toString());    //TODO: remove this hack!
+                //writefln("'%s'.compareTo(%g)\n", text, v.number);
+                return stringcmp(text, (cast(Value*)&v).toString());    //TODO: remove this hack!
             }
             break;
         case V_OBJECT:
@@ -856,7 +856,7 @@ struct Value
             index = toUint32();
             return true;
         case V_STRING:
-            return StringToIndex(string, index);
+            return StringToIndex(text, index);
         default:
             index = 0;
             return false;
@@ -968,7 +968,7 @@ struct Value
             // Since strings are immutable, if we've already
             // computed the hash, use previous value
             if(!hash)
-                hash = calcHash(string);
+                hash = calcHash(text);
             h = hash;
             break;
         case V_OBJECT:

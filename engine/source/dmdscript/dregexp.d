@@ -532,7 +532,7 @@ class Dregexp : Dobject
                 Dfunction df;
 
                 df = Dregexp.getConstructor();
-                s = (cast(DregexpConstructor)df).input.string;
+                s = (cast(DregexpConstructor)df).input.text;
             }
 
             dr = cast(Dregexp)othis;

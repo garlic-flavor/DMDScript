@@ -1474,7 +1474,7 @@ class BreakStatement : Statement
                 //Scope* s;
                 //for(s = sc; s && s != ls.statement.whichScope; s = s.enclosing){ }
                 if(ls.statement.whichScope == *sc)
-                    error(sc,errmsgtbl[ERR_CANT_BREAK_INTERNAL],ls.ident.value.string);
+                    error(sc,errmsgtbl[ERR_CANT_BREAK_INTERNAL],ls.ident.value.text);
                 target = ls.statement;
             }                
         }

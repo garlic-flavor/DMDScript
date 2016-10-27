@@ -31,12 +31,12 @@ struct Identifier
 
     d_string toString()
     {
-        return value.string;
+        return value.text;
     }
 
     const bool opEquals(ref const (Identifier)id)
     {
-        return this is id || value.string == id.value.string;
+        return this is id || value.text == id.value.text;
     }
 
     static Identifier* build(d_string s)

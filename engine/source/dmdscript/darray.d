@@ -1008,7 +1008,7 @@ class Darray : Dobject
     {
         Value* result = proptable.put(&key.value, key.value.hash, value, attributes);
         if(!result)
-            Put(key.value.string, value, attributes);
+            Put(key.value.text, value, attributes);
         return null;
     }
 
@@ -1143,7 +1143,7 @@ class Darray : Dobject
     override Value* Get(Identifier* id)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
-        if(id.value.string == TEXT_length)
+        if(id.value.text == TEXT_length)
         {
             length.number = ulength;
             return &length;

@@ -101,7 +101,7 @@ class Darguments : Dobject
     {
         d_uint32 index;
 
-        if(StringToIndex(key.value.string, index) && index < parameters.length)
+        if(StringToIndex(key.value.text, index) && index < parameters.length)
             return actobj.Put(key, value, attributes);
         else
             return Dobject.Put(key, value, attributes);

@@ -675,7 +675,7 @@ struct IR
                 case IRgets:                // a = b.s
                     a = GETa(code);
                     b = GETb(code);
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     o = b.toObject();
                     if(!o)
                     {
@@ -697,16 +697,16 @@ struct IR
                     code += 4;
                     goto Lnext;
                 case IRcheckref: // s
-	                id = (code+1).id;
-	                s = id.value.string;
-	                if(!scope_get(scopex, id))
-		                throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s)); 
-	                code += 2;
-	                break;
+                    id = (code+1).id;
+                    s = id.value.text;
+                    if(!scope_get(scopex, id))
+                        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
+                    code += 2;
+                    break;
                 case IRgetscope:            // a = s
                     a = GETa(code);
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
@@ -752,7 +752,7 @@ struct IR
                     goto Laddass;
 
                 case IRaddasss:             // a = (b.s += a)
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     Laddass:
                     b = GETb(code);
                     v = b.Get(s);
@@ -761,7 +761,7 @@ struct IR
                 case IRaddassscope:         // a = (s += a)
                     b = null;               // Needed for the b.Put() below to shutup a compiler use-without-init warning
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
@@ -831,7 +831,7 @@ struct IR
                         a = cannotConvert(b, GETlinnum(code));
                         goto Lthrow;
                     }
-                    a = o.Put((code + 3).id.value.string, a, 0);
+                    a = o.Put((code + 3).id.value.text, a, 0);
                     if(a)
                         goto Lthrow;
                     code += 4;
@@ -866,10 +866,10 @@ struct IR
                     //a = cc.variable.Put((code + 2).id.value.string, GETa(code), DontDelete);
                     o = scope_tos(scopex);
                     assert(o);
-                    if(o.HasProperty((code + 2).id.value.string))
-                        a = o.Put((code+2).id.value.string,GETa(code),DontDelete);
+                    if(o.HasProperty((code + 2).id.value.text))
+                        a = o.Put((code+2).id.value.text,GETa(code),DontDelete);
                     else
-                        a = cc.variable.Put((code + 2).id.value.string, GETa(code), DontDelete);
+                        a = cc.variable.Put((code + 2).id.value.text, GETa(code), DontDelete);
                     if (a) goto Lthrow;
                     code += 3;
                     break;
@@ -880,7 +880,7 @@ struct IR
                     break;
 
                 case IRstring:              // a = "string"
-                    GETa(code).putVstring((code + 2).id.value.string);
+                    GETa(code).putVstring((code + 2).id.value.text);
                     code += 3;
                     break;
 
@@ -921,7 +921,7 @@ struct IR
 
                 case IRthisget:             // a = othis.ident
                     a = GETa(code);
-                    v = othis.Get((code + 2).id.value.string);
+                    v = othis.Get((code + 2).id.value.text);
                     if(!v)
                         v = &vundefined;
                     Value.copy(a, v);
@@ -1116,20 +1116,20 @@ struct IR
                     a.putVnumber(b.toInt32() ^ c.toInt32());
                     code += 4;
                     break;
-				case IRin:          // a = b in c
-					a = GETa(code);
-					b = GETb(code);
-					c = GETc(code);
-					s = b.toString();
-					o = c.toObject();
-					if(!o){
-						ErrInfo errinfo;
-						throw new ErrorValue(Dobject.RuntimeError(&errinfo,errmsgtbl[ERR_RHS_MUST_BE_OBJECT],"in",c.toString()));
-					}
-					a.putVboolean(o.HasProperty(s));
-					code += 4;
-					break;
-					
+                case IRin:          // a = b in c
+                    a = GETa(code);
+                    b = GETb(code);
+                    c = GETc(code);
+                    s = b.toString();
+                    o = c.toObject();
+                    if(!o){
+                        ErrInfo errinfo;
+                        throw new ErrorValue(Dobject.RuntimeError(&errinfo,errmsgtbl[ERR_RHS_MUST_BE_OBJECT],"in",c.toString()));
+                    }
+                    a.putVboolean(o.HasProperty(s));
+                    code += 4;
+                    break;
+
                 /********************/
 
                 case IRpreinc:     // a = ++b.c
@@ -1137,7 +1137,7 @@ struct IR
                     s = c.toString();
                     goto Lpreinc;
                 case IRpreincs:    // a = ++b.s
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     Lpreinc:
                     inc = 1;
                     Lpre:
@@ -1157,7 +1157,7 @@ struct IR
                     Lprescope:
                     a = GETa(code);
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
@@ -1206,7 +1206,7 @@ struct IR
                     s = c.toString();
                     goto Lpredec;
                 case IRpredecs:    // a = --b.s
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     Lpredec:
                     inc = -1;
                     goto Lpre;
@@ -1222,7 +1222,7 @@ struct IR
                     s = c.toString();
                     goto Lpostinc;
                 case IRpostincs:    // a = b.s++
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     Lpostinc:
                     a = GETa(code);
                     b = GETb(code);
@@ -1250,7 +1250,7 @@ struct IR
                     {
                         //GETa(code).putVundefined();
                         //FIXED: as per ECMA v5 should throw ReferenceError
-                        throw new ErrorValue(Dobject.ReferenceError(id.value.string));
+                        throw new ErrorValue(Dobject.ReferenceError(id.value.text));
                         //v = signalingUndefined(id.value.string);
                     }
                     code += 3;
@@ -1261,7 +1261,7 @@ struct IR
                     s = c.toString();
                     goto Lpostdec;
                 case IRpostdecs:    // a = b.s--
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     Lpostdec:
                     a = GETa(code);
                     b = GETb(code);
@@ -1289,7 +1289,7 @@ struct IR
                     {
                         //GETa(code).putVundefined();
                         //FIXED: as per ECMA v5 should throw ReferenceError
-                        throw new ErrorValue(Dobject.ReferenceError(id.value.string));
+                        throw new ErrorValue(Dobject.ReferenceError(id.value.text));
                         //v = signalingUndefined(id.value.string);
                     }
                     code += 3;
@@ -1310,7 +1310,7 @@ struct IR
                         }
                         s = (code.opcode == IRdel)
                             ? GETc(code).toString()
-                            : (code + 3).id.value.string;
+                            : (code + 3).id.value.text;
                         if(o.implementsDelete())
                             bo = o.Delete(s);
                         else
@@ -1322,7 +1322,7 @@ struct IR
 
                 case IRdelscope:    // a = delete s
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     //o = scope_tos(scopex);		// broken way
                     if(!scope_get(scopex, id, &o))
                         bo = true;
@@ -1464,10 +1464,10 @@ struct IR
                             if(logflag)
                             {
                                 writef("b = %x, c = %x\n", b, c);
-                                writef("cmp('%s', '%s')\n", b.string, c.string);
-                                writef("cmp(%d, %d)\n", b.string.length, c.string.length);
+                                writef("cmp('%s', '%s')\n", b.text, c.text);
+                                writef("cmp(%d, %d)\n", b.text.length, c.text.length);
                             }
-                            res = (b.string == c.string);
+                            res = (b.text == c.text);
                         }
                         else if(tx == TypeBoolean)
                             res = (b.dbool == c.dbool);
@@ -1562,7 +1562,7 @@ struct IR
                             goto Lcid;
                         }
                         else if(tx == TypeString)
-                            res = (b.string == c.string);
+                            res = (b.text == c.text);
                         else if(tx == TypeBoolean)
                             res = (b.dbool == c.dbool);
                         else // TypeObject
@@ -1718,7 +1718,7 @@ struct IR
                     goto case_next;
 
                 case IRnexts:       // a, b.s, iter
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     case_next:
                     iter = GETd(code).iter;
                     v = iter.next();
@@ -1733,7 +1733,7 @@ struct IR
                     break;
 
                 case IRnextscope:   // a, s, iter
-                    s = (code + 2).id.value.string;
+                    s = (code + 2).id.value.text;
                     iter = GETc(code).iter;
                     v = iter.next();
                     if(!v)
@@ -1751,7 +1751,7 @@ struct IR
                     goto case_call;
 
                 case IRcalls:       // a = b.s(argc, argv)
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     goto case_call;
 
                     case_call:               
@@ -1793,7 +1793,7 @@ struct IR
 
                 case IRcallscope:   // a = s(argc, argv)
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     a = GETa(code);
                     v = scope_get_lambda(scopex, id, &o);
                     //writefln("v.toString() = '%s'", v.toString());
@@ -1842,7 +1842,7 @@ struct IR
                     goto case_putcall;
 
                 case IRputcalls:       //  b.s(argc, argv) = a
-                    s = (code + 3).id.value.string;
+                    s = (code + 3).id.value.text;
                     goto case_putcall;
 
                     case_putcall:
@@ -1873,7 +1873,7 @@ struct IR
 
                 case IRputcallscope:   // a = s(argc, argv)
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     v = scope_get_lambda(scopex, id, &o);
                     if(!v)
                     {
@@ -1998,7 +1998,7 @@ struct IR
                 case IRtrycatch:
                     SCOPECACHE_CLEAR();
                     offset = (code - codestart) + (code + 1).offset;
-                    s = (code + 2).id.value.string;
+                    s = (code + 2).id.value.text;
                     ca = new Catch(offset, s);
                     scopex ~= ca;
                     cc.scopex = scopex;
@@ -2078,11 +2078,11 @@ struct IR
             break;
 
         case IRgets:                // a = b.s
-            writef("\tIRgets      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
+            writef("\tIRgets      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.text);
             break;
 
         case IRgetscope:            // a = othis.ident
-            writef("\tIRgetscope  %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.string, (code + 2).id.value.hash);
+            writef("\tIRgetscope  %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.text, (code + 2).id.value.hash);
             break;
 
         case IRaddass:              // b.c += a
@@ -2090,19 +2090,19 @@ struct IR
             break;
 
         case IRaddasss:             // b.s += a
-            writef("\tIRaddasss   %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
+            writef("\tIRaddasss   %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.text);
             break;
 
         case IRaddassscope:         // othis.ident += a
-            writef("\tIRaddassscope  %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.string, (code + 3).index);
+            writef("\tIRaddassscope  %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.text, (code + 3).index);
             break;
 
         case IRputs:                // b.s = a
-            writef("\tIRputs      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
+            writef("\tIRputs      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.text);
             break;
 
         case IRputscope:            // s = a
-            writef("\tIRputscope  %d, '%s'\n", (code + 1).index, (code + 2).id.value.string);
+            writef("\tIRputscope  %d, '%s'\n", (code + 1).index, (code + 2).id.value.text);
             break;
 
         case IRputdefault:                // b = a
@@ -2110,7 +2110,7 @@ struct IR
             break;
 
         case IRputthis:             // b = s
-            writef("\tIRputthis   '%s', %d\n", (code + 2).id.value.string, (code + 1).index);
+            writef("\tIRputthis   '%s', %d\n", (code + 2).id.value.text, (code + 1).index);
             break;
 
         case IRmov:                 // a = b
@@ -2118,7 +2118,7 @@ struct IR
             break;
 
         case IRstring:              // a = "string"
-            writef("\tIRstring    %d, '%s'\n", (code + 1).index, (code + 2).id.value.string);
+            writef("\tIRstring    %d, '%s'\n", (code + 1).index, (code + 2).id.value.text);
             break;
 
         case IRobject:              // a = object
@@ -2146,7 +2146,7 @@ struct IR
             break;
 
         case IRthisget:             // a = othis.ident
-            writef("\tIRthisget   %d, '%s'\n", (code + 1).index, (code + 2).id.value.string);
+            writef("\tIRthisget   %d, '%s'\n", (code + 1).index, (code + 2).id.value.text);
             break;
 
         case IRneg:                 // a = -a
@@ -2226,11 +2226,11 @@ struct IR
             break;
 
         case IRpreincs:            // a = ++b.s
-            writef("\tIRpreincs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
+            writef("\tIRpreincs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.text);
             break;
 
         case IRpreincscope:        // a = ++s
-            writef("\tIRpreincscope %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.string, (code + 3).hash);
+            writef("\tIRpreincscope %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.text, (code + 3).hash);
             break;
 
         case IRpredec:             // a = --b.c
@@ -2238,11 +2238,11 @@ struct IR
             break;
 
         case IRpredecs:            // a = --b.s
-            writef("\tIRpredecs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
+            writef("\tIRpredecs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.text);
             break;
 
         case IRpredecscope:        // a = --s
-            writef("\tIRpredecscope %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.string, (code + 3).hash);
+            writef("\tIRpredecscope %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.text, (code + 3).hash);
             break;
 
         case IRpostinc:     // a = b.c++
@@ -2250,11 +2250,11 @@ struct IR
             break;
 
         case IRpostincs:            // a = b.s++
-            writef("\tIRpostincs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
+            writef("\tIRpostincs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.text);
             break;
 
         case IRpostincscope:        // a = s++
-            writef("\tIRpostincscope %d, %s\n", (code + 1).index, (code + 2).id.value.string);
+            writef("\tIRpostincscope %d, %s\n", (code + 1).index, (code + 2).id.value.text);
             break;
 
         case IRpostdec:             // a = b.c--
@@ -2262,11 +2262,11 @@ struct IR
             break;
 
         case IRpostdecs:            // a = b.s--
-            writef("\tIRpostdecs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
+            writef("\tIRpostdecs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.text);
             break;
 
         case IRpostdecscope:        // a = s--
-            writef("\tIRpostdecscope %d, %s\n", (code + 1).index, (code + 2).id.value.string);
+            writef("\tIRpostdecscope %d, %s\n", (code + 1).index, (code + 2).id.value.text);
             break;
 
         case IRdel:                 // a = delete b.c
@@ -2274,11 +2274,11 @@ struct IR
             break;
 
         case IRdels:                // a = delete b.s
-            writef("\tIRdels      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
+            writef("\tIRdels      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.text);
             break;
 
         case IRdelscope:            // a = delete s
-            writef("\tIRdelscope  %d, '%s'\n", (code + 1).index, (code + 2).id.value.string);
+            writef("\tIRdelscope  %d, '%s'\n", (code + 1).index, (code + 2).id.value.text);
             break;
 
         case IRclt:                 // a = (b <   c)
@@ -2365,7 +2365,7 @@ struct IR
             writef("\tIRnexts   %d, %d, '%s', %d\n",
                    (code + 1).index,
                    (code + 2).index,
-                   (code + 3).id.value.string,
+                   (code + 3).id.value.text,
                    (code + 4).index);
             break;
 
@@ -2373,7 +2373,7 @@ struct IR
             writef
                 ("\tIRnextscope   %d, '%s', %d\n",
                 (code + 1).index,
-                (code + 2).id.value.string,
+                (code + 2).id.value.text,
                 (code + 3).index);
             break;
 
@@ -2391,7 +2391,7 @@ struct IR
                 ("\tIRcalls     %d,%d,'%s', argc=%d, argv=%d \n",
                 (code + 1).index,
                 (code + 2).index,
-                (code + 3).id.value.string,
+                (code + 3).id.value.text,
                 (code + 4).index,
                 (code + 5).index);
             break;
@@ -2400,7 +2400,7 @@ struct IR
             writef
                 ("\tIRcallscope %d,'%s', argc=%d, argv=%d \n",
                 (code + 1).index,
-                (code + 2).id.value.string,
+                (code + 2).id.value.text,
                 (code + 3).index,
                 (code + 4).index);
             break;
@@ -2419,7 +2419,7 @@ struct IR
                 ("\tIRputcalls  %d,%d,'%s', argc=%d, argv=%d \n",
                 (code + 1).index,
                 (code + 2).index,
-                (code + 3).id.value.string,
+                (code + 3).id.value.text,
                 (code + 4).index,
                 (code + 5).index);
             break;
@@ -2428,7 +2428,7 @@ struct IR
             writef
                 ("\tIRputcallscope %d,'%s', argc=%d, argv=%d \n",
                 (code + 1).index,
-                (code + 2).id.value.string,
+                (code + 2).id.value.text,
                 (code + 3).index,
                 (code + 4).index);
             break;
@@ -2488,7 +2488,7 @@ struct IR
 			writef("\tIRcheckref  %d\n",(code+1).index);
 			break;
         case IRtrycatch:
-            writef("\tIRtrycatch  %d, '%s'\n", (code + 1).offset + address, (code + 2).id.value.string);
+            writef("\tIRtrycatch  %d, '%s'\n", (code + 1).offset + address, (code + 2).id.value.text);
             break;
 
         case IRtryfinally:
