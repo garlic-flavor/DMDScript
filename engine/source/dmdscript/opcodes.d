@@ -405,57 +405,58 @@ struct IR
             finallyStack ~= code;
             code = f.finallyblock;
         }
-        Status* unwindStack(Value* err)
+        Status* unwindStack(Status* err)
         {
-                assert(scopex.length && scopex[0] !is null,"Null in scopex, Line " ~ to!string(code.linnum));
-                a = err;
-                //v = scope_get(scopex,Identifier.build("mycars2"));
-                //a.getErrInfo(null, GETlinnum(code));
+            assert(scopex.length && scopex[0] !is null,"Null in scopex, Line " ~ to!string(code.linnum));
+            sta = err;
+            a = &sta.entity;
+            //v = scope_get(scopex,Identifier.build("mycars2"));
+            //a.getErrInfo(null, GETlinnum(code));
 
-                for(;; )
+            for(;; )
+            {
+                if(scopex.length <= dimsave)
                 {
-                    if(scopex.length <= dimsave)
-                    {
-                        ret.putVundefined();
-                        // 'a' may be pointing into the stack, which means
-                        // it gets scrambled on return. Therefore, we copy
-                        // its contents into a safe area in CallContext.
-                        assert(cc.value.sizeof == Value.sizeof);
-                        Value.copy(&cc.value.entity, a);
-                        return &cc.value;
-                    }
-                    o = scopex[$ - 1];
-                    scopex = scopex[0 .. $ - 1];            // pop entry off scope chain
+                    ret.putVundefined();
+                    // 'a' may be pointing into the stack, which means
+                    // it gets scrambled on return. Therefore, we copy
+                    // its contents into a safe area in CallContext.
+                    assert(cc.value.sizeof == Status.sizeof);
+                    Status.copy(&cc.value, sta);
+                    return &cc.value;
+                }
+                o = scopex[$ - 1];
+                scopex = scopex[0 .. $ - 1];            // pop entry off scope chain
 
-                    if(o.isCatch())
+                if(o.isCatch())
+                {
+                    ca = cast(Catch)o;
+                    //writef("catch('%s')\n", ca.name);
+                    o = new Dobject(Dobject.getPrototype());
+                    version(JSCRIPT_CATCH_BUG)
                     {
-                        ca = cast(Catch)o;
-                        //writef("catch('%s')\n", ca.name);
-                        o = new Dobject(Dobject.getPrototype());
-                        version(JSCRIPT_CATCH_BUG)
-                        {
-                            PutValue(cc, ca.name, a);
-                        }
-                        else
-                        {
-                            o.Put(ca.name, a, DontDelete);
-                        }
-                        scopex ~= o;
-                        cc.scopex = scopex;
-                        code = codestart + ca.offset;
-                        break;
+                        PutValue(cc, ca.name, a);
                     }
                     else
                     {
-                        if(o.isFinally())
-                        {
-                            f = cast(Finally)o;
-                            callFinally(f);
-                            break;
-                        }
+                        o.Put(ca.name, a, DontDelete);
+                    }
+                    scopex ~= o;
+                    cc.scopex = scopex;
+                    code = codestart + ca.offset;
+                    break;
+                }
+                else
+                {
+                    if(o.isFinally())
+                    {
+                        f = cast(Finally)o;
+                        callFinally(f);
+                        break;
                     }
                 }
-                return null;
+            }
+            return null;
         }
         /***************************************
          * Cache for getscope's
@@ -579,7 +580,7 @@ struct IR
 
         assert(code);
         assert(othis);
-        
+
         for(;; )
         {
             Lnext:
@@ -630,7 +631,6 @@ struct IR
                     if(!o)
                     {
                         sta = cannotConvert(b, GETlinnum(code));
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     c = GETc(code);
@@ -672,10 +672,7 @@ struct IR
                         sta = b.Put(s, a);
                     }
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 4;
                     break;
 
@@ -692,7 +689,6 @@ struct IR
                                                    errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT3],
                                                    b.getType(), b.toString(),
                                                    s);
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     v = o.Get(s);
@@ -786,7 +782,7 @@ struct IR
                     a = GETa(code);
                     if(!v)
                     {
-						throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
+                        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
                         //a.putVundefined();
                         /+
                                             if (b)
@@ -837,15 +833,11 @@ struct IR
                     if(!o)
                     {
                         sta = cannotConvert(b, GETlinnum(code));
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     sta = o.Put((code + 3).id.value.text, a, 0);
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 4;
                     goto Lnext;
 
@@ -866,15 +858,11 @@ struct IR
                         sta = Dobject.RuntimeError(&errinfo,
                                                    errmsgtbl[ERR_CANNOT_ASSIGN], a.getType(),
                                                    b.getType());
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     sta = o.PutDefault(a);
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 3;
                     break;
 
@@ -887,10 +875,7 @@ struct IR
                     else
                         sta = cc.variable.Put((code + 2).id.value.text, GETa(code), DontDelete);
                     if (sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 3;
                     break;
 
@@ -1000,17 +985,13 @@ struct IR
                         sta = Dobject.RuntimeError(&errinfo,
                                                    errmsgtbl[ERR_RHS_MUST_BE_OBJECT],
                                                    "instanceof", c.getType());
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     co = c.toObject();
                     a = GETa(code);
                     sta = co.HasInstance(a, b);
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 4;
                     break;
                 }
@@ -1202,7 +1183,6 @@ struct IR
                             {
                                 //FIXED: as per ECMA v5 should throw ReferenceError
                                 sta = Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s);
-                                a = &sta.entity;
                                 //a.putVundefined();
                                 goto Lthrow;
                             }
@@ -1218,7 +1198,7 @@ struct IR
                             Value.copy(a, v);
                         }
                         else
-                             throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s));
+                            throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s));
                     }
                     code += 4;
                     break;
@@ -1328,7 +1308,6 @@ struct IR
                         if(!o)
                         {
                             sta = cannotConvert(b, GETlinnum(code));
-                            a = &sta.entity;
                             goto Lthrow;
                         }
                         s = (code.opcode == IRdel)
@@ -1729,15 +1708,11 @@ struct IR
                     if(!o)
                     {
                         sta = cannotConvert(b, GETlinnum(code));
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     sta = o.putIterator(a);
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 3;
                     break;
 
@@ -1783,7 +1758,7 @@ struct IR
                     s = (code + 3).id.value.text;
                     goto case_call;
 
-                    case_call:               
+                    case_call:
                     a = GETa(code);
                     b = GETb(code);
                     o = b.toObject();
@@ -1805,10 +1780,7 @@ struct IR
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 6;
                     goto Lnext;
 
@@ -1820,7 +1792,6 @@ struct IR
                                                    errmsgtbl[ERR_UNDEFINED_NO_CALL3],
                                                    b.getType(), b.toString(),
                                                    s);
-                        a = &sta.entity;
                         goto Lthrow;
                     }
 
@@ -1835,17 +1806,16 @@ struct IR
                         ErrInfo errinfo;
                         sta = Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s);
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     // Should we pass othis or o? I think othis.
                     cc.callerothis = othis;        // pass othis to eval()
                     a.putVundefined();
-                    a = cast(Value*)v.Call(cc, o, a, GETd(code)[0 .. (code + 3).index]);
+                    sta = v.Call(cc, o, a, GETd(code)[0 .. (code + 3).index]);
                     //writef("callscope result = %x\n", a);
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
-                    if(a)
+                    if(sta)
                         goto Lthrow;
                     code += 5;
                     goto Lnext;
@@ -1861,17 +1831,13 @@ struct IR
                         sta = Dobject.RuntimeError(&errinfo,
                                                  errmsgtbl[ERR_UNDEFINED_NO_CALL2],
                                                  b.getType(), b.toString());
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     cc.callerothis = othis;        // pass othis to eval()
                     a.putVundefined();
                     sta = o.Call(cc, o, a, GETd(code)[0 .. (code + 3).index]);
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 5;
                     goto Lnext;
 
@@ -1901,15 +1867,11 @@ struct IR
                         sta = Dobject.RuntimeError(&errinfo,
                                                  errmsgtbl[ERR_CANNOT_ASSIGN_TO2],
                                                  b.getType(), s);
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     sta = o.put_Value(a, GETe(code)[0 .. (code + 4).index]);
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 6;
                     goto Lnext;
 
@@ -1923,7 +1885,6 @@ struct IR
                         sta = Dobject.RuntimeError(&errinfo,
                                                    errmsgtbl[ERR_UNDEFINED_NO_CALL2],
                                                    "property", s);
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     o = v.toObject();
@@ -1933,15 +1894,11 @@ struct IR
                         sta = Dobject.RuntimeError(&errinfo,
                                                  errmsgtbl[ERR_CANNOT_ASSIGN_TO],
                                                  s);
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     sta = o.put_Value(GETa(code), GETd(code)[0 .. (code + 3).index]);
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 5;
                     goto Lnext;
 
@@ -1955,15 +1912,11 @@ struct IR
                         sta = Dobject.RuntimeError(&errinfo,
                                                  errmsgtbl[ERR_UNDEFINED_NO_CALL2],
                                                  b.getType(), b.toString());
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     sta = o.put_Value(GETa(code), GETd(code)[0 .. (code + 3).index]);
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 5;
                     goto Lnext;
 
@@ -1975,10 +1928,7 @@ struct IR
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
                     if(sta)
-                    {
-                        a = &sta.entity;
                         goto Lthrow;
-                    }
                     code += 5;
                     goto Lnext;
 
@@ -1989,7 +1939,6 @@ struct IR
                     if(!o)
                     {
                         sta = cannotConvert(a, GETlinnum(code));
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     scopex ~= o;                // push entry onto scope chain
@@ -2005,7 +1954,7 @@ struct IR
                     // If it's a Finally, we need to execute
                     // the finally block
                     code += 1;
-                    
+
                     if(o.isFinally())   // test could be eliminated with virtual func
                     {
                         f = cast(Finally)o;
@@ -2043,10 +1992,11 @@ struct IR
 
                 case IRthrow:
                     a = GETa(code);
+                    sta = new Status(*a);
                     cc.linnum = GETlinnum(code);
                     Lthrow:
                     assert(scopex[0] !is null);
-                    sta = unwindStack(a);
+                    sta = unwindStack(sta);
                     if(sta)
                         return sta;
                     break;
@@ -2075,7 +2025,6 @@ struct IR
                     version(all)  // Not supported under some com servers
                     {
                         sta = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_ASSERT], (code + 1).index);
-                        a = &sta.entity;
                         goto Lthrow;
                     }
                     else

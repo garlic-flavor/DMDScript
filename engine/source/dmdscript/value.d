@@ -1192,4 +1192,11 @@ struct Status
 {
     Value entity;
     alias entity this;
+
+    static void copy(Status* to, Status* from)
+    out { assert(memcmp(to, from, Status.sizeof) == 0); }
+    body
+    {
+        *to = *from;
+    }
 }

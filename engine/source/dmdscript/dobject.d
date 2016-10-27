@@ -49,10 +49,10 @@ import dmdscript.dnative;
 import dmdscript.protoerror;
 
 class ErrorValue: Exception {
-    Value value;
+    Status value;
     this(Value* vptr){
         super("DMDScript exception");
-        value = *vptr;
+        value = Status(*vptr);
     }
 
     this(Status* s)
