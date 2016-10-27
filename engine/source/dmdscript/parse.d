@@ -776,14 +776,14 @@ class Parser : Lexer
             break;
 
         case TOKstring:
-            e = new StringExpression(loc, token.string);
-            token.string = null;        // release to gc
+            e = new StringExpression(loc, token.str);
+            token.str = null;        // release to gc
             nextToken();
             break;
 
         case TOKregexp:
-            e = new RegExpLiteral(loc, token.string);
-            token.string = null;        // release to gc
+            e = new RegExpLiteral(loc, token.str);
+            token.str = null;        // release to gc
             nextToken();
             break;
 

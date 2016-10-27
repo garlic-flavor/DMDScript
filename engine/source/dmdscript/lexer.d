@@ -167,7 +167,7 @@ struct Token
     {
         number_t    intvalue;
         real_t      realvalue;
-        d_string    string;
+        d_string    str;
         Identifier *ident;
     };
 
@@ -198,7 +198,7 @@ struct Token
 
         case TOKstring:
         case TOKregexp:
-            p = string;
+            p = str;
             break;
 
         case TOKidentifier:
@@ -538,7 +538,7 @@ class Lexer
 
             case '"':
             case '\'':
-                t.string = string(*p);
+                t.str = chompString(*p);
                 t.value = TOKstring;
                 return;
 
@@ -741,7 +741,7 @@ class Lexer
                     p++;
                     continue;*/
                 }
-                else if((t.string = regexp()) != null)
+                else if((t.str = regexp()) != null)
                     t.value = TOKregexp;
                 else
                     t.value = TOKdivide;
@@ -1177,7 +1177,7 @@ class Lexer
     /**************************************
      */
 
-    d_string string(tchar quote)
+    d_string chompString(tchar quote)
     {
         tchar c;
         dchar d;
