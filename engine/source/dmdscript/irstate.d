@@ -21,7 +21,7 @@ module dmdscript.irstate;
 import core.stdc.stdarg;
 import core.sys.posix.stdlib;
 import core.stdc.string;
-import dmdscript.outbuffer;
+import std.outbuffer;
 import core.memory;
 
 debug import std.stdio;
