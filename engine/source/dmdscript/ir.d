@@ -77,7 +77,7 @@ enum
     IRand,
     IRor,
     IRxor,
-	IRin,
+    IRin,
     IRpreinc,
     IRpreincs = IRpreinc + 1,
     IRpreincscope = IRpreincs + 1,

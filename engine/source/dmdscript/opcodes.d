@@ -333,7 +333,7 @@ Status* cannotConvert(Value* b, int linnum)
     return sta;
 }
 
-const uint INDEX_FACTOR = 16;   // or 1
+enum uint INDEX_FACTOR = Value.sizeof;  // or 1
 
 struct IR
 {
@@ -343,18 +343,37 @@ struct IR
         {
             version(LittleEndian)
             {
-                ubyte opcode;
-                ubyte padding;
-                ushort linnum;
+                static if      (size_t.sizeof == 4)
+                {
+                    ubyte opcode;
+                    ubyte padding;
+                    ushort linnum;
+                }
+                else static if (size_t.sizeof == 8)
+                {
+                    ubyte opcode;
+                    ubyte[3] padding;
+                    uint linnum;
+                }
+                else static assert(0);
             }
             else
             {
-                ushort linnum;
-                ubyte padding;
-                ubyte opcode;
+                static if     (size_t.sizeof == 4)
+                {
+                    ushort linnum;
+                    ubyte padding;
+                    ubyte opcode;
+                }
+                else static if (size_t.sizeof == 8)
+                {
+                    uint linnum;
+                    ubyte[3] padding;
+                    ubyte opcode;
+                }
             }
         }
-                    IR* code;
+        IR* code;
         Value*      value;
         uint        index;      // index into local variable table
         uint        hash;       // cached hash value
@@ -396,7 +415,7 @@ struct IR
         Catch ca;
         Finally f;
         IR* codestart = code;
-        //Finally blocks are sort of called, sort of jumped to 
+        //Finally blocks are sort of called, sort of jumped to
         //So we are doing "push IP in some stack" + "jump"
         IR*[] finallyStack;      //it's a stack of backreferences for finally
         d_number inc;

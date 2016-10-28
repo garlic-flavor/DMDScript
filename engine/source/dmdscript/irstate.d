@@ -64,11 +64,11 @@ struct IRstate
                 assert(0);
             }
         }
-        for(uint u = 0; u < codebuf.offset; )
+        for(size_t u = 0; u < codebuf.offset; )
         {
             IR* code = cast(IR*)(codebuf.data.ptr + u);
             assert(code.opcode < IRMAX);
-            u += IR.size(code.opcode) * 4;
+            u += IR.size(code.opcode) * IR.sizeof;
         }
     }
 
@@ -112,105 +112,72 @@ struct IRstate
         //locali = i;
     }
 
-    static uint combine(uint loc, uint opcode)
-    {
-        return (loc << 16) | opcode;
-    }
-
     /***************************************
      * Generate code.
      */
+
+    static size_t combine(Loc loc, uint opcode)
+    {
+        static if      (size_t.sizeof == 4)
+            return (loc << 16) | (opcode & 0xff);
+        else static if (size_t.sizeof == 8)
+            return ((cast(size_t)loc) << 32) | (opcode & 0xff);
+        else static assert(0);
+    }
 
     void gen0(Loc loc, uint opcode)
     {
         codebuf.write(combine(loc, opcode));
     }
 
-    void gen1(Loc loc, uint opcode, uint arg)
+    void gen1(Loc loc, uint opcode, size_t arg)
     {
-        codebuf.reserve(2 * uint.sizeof);
-        version(all)
-        {
-            // Inline ourselves for speed (compiler doesn't do a good job)
-            uint *data = cast(uint *)(codebuf.data.ptr + codebuf.offset);
-            codebuf.offset += 2 * uint.sizeof;
-            data[0] = combine(loc, opcode);
-            data[1] = arg;
-        }
-        else
-        {
-            codebuf.write4n(combine(loc, opcode));
-            codebuf.write4n(arg);
-        }
+        codebuf.reserve(2 * size_t.sizeof);
+        // Inline ourselves for speed (compiler doesn't do a good job)
+        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += 2 * size_t.sizeof;
+        data[0] = combine(loc, opcode);
+        data[1] = arg;
     }
 
-    void gen2(Loc loc, uint opcode, uint arg1, uint arg2)
+    void gen2(Loc loc, uint opcode, size_t arg1, size_t arg2)
     {
-        codebuf.reserve(3 * uint.sizeof);
-        version(all)
-        {
-            // Inline ourselves for speed (compiler doesn't do a good job)
-            uint *data = cast(uint *)(codebuf.data.ptr + codebuf.offset);
-            codebuf.offset += 3 * uint.sizeof;
-            data[0] = combine(loc, opcode);
-            data[1] = arg1;
-            data[2] = arg2;
-        }
-        else
-        {
-            codebuf.write4n(combine(loc, opcode));
-            codebuf.write4n(arg1);
-            codebuf.write4n(arg2);
-        }
+        codebuf.reserve(3 * size_t.sizeof);
+        // Inline ourselves for speed (compiler doesn't do a good job)
+        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += 3 * size_t.sizeof;
+        data[0] = combine(loc, opcode);
+        data[1] = arg1;
+        data[2] = arg2;
     }
 
-    void gen3(Loc loc, uint opcode, uint arg1, uint arg2, uint arg3)
+    void gen3(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3)
     {
-        codebuf.reserve(4 * uint.sizeof);
-        version(all)
-        {
-            // Inline ourselves for speed (compiler doesn't do a good job)
-            uint *data = cast(uint *)(codebuf.data.ptr + codebuf.offset);
-            codebuf.offset += 4 * uint.sizeof;
-            data[0] = combine(loc, opcode);
-            data[1] = arg1;
-            data[2] = arg2;
-            data[3] = arg3;
-        }
-        else
-        {
-            codebuf.write4n(combine(loc, opcode));
-            codebuf.write4n(arg1);
-            codebuf.write4n(arg2);
-            codebuf.write4n(arg3);
-        }
+        codebuf.reserve(4 * size_t.sizeof);
+        // Inline ourselves for speed (compiler doesn't do a good job)
+        auto data = cast(uint*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += 4 * size_t.sizeof;
+        data[0] = combine(loc, opcode);
+        data[1] = arg1;
+        data[2] = arg2;
+        data[3] = arg3;
     }
 
-    void gen4(Loc loc, uint opcode, uint arg1, uint arg2, uint arg3, uint arg4)
+    void gen4(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3,
+              uint arg4)
     {
-        codebuf.reserve(5 * uint.sizeof);
-        version(all)
-        {
-            // Inline ourselves for speed (compiler doesn't do a good job)
-            uint *data = cast(uint *)(codebuf.data.ptr + codebuf.offset);
-            codebuf.offset += 5 * uint.sizeof;
-            data[0] = combine(loc, opcode);
-            data[1] = arg1;
-            data[2] = arg2;
-            data[3] = arg3;
-            data[4] = arg4;
-        }
-        else
-        {
-            codebuf.write4n(combine(loc, opcode));
-            codebuf.write4n(arg1);
-            codebuf.write4n(arg2);
-            codebuf.write4n(arg3);
-            codebuf.write4n(arg4);
-        }
+        codebuf.reserve(5 * size_t.sizeof);
+        // Inline ourselves for speed (compiler doesn't do a good job)
+        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += 5 * size_t.sizeof;
+        data[0] = combine(loc, opcode);
+        data[1] = arg1;
+        data[2] = arg2;
+        data[3] = arg3;
+        data[4] = arg4;
     }
 
-    void gen(Loc loc, uint opcode, uint argc, ...)
+    deprecated void gen(Loc loc, uint opcode, uint argc, ...)
     {
         codebuf.reserve((1 + argc) * uint.sizeof);
         codebuf.write(combine(loc, opcode));
@@ -219,6 +186,45 @@ struct IRstate
             codebuf.write(va_arg!(uint)(_argptr));
         }
     }
+
+    /*
+      This is more safe than the above one.
+      When the size of an argument is less than the size of size_t,
+      the above function do a mistake.
+     */
+    void gen_(A...)(Loc loc, uint opcode, A args)
+    {
+        template size(T)
+        { enum size_t size = (T.sizeof - 1) / size_t.sizeof + 1; }
+
+        template total(T...)
+        {
+            static if (0 == T.length)
+                enum size_t total = 0;
+            else
+                enum size_t total = size!(T[0]) + total!(T[1..$]);
+        }
+
+        codebuf.reserve((1 + total!A) * size_t.sizeof);
+        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += (1 + total!A) * size_t.sizeof;
+        *data = combine(loc, opcode);
+        ++data;
+        foreach (one; args)
+        {
+            static if (size!(typeof(one)) == 1)
+            {
+                *data = cast(size_t)one;
+                ++data;
+            }
+            else
+            {
+                *(cast(typeof(one)*)data) = one;
+                data += size!(typeof(one));
+            }
+        }
+    }
+
 
     void pops(uint npops)
     {
