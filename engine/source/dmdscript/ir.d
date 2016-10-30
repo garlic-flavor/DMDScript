@@ -186,6 +186,7 @@ enum
             An array of local variables.
 */
 
+debug import std.conv : text;
 import std.meta : AliasSeq;
 
 import dmdscript.script : Loc, d_number, d_boolean;
@@ -214,7 +215,7 @@ enum Opcode : ubyte
     PutCallScope = PutCallS + 1,
     PutCallV = PutCallScope + 1,
     Get,
-    GetS = Get + 1,         // 'S(ymbol)' Versions Must Be Original + 1
+    GetS = Get + 1,         // 'S(tring)' Versions Must Be Original + 1
     GetScope = GetS + 1,
     Put,
     PutS = Put + 1,
@@ -325,16 +326,23 @@ struct Instruction
     }
     else static assert(0);
 
+    alias opcode this;
+
     this(Loc loc, Opcode op)
     {
         linnum = cast(typeof(linnum))loc;
         opcode = op;
     }
+
+    Opcode opAssign(in Opcode op){ opcode = op; return opcode;}
+
+    debug string toString() const
+    { return text(linnum, ":", opcode); }
 }
 static assert (Instruction.sizeof == size_t.sizeof);
 
 //
-struct IR0(Opcode CODE)
+private struct IR0(Opcode CODE)
 {
     enum Opcode code = CODE;
 
@@ -342,9 +350,12 @@ struct IR0(Opcode CODE)
 
     this(Loc loc)
     { ir = Instruction(loc, code); }
+
+    debug string toString() const
+    { return ir.toString; }
 }
 //
-struct IR1(Opcode CODE)
+private struct IR1(Opcode CODE)
 {
     enum Opcode code = CODE;
 
@@ -356,10 +367,13 @@ struct IR1(Opcode CODE)
         ir = Instruction(loc, code);
         this.acc = acc;
     }
+
+    debug string toString() const
+    { return text(ir, " ", acc); }
 }
 
 //
-struct IR2(Opcode CODE, T)
+private struct IR2(Opcode CODE, T)
 {
     enum Opcode code = CODE;
 
@@ -373,10 +387,13 @@ struct IR2(Opcode CODE, T)
         this.acc = acc;
         this.operand = operand;
     }
+
+    debug string toString()
+    { return text(ir, " ", acc, ", ", operand); }
 }
 
 //
-struct IR3(Opcode CODE, T, U)
+private struct IR3(Opcode CODE, T, U)
 {
     enum Opcode code = CODE;
 
@@ -392,10 +409,13 @@ struct IR3(Opcode CODE, T, U)
         operand1 = o1;
         operand2 = o2;
     }
+
+    debug string toString()
+    { return text(ir, " ", acc, ", ", operand1, ", ", operand2); }
 }
 
 //
-struct IRcall4(Opcode CODE, T)
+private struct IRcall4(Opcode CODE, T)
 {
     enum Opcode code = CODE;
     alias code this;
@@ -414,9 +434,12 @@ struct IRcall4(Opcode CODE, T)
         this.argc = argc;
         this.argv = argv;
     }
+
+    debug string toString() const
+    { return text(ir, " ", acc, " = ", func, "(", argv, "[0..", argc, "])"); }
 }
 //
-struct IRcall5(Opcode CODE, T)
+private struct IRcall5(Opcode CODE, T)
 {
     enum Opcode code = CODE;
     alias code this;
@@ -437,10 +460,16 @@ struct IRcall5(Opcode CODE, T)
         this.argc = argc;
         this.argv = argv;
     }
+
+    debug string toString() const
+    {
+        return text(ir, " ", acc, " = ", owner, ".", method, "(", argv, "[0..",
+                    argc, "])");
+    }
 }
 
 //
-struct IRget3(Opcode CODE, T)
+private struct IRget3(Opcode CODE, T)
 {
     enum Opcode code = CODE;
     alias code this;
@@ -457,10 +486,13 @@ struct IRget3(Opcode CODE, T)
         this.owner = owner;
         this.method = method;
     }
+
+    debug string toString() const
+    { return text(ir, " ", acc, " = ", owner, ".", method); }
 }
 
-// if (!(func = iter)) goto offset; iter = iter.next;
-struct IRnext3(Opcode CODE, T)
+// if (func iter) goto offset; iter = iter.next;
+private struct IRnext3(Opcode CODE, T)
 {
     enum Opcode code = CODE;
     alias code this;
@@ -477,10 +509,13 @@ struct IRnext3(Opcode CODE, T)
         this.func = func;
         this.iter = iter;
     }
+
+    debug string toString(size_t base = 0) const
+    { return text(ir, " if(", func, ", ", iter, ") goto ", offset + base); }
 }
 
-// if (!(owner.method = iter)) goto offset; iter = iter.next;
-struct IRnext4(Opcode CODE, T)
+// if (owner.method iter) goto offset; iter = iter.next;
+private struct IRnext4(Opcode CODE, T)
 {
     enum Opcode code = CODE;
     alias code this;
@@ -499,10 +534,16 @@ struct IRnext4(Opcode CODE, T)
         this.method = method;
         this.iter = iter;
     }
+
+    debug string toString(size_t base = 0) const
+    {
+        return text(ir, " if(", owner, ".", method, ", ", iter, ") goto ",
+                    offset + base);
+    }
 }
 
 //
-struct IRjump1(Opcode CODE)
+private struct IRjump1(Opcode CODE)
 {
     enum Opcode code = CODE;
     alias code this;
@@ -515,9 +556,12 @@ struct IRjump1(Opcode CODE)
         ir = Instruction(loc, code);
         this.offset = offset;
     }
+
+    debug string toString(size_t base = 0) const
+    { return text(ir, " ", offset + base); }
 }
 //
-struct IRjump2(Opcode CODE)
+private struct IRjump2(Opcode CODE)
 {
     enum Opcode code = CODE;
     alias code this;
@@ -532,9 +576,12 @@ struct IRjump2(Opcode CODE)
         this.offset = offset;
         this.cond = cond;
     }
+
+    debug string toString(size_t base = 0) const
+    { return text(ir, " if(", cond, ") ", offset + base); }
 }
 //
-struct IRjump3(Opcode CODE, T = idx_t)
+private struct IRjump3(Opcode CODE, T = idx_t)
 {
     enum Opcode code = CODE;
     alias code this;
@@ -551,10 +598,13 @@ struct IRjump3(Opcode CODE, T = idx_t)
         this.operand1 = o1;
         this.operand2 = o2;
     }
+
+    debug string toString(size_t base = 0) const
+    { return text(ir, " if(", operand1, ", ", operand2, ") ", offset, base); }
 }
 
 //
-struct IRTryCatch
+private struct IRTryCatch
 {
     enum Opcode code = Opcode.TryCatch;
 
@@ -568,10 +618,18 @@ struct IRTryCatch
         this.offset = offset;
         this.name = name;
     }
+
+    debug string toString(size_t base = 0) const
+    {
+        if (name !is null)
+            return text(ir, " ", name.value.text, ", ", offset + base);
+        else
+            return text(ir, " \"\"", offset + base);
+    }
 }
 
 //
-struct IRCheckRef
+private struct IRCheckRef
 {
     enum Opcode code = Opcode.CheckRef;
 
@@ -582,6 +640,14 @@ struct IRCheckRef
     {
         ir = Instruction(loc, code);
         this.operand = operand;
+    }
+
+    debug string toString() const
+    {
+        if (operand !is null)
+            return text(ir, " ", operand.value.text);
+        else
+            return text(ir, " \"\"");
     }
 }
 
@@ -711,4 +777,215 @@ unittest
             enum verify = (IRTypes[OP].code == OP);
     }
     assert(verify!(Opcode.Error));
+}
+
+/* suger.
+
+Examples:
+---
+static size_t getSizeOf(T)(){ return T.sizeof / IR.sizeof; }
+IRTypeDispatcher!getSizeOf(code.opcode) == the size of the operation.
+---
+ */
+auto IRTypeDispatcher(alias PROC, ARGS...)(Opcode op, ARGS args)
+{
+    assert(op <= Opcode.max, text("Unrecognized IR instruction ", op));
+
+    final switch(op)
+    {
+    case Opcode.Error:
+        return PROC!(IRTypes[Opcode.Error])(args);
+    case Opcode.Nop:
+        return PROC!(IRTypes[Opcode.Nop])(args);
+    case Opcode.End:
+        return PROC!(IRTypes[Opcode.End])(args);
+    case Opcode.String:
+        return PROC!(IRTypes[Opcode.String])(args);
+    case Opcode.ThisGet:
+        return PROC!(IRTypes[Opcode.ThisGet])(args);
+    case Opcode.Number:
+        return PROC!(IRTypes[Opcode.Number])(args);
+    case Opcode.Object:
+        return PROC!(IRTypes[Opcode.Object])(args);
+    case Opcode.This:
+        return PROC!(IRTypes[Opcode.This])(args);
+    case Opcode.Null:
+        return PROC!(IRTypes[Opcode.Null])(args);
+    case Opcode.Undefined:
+        return PROC!(IRTypes[Opcode.Undefined])(args);
+    case Opcode.Boolean:
+        return PROC!(IRTypes[Opcode.Boolean])(args);
+    case Opcode.Call:
+        return PROC!(IRTypes[Opcode.Call])(args);
+    case Opcode.CallS:
+        return PROC!(IRTypes[Opcode.CallS])(args);
+    case Opcode.CallScope:
+        return PROC!(IRTypes[Opcode.CallScope])(args);
+    case Opcode.CallV:
+        return PROC!(IRTypes[Opcode.CallV])(args);
+    case Opcode.PutCall:
+        return PROC!(IRTypes[Opcode.PutCall])(args);
+    case Opcode.PutCallS:
+        return PROC!(IRTypes[Opcode.PutCallS])(args);
+    case Opcode.PutCallScope:
+        return PROC!(IRTypes[Opcode.PutCallScope])(args);
+    case Opcode.PutCallV:
+        return PROC!(IRTypes[Opcode.PutCallV])(args);
+    case Opcode.Get:
+        return PROC!(IRTypes[Opcode.Get])(args);
+    case Opcode.GetS:
+        return PROC!(IRTypes[Opcode.GetS])(args);
+    case Opcode.GetScope:
+        return PROC!(IRTypes[Opcode.GetScope])(args);
+    case Opcode.Put:
+        return PROC!(IRTypes[Opcode.Put])(args);
+    case Opcode.PutS:
+        return PROC!(IRTypes[Opcode.PutS])(args);
+    case Opcode.PutScope:
+        return PROC!(IRTypes[Opcode.PutScope])(args);
+    case Opcode.Del:
+        return PROC!(IRTypes[Opcode.Del])(args);
+    case Opcode.DelS:
+        return PROC!(IRTypes[Opcode.DelS])(args);
+    case Opcode.DelScope:
+        return PROC!(IRTypes[Opcode.DelScope])(args);
+    case Opcode.Next:
+        return PROC!(IRTypes[Opcode.Next])(args);
+    case Opcode.NextS:
+        return PROC!(IRTypes[Opcode.NextS])(args);
+    case Opcode.NextScope:
+        return PROC!(IRTypes[Opcode.NextScope])(args);
+    case Opcode.AddAsS:
+        return PROC!(IRTypes[Opcode.AddAsS])(args);
+    case Opcode.AddAsSS:
+        return PROC!(IRTypes[Opcode.AddAsSS])(args);
+    case Opcode.AddAsSScope:
+        return PROC!(IRTypes[Opcode.AddAsSScope])(args);
+    case Opcode.PutThis:
+        return PROC!(IRTypes[Opcode.PutThis])(args);
+    case Opcode.PutDefault:
+        return PROC!(IRTypes[Opcode.PutDefault])(args);
+    case Opcode.Mov:
+        return PROC!(IRTypes[Opcode.Mov])(args);
+    case Opcode.Ret:
+        return PROC!(IRTypes[Opcode.Ret])(args);
+    case Opcode.RetExp:
+        return PROC!(IRTypes[Opcode.RetExp])(args);
+    case Opcode.ImpRet:
+        return PROC!(IRTypes[Opcode.ImpRet])(args);
+    case Opcode.Neg:
+        return PROC!(IRTypes[Opcode.Neg])(args);
+    case Opcode.Pos:
+        return PROC!(IRTypes[Opcode.Pos])(args);
+    case Opcode.Com:
+        return PROC!(IRTypes[Opcode.Com])(args);
+    case Opcode.Not:
+        return PROC!(IRTypes[Opcode.Not])(args);
+    case Opcode.Add:
+        return PROC!(IRTypes[Opcode.Add])(args);
+    case Opcode.Sub:
+        return PROC!(IRTypes[Opcode.Sub])(args);
+    case Opcode.Mul:
+        return PROC!(IRTypes[Opcode.Mul])(args);
+    case Opcode.Div:
+        return PROC!(IRTypes[Opcode.Div])(args);
+    case Opcode.Mod:
+        return PROC!(IRTypes[Opcode.Mod])(args);
+    case Opcode.ShL:
+        return PROC!(IRTypes[Opcode.ShL])(args);
+    case Opcode.ShR:
+        return PROC!(IRTypes[Opcode.ShR])(args);
+    case Opcode.UShR:
+        return PROC!(IRTypes[Opcode.UShR])(args);
+    case Opcode.And:
+        return PROC!(IRTypes[Opcode.And])(args);
+    case Opcode.Or:
+        return PROC!(IRTypes[Opcode.Or])(args);
+    case Opcode.Xor:
+        return PROC!(IRTypes[Opcode.Xor])(args);
+    case Opcode.In:
+        return PROC!(IRTypes[Opcode.In])(args);
+    case Opcode.PreInc:
+        return PROC!(IRTypes[Opcode.PreInc])(args);
+    case Opcode.PreIncS:
+        return PROC!(IRTypes[Opcode.PreIncS])(args);
+    case Opcode.PreIncScope:
+        return PROC!(IRTypes[Opcode.PreIncScope])(args);
+    case Opcode.PreDec:
+        return PROC!(IRTypes[Opcode.PreDec])(args);
+    case Opcode.PreDecS:
+        return PROC!(IRTypes[Opcode.PreDecS])(args);
+    case Opcode.PreDecScope:
+        return PROC!(IRTypes[Opcode.PreDecScope])(args);
+    case Opcode.PostInc:
+        return PROC!(IRTypes[Opcode.PostInc])(args);
+    case Opcode.PostIncS:
+        return PROC!(IRTypes[Opcode.PostIncS])(args);
+    case Opcode.PostIncScope:
+        return PROC!(IRTypes[Opcode.PostIncScope])(args);
+    case Opcode.PostDec:
+        return PROC!(IRTypes[Opcode.PostDec])(args);
+    case Opcode.PostDecS:
+        return PROC!(IRTypes[Opcode.PostDecS])(args);
+    case Opcode.PostDecScope:
+        return PROC!(IRTypes[Opcode.PostDecScope])(args);
+    case Opcode.New:
+        return PROC!(IRTypes[Opcode.New])(args);
+    case Opcode.CLT:
+        return PROC!(IRTypes[Opcode.CLT])(args);
+    case Opcode.CLE:
+        return PROC!(IRTypes[Opcode.CLE])(args);
+    case Opcode.CGT:
+        return PROC!(IRTypes[Opcode.CGT])(args);
+    case Opcode.CGE:
+        return PROC!(IRTypes[Opcode.CGE])(args);
+    case Opcode.CEq:
+        return PROC!(IRTypes[Opcode.CEq])(args);
+    case Opcode.CNE:
+        return PROC!(IRTypes[Opcode.CNE])(args);
+    case Opcode.CID:
+        return PROC!(IRTypes[Opcode.CID])(args);
+    case Opcode.CNID:
+        return PROC!(IRTypes[Opcode.CNID])(args);
+    case Opcode.JT:
+        return PROC!(IRTypes[Opcode.JT])(args);
+    case Opcode.JF:
+        return PROC!(IRTypes[Opcode.JF])(args);
+    case Opcode.JTB:
+        return PROC!(IRTypes[Opcode.JTB])(args);
+    case Opcode.JFB:
+        return PROC!(IRTypes[Opcode.JFB])(args);
+    case Opcode.Jmp:
+        return PROC!(IRTypes[Opcode.Jmp])(args);
+    case Opcode.JLT:
+        return PROC!(IRTypes[Opcode.JLT])(args);
+    case Opcode.JLE:
+        return PROC!(IRTypes[Opcode.JLE])(args);
+    case Opcode.JLTC:
+        return PROC!(IRTypes[Opcode.JLTC])(args);
+    case Opcode.JLEC:
+        return PROC!(IRTypes[Opcode.JLEC])(args);
+    case Opcode.Typeof:
+        return PROC!(IRTypes[Opcode.Typeof])(args);
+    case Opcode.Instance:
+        return PROC!(IRTypes[Opcode.Instance])(args);
+    case Opcode.Push:
+        return PROC!(IRTypes[Opcode.Push])(args);
+    case Opcode.Pop:
+        return PROC!(IRTypes[Opcode.Pop])(args);
+    case Opcode.Iter:
+        return PROC!(IRTypes[Opcode.Iter])(args);
+    case Opcode.Assert:
+        return PROC!(IRTypes[Opcode.Assert])(args);
+    case Opcode.Throw:
+        return PROC!(IRTypes[Opcode.Throw])(args);
+    case Opcode.TryCatch:
+        return PROC!(IRTypes[Opcode.TryCatch])(args);
+    case Opcode.TryFinally:
+        return PROC!(IRTypes[Opcode.TryFinally])(args);
+    case Opcode.FinallyRet:
+        return PROC!(IRTypes[Opcode.FinallyRet])(args);
+    case Opcode.CheckRef:
+        return PROC!(IRTypes[Opcode.CheckRef])(args);
+    }
 }

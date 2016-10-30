@@ -413,7 +413,7 @@ struct IRstate
                 if(1 && cimax)
                 {
                     //writef("IRgetscope . IRmov %d, %d\n", (c + 1).index, (cimax + 1).index);
-                    c.opcode = IRmov;
+                    c.opcode = Opcode.Mov;
                     (c + 2).index = (cimax + 1).index;
                     local[(c + 1).index / INDEX_FACTOR] = cimax;
                 }
