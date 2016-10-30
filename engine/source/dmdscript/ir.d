@@ -314,9 +314,18 @@ struct Instruction
 {
     static if      (size_t.sizeof == 4)
     {
-        Opcode opcode;
-        private ubyte _padding;
-        ushort linnum;
+        version(LittleEndian)
+        {
+            Opcode opcode;
+            private ubyte _padding;
+            ushort linnum;
+        }
+        else
+        {
+            ushort linnum;
+            private ubyte _padding;
+            Opcode opcode;
+        }
     }
     else static if (size_t.sizeof == 8)
     {

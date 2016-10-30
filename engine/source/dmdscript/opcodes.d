@@ -358,7 +358,7 @@ struct IR
      */
 
     static Status* call(CallContext* cc, Dobject othis,
-                      IR* code, Value* ret, Value* locals)
+                        IR* code, Value* ret, Value* locals)
     {
         Value* a;
         Value* b;

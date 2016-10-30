@@ -45,8 +45,8 @@ struct IRstate
 
     //void next();	// close out current Block, and start a new one
 
-    uint locali = 1;            // leave location 0 as our "null"
-    uint nlocals = 1;
+    size_t locali = 1;            // leave location 0 as our "null"
+    size_t nlocals = 1;
 
     void ctor()
     {
@@ -120,7 +120,7 @@ struct IRstate
      * Generate code.
      */
 
-    static size_t combine(Loc loc, uint opcode)
+    deprecated static size_t combine(Loc loc, uint opcode)
     {
         static if      (size_t.sizeof == 4)
             return (loc << 16) | (opcode & 0xff);
@@ -129,12 +129,12 @@ struct IRstate
         else static assert(0);
     }
 
-    void gen0(Loc loc, uint opcode)
+    deprecated void gen0(Loc loc, uint opcode)
     {
         codebuf.write(combine(loc, opcode));
     }
 
-    void gen1(Loc loc, uint opcode, size_t arg)
+    deprecated void gen1(Loc loc, uint opcode, size_t arg)
     {
         codebuf.reserve(2 * size_t.sizeof);
         // Inline ourselves for speed (compiler doesn't do a good job)
@@ -144,7 +144,7 @@ struct IRstate
         data[1] = arg;
     }
 
-    void gen2(Loc loc, uint opcode, size_t arg1, size_t arg2)
+    deprecated void gen2(Loc loc, uint opcode, size_t arg1, size_t arg2)
     {
         codebuf.reserve(3 * size_t.sizeof);
         // Inline ourselves for speed (compiler doesn't do a good job)
@@ -155,7 +155,7 @@ struct IRstate
         data[2] = arg2;
     }
 
-    void gen3(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3)
+    deprecated void gen3(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3)
     {
         codebuf.reserve(4 * size_t.sizeof);
         // Inline ourselves for speed (compiler doesn't do a good job)
@@ -167,7 +167,7 @@ struct IRstate
         data[3] = arg3;
     }
 
-    void gen4(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3,
+    deprecated void gen4(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3,
               uint arg4)
     {
         codebuf.reserve(5 * size_t.sizeof);
@@ -191,42 +191,14 @@ struct IRstate
         }
     }
 
-    /*
-      This is more safe than the above one.
-      When the size of an argument is less than the size of uint,
-      the above function do a mistake.
-     */
-    void gen_(A...)(Loc loc, uint opcode, A args)
+    //
+    void gen_(Opcode OP, A...)(A args)
     {
-        template size(T)
-        { enum size_t size = (T.sizeof - 1) / size_t.sizeof + 1; }
-
-        template total(T...)
-        {
-            static if (0 == T.length)
-                enum size_t total = 0;
-            else
-                enum size_t total = size!(T[0]) + total!(T[1..$]);
-        }
-
-        codebuf.reserve((1 + total!A) * size_t.sizeof);
-        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
-        codebuf.offset += (1 + total!A) * size_t.sizeof;
-        *data = combine(loc, opcode);
-        ++data;
-        foreach (one; args)
-        {
-            static if (size!(typeof(one)) == 1)
-            {
-                *data = cast(size_t)one;
-                ++data;
-            }
-            else
-            {
-                *(cast(typeof(one)*)data) = one;
-                data += size!(typeof(one));
-            }
-        }
+        alias T = IRTypes[OP];
+        codebuf.reserve(T.sizeof);
+        auto data = cast(T*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += T.sizeof;
+        *data = T(args);
     }
 
 
@@ -311,20 +283,20 @@ struct IRstate
         {
             switch(c.opcode)
             {
-            case IRjf:
-            case IRjt:
-            case IRjfb:
-            case IRjtb:
-            case IRjmp:
-            case IRjlt:
-            case IRjle:
-            case IRjltc:
-            case IRjlec:
-            case IRtrycatch:
-            case IRtryfinally:
-            case IRnextscope:
-            case IRnext:
-            case IRnexts:
+            case Opcode.JF:
+            case Opcode.JT:
+            case Opcode.JFB:
+            case Opcode.JTB:
+            case Opcode.Jmp:
+            case Opcode.JLT:
+            case Opcode.JLE:
+            case Opcode.JLTC:
+            case Opcode.JLEC:
+            case Opcode.TryCatch:
+            case Opcode.TryFinally:
+            case Opcode.NextScope:
+            case Opcode.Next:
+            case Opcode.NextS:
                 //writefln("set %d", (c - code) + (c + 1).offset);
                 b[(c - code) + (c + 1).offset] = true;
                 break;
@@ -366,30 +338,30 @@ struct IRstate
 
             switch(c.opcode)
             {
-            case IRnop:
+            case Opcode.Nop:
                 break;
 
-            case IRnumber:
-            case IRstring:
-            case IRboolean:
+            case Opcode.Number:
+            case Opcode.String:
+            case Opcode.Boolean:
                 local[(c + 1).index / INDEX_FACTOR] = c;
                 break;
 
-            case IRadd:
-            case IRsub:
-            case IRcle:
+            case Opcode.Add:
+            case Opcode.Sub:
+            case Opcode.CLE:
                 local[(c + 1).index / INDEX_FACTOR] = c;
                 break;
 
-            case IRputthis:
+            case Opcode.PutThis:
                 local[(c + 1).index / INDEX_FACTOR] = c;
                 goto Lreset;
 
-            case IRputscope:
+            case Opcode.PutScope:
                 local[(c + 1).index / INDEX_FACTOR] = c;
                 break;
 
-            case IRgetscope:
+            case Opcode.GetScope:
             {
                 Identifier* cs = (c + 2).id;
                 IR* cimax = null;
@@ -422,38 +394,38 @@ struct IRstate
                 break;
             }
 
-            case IRnew:
+            case Opcode.New:
                 local[(c + 1).index / INDEX_FACTOR] = c;
                 goto Lreset;
 
-            case IRcallscope:
-            case IRputcall:
-            case IRputcalls:
-            case IRputcallscope:
-            case IRputcallv:
-            case IRcallv:
+            case Opcode.CallScope:
+            case Opcode.PutCall:
+            case Opcode.PutCallS:
+            case Opcode.PutCallScope:
+            case Opcode.PutCallV:
+            case Opcode.CallV:
                 local[(c + 1).index / INDEX_FACTOR] = c;
                 goto Lreset;
 
-            case IRmov:
+            case Opcode.Mov:
                 local[(c + 1).index / INDEX_FACTOR] = local[(c + 2).index / INDEX_FACTOR];
                 break;
 
-            case IRput:
-            case IRpostincscope:
-            case IRaddassscope:
+            case Opcode.Put:
+            case Opcode.PostIncScope:
+            case Opcode.AddAsSScope:
                 goto Lreset;
 
-            case IRjf:
-            case IRjfb:
-            case IRjtb:
-            case IRjmp:
-            case IRjt:
-            case IRret:
-            case IRjlt:
-            case IRjle:
-            case IRjltc:
-            case IRjlec:
+            case Opcode.JF:
+            case Opcode.JFB:
+            case Opcode.JTB:
+            case Opcode.Jmp:
+            case Opcode.JT:
+            case Opcode.Ret:
+            case Opcode.JLT:
+            case Opcode.JLE:
+            case Opcode.JLTC:
+            case Opcode.JLEC:
                 break;
 
             default:
@@ -470,29 +442,29 @@ struct IRstate
         // Remove all IRnop's
         for(c = code; c.opcode != IRend; )
         {
-            uint offset;
-            uint o;
-            uint c2off;
+            size_t offset;
+            size_t o;
+            size_t c2off;
 
-            if(c.opcode == IRnop)
+            if(c.opcode == Opcode.Nop)
             {
                 offset = (c - code);
                 for(c2 = code; c2.opcode != IRend; c2 += IR.size(c2.opcode))
                 {
                     switch(c2.opcode)
                     {
-                    case IRjf:
-                    case IRjt:
-                    case IRjfb:
-                    case IRjtb:
-                    case IRjmp:
-                    case IRjlt:
-                    case IRjle:
-                    case IRjltc:
-                    case IRjlec:
-                    case IRnextscope:
-                    case IRtryfinally:
-                    case IRtrycatch:
+                    case Opcode.JF:
+                    case Opcode.JT:
+                    case Opcode.JFB:
+                    case Opcode.JTB:
+                    case Opcode.Jmp:
+                    case Opcode.JLT:
+                    case Opcode.JLE:
+                    case Opcode.JLTC:
+                    case Opcode.JLEC:
+                    case Opcode.NextScope:
+                    case Opcode.TryFinally:
+                    case Opcode.TryCatch:
                         c2off = c2 - code;
                         o = c2off + (c2 + 1).offset;
                         if(c2off <= offset && offset < o)
@@ -513,7 +485,7 @@ struct IRstate
                 }
 
                 length--;
-                memmove(c, c + 1, (length - offset) * uint.sizeof);
+                memmove(c, c + 1, (length - offset) * IR.sizeof);
             }
             else
                 c += IR.size(c.opcode);
