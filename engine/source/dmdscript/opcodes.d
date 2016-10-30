@@ -333,7 +333,7 @@ Status* cannotConvert(Value* b, int linnum)
     return sta;
 }
 
-enum uint INDEX_FACTOR = Value.sizeof;  // or 1
+enum size_t INDEX_FACTOR = Value.sizeof;  // or 1
 
 struct IR
 {
@@ -2240,7 +2240,7 @@ struct IR
         case IRxor:                 // a = b ^ c
             writef("\tIRxor       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
             break;
-			
+
         case IRin:                 // a = b in c
             writef("\tIRin        %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
             break;
@@ -2833,3 +2833,4 @@ struct IR
             return 0;
     }
 }
+static assert(IR.sizeof == size_t.sizeof);

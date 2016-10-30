@@ -41,7 +41,7 @@ struct IRstate
     Statement      breakTarget;         // current statement that 'break' applies to
     Statement      continueTarget;      // current statement that 'continue' applies to
     ScopeStatement scopeContext;        // current ScopeStatement we're inside
-    uint[]         fixups;
+    size_t[]         fixups;
 
     //void next();	// close out current Block, and start a new one
 
@@ -77,9 +77,9 @@ struct IRstate
      * index to them.
      */
 
-    uint alloc(uint nlocals)
+    size_t alloc(size_t nlocals)
     {
-        uint n;
+        size_t n;
 
         n = locali;
         locali += nlocals;
@@ -93,23 +93,27 @@ struct IRstate
      * Release this block of n locals starting at local.
      */
 
-    void release(uint local, uint n)
+    void release(size_t local, size_t n)
     {
-        /+
+        /*
             local /= INDEX_FACTOR;
+            //assert(local + n == locali);
             if (local + n == locali)
                 locali = local;
-         +/
+        //*/
     }
 
-    uint mark()
+    size_t mark()
     {
         return locali;
     }
 
-    void release(uint i)
+    void release(size_t i)
     {
-        //locali = i;
+        /*
+        assert(i);
+        locali = i;
+        //*/
     }
 
     /***************************************
@@ -189,7 +193,7 @@ struct IRstate
 
     /*
       This is more safe than the above one.
-      When the size of an argument is less than the size of size_t,
+      When the size of an argument is less than the size of uint,
       the above function do a mistake.
      */
     void gen_(A...)(Loc loc, uint opcode, A args)
@@ -236,28 +240,28 @@ struct IRstate
      * Get the current "instruction pointer"
      */
 
-    uint getIP()
+    size_t getIP()
     {
         if(!codebuf)
             return 0;
-        return codebuf.offset / 4;
+        return codebuf.offset / IR.sizeof;
     }
 
     /******************************
      * Patch a value into the existing codebuf.
      */
 
-    void patchJmp(uint index, uint value)
+    void patchJmp(size_t index, size_t value)
     {
-        assert((index + 1) * 4 < codebuf.offset);
-        (cast(uint *)(codebuf.data))[index + 1] = value - index;
+        assert((index + 1) * IR.sizeof < codebuf.offset);
+        (cast(size_t*)(codebuf.data))[index + 1] = value - index;
     }
 
     /*******************************
      * Add this IP to list of jump instructions to patch.
      */
 
-    void addFixup(uint index)
+    void addFixup(size_t index)
     {
         fixups ~= index;
     }
@@ -268,16 +272,16 @@ struct IRstate
 
     void doFixups()
     {
-        uint i;
-        uint index;
-        uint value;
+        size_t i;
+        size_t index;
+        size_t value;
         Statement s;
 
         for(i = 0; i < fixups.length; i++)
         {
             index = fixups[i];
-            assert((index + 1) * 4 < codebuf.offset);
-            s = (cast(Statement *)codebuf.data)[index + 1];
+            assert((index + 1) * IR.sizeof < codebuf.offset);
+            s = (cast(Statement*)codebuf.data)[index + 1];
             value = s.getTarget();
             patchJmp(index, value);
         }
@@ -290,8 +294,8 @@ struct IRstate
         IR* c;
         IR* c2;
         IR* code;
-        uint length;
-        uint i;
+        size_t length;
+        size_t i;
 
         code = cast(IR*)codebuf.data;
         for(c = code; c.opcode != IRend; c += IR.size(c.opcode))
@@ -336,7 +340,7 @@ struct IRstate
         // Allocate on stack for smaller arrays
         IR** plocals;
         if(nlocals < 128)
-            plocals = cast(IR * *)alloca(nlocals * local[0].sizeof);
+            plocals = cast(IR**)alloca(nlocals * local[0].sizeof);
 
         if(plocals)
         {
@@ -388,10 +392,10 @@ struct IRstate
             case IRgetscope:
             {
                 Identifier* cs = (c + 2).id;
-                IR *cimax = null;
+                IR* cimax = null;
                 for(i = nlocals; i--; )
                 {
-                    IR *ci = local[i];
+                    IR* ci = local[i];
                     if(ci &&
                        (ci.opcode == IRgetscope || ci.opcode == IRputscope) &&
                        (ci + 2).id.value.text == cs.value.text
