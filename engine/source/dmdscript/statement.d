@@ -1211,7 +1211,7 @@ class ForInStatement : Statement
         VarStatement vs;
         uint base;
         IR property;
-        int opoff;
+        OpOffset opoff;
         uint marksave = irs.mark();
 
         e = irs.alloc(1);
@@ -1239,7 +1239,7 @@ class ForInStatement : Statement
             vd = vs.vardecls[0];
 
             property.id = Identifier.build(vd.name.toString());
-            opoff = 2;
+            opoff = OpOffset.Scope;
             base = ~0u;
         }
         else

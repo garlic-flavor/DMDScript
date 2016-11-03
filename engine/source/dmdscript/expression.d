@@ -107,29 +107,30 @@ class Expression
 
     // Do we match for purposes of optimization?
 
-    int match(Expression e)
+    bool match(Expression e)
     {
         return false;
     }
 
     // Is the result of the expression guaranteed to be a boolean?
 
-    int isBooleanResult()
+    bool isBooleanResult()
     {
         return false;
     }
 
-    void toIR(IRstate* irs, uint ret)
+    void toIR(IRstate* irs, idx_t ret)
     {
         debug writef("Expression::toIR('%s')\n", toString());
     }
 
-    void toLvalue(IRstate* irs, out uint base, IR* property, out int opoff)
+    void toLvalue(IRstate* irs, out idx_t base, IR* property,
+                  out OpOffset opoff)
     {
         base = irs.alloc(1);
         toIR(irs, base);
         property.index = 0;
-        opoff = 3;
+        opoff = OpOffset.V;
     }
 }
 
@@ -163,13 +164,12 @@ class RealExpression : Expression
         buf ~= std.string.format("%g", value);
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         //writef("RealExpression::toIR(%g)\n", value);
 
-        static assert(value.sizeof == 2 * uint.sizeof);
         if(ret)
-            irs.gen(loc, IRnumber, 3, ret, value);
+            irs.gen_!(Opcode.Number)(loc, ret, value);
     }
 }
 
@@ -199,7 +199,7 @@ class IdentifierExpression : Expression
     {
     }
 
-    override int match(Expression e)
+    override bool match(Expression e)
     {
         if(e.op != TOKidentifier)
             return 0;
@@ -209,22 +209,23 @@ class IdentifierExpression : Expression
         return ident == ie.ident;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        Identifier* id = ident;
+        // Identifier* id = ident;
 
-        assert(id.sizeof == uint.sizeof);
+        // assert(id.sizeof == uint.sizeof);
         if(ret)
-            irs.gen2(loc, IRgetscope, ret, cast(uint)id);
+            irs.gen_!(Opcode.GetScope)(loc, ret, ident);
         else
-            irs.gen1(loc,IRcheckref, cast(uint)id);
+            irs.gen_!(Opcode.CheckRef)(loc, ident);
     }
 
-    override void toLvalue(IRstate* irs, out uint base, IR* property, out int opoff)
+    override void toLvalue(IRstate* irs, out idx_t base, IR* property,
+                           out OpOffset opoff)
     {
         //irs.gen1(loc, IRthis, base);
         property.id = ident;
-        opoff = 2;
+        opoff = OpOffset.Scope;
         base = ~0u;
     }
 }
@@ -248,10 +249,10 @@ class ThisExpression : Expression
         return this;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         if(ret)
-            irs.gen1(loc, IRthis, ret);
+            irs.gen_!(Opcode.This)(loc, ret);
     }
 }
 
@@ -269,10 +270,10 @@ class NullExpression : Expression
         return TEXT_null;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         if(ret)
-            irs.gen1(loc, IRnull, ret);
+            irs.gen_!(Opcode.Null)(loc, ret);
     }
 }
 
@@ -314,14 +315,10 @@ class StringExpression : Expression
         buf ~= '"';
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        static assert((Identifier*).sizeof == uint.sizeof);
         if(ret)
-        {
-            uint u = cast(uint)Identifier.build(str);
-            irs.gen2(loc, IRstring, ret, u);
-        }
+            irs.gen_!(Opcode.String)(loc, ret, Identifier.build(str));
     }
 }
 
@@ -343,7 +340,7 @@ class RegExpLiteral : Expression
         buf ~= str;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         d_string pattern;
         d_string attribute = null;
@@ -372,12 +369,13 @@ class RegExpLiteral : Expression
 
         b = irs.alloc(1);
         Identifier* re = Identifier.build(TEXT_RegExp);
-        irs.gen2(loc, IRgetscope, b, cast(uint)re);
+        irs.gen_!(Opcode.GetScope)(loc, b, re);
         argv = irs.alloc(argc);
-        irs.gen2(loc, IRstring, argv, cast(uint)Identifier.build(pattern));
+        irs.gen_!(Opcode.String)(loc, argv, Identifier.build(pattern));
         if(argc == 2)
-            irs.gen2(loc, IRstring, argv + 1 * INDEX_FACTOR, cast(uint)Identifier.build(attribute));
-        irs.gen4(loc, IRnew, ret, b, argc, argv);
+            irs.gen_!(Opcode.String)(loc, argv + 1 * INDEX_FACTOR,
+                                     Identifier.build(attribute));
+        irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
         irs.release(b, argc + 1);
     }
 }
@@ -404,15 +402,15 @@ class BooleanExpression : Expression
         buf ~= toString();
     }
 
-    override int isBooleanResult()
+    override bool isBooleanResult()
     {
         return true;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         if(ret)
-            irs.gen2(loc, IRboolean, ret, boolean);
+            irs.gen_!(Opcode.Boolean)(loc, ret, boolean);
     }
 }
 
@@ -454,18 +452,18 @@ class ArrayLiteral : Expression
         buf ~= ']';
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint argc;
-        uint argv;
-        uint b;
-        uint v;
+        size_t argc;
+        idx_t argv;
+        idx_t b;
+        idx_t v;
 
         b = irs.alloc(1);
         static Identifier* ar;
         if(!ar)
             ar = Identifier.build(TEXT_Array);
-        irs.gen2(loc, IRgetscope, b, cast(uint)ar);
+        irs.gen_!(Opcode.GetScope)(loc, b, ar);
         if(elements.length)
         {
             Expression e;
@@ -486,24 +484,26 @@ class ArrayLiteral : Expression
                         e.toIR(irs, argv + i * INDEX_FACTOR);
                     }
                     else
-                        irs.gen1(loc, IRundefined, argv + i * INDEX_FACTOR);
+                        irs.gen_!(Opcode.Undefined)(
+                            loc, argv + i * INDEX_FACTOR);
                 }
-                irs.gen4(loc, IRnew, ret, b, argc, argv);
+                irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
             }
             else
             {   //	[a] translates to:
                 //	ret = new Array(1);
                 //  ret[0] = a
-                irs.gen(loc, IRnumber, 3, argv, 1.0);
-                irs.gen4(loc, IRnew, ret, b, argc, argv);
+
+                irs.gen_!(Opcode.Number)(loc, argv, 1.0);
+                irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
 
                 e = elements[0];
                 v = irs.alloc(1);
                 if(e)
                     e.toIR(irs, v);
                 else
-                    irs.gen1(loc, IRundefined, v);
-                irs.gen3(loc, IRputs, v, ret, cast(uint)Identifier.build(TEXT_0));
+                    irs.gen_!(Opcode.Undefined)(loc, v);
+                irs.gen_!(Opcode.PutS)(loc, v, ret, Identifier.build(TEXT_0));
                 irs.release(v, 1);
             }
             irs.release(argv, argc);
@@ -511,7 +511,7 @@ class ArrayLiteral : Expression
         else
         {
             // Generate new Array()
-            irs.gen4(loc, IRnew, ret, b, 0, 0);
+            irs.gen_!(Opcode.New)(loc, ret, b, 0, 0);
         }
         irs.release(b, 1);
     }
@@ -569,16 +569,15 @@ class ObjectLiteral : Expression
         buf ~= '}';
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint b;
+        idx_t b;
 
         b = irs.alloc(1);
         //irs.gen2(loc, IRstring, b, TEXT_Object);
-        Identifier* ob = Identifier.build(TEXT_Object);
-        irs.gen2(loc, IRgetscope, b, cast(uint)ob);
+        irs.gen_!(Opcode.GetScope)(loc, b, Identifier.build(TEXT_Object));
         // Generate new Object()
-        irs.gen4(loc, IRnew, ret, b, 0, 0);
+        irs.gen_!(Opcode.New)(loc, ret, b, 0, 0);
         if(fields.length)
         {
             uint x;
@@ -587,7 +586,7 @@ class ObjectLiteral : Expression
             foreach(Field f; fields)
             {
                 f.exp.toIR(irs, x);
-                irs.gen3(loc, IRputs, x, ret, cast(uint)(f.ident));
+                irs.gen_!(Opcode.PutS)(loc, x, ret, f.ident);
             }
         }
     }
@@ -596,31 +595,31 @@ class ObjectLiteral : Expression
 /******************************** FunctionLiteral **************************/
 
 class FunctionLiteral : Expression
-{ FunctionDefinition func;
+{
+    FunctionDefinition func;
 
-  this(Loc loc, FunctionDefinition func)
-  {
-      super(loc, TOKobjectlit);
-      this.func = func;
-  }
+    this(Loc loc, FunctionDefinition func)
+    {
+        super(loc, TOKobjectlit);
+        this.func = func;
+    }
 
-  override Expression semantic(Scope* sc)
-  {
-      func = cast(FunctionDefinition)(func.semantic(sc));
-      return this;
-  }
+    override Expression semantic(Scope* sc)
+    {
+        func = cast(FunctionDefinition)(func.semantic(sc));
+        return this;
+    }
 
-  override void toBuffer(ref tchar[] buf)
-  {
-      func.toBuffer(buf);
-  }
+    override void toBuffer(ref tchar[] buf)
+    {
+        func.toBuffer(buf);
+    }
 
-  override void toIR(IRstate* irs, uint ret)
-  {
-      func.toIR(null);
-      static assert((IRstate*).sizeof == uint.sizeof);
-      irs.gen2(loc, IRobject, ret, cast(uint)cast(void*)func);
-  }
+    override void toIR(IRstate* irs, idx_t ret)
+    {
+        func.toIR(null);
+        irs.gen_!(Opcode.Object)(loc, ret, func);
+    }
 }
 
 /***************************** UnaExp *************************************/
@@ -679,10 +678,10 @@ class BinExp : Expression
         e2.toBuffer(buf);
     }
 
-    void binIR(IRstate* irs, uint ret, uint ircode)
+    void binIR(IRstate* irs, idx_t ret, Opcode ircode)
     {
-        uint b;
-        uint c;
+        idx_t b;
+        idx_t c;
 
         if(ret)
         {
@@ -690,13 +689,13 @@ class BinExp : Expression
             e1.toIR(irs, b);
             if(e1.match(e2))
             {
-                irs.gen3(loc, ircode, ret, b, b);
+                irs.gen_!GenIR3(loc, ircode, ret, b, b);
             }
             else
             {
                 c = irs.alloc(1);
                 e2.toIR(irs, c);
-                irs.gen3(loc, ircode, ret, b, c);
+                irs.gen_!GenIR3(loc, ircode, ret, b, c);
                 irs.release(c, 1);
             }
             irs.release(b, 1);
@@ -716,9 +715,9 @@ class BinExp : Expression
 
 class PreExp : UnaExp
 {
-    uint ircode;
+    Opcode ircode;
 
-    this(Loc loc, uint ircode, Expression e)
+    this(Loc loc, Opcode ircode, Expression e)
     {
         super(loc, TOKplusplus, e);
         this.ircode = ircode;
@@ -737,22 +736,30 @@ class PreExp : UnaExp
         buf ~= Token.toString(op);
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint base;
+        idx_t base;
         IR property;
-        int opoff;
+        OpOffset opoff;
 
         //writef("PreExp::toIR('%s')\n", toChars());
         e1.toLvalue(irs, base, &property, opoff);
-        assert(opoff != 3);
-        if(opoff == 2)
+        final switch(opoff)
         {
-            //irs.gen2(loc, ircode + 2, ret, property.index);
-            irs.gen3(loc, ircode + 2, ret, property.index, property.id.toHash());
+        case OpOffset.None:
+            irs.gen_!GenIR3(loc, ircode, ret, base, property.index);
+            break;
+        case OpOffset.S:
+            irs.gen_!GenIR3S(loc, cast(Opcode)(ircode + opoff),
+                             ret, base, property.id);
+            break;
+        case OpOffset.Scope:
+            irs.gen_!GenIRScope3(loc, cast(Opcode)(ircode + opoff),
+                                 ret, property.id, property.id.toHash);
+            break;
+        case OpOffset.V:
+            assert(0);
         }
-        else
-            irs.gen3(loc, ircode + opoff, ret, base, property.index);
     }
 }
 
@@ -778,29 +785,37 @@ class PostIncExp : UnaExp
         buf ~= Token.toString(op);
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint base;
+        idx_t base;
         IR property;
-        int opoff;
+        OpOffset opoff;
 
         //writef("PostIncExp::toIR('%s')\n", toChars());
         e1.toLvalue(irs, base, &property, opoff);
-        assert(opoff != 3);
-        if(opoff == 2)
+        final switch(opoff)
         {
-            if(ret)
-            {
-                irs.gen2(loc, IRpostincscope, ret, property.index);
-            }
+        case OpOffset.None:
+            if (ret)
+                irs.gen_!(Opcode.PostInc)(loc, ret, base, property.index);
             else
-            {
-                //irs.gen2(loc, IRpreincscope, ret, property.index);
-                irs.gen3(loc, IRpreincscope, ret, property.index, property.id.toHash());
-            }
+                irs.gen_!(Opcode.PreInc)(loc, ret, base, property.index);
+            break;
+        case OpOffset.S:
+            if (ret)
+                irs.gen_!(Opcode.PostIncS)(loc, ret, base, property.id);
+            else
+                irs.gen_!(Opcode.PreIncS)(loc, ret, base, property.id);
+            break;
+        case OpOffset.Scope:
+            if (ret)
+                irs.gen_!(Opcode.PostIncScope)(loc, ret, property.id);
+            else
+                irs.gen_!(Opcode.PreIncScope)(loc, ret, property.id,
+                                              property.id.toHash);
+        case OpOffset.V:
+            assert(0);
         }
-        else
-            irs.gen3(loc, (ret ? IRpostinc : IRpreinc) + opoff, ret, base, property.index);
     }
 }
 
@@ -826,29 +841,38 @@ class PostDecExp : UnaExp
         buf ~= Token.toString(op);
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint base;
+        idx_t base;
         IR property;
-        int opoff;
+        OpOffset opoff;
 
         //writef("PostDecExp::toIR('%s')\n", toChars());
         e1.toLvalue(irs, base, &property, opoff);
-        assert(opoff != 3);
-        if(opoff == 2)
+        final switch(opoff)
         {
-            if(ret)
-            {
-                irs.gen2(loc, IRpostdecscope, ret, property.index);
-            }
+        case OpOffset.None:
+            if (ret)
+                irs.gen_!(Opcode.PostDec)(loc, ret, base, property.index);
             else
-            {
-                //irs.gen2(loc, IRpredecscope, ret, property.index);
-                irs.gen3(loc, IRpredecscope, ret, property.index, property.id.toHash());
-            }
+                irs.gen_!(Opcode.PreDec)(loc, ret, base, property.index);
+            break;
+        case OpOffset.S:
+            if (ret)
+                irs.gen_!(Opcode.PostDecS)(loc, ret, base, property.id);
+            else
+                irs.gen_!(Opcode.PreDecS)(loc, ret, base, property.id);
+            break;
+        case OpOffset.Scope:
+            if (ret)
+                irs.gen_!(Opcode.PostDecScope)(loc, ret, property.id);
+            else
+                irs.gen_!(Opcode.PreDecScope)(loc, ret, property.id,
+                                              property.id.toHash);
+            break;
+        case OpOffset.V:
+            assert(0);
         }
-        else
-            irs.gen3(loc, (ret ? IRpostdec : IRpredec) + opoff, ret, base, property.index);
     }
 }
 
@@ -875,9 +899,9 @@ class DotExp : UnaExp
         buf ~= ident.toString();
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint base;
+        idx_t base;
 
         //writef("DotExp::toIR('%s')\n", toChars());
         version(all)
@@ -887,7 +911,7 @@ class DotExp : UnaExp
             // generating a property get even if the result is thrown away.
             base = irs.alloc(1);
             e1.toIR(irs, base);
-            irs.gen3(loc, IRgets, ret, base, cast(uint)ident);
+            irs.gen_!(Opcode.GetS)(loc, ret, base, ident);
         }
         else
         {
@@ -895,19 +919,20 @@ class DotExp : UnaExp
             {
                 base = irs.alloc(1);
                 e1.toIR(irs, base);
-                irs.gen3(loc, IRgets, ret, base, cast(uint)ident);
+                irs.gen_!(Opcode.GetS)(loc, ret, base, ident);
             }
             else
                 e1.toIR(irs, 0);
         }
     }
 
-    override void toLvalue(IRstate* irs, out uint base, IR* property, out int opoff)
+    override void toLvalue(IRstate* irs, out idx_t base, IR* property,
+                           out OpOffset opoff)
     {
         base = irs.alloc(1);
         e1.toIR(irs, base);
         property.id = ident;
-        opoff = 1;
+        opoff = OpOffset.S;
     }
 }
 
@@ -965,15 +990,15 @@ class CallExp : UnaExp
         buf ~= ')';
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         // ret = base.property(argc, argv)
         // CALL ret,base,property,argc,argv
-        uint base;
-        uint argc;
-        uint argv;
+        idx_t base;
+        size_t argc;
+        idx_t argv;
         IR property;
-        int opoff;
+        OpOffset opoff;
 
         //writef("CallExp::toIR('%s')\n", toChars());
         e1.toLvalue(irs, base, &property, opoff);
@@ -1000,16 +1025,24 @@ class CallExp : UnaExp
             argv = 0;
         }
 
-        if(opoff == 3)
-            irs.gen4(loc, IRcallv, ret, base, argc, argv);
-        else if(opoff == 2)
-            irs.gen4(loc, IRcallscope, ret, property.index, argc, argv);
-        else
-            irs.gen(loc, IRcall + opoff, 5, ret, base, property, argc, argv);
+        final switch (opoff)
+        {
+        case OpOffset.None:
+            irs.gen_!(Opcode.Call)(loc, ret, base, property.index, argc, argv);
+            break;
+        case OpOffset.S:
+            irs.gen_!(Opcode.CallS)(loc, ret, base, property.id, argc, argv);
+            break;
+        case OpOffset.Scope:
+            irs.gen_!(Opcode.CallScope)(loc, ret, property.id, argc, argv);
+            break;
+        case OpOffset.V:
+            irs.gen_!(Opcode.CallV)(loc, ret, base, argc, argv);
+            break;
+        }
         irs.release(argv, argc);
     }
 }
-
 /************************************************************/
 
 class AssertExp : UnaExp
@@ -1026,19 +1059,19 @@ class AssertExp : UnaExp
         buf ~= ')';
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint linnum;
-        uint u;
-        uint b;
+        Loc linnum;
+        size_t u;
+        idx_t b;
 
         b = ret ? ret : irs.alloc(1);
 
         e1.toIR(irs, b);
         u = irs.getIP();
-        irs.gen2(loc, IRjt, 0, b);
-        linnum = cast(uint)loc;
-        irs.gen1(loc, IRassert, linnum);
+        irs.gen_!(Opcode.JT)(loc, 0, b);
+        linnum = cast(Loc)loc;
+        irs.gen_!(Opcode.Assert)(loc, linnum);
         irs.patchJmp(u, irs.getIP());
 
         if(!ret)
@@ -1082,13 +1115,13 @@ class NewExp : UnaExp
         buf ~= ')';
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         // ret = new b(argc, argv)
         // CALL ret,b,argc,argv
-        uint b;
-        uint argc;
-        uint argv;
+        idx_t b;
+        size_t argc;
+        idx_t argv;
 
         //writef("NewExp::toIR('%s')\n", toChars());
         b = irs.alloc(1);
@@ -1113,7 +1146,7 @@ class NewExp : UnaExp
             argv = 0;
         }
 
-        irs.gen4(loc, IRnew, ret, b, argc, argv);
+        irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
         irs.release(argv, argc);
         irs.release(b, 1);
     }
@@ -1123,19 +1156,19 @@ class NewExp : UnaExp
 
 class XUnaExp : UnaExp
 {
-    uint ircode;
+    Opcode ircode;
 
-    this(Loc loc, TOK op, uint ircode, Expression e)
+    this(Loc loc, TOK op, Opcode ircode, Expression e)
     {
         super(loc, op, e);
         this.ircode = ircode;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         e1.toIR(irs, ret);
         if(ret)
-            irs.gen1(loc, ircode, ret);
+            irs.gen_!GenIR1(loc, ircode, ret);
     }
 }
 
@@ -1143,10 +1176,10 @@ class NotExp : XUnaExp
 {
     this(Loc loc, Expression e)
     {
-        super(loc, TOKnot, IRnot, e);
+        super(loc, TOKnot, Opcode.Not, e);
     }
 
-    override int isBooleanResult()
+    override bool isBooleanResult()
     {
         return true;
     }
@@ -1170,23 +1203,35 @@ class DeleteExp : UnaExp
         return this;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint base;
+        idx_t base;
         IR property;
-        int opoff;
+        OpOffset opoff;
 
-        if(lval){
+        if(lval)
+        {
             e1.toLvalue(irs, base, &property, opoff);
-        
-            assert(opoff != 3);
-            if(opoff == 2)
-                irs.gen2(loc, IRdelscope, ret, property.index);
-            else
-                irs.gen3(loc, IRdel + opoff, ret, base, property.index);
-        }else{
+
+            final switch(opoff)
+            {
+            case OpOffset.None:
+                irs.gen_!(Opcode.Del)(loc, ret, base, property.index);
+                break;
+            case OpOffset.S:
+                irs.gen_!(Opcode.DelS)(loc, ret, base, property.id);
+                break;
+            case OpOffset.Scope:
+                irs.gen_!(Opcode.DelScope)(loc, ret, property.id);
+                break;
+            case OpOffset.V:
+                assert(0);
+            }
+        }
+        else
+        {
             //e1.toIR(irs,ret);
-            irs.gen2(loc,IRboolean,ret,true);
+            irs.gen_!(Opcode.Boolean)(loc, ret, true);
         }
     }
 }
@@ -1205,9 +1250,9 @@ class CommaExp : BinExp
         e2.checkLvalue(sc);
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        e1.toIR(irs, 0);
+        e1.toIR(irs, idxNull);
         e2.toIR(irs, ret);
     }
 }
@@ -1239,20 +1284,29 @@ class ArrayExp : BinExp
         buf ~= ']';
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint base;
+        idx_t base;
         IR property;
-        int opoff;
+        OpOffset opoff;
 
         if(ret)
         {
             toLvalue(irs, base, &property, opoff);
-            assert(opoff != 3);
-            if(opoff == 2)
-                irs.gen2(loc, IRgetscope, ret, property.index);
-            else
-                irs.gen3(loc, IRget + opoff, ret, base, property.index);
+            final switch(opoff)
+            {
+            case OpOffset.None:
+                irs.gen_!(Opcode.Get)(loc, ret, base, property.index);
+                break;
+            case OpOffset.S:
+                irs.gen_!(Opcode.GetS)(loc, ret, base, property.id);
+                break;
+            case OpOffset.Scope:
+                irs.gen_!(Opcode.GetScope)(loc, ret, property.id);
+                break;
+            case OpOffset.V:
+                assert(0);
+            }
         }
         else
         {
@@ -1261,7 +1315,8 @@ class ArrayExp : BinExp
         }
     }
 
-    override void toLvalue(IRstate* irs, out uint base, IR* property, out int opoff)
+    override void toLvalue(IRstate* irs, out idx_t base, IR* property,
+                           out OpOffset opoff)
     {
         uint index;
 
@@ -1270,7 +1325,7 @@ class ArrayExp : BinExp
         index = irs.alloc(1);
         e2.toIR(irs, index);
         property.index = index;
-        opoff = 0;
+        opoff = OpOffset.None;
     }
 }
 
@@ -1292,9 +1347,9 @@ class AssignExp : BinExp
         return this;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint b;
+        idx_t b;
 
         //writef("AssignExp::toIR('%s')\n", toChars());
         if(e1.op == TOKcall)            // if CallExp
@@ -1309,11 +1364,11 @@ class AssignExp : BinExp
             // This functionality should be worked into toLvalue() if it gets used
             // elsewhere.
 
-            uint base;
-            uint argc;
-            uint argv;
+            idx_t base;
+            size_t argc;
+            idx_t argv;
             IR property;
-            int opoff;
+            OpOffset opoff;
             CallExp ec = cast(CallExp)e1;
 
             if(ec.arguments.length)
@@ -1342,29 +1397,50 @@ class AssignExp : BinExp
                 ec.arguments = null;
             }
 
-            if(opoff == 3)
-                irs.gen4(loc, IRputcallv, ret, base, argc, argv);
-            else if(opoff == 2)
-                irs.gen4(loc, IRputcallscope, ret, property.index, argc, argv);
-            else
-                irs.gen(loc, IRputcall + opoff, 5, ret, base, property, argc, argv);
+            final switch (opoff)
+            {
+            case OpOffset.None:
+                irs.gen_!(Opcode.PutCall)(loc, ret, base, property.index,
+                                          argc, argv);
+                break;
+            case OpOffset.S:
+                irs.gen_!(Opcode.PutCallS)(loc, ret, base, property.id,
+                                           argc, argv);
+                break;
+            case OpOffset.Scope:
+                irs.gen_!(Opcode.PutCallScope)(loc, ret, property.id,
+                                               argc, argv);
+                break;
+            case OpOffset.V:
+                irs.gen_!(Opcode.PutCallV)(loc, ret, base, argc, argv);
+                break;
+            }
             irs.release(argv, argc);
         }
         else
         {
-            uint base;
+            size_t base;
             IR property;
-            int opoff;
+            OpOffset opoff;
 
             b = ret ? ret : irs.alloc(1);
             e2.toIR(irs, b);
 
             e1.toLvalue(irs, base, &property, opoff);
-            assert(opoff != 3);
-            if(opoff == 2)
-                irs.gen2(loc, IRputscope, b, property.index);
-            else
-                irs.gen3(loc, IRput + opoff, b, base, property.index);
+            final switch (opoff)
+            {
+            case OpOffset.None:
+                irs.gen_!(Opcode.Put)(loc, b, base, property.index);
+                break;
+            case OpOffset.S:
+                irs.gen_!(Opcode.PutS)(loc, b, base, property.id);
+                break;
+            case OpOffset.Scope:
+                irs.gen_!(Opcode.PutScope)(loc, b, property.id);
+                break;
+            case OpOffset.V:
+                assert(0);
+            }
             if(!ret)
                 irs.release(b, 1);
         }
@@ -1406,20 +1482,31 @@ class AddAssignExp : BinExp
         }
         else*/
         {
-            uint r;
-            uint base;
+            idx_t r;
+            idx_t base;
             IR property;
-            int opoff;
+            OpOffset opoff;
 
             //writef("AddAssignExp::toIR('%s')\n", toChars());
             e1.toLvalue(irs, base, &property, opoff);
-            assert(opoff != 3);
             r = ret ? ret : irs.alloc(1);
             e2.toIR(irs, r);
-            if(opoff == 2)
-                irs.gen3(loc, IRaddassscope, r, property.index, property.id.toHash());
-            else
-                irs.gen3(loc, IRaddass + opoff, r, base, property.index);
+            final switch (opoff)
+            {
+            case OpOffset.None:
+                irs.gen_!(Opcode.AddAsS)(loc, r, base, property.index);
+                break;
+            case OpOffset.S:
+                irs.gen_!(Opcode.AddAsSS)(loc, r, base, property.id);
+                break;
+            case OpOffset.Scope:
+                irs.gen_!(Opcode.AddAsSScope)(loc, r, property.id,
+                                              property.id.toHash);
+                break;
+            case OpOffset.V:
+                assert(0);
+            }
+
             if(!ret)
                 irs.release(r, 1);
         }
@@ -1430,9 +1517,9 @@ class AddAssignExp : BinExp
 
 class BinAssignExp : BinExp
 {
-    uint ircode = IRerror;
+    Opcode ircode = Opcode.Error;
 
-    this(Loc loc, TOK op, uint ircode, Expression e1, Expression e2)
+    this(Loc loc, TOK op, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, op, e1, e2);
         this.ircode = ircode;
@@ -1445,31 +1532,50 @@ class BinAssignExp : BinExp
         return this;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint b;
-        uint c;
-        uint r;
-        uint base;
+        idx_t b;
+        idx_t c;
+        idx_t r;
+        idx_t base;
         IR property;
-        int opoff;
+        OpOffset opoff;
 
         //writef("BinExp::binAssignIR('%s')\n", toChars());
         e1.toLvalue(irs, base, &property, opoff);
-        assert(opoff != 3);
         b = irs.alloc(1);
-        if(opoff == 2)
-            irs.gen2(loc, IRgetscope, b, property.index);
-        else
-            irs.gen3(loc, IRget + opoff, b, base, property.index);
+        final switch (opoff)
+        {
+        case OpOffset.None:
+            irs.gen_!(Opcode.Get)(loc, b, base, property.index);
+            break;
+        case OpOffset.S:
+            irs.gen_!(Opcode.GetS)(loc, b, base, property.id);
+            break;
+        case OpOffset.Scope:
+            irs.gen_!(Opcode.GetScope)(loc, b, property.id);
+            break;
+        case OpOffset.V:
+            assert(0);
+        }
         c = irs.alloc(1);
         e2.toIR(irs, c);
         r = ret ? ret : irs.alloc(1);
-        irs.gen3(loc, ircode, r, b, c);
-        if(opoff == 2)
-            irs.gen2(loc, IRputscope, r, property.index);
-        else
-            irs.gen3(loc, IRput + opoff, r, base, property.index);
+        irs.gen_!GenIR3(loc, ircode, r, b, c);
+        final switch (opoff)
+        {
+        case OpOffset.None:
+            irs.gen_!(Opcode.Put)(loc, r, base, property.index);
+            break;
+        case OpOffset.S:
+            irs.gen_!(Opcode.PutS)(loc, r, base, property.id);
+            break;
+        case OpOffset.Scope:
+            irs.gen_!(Opcode.PutScope)(loc, r, property.id);
+            break;
+        case OpOffset.V:
+            assert(0);
+        }
         if(!ret)
             irs.release(r, 1);
     }
@@ -1489,9 +1595,9 @@ class AddExp : BinExp
         return this;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        binIR(irs, ret, IRadd);
+        binIR(irs, ret, Opcode.Add);
     }
 }
 
@@ -1499,15 +1605,15 @@ class AddExp : BinExp
 
 class XBinExp : BinExp
 {
-    uint ircode = IRerror;
+    Opcode ircode = Opcode.Error;
 
-    this(Loc loc, TOK op, uint ircode, Expression e1, Expression e2)
+    this(Loc loc, TOK op, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, op, e1, e2);
         this.ircode = ircode;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         binIR(irs, ret, ircode);
     }
@@ -1522,10 +1628,10 @@ class OrOrExp : BinExp
         super(loc, TOKoror, e1, e2);
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint u;
-        uint b;
+        idx_t u;
+        idx_t b;
 
         if(ret)
             b = ret;
@@ -1534,7 +1640,7 @@ class OrOrExp : BinExp
 
         e1.toIR(irs, b);
         u = irs.getIP();
-        irs.gen2(loc, IRjt, 0, b);
+        irs.gen_!(Opcode.JT)(loc, 0, b);
         e2.toIR(irs, ret);
         irs.patchJmp(u, irs.getIP());
 
@@ -1552,10 +1658,10 @@ class AndAndExp : BinExp
         super(loc, TOKandand, e1, e2);
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint u;
-        uint b;
+        idx_t u;
+        idx_t b;
 
         if(ret)
             b = ret;
@@ -1564,7 +1670,7 @@ class AndAndExp : BinExp
 
         e1.toIR(irs, b);
         u = irs.getIP();
-        irs.gen2(loc, IRjf, 0, b);
+        irs.gen_!(Opcode.JF)(loc, 0, b);
         e2.toIR(irs, ret);
         irs.patchJmp(u, irs.getIP());
 
@@ -1575,24 +1681,22 @@ class AndAndExp : BinExp
 
 /************************* CmpExp ***********************************/
 
-
-
 class CmpExp : BinExp
 {
-    uint ircode = IRerror;
+    Opcode ircode = Opcode.Error;
 
-    this(Loc loc, TOK tok, uint ircode, Expression e1, Expression e2)
+    this(Loc loc, TOK tok, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, tok, e1, e2);
         this.ircode = ircode;
     }
 
-    override int isBooleanResult()
+    override bool isBooleanResult()
     {
         return true;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         binIR(irs, ret, ircode);
     }
@@ -1606,9 +1710,9 @@ class InExp : BinExp
     {
         super(loc, TOKin, e1, e2);
     }
-	override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        binIR(irs, ret, IRin);
+        binIR(irs, ret, Opcode.In);
     }
 }
 
@@ -1624,11 +1728,11 @@ class CondExp : BinExp
         this.econd = econd;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
-        uint u1;
-        uint u2;
-        uint b;
+        idx_t u1;
+        idx_t u2;
+        idx_t b;
 
         if(ret)
             b = ret;
@@ -1637,10 +1741,10 @@ class CondExp : BinExp
 
         econd.toIR(irs, b);
         u1 = irs.getIP();
-        irs.gen2(loc, IRjf, 0, b);
+        irs.gen_!(Opcode.JF)(loc, 0, b);
         e1.toIR(irs, ret);
         u2 = irs.getIP();
-        irs.gen1(loc, IRjmp, 0);
+        irs.gen_!(Opcode.Jmp)(loc, 0);
         irs.patchJmp(u1, irs.getIP());
         e2.toIR(irs, ret);
         irs.patchJmp(u2, irs.getIP());

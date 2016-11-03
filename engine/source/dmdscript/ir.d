@@ -193,9 +193,17 @@ import dmdscript.script : Loc, d_number, d_boolean;
 import dmdscript.identifier : Identifier;
 import dmdscript.functiondefinition : FunctionDefinition;
 
+enum OpOffset : ubyte
+{
+    None,
+    S,
+    Scope,
+    V,
+}
+
 enum Opcode : ubyte
 {
-    Error,
+    Error = 0,
     Nop,                      // No Operation
     End,                      // End Of Function
     String,
@@ -207,28 +215,28 @@ enum Opcode : ubyte
     Undefined,
     Boolean,
     Call,
-    CallS = Call + 1,
-    CallScope = CallS + 1,
-    CallV = CallScope + 1,
+    CallS     = Call + OpOffset.S,
+    CallScope = Call + OpOffset.Scope,
+    CallV     = Call + OpOffset.V,
     PutCall,
-    PutCallS = PutCall + 1,
-    PutCallScope = PutCallS + 1,
-    PutCallV = PutCallScope + 1,
+    PutCallS     = PutCall + OpOffset.S,
+    PutCallScope = PutCall + OpOffset.Scope,
+    PutCallV     = PutCall + OpOffset.V,
     Get,
-    GetS = Get + 1,         // 'S(tring)' Versions Must Be Original + 1
-    GetScope = GetS + 1,
+    GetS     = Get + OpOffset.S,    // 'S(tring)' Versions Must Be Original + 1
+    GetScope = Get + OpOffset.Scope,
     Put,
-    PutS = Put + 1,
-    PutScope = PutS + 1,
+    PutS     = Put + OpOffset.S,
+    PutScope = Put + OpOffset.Scope,
     Del,
-    DelS = Del + 1,
-    DelScope = DelS + 1,
+    DelS     = Del + OpOffset.S,
+    DelScope = Del + OpOffset.Scope,
     Next,
-    NextS = Next + 1,
-    NextScope = NextS + 1,
+    NextS     = Next + OpOffset.S,
+    NextScope = Next + OpOffset.Scope,
     AddAsS,
-    AddAsSS = AddAsS + 1,
-    AddAsSScope = AddAsSS + 1,
+    AddAsSS     = AddAsS + OpOffset.S,
+    AddAsSScope = AddAsS + OpOffset.Scope,
     PutThis,
     PutDefault,
     Mov,
@@ -252,20 +260,20 @@ enum Opcode : ubyte
     Xor,
     In,
     PreInc,
-    PreIncS = PreInc + 1,
-    PreIncScope = PreIncS + 1,
+    PreIncS     = PreInc + OpOffset.S,
+    PreIncScope = PreInc + OpOffset.Scope,
 
     PreDec,
-    PreDecS = PreDec + 1,
-    PreDecScope = PreDecS + 1,
+    PreDecS     = PreDec + OpOffset.S,
+    PreDecScope = PreDec + OpOffset.Scope,
 
     PostInc,
-    PostIncS = PostInc + 1,
-    PostIncScope = PostIncS + 1,
+    PostIncS     = PostInc + OpOffset.S,
+    PostIncScope = PostInc + OpOffset.Scope,
 
     PostDec,
-    PostDecS = PostDec + 1,
-    PostDecScope = PostDecS + 1,
+    PostDecS     = PostDec + OpOffset.S,
+    PostDecScope = PostDec + OpOffset.Scope,
 
     New,
 
@@ -306,8 +314,9 @@ enum Opcode : ubyte
     CheckRef,//Like Scope Get W/O Target, Occures Mostly On (Legal) Programmer Mistakes
 }
 
-// this holds an index value that points a Value* in local variable array.
+// this holds an index value that points a Value* in the local variable array.
 alias idx_t = size_t;
+enum idx_t idxNull = 0;
 
 //
 struct Instruction
@@ -320,7 +329,7 @@ struct Instruction
             private ubyte _padding;
             ushort linnum;
         }
-        else
+        else // for backward compatibility.
         {
             ushort linnum;
             private ubyte _padding;
@@ -377,6 +386,12 @@ private struct IR1(Opcode CODE)
         this.acc = acc;
     }
 
+    this(Loc loc, Opcode op, idx_t acc)
+    {
+        ir = Instruction(loc, op);
+        this.acc = acc;
+    }
+
     debug string toString() const
     { return text(ir, " ", acc); }
 }
@@ -414,6 +429,14 @@ private struct IR3(Opcode CODE, T, U)
     this(Loc loc, idx_t acc, T o1, U o2)
     {
         ir = Instruction(loc, code);
+        this.acc = acc;
+        operand1 = o1;
+        operand2 = o2;
+    }
+
+    this(Loc loc, Opcode op, idx_t acc, T o1, U o2)
+    {
+        ir = Instruction(loc, op);
         this.acc = acc;
         operand1 = o1;
         operand2 = o2;
@@ -470,6 +493,17 @@ private struct IRcall5(Opcode CODE, T)
         this.argv = argv;
     }
 
+    this(Loc loc, Opcode op, idx_t acc, idx_t owner, T method, size_t argc,
+         idx_t argv)
+    {
+        ir = Instruction(loc, op);
+        this.acc = acc;
+        this.owner = owner;
+        this.method = method;
+        this.argc = argc;
+        this.argv = argv;
+    }
+
     debug string toString() const
     {
         return text(ir, " ", acc, " = ", owner, ".", method, "(", argv, "[0..",
@@ -498,6 +532,36 @@ private struct IRget3(Opcode CODE, T)
 
     debug string toString() const
     { return text(ir, " ", acc, " = ", owner, ".", method); }
+}
+
+private struct IRScope3(Opcode CODE)
+{
+    enum Opcode code = CODE;
+    alias code this;
+
+    Instruction ir;
+    idx_t acc;
+    Identifier* operand;
+    size_t hash;
+
+    this(Loc loc, idx_t acc, Identifier* operand, size_t hash)
+    {
+        ir = Instruction(loc, code);
+        this.acc = acc;
+        this.operand = operand;
+        this.hash = hash;
+    }
+
+    this(Loc loc, Opcode op, idx_t acc, Identifier* operand, size_t hash)
+    {
+        ir = Instruction(loc, op);
+        this.acc = acc;
+        this.operand = operand;
+        this.hash = hash;
+    }
+
+    debug string toString() const
+    { return text(ir, " ", acc, " = ", operand.value.text, ", ", hash); }
 }
 
 // if (func iter) goto offset; iter = iter.next;
@@ -661,6 +725,24 @@ private struct IRCheckRef
 }
 
 //
+private struct IRAssert
+{
+    enum Opcode code = Opcode.Assert;
+
+    Instruction ir;
+    Loc linnum;
+
+    this(Loc loc, Loc linnum)
+    {
+        ir = Instruction(loc, code);
+        this.linnum = linnum;
+    }
+
+    debug string toString() const
+    { return text(ir, " at line ", linnum); }
+}
+
+//
 alias IRTypes = AliasSeq!(
     IR0!(Opcode.Error),
     IR0!(Opcode.Nop), // no operation
@@ -703,7 +785,7 @@ alias IRTypes = AliasSeq!(
 
     IRget3!(Opcode.AddAsS, idx_t),  // acc = (owner.method += acc)
     IRget3!(Opcode.AddAsSS, Identifier*), // acc = (owner.method += acc)
-    IR2!(Opcode.AddAsSScope, Identifier*), // acc = (operand += acc)
+    IRScope3!(Opcode.AddAsSScope), // acc = (operand += acc)
     IR2!(Opcode.PutThis, Identifier*), // operand = acc,
     IR2!(Opcode.PutDefault, idx_t), // operand = acc,
     IR2!(Opcode.Mov, idx_t), // acc = operand,
@@ -728,10 +810,10 @@ alias IRTypes = AliasSeq!(
     IR3!(Opcode.In, idx_t, idx_t), // acc = operand1 in operand2
     IRget3!(Opcode.PreInc, idx_t), // acc = ++owner.method
     IRget3!(Opcode.PreIncS, Identifier*), // acc = ++owner.method
-    IR2!(Opcode.PreIncScope, Identifier*), // acc = ++operand,
+    IRScope3!(Opcode.PreIncScope), // acc = ++operand,
     IRget3!(Opcode.PreDec, idx_t), // acc = --owner.method
     IRget3!(Opcode.PreDecS, Identifier*), // acc = --owner.method
-    IR2!(Opcode.PreDecScope, Identifier*), // acc = --operand
+    IRScope3!(Opcode.PreDecScope), // acc = --operand
     IRget3!(Opcode.PostInc, idx_t), // acc = owner.method++,
     IRget3!(Opcode.PostIncS, Identifier*), // acc = owner.method++,
     IR2!(Opcode.PostIncScope, Identifier*), // acc = operand++,
@@ -767,7 +849,7 @@ alias IRTypes = AliasSeq!(
     IR0!(Opcode.Pop), //
 
     IR2!(Opcode.Iter, idx_t), // acc = iter(operand),
-    IR1!(Opcode.Assert), //
+    IRAssert, //
     IR1!(Opcode.Throw), //
     IRTryCatch,
     IRjump1!(Opcode.TryFinally),
@@ -787,6 +869,11 @@ unittest
     }
     assert(verify!(Opcode.Error));
 }
+
+alias GenIR1 = IR1!(Opcode.Nop);
+alias GenIR3 = IR3!(Opcode.Nop, idx_t, idx_t);
+alias GenIR3S = IR3!(Opcode.Nop, idx_t, Identifier*);
+alias GenIRScope3 = IRScope3!(Opcode.Nop);
 
 /* suger.
 

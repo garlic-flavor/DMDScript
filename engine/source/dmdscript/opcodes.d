@@ -333,7 +333,7 @@ Status* cannotConvert(Value* b, int linnum)
     return sta;
 }
 
-enum size_t INDEX_FACTOR = Value.sizeof;  // or 1
+enum size_t INDEX_FACTOR = Value.sizeof;//1;//or Value.sizeof;
 
 struct IR
 {
@@ -486,22 +486,27 @@ struct IR
         Value* GETa(IR* code)
         {
             return cast(Value*)(cast(void*)locals + (code + 1).index);
+            // return locals + (code + 1).index;
         }
         Value* GETb(IR* code)
         {
             return cast(Value*)(cast(void*)locals + (code + 2).index);
+            // return locals + (code + 2).index;
         }
         Value* GETc(IR* code)
         {
             return cast(Value*)(cast(void*)locals + (code + 3).index);
+            // return locals + (code + 3).index;
         }
         Value* GETd(IR* code)
         {
             return cast(Value*)(cast(void*)locals + (code + 4).index);
+            // return locals + (code + 4).index;
         }
         Value* GETe(IR* code)
         {
             return cast(Value*)(cast(void*)locals + (code + 5).index);
+            // return locals + (code + 5).index;
         }
 
         uint GETlinnum(IR* code)

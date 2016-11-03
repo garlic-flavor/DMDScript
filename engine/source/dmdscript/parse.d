@@ -1036,25 +1036,25 @@ class Parser : Lexer
         case TOKplusplus:
             nextToken();
             e = parseUnaryExp();
-            e = new PreExp(loc, IRpreinc, e);
+            e = new PreExp(loc, Opcode.PreInc, e);
             break;
 
         case TOKminusminus:
             nextToken();
             e = parseUnaryExp();
-            e = new PreExp(loc, IRpredec, e);
+            e = new PreExp(loc, Opcode.PreDec, e);
             break;
 
         case TOKminus:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKneg, IRneg, e);
+            e = new XUnaExp(loc, TOKneg, Opcode.Neg, e);
             break;
 
         case TOKplus:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKpos, IRpos, e);
+            e = new XUnaExp(loc, TOKpos, Opcode.Pos, e);
             break;
 
         case TOKnot:
@@ -1066,7 +1066,7 @@ class Parser : Lexer
         case TOKtilde:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKtilde, IRcom, e);
+            e = new XUnaExp(loc, TOKtilde, Opcode.Com, e);
             break;
 
         case TOKdelete:
@@ -1078,13 +1078,13 @@ class Parser : Lexer
         case TOKtypeof:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKtypeof, IRtypeof, e);
+            e = new XUnaExp(loc, TOKtypeof, Opcode.Typeof, e);
             break;
 
         case TOKvoid:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKvoid, IRundefined, e);
+            e = new XUnaExp(loc, TOKvoid, Opcode.Undefined, e);
             break;
 
         default:
@@ -1109,7 +1109,7 @@ class Parser : Lexer
             case TOKmultiply:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, TOKmultiply, IRmul, e, e2);
+                e = new XBinExp(loc, TOKmultiply, Opcode.Mul, e, e2);
                 continue;
 
             case TOKregexp:
@@ -1119,13 +1119,13 @@ class Parser : Lexer
             case TOKdivide:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, TOKdivide, IRdiv, e, e2);
+                e = new XBinExp(loc, TOKdivide, Opcode.Div, e, e2);
                 continue;
 
             case TOKpercent:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, TOKpercent, IRmod, e, e2);
+                e = new XBinExp(loc, TOKpercent, Opcode.Mod, e, e2);
                 continue;
 
             default:
@@ -1157,7 +1157,7 @@ class Parser : Lexer
             case TOKminus:
                 nextToken();
                 e2 = parseMulExp();
-                e = new XBinExp(loc, TOKminus, IRsub, e, e2);
+                e = new XBinExp(loc, TOKminus, Opcode.Sub, e, e2);
                 continue;
 
             default:
@@ -1178,14 +1178,14 @@ class Parser : Lexer
         e = parseAddExp();
         for(;; )
         {
-            uint ircode;
+            Opcode ircode;
             TOK op = token.value;
 
             switch(op)
             {
-            case TOKshiftleft:      ircode = IRshl;         goto L1;
-            case TOKshiftright:     ircode = IRshr;         goto L1;
-            case TOKushiftright:    ircode = IRushr;        goto L1;
+            case TOKshiftleft:      ircode = Opcode.ShL;         goto L1;
+            case TOKshiftright:     ircode = Opcode.ShR;         goto L1;
+            case TOKushiftright:    ircode = Opcode.UShR;        goto L1;
 
                 L1: nextToken();
                 e2 = parseAddExp();
@@ -1210,15 +1210,15 @@ class Parser : Lexer
         e = parseShiftExp();
         for(;; )
         {
-            uint ircode;
+            Opcode ircode;
             TOK op = token.value;
 
             switch(op)
             {
-            case TOKless:           ircode = IRclt; goto L1;
-            case TOKlessequal:      ircode = IRcle; goto L1;
-            case TOKgreater:        ircode = IRcgt; goto L1;
-            case TOKgreaterequal:   ircode = IRcge; goto L1;
+            case TOKless:           ircode = Opcode.CLT; goto L1;
+            case TOKlessequal:      ircode = Opcode.CLE; goto L1;
+            case TOKgreater:        ircode = Opcode.CGT; goto L1;
+            case TOKgreaterequal:   ircode = Opcode.CGE; goto L1;
 
                 L1:
                 nextToken();
@@ -1229,7 +1229,7 @@ class Parser : Lexer
             case TOKinstanceof:
                 nextToken();
                 e2 = parseShiftExp();
-                e = new XBinExp(loc, TOKinstanceof, IRinstance, e, e2);
+                e = new XBinExp(loc, TOKinstanceof, Opcode.Instance, e, e2);
                 continue;
 
             case TOKin:
@@ -1258,15 +1258,15 @@ class Parser : Lexer
         e = parseRelExp();
         for(;; )
         {
-            uint ircode;
+            Opcode ircode;
             TOK op = token.value;
 
             switch(op)
             {
-            case TOKequal:       ircode = IRceq;        goto L1;
-            case TOKnotequal:    ircode = IRcne;        goto L1;
-            case TOKidentity:    ircode = IRcid;        goto L1;
-            case TOKnonidentity: ircode = IRcnid;       goto L1;
+            case TOKequal:       ircode = Opcode.CEq;        goto L1;
+            case TOKnotequal:    ircode = Opcode.CNE;        goto L1;
+            case TOKidentity:    ircode = Opcode.CID;        goto L1;
+            case TOKnonidentity: ircode = Opcode.CNID;       goto L1;
 
                 L1:
                 nextToken();
@@ -1294,7 +1294,7 @@ class Parser : Lexer
         {
             nextToken();
             e2 = parseEqualExp();
-            e = new XBinExp(loc, TOKand, IRand, e, e2);
+            e = new XBinExp(loc, TOKand, Opcode.And, e, e2);
         }
         return e;
     }
@@ -1311,7 +1311,7 @@ class Parser : Lexer
         {
             nextToken();
             e2 = parseAndExp();
-            e = new XBinExp(loc, TOKxor, IRxor, e, e2);
+            e = new XBinExp(loc, TOKxor, Opcode.Xor, e, e2);
         }
         return e;
     }
@@ -1328,7 +1328,7 @@ class Parser : Lexer
         {
             nextToken();
             e2 = parseXorExp();
-            e = new XBinExp(loc, TOKor, IRor, e, e2);
+            e = new XBinExp(loc, TOKor, Opcode.Or, e, e2);
         }
         return e;
     }
@@ -1397,7 +1397,7 @@ class Parser : Lexer
         e = parseCondExp();
         for(;; )
         {
-            uint ircode;
+            Opcode ircode;
             TOK op = token.value;
 
             switch(op)
@@ -1414,16 +1414,16 @@ class Parser : Lexer
                 e = new AddAssignExp(loc, e, e2);
                 continue;
 
-            case TOKminusass:       ircode = IRsub;  goto L1;
-            case TOKmultiplyass:    ircode = IRmul;  goto L1;
-            case TOKdivideass:      ircode = IRdiv;  goto L1;
-            case TOKpercentass:     ircode = IRmod;  goto L1;
-            case TOKandass:         ircode = IRand;  goto L1;
-            case TOKorass:          ircode = IRor;   goto L1;
-            case TOKxorass:         ircode = IRxor;  goto L1;
-            case TOKshiftleftass:   ircode = IRshl;  goto L1;
-            case TOKshiftrightass:  ircode = IRshr;  goto L1;
-            case TOKushiftrightass: ircode = IRushr; goto L1;
+            case TOKminusass:       ircode = Opcode.Sub;  goto L1;
+            case TOKmultiplyass:    ircode = Opcode.Mul;  goto L1;
+            case TOKdivideass:      ircode = Opcode.Div;  goto L1;
+            case TOKpercentass:     ircode = Opcode.Mod;  goto L1;
+            case TOKandass:         ircode = Opcode.And;  goto L1;
+            case TOKorass:          ircode = Opcode.Or;   goto L1;
+            case TOKxorass:         ircode = Opcode.Xor;  goto L1;
+            case TOKshiftleftass:   ircode = Opcode.ShL;  goto L1;
+            case TOKshiftrightass:  ircode = Opcode.ShR;  goto L1;
+            case TOKushiftrightass: ircode = Opcode.UShR; goto L1;
 
                 L1: nextToken();
                 e2 = parseAssignExp();

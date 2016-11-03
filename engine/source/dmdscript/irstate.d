@@ -45,7 +45,7 @@ struct IRstate
 
     //void next();	// close out current Block, and start a new one
 
-    size_t locali = 1;            // leave location 0 as our "null"
+    idx_t locali = 1;            // leave location 0 as our "null"
     size_t nlocals = 1;
 
     void ctor()
@@ -77,7 +77,7 @@ struct IRstate
      * index to them.
      */
 
-    size_t alloc(size_t nlocals)
+    idx_t alloc(size_t nlocals)
     {
         size_t n;
 
@@ -93,7 +93,7 @@ struct IRstate
      * Release this block of n locals starting at local.
      */
 
-    void release(size_t local, size_t n)
+    void release(idx_t local, size_t n)
     {
         /*
             local /= INDEX_FACTOR;
@@ -108,7 +108,7 @@ struct IRstate
         return locali;
     }
 
-    void release(size_t i)
+    void release(idx_t i)
     {
         /*
         assert(i);
@@ -195,6 +195,15 @@ struct IRstate
     void gen_(Opcode OP, A...)(A args)
     {
         alias T = IRTypes[OP];
+        codebuf.reserve(T.sizeof);
+        auto data = cast(T*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += T.sizeof;
+        *data = T(args);
+    }
+
+    //
+    void gen_(T, A...)(A args)
+    {
         codebuf.reserve(T.sizeof);
         auto data = cast(T*)(codebuf.data.ptr + codebuf.offset);
         codebuf.offset += T.sizeof;
