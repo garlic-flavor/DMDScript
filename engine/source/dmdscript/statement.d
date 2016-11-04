@@ -362,7 +362,7 @@ class VarStatement : Statement
                 {
                     vd.init.toIR(irs, ret);
                     property.id = Identifier.build(vd.name.toString());
-                    irs.gen2(loc, IRputthis, ret, property.index);
+                    irs.gen_!(Opcode.PutThis)(loc, ret, property.id);
                 }
             }
             irs.release(marksave);
@@ -579,13 +579,16 @@ class IfStatement : Statement
         c = irs.alloc(1);
         condition.toIR(irs, c);
         u1 = irs.getIP();
-        irs.gen2(loc, (condition.isBooleanResult() ? IRjfb : IRjf), 0, c);
+        if (condition.isBooleanResult)
+            irs.gen_!(Opcode.JFB)(loc, 0, c);
+        else
+            irs.gen_!(Opcode.JF)(loc, 0, c);
         irs.release(c, 1);
         ifbody.toIR(irs);
         if(elsebody)
         {
             u2 = irs.getIP();
-            irs.gen1(loc, IRjmp, 0);
+            irs.gen_!(Opcode.Jmp)(loc, 0);
             irs.patchJmp(u1, irs.getIP());
             elsebody.toIR(irs);
             irs.patchJmp(u2, irs.getIP());
@@ -647,7 +650,7 @@ class SwitchStatement : Statement
 
     override void toIR(IRstate* irs)
     {
-        uint c;
+        idx_t c;
         uint udefault;
         uint marksave;
 
@@ -662,7 +665,7 @@ class SwitchStatement : Statement
 
         if(cases.length)
         {
-            uint x;
+            idx_t x;
 
             x = irs.alloc(1);
             for(uint i = 0; i < cases.length; i++)
@@ -672,13 +675,13 @@ class SwitchStatement : Statement
                 x = irs.alloc(1);
                 cs = cases[i];
                 cs.exp.toIR(irs, x);
-                irs.gen3(loc, IRcid, x, c, x);
+                irs.gen_!(Opcode.CID)(loc, x, c, x);
                 cs.patchIP = irs.getIP();
-                irs.gen2(loc, IRjt, 0, x);
+                irs.gen_!(Opcode.JT)(loc, 0, x);
             }
         }
         udefault = irs.getIP();
-        irs.gen1(loc, IRjmp, 0);
+        irs.gen_!(Opcode.Jmp)(loc, 0);
 
         Statement breakSave = irs.breakTarget;
         irs.breakTarget = this;
@@ -874,7 +877,10 @@ class DoStatement : Statement
         c = irs.alloc(1);
         continueIP = irs.getIP();
         condition.toIR(irs, c);
-        irs.gen2(loc, (condition.isBooleanResult() ? IRjtb : IRjt), u1 - irs.getIP(), c);
+        if (condition.isBooleanResult)
+            irs.gen_!(Opcode.JTB)(loc, u1 - irs.getIP(), c);
+        else
+            irs.gen_!(Opcode.JT)(loc, u1 - irs.getIP(), c);
         breakIP = irs.getIP();
         irs.release(marksave);
 
@@ -965,9 +971,12 @@ class WhileStatement : Statement
         c = irs.alloc(1);
         condition.toIR(irs, c);
         u2 = irs.getIP();
-        irs.gen2(loc, (condition.isBooleanResult() ? IRjfb : IRjf), 0, c);
+        if (condition.isBooleanResult)
+            irs.gen_!(Opcode.JFB)(loc, 0, c);
+        else
+            irs.gen_!(Opcode.JF)(loc, 0, c);
         bdy.toIR(irs);
-        irs.gen1(loc, IRjmp, u1 - irs.getIP());
+        irs.gen_!(Opcode.Jmp)(loc, u1 - irs.getIP());
         irs.patchJmp(u2, irs.getIP());
         breakIP = irs.getIP();
 
@@ -1081,14 +1090,20 @@ class ForStatement : Statement
                 if(be.e2.op == TOKreal && !isNaN(re.value))
                 {
                     u2 = irs.getIP();
-                    irs.gen(loc, (condition.op == TOKless) ? IRjltc : IRjlec, 4, 0, b, re.value);
+                    if (condition.op == TOKless)
+                        irs.gen_!(Opcode.JLTC)(loc, 0, b, re.value);
+                    else
+                        irs.gen_!(Opcode.JLEC)(loc, 0, b, re.value);
                 }
                 else
                 {
                     c = irs.alloc(1);
                     be.e2.toIR(irs, c);
                     u2 = irs.getIP();
-                    irs.gen3(loc, (condition.op == TOKless) ? IRjlt : IRjle, 0, b, c);
+                    if (condition.op == TOKless)
+                        irs.gen_!(Opcode.JLT)(loc, 0, b, c);
+                    else
+                        irs.gen_!(Opcode.JLE)(loc, 0, b, c);
                 }
             }
             else
@@ -1098,14 +1113,17 @@ class ForStatement : Statement
                 c = irs.alloc(1);
                 condition.toIR(irs, c);
                 u2 = irs.getIP();
-                irs.gen2(loc, (condition.isBooleanResult() ? IRjfb : IRjf), 0, c);
+                if (condition.isBooleanResult)
+                    irs.gen_!(Opcode.JFB)(loc, 0, c);
+                else
+                    irs.gen_!(Opcode.JF)(loc, 0, c);
             }
         }
         bdy.toIR(irs);
         continueIP = irs.getIP();
         if(increment)
             increment.toIR(irs, 0);
-        irs.gen1(loc, IRjmp, u1 - irs.getIP());
+        irs.gen_!(Opcode.Jmp)(loc, u1 - irs.getIP);
         if(condition)
             irs.patchJmp(u2, irs.getIP());
 
@@ -1205,8 +1223,8 @@ class ForInStatement : Statement
 
     override void toIR(IRstate* irs)
     {
-        uint e;
-        uint iter;
+        idx_t e;
+        idx_t iter;
         ExpStatement es;
         VarStatement vs;
         uint base;
@@ -1217,7 +1235,7 @@ class ForInStatement : Statement
         e = irs.alloc(1);
         inexp.toIR(irs, e);
         iter = irs.alloc(1);
-        irs.gen2(loc, IRiter, iter, e);
+        irs.gen_!(Opcode.Iter)(loc, iter, e);
 
         Statement continueSave = irs.continueTarget;
         Statement breakSave = irs.breakTarget;
@@ -1248,12 +1266,22 @@ class ForInStatement : Statement
         }
 
         continueIP = irs.getIP();
-        if(opoff == 2)
-            irs.gen3(loc, IRnextscope, 0, property.index, iter);
-        else
-            irs.gen(loc, IRnext + opoff, 4, 0, base, property.index, iter);
+        final switch (opoff)
+        {
+        case OpOffset.None:
+            irs.gen_!(Opcode.Next)(loc, 0, base, property.index, iter);
+            break;
+        case OpOffset.S:
+            irs.gen_!(Opcode.NextS)(loc, 0, base, property.id, iter);
+            break;
+        case OpOffset.Scope:
+            irs.gen_!(Opcode.NextScope)(loc, 0, property.id, iter);
+            break;
+        case OpOffset.V:
+            assert(0);
+        }
         bdy.toIR(irs);
-        irs.gen1(loc, IRjmp, continueIP - irs.getIP());
+        irs.gen_!(Opcode.Jmp)(loc, continueIP - irs.getIP());
         irs.patchJmp(continueIP, irs.getIP());
 
         breakIP = irs.getIP();
@@ -1354,9 +1382,9 @@ class WithStatement : ScopeStatement
 
         c = irs.alloc(1);
         exp.toIR(irs, c);
-        irs.gen1(loc, IRpush, c);
+        irs.gen_!(Opcode.Push)(loc, c);
         bdy.toIR(irs);
-        irs.gen0(loc, IRpop);
+        irs.gen_!(Opcode.Pop)(loc);
 
         irs.scopeContext = enclosingScope;
         irs.release(marksave);
@@ -1614,19 +1642,19 @@ class ReturnStatement : Statement
             exp.toIR(irs, e);
             if(npops)
             {
-                irs.gen1(loc, IRimpret, e);
+                irs.gen_!(Opcode.ImpRet)(loc, e);
                 irs.pops(npops);
-                irs.gen0(loc, IRret);
+                irs.gen_!(Opcode.Ret)(loc);
             }
             else
-                irs.gen1(loc, IRretexp, e);
+                irs.gen_!(Opcode.RetExp)(loc, e);
             irs.release(e, 1);
         }
         else
         {
             if(npops)
                 irs.pops(npops);
-            irs.gen0(loc, IRret);
+            irs.gen_!(Opcode.Ret)(loc);
         }
 
         // Help GC
@@ -1672,7 +1700,7 @@ class ImpliedReturnStatement : Statement
 
             e = irs.alloc(1);
             exp.toIR(irs, e);
-            irs.gen1(loc, IRimpret, e);
+            irs.gen_!(Opcode.ImpRet)(loc, e);
             irs.release(e, 1);
 
             // Help GC
@@ -1720,7 +1748,7 @@ class ThrowStatement : Statement
         assert(exp);
         e = irs.alloc(1);
         exp.toIR(irs, e);
-        irs.gen1(loc, IRthrow, e);
+        irs.gen_!(Opcode.Throw)(loc, e);
         irs.release(e, 1);
 
         // Help GC
@@ -1803,55 +1831,55 @@ class TryStatement : ScopeStatement
         if(finalbdy)
         {
             f = irs.getIP();
-            irs.gen1(loc, IRtryfinally, 0);
+            irs.gen_!(Opcode.TryFinally)(loc, 0);
             if(catchbdy)
             {
                 c = irs.getIP();
-                irs.gen2(loc, IRtrycatch, 0, cast(uint)Identifier.build(catchident.toString()));
+                irs.gen_!(Opcode.TryCatch)(loc, 0, Identifier.build(catchident.toString));
                 bdy.toIR(irs);
-                irs.gen0(loc, IRpop);           // remove catch clause
-                irs.gen0(loc, IRpop);           // call finalbdy
+                irs.gen_!(Opcode.Pop)(loc);           // remove catch clause
+                irs.gen_!(Opcode.Pop)(loc);           // call finalbdy
 
                 e = irs.getIP();
-                irs.gen1(loc, IRjmp, 0);
+                irs.gen_!(Opcode.Jmp)(loc, 0);
                 irs.patchJmp(c, irs.getIP());
                 catchbdy.toIR(irs);
-                irs.gen0(loc, IRpop);           // remove catch object
-                irs.gen0(loc, IRpop);           // call finalbdy code
+                irs.gen_!(Opcode.Pop)(loc);           // remove catch object
+                irs.gen_!(Opcode.Pop)(loc);           // call finalbdy code
                 e2 = irs.getIP();
-                irs.gen1(loc, IRjmp, 0);        // jmp past finalbdy
+                irs.gen_!(Opcode.Jmp)(loc, 0);        // jmp past finalbdy
 
                 irs.patchJmp(f, irs.getIP());
                 irs.scopeContext = enclosingScope;
                 finalbdy.toIR(irs);
-                irs.gen0(loc, IRfinallyret);
+                irs.gen_!(Opcode.FinallyRet)(loc);
                 irs.patchJmp(e, irs.getIP());
                 irs.patchJmp(e2, irs.getIP());
             }
             else // finalbdy only
             {
                 bdy.toIR(irs);
-                irs.gen0(loc, IRpop);
+                irs.gen_!(Opcode.Pop)(loc);
                 e = irs.getIP();
-                irs.gen1(loc, IRjmp, 0);
+                irs.gen_!(Opcode.Jmp)(loc, 0);
                 irs.patchJmp(f, irs.getIP());
                 irs.scopeContext = enclosingScope;
                 finalbdy.toIR(irs);
-                irs.gen0(loc, IRfinallyret);
+                irs.gen_!(Opcode.FinallyRet)(loc);
                 irs.patchJmp(e, irs.getIP());
             }
         }
         else // catchbdy only
         {
             c = irs.getIP();
-            irs.gen2(loc, IRtrycatch, 0, cast(uint)Identifier.build(catchident.toString()));
+            irs.gen_!(Opcode.TryCatch)(loc, 0, Identifier.build(catchident.toString));
             bdy.toIR(irs);
-            irs.gen0(loc, IRpop);
+            irs.gen_!(Opcode.Pop)(loc);
             e = irs.getIP();
-            irs.gen1(loc, IRjmp, 0);
+            irs.gen_!(Opcode.Jmp)(loc, 0);
             irs.patchJmp(c, irs.getIP());
             catchbdy.toIR(irs);
-            irs.gen0(loc, IRpop);
+            irs.gen_!(Opcode.Pop)(loc);
             irs.patchJmp(e, irs.getIP());
         }
         irs.scopeContext = enclosingScope;
