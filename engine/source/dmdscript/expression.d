@@ -373,7 +373,7 @@ class RegExpLiteral : Expression
         argv = irs.alloc(argc);
         irs.gen_!(Opcode.String)(loc, argv, Identifier.build(pattern));
         if(argc == 2)
-            irs.gen_!(Opcode.String)(loc, argv + 1 * INDEX_FACTOR,
+            irs.gen_!(Opcode.String)(loc, argv + 1,
                                      Identifier.build(attribute));
         irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
         irs.release(b, argc + 1);
@@ -481,11 +481,10 @@ class ArrayLiteral : Expression
                     e = elements[i];
                     if(e)
                     {
-                        e.toIR(irs, argv + i * INDEX_FACTOR);
+                        e.toIR(irs, argv + i);
                     }
                     else
-                        irs.gen_!(Opcode.Undefined)(
-                            loc, argv + i * INDEX_FACTOR);
+                        irs.gen_!(Opcode.Undefined)(loc, argv + i);
                 }
                 irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
             }
@@ -1014,7 +1013,7 @@ class CallExp : UnaExp
                 Expression e;
 
                 e = arguments[u];
-                e.toIR(irs, argv + u * INDEX_FACTOR);
+                e.toIR(irs, argv + u);
             }
             arguments[] = null;         // release to GC
             arguments = null;
@@ -1137,7 +1136,7 @@ class NewExp : UnaExp
                 Expression e;
 
                 e = arguments[u];
-                e.toIR(irs, argv + u * INDEX_FACTOR);
+                e.toIR(irs, argv + u);
             }
         }
         else
@@ -1378,7 +1377,7 @@ class AssignExp : BinExp
 
             argv = irs.alloc(argc);
 
-            e2.toIR(irs, argv + (argc - 1) * INDEX_FACTOR);
+            e2.toIR(irs, argv + (argc - 1));
 
             ec.e1.toLvalue(irs, base, &property, opoff);
 
@@ -1391,7 +1390,7 @@ class AssignExp : BinExp
                     Expression e;
 
                     e = ec.arguments[u];
-                    e.toIR(irs, argv + (u + 0) * INDEX_FACTOR);
+                    e.toIR(irs, argv + (u + 0));
                 }
                 ec.arguments[] = null;          // release to GC
                 ec.arguments = null;

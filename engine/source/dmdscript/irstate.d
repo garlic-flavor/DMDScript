@@ -86,7 +86,7 @@ struct IRstate
         if(locali > this.nlocals)
             this.nlocals = locali;
         assert(n);
-        return n * INDEX_FACTOR;
+        return n;
     }
 
     /****************************************
@@ -353,21 +353,21 @@ struct IRstate
             case Opcode.Number:
             case Opcode.String:
             case Opcode.Boolean:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+                local[(c + 1).index] = c;
                 break;
 
             case Opcode.Add:
             case Opcode.Sub:
             case Opcode.CLE:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+                local[(c + 1).index] = c;
                 break;
 
             case Opcode.PutThis:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+                local[(c + 1).index] = c;
                 goto Lreset;
 
             case Opcode.PutScope:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+                local[(c + 1).index] = c;
                 break;
 
             case Opcode.GetScope:
@@ -396,15 +396,15 @@ struct IRstate
                     //writef("IRgetscope . IRmov %d, %d\n", (c + 1).index, (cimax + 1).index);
                     c.opcode = Opcode.Mov;
                     (c + 2).index = (cimax + 1).index;
-                    local[(c + 1).index / INDEX_FACTOR] = cimax;
+                    local[(c + 1).index] = cimax;
                 }
                 else
-                    local[(c + 1).index / INDEX_FACTOR] = c;
+                    local[(c + 1).index] = c;
                 break;
             }
 
             case Opcode.New:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+                local[(c + 1).index] = c;
                 goto Lreset;
 
             case Opcode.CallScope:
@@ -413,11 +413,11 @@ struct IRstate
             case Opcode.PutCallScope:
             case Opcode.PutCallV:
             case Opcode.CallV:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+                local[(c + 1).index] = c;
                 goto Lreset;
 
             case Opcode.Mov:
-                local[(c + 1).index / INDEX_FACTOR] = local[(c + 2).index / INDEX_FACTOR];
+                local[(c + 1).index] = local[(c + 2).index];
                 break;
 
             case Opcode.Put:
