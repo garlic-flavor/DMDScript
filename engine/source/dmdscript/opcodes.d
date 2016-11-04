@@ -590,7 +590,7 @@ struct IR
                     assert(0);
 
                 case Opcode.Nop:
-                    code++;
+                    code += IRTypes[Opcode.Nop].size;
                     break;
 
                 case Opcode.Get:                 // a = b.c
@@ -618,7 +618,7 @@ struct IR
                     if(!v)
                         v = &vundefined;
                     Value.copy(a, v);
-                    code += 4;
+                    code += IRTypes[Opcode.Get].size;
                     break;
 
                 case Opcode.Put:                 // b.c = a
@@ -642,7 +642,7 @@ struct IR
                     }
                     if(sta)
                         goto Lthrow;
-                    code += 4;
+                    code += IRTypes[Opcode.Put].size;
                     break;
 
                 case Opcode.GetS:                // a = b.s
@@ -667,14 +667,14 @@ struct IR
                         v = &vundefined;
                     }
                     Value.copy(a, v);
-                    code += 4;
+                    code += IRTypes[Opcode.GetS].size;
                     goto Lnext;
                 case Opcode.CheckRef: // s
                     id = (code+1).id;
                     s = id.value.text;
                     if(!scope_get(scopex, id))
                         throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
-                    code += 2;
+                    code += IRTypes[Opcode.CheckRef].size;
                     break;
                 case Opcode.GetScope:            // a = s
                     a = GETa(code);
@@ -716,7 +716,7 @@ struct IR
                     //writef("v = %g\n", v.toNumber());
                     //writef("v = %s\n", d_string_ptr(v.toString()));
                     Value.copy(a, v);
-                    code += 3;
+                    code += IRTypes[Opcode.GetScope].size;
                     break;
 
                 case Opcode.AddAsS:              // a = (b.c += a)
@@ -792,7 +792,12 @@ struct IR
                             *v = *a;//full copy
                         }
                     }
-                    code += 4;
+
+                    static assert(IRTypes[Opcode.AddAsS].size
+                                  == IRTypes[Opcode.AddAsSS].size &&
+                                  IRTypes[Opcode.AddAsS].size
+                                  == IRTypes[Opcode.AddAsSScope].size);
+                    code += IRTypes[Opcode.AddAsSScope].size;
                     break;
 
                 case Opcode.PutS:            // b.s = a
@@ -807,14 +812,14 @@ struct IR
                     sta = o.Put((code + 3).id.value.text, a, 0);
                     if(sta)
                         goto Lthrow;
-                    code += 4;
+                    code += IRTypes[Opcode.PutS].size;
                     goto Lnext;
 
                 case Opcode.PutScope:            // s = a
                     a = GETa(code);
                     a.checkReference();
                     PutValue(cc, (code + 2).id, a);
-                    code += 3;
+                    code += IRTypes[Opcode.PutScope].size;
                     break;
 
                 case Opcode.PutDefault:              // b = a
@@ -832,7 +837,7 @@ struct IR
                     sta = o.PutDefault(a);
                     if(sta)
                         goto Lthrow;
-                    code += 3;
+                    code += IRTypes[Opcode.PutDefault].size;
                     break;
 
                 case Opcode.PutThis:             // s = a
@@ -845,52 +850,53 @@ struct IR
                         sta = cc.variable.Put((code + 2).id.value.text, GETa(code), DontDelete);
                     if (sta)
                         goto Lthrow;
-                    code += 3;
+                    code += IRTypes[Opcode.PutThis].size;
                     break;
 
                 case Opcode.Mov:                 // a = b
                     Value.copy(GETa(code), GETb(code));
-                    code += 3;
+                    code += IRTypes[Opcode.Mov].size;
                     break;
 
                 case Opcode.String:              // a = "string"
                     GETa(code).putVstring((code + 2).id.value.text);
-                    code += 3;
+                    code += IRTypes[Opcode.String].size;
                     break;
 
                 case Opcode.Object:              // a = object
-                { FunctionDefinition fd;
-                  fd = cast(FunctionDefinition)(code + 2).ptr;
-                  Dfunction fobject = new DdeclaredFunction(fd);
-                  fobject.scopex = scopex;
-                  GETa(code).putVobject(fobject);
-                  code += 3;
-                  break; }
-
+                {
+                    FunctionDefinition fd;
+                    fd = cast(FunctionDefinition)(code + 2).ptr;
+                    Dfunction fobject = new DdeclaredFunction(fd);
+                    fobject.scopex = scopex;
+                    GETa(code).putVobject(fobject);
+                    code += IRTypes[Opcode.Object].size;
+                    break;
+                }
                 case Opcode.This:                // a = this
                     GETa(code).putVobject(othis);
                     //writef("IRthis: %s, othis = %x\n", GETa(code).getType(), othis);
-                    code += 2;
+                    code += IRTypes[Opcode.This].size;
                     break;
 
                 case Opcode.Number:              // a = number
                     GETa(code).putVnumber(*cast(d_number *)(code + 2));
-                    code += 4;
+                    code += IRTypes[Opcode.Number].size;
                     break;
 
                 case Opcode.Boolean:             // a = boolean
                     GETa(code).putVboolean((code + 2).boolean);
-                    code += 3;
+                    code += IRTypes[Opcode.Boolean].size;
                     break;
 
                 case Opcode.Null:                // a = null
                     GETa(code).putVnull();
-                    code += 2;
+                    code += IRTypes[Opcode.Null].size;
                     break;
 
                 case Opcode.Undefined:           // a = undefined
                     GETa(code).putVundefined();
-                    code += 2;
+                    code += IRTypes[Opcode.Undefined].size;
                     break;
 
                 case Opcode.ThisGet:             // a = othis.ident
@@ -899,34 +905,34 @@ struct IR
                     if(!v)
                         v = &vundefined;
                     Value.copy(a, v);
-                    code += 3;
+                    code += IRTypes[Opcode.ThisGet].size;
                     break;
 
                 case Opcode.Neg:                 // a = -a
                     a = GETa(code);
                     n = a.toNumber();
                     a.putVnumber(-n);
-                    code += 2;
+                    code += IRTypes[Opcode.Neg].size;
                     break;
 
                 case Opcode.Pos:                 // a = a
                     a = GETa(code);
                     n = a.toNumber();
                     a.putVnumber(n);
-                    code += 2;
+                    code += IRTypes[Opcode.Pos].size;
                     break;
 
                 case Opcode.Com:                 // a = ~a
                     a = GETa(code);
                     i32 = a.toInt32();
                     a.putVnumber(~i32);
-                    code += 2;
+                    code += IRTypes[Opcode.Com].size;
                     break;
 
                 case Opcode.Not:                 // a = !a
                     a = GETa(code);
                     a.putVboolean(!a.toBoolean());
-                    code += 2;
+                    code += IRTypes[Opcode.Not].size;
                     break;
 
                 case Opcode.Typeof:      // a = typeof a
@@ -936,7 +942,7 @@ struct IR
                     // what kind of script syntax will generate this.
                     a = GETa(code);
                     a.putVstring(a.getTypeof());
-                    code += 2;
+                    code += IRTypes[Opcode.Typeof].size;
                     break;
 
                 case Opcode.Instance:        // a = b instanceof c
@@ -961,7 +967,7 @@ struct IR
                     sta = co.HasInstance(a, b);
                     if(sta)
                         goto Lthrow;
-                    code += 4;
+                    code += IRTypes[Opcode.Instance].size;
                     break;
                 }
                 case Opcode.Add:                     // a = b + c
@@ -994,7 +1000,7 @@ struct IR
                         }
                     }
 
-                    code += 4;
+                    code += IRTypes[Opcode.Add].size;
                     break;
 
                 case Opcode.Sub:                 // a = b - c
@@ -1010,7 +1016,7 @@ struct IR
                     b = GETb(code);
                     c = GETc(code);
                     a.putVnumber(b.toNumber() * c.toNumber());
-                    code += 4;
+                    code += IRTypes[Opcode.Mul].size;
                     break;
 
                 case Opcode.Div:                 // a = b / c
@@ -1020,7 +1026,7 @@ struct IR
 
                     //writef("%g / %g = %g\n", b.toNumber() , c.toNumber(), b.toNumber() / c.toNumber());
                     a.putVnumber(b.toNumber() / c.toNumber());
-                    code += 4;
+                    code += IRTypes[Opcode.Div].size;
                     break;
 
                 case Opcode.Mod:                 // a = b % c
@@ -1028,7 +1034,7 @@ struct IR
                     b = GETb(code);
                     c = GETc(code);
                     a.putVnumber(b.toNumber() % c.toNumber());
-                    code += 4;
+                    code += IRTypes[Opcode.Mod].size;
                     break;
 
                 case Opcode.ShL:                 // a = b << c
@@ -1039,7 +1045,7 @@ struct IR
                     u32 = c.toUint32() & 0x1F;
                     i32 <<= u32;
                     a.putVnumber(i32);
-                    code += 4;
+                    code += IRTypes[Opcode.ShL].size;
                     break;
 
                 case Opcode.ShR:                 // a = b >> c
@@ -1050,7 +1056,7 @@ struct IR
                     u32 = c.toUint32() & 0x1F;
                     i32 >>= cast(d_int32)u32;
                     a.putVnumber(i32);
-                    code += 4;
+                    code += IRTypes[Opcode.ShR].size;
                     break;
 
                 case Opcode.UShR:                // a = b >>> c
@@ -1061,7 +1067,7 @@ struct IR
                     u32 = c.toUint32() & 0x1F;
                     u32 = (cast(d_uint32)i32) >> u32;
                     a.putVnumber(u32);
-                    code += 4;
+                    code += IRTypes[Opcode.UShR].size;
                     break;
 
                 case Opcode.And:         // a = b & c
@@ -1069,7 +1075,7 @@ struct IR
                     b = GETb(code);
                     c = GETc(code);
                     a.putVnumber(b.toInt32() & c.toInt32());
-                    code += 4;
+                    code += IRTypes[Opcode.And].size;
                     break;
 
                 case Opcode.Or:          // a = b | c
@@ -1077,7 +1083,7 @@ struct IR
                     b = GETb(code);
                     c = GETc(code);
                     a.putVnumber(b.toInt32() | c.toInt32());
-                    code += 4;
+                    code += IRTypes[Opcode.Or].size;
                     break;
 
                 case Opcode.Xor:         // a = b ^ c
@@ -1085,7 +1091,7 @@ struct IR
                     b = GETb(code);
                     c = GETc(code);
                     a.putVnumber(b.toInt32() ^ c.toInt32());
-                    code += 4;
+                    code += IRTypes[Opcode.Xor].size;
                     break;
                 case Opcode.In:          // a = b in c
                     a = GETa(code);
@@ -1098,7 +1104,7 @@ struct IR
                         throw new ErrorValue(Dobject.RuntimeError(&errinfo,errmsgtbl[ERR_RHS_MUST_BE_OBJECT],"in",c.toString()));
                     }
                     a.putVboolean(o.HasProperty(s));
-                    code += 4;
+                    code += IRTypes[Opcode.In].size;
                     break;
 
                 /********************/
@@ -1120,7 +1126,13 @@ struct IR
                     n = v.toNumber();
                     a.putVnumber(n + inc);
                     b.Put(s, a);
-                    code += 4;
+
+                    static assert(IRTypes[Opcode.PreInc].size
+                                  == IRTypes[Opcode.PreIncS].size &&
+                                  IRTypes[Opcode.PreDec].size
+                                  == IRTypes[Opcode.PreIncS].size &&
+                                  IRTypes[Opcode.PreDecS].size);
+                    code += IRTypes[Opcode.PreIncS].size;
                     break;
 
                 case Opcode.PreIncScope:        // a = ++s
@@ -1169,7 +1181,9 @@ struct IR
                         else
                             throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s));
                     }
-                    code += 4;
+                    static assert(IRTypes[Opcode.PreIncScope].size
+                                  == IRTypes[Opcode.PreDecScope].size);
+                    code += IRTypes[Opcode.PreIncScope].size;
                     break;
 
                 case Opcode.PreDec:     // a = --b.c
@@ -1204,7 +1218,10 @@ struct IR
                     a.putVnumber(n + 1);
                     b.Put(s, a);
                     a.putVnumber(n);
-                    code += 4;
+
+                    static assert(IRTypes[Opcode.PostInc].size
+                                  == IRTypes[Opcode.PostIncS].size);
+                    code += IRTypes[Opcode.PostIncS].size;
                     break;
 
                 case Opcode.PostIncScope:        // a = s++
@@ -1224,7 +1241,7 @@ struct IR
                         throw new ErrorValue(Dobject.ReferenceError(id.value.text));
                         //v = signalingUndefined(id.value.string);
                     }
-                    code += 3;
+                    code += IRTypes[Opcode.PostIncScope].size;
                     break;
 
                 case Opcode.PostDec:     // a = b.c--
@@ -1243,7 +1260,10 @@ struct IR
                     a.putVnumber(n - 1);
                     b.Put(s, a);
                     a.putVnumber(n);
-                    code += 4;
+
+                    static assert(IRTypes[Opcode.PostDecS].size
+                                  == IRTypes[Opcode.PostDec].size);
+                    code += IRTypes[Opcode.PostDecS].size;
                     break;
 
                 case Opcode.PostDecScope:        // a = s--
@@ -1263,7 +1283,7 @@ struct IR
                         throw new ErrorValue(Dobject.ReferenceError(id.value.text));
                         //v = signalingUndefined(id.value.string);
                     }
-                    code += 3;
+                    code += IRTypes[Opcode.PostDecScope].size;
                     break;
 
                 case Opcode.Del:     // a = delete b.c
@@ -1288,7 +1308,10 @@ struct IR
                             bo = !o.HasProperty(s);
                     }
                     GETa(code).putVboolean(bo);
-                    code += 4;
+
+                    static assert (IRTypes[Opcode.Del].size
+                                   == IRTypes[Opcode.DelS].size);
+                    code += IRTypes[Opcode.DelS].size;
                     break;
 
                 case Opcode.DelScope:    // a = delete s
@@ -1302,7 +1325,7 @@ struct IR
                     else
                         bo = !o.HasProperty(s);
                     GETa(code).putVboolean(bo);
-                    code += 3;
+                    code += IRTypes[Opcode.DelScope].size;
                     break;
 
                 /* ECMA requires that if one of the numeric operands is NAN,
@@ -1331,7 +1354,7 @@ struct IR
                             res = b.toNumber() < c.toNumber();
                     }
                     a.putVboolean(res);
-                    code += 4;
+                    code += IRTypes[Opcode.CLT].size;
                     break;
 
                 case Opcode.CLE:         // a = (b <=  c)
@@ -1355,7 +1378,7 @@ struct IR
                             res = b.toNumber() <= c.toNumber();
                     }
                     a.putVboolean(res);
-                    code += 4;
+                    code += IRTypes[Opcode.CLE].size;
                     break;
 
                 case Opcode.CGT:         // a = (b >   c)
@@ -1379,7 +1402,7 @@ struct IR
                             res = b.toNumber() > c.toNumber();
                     }
                     a.putVboolean(res);
-                    code += 4;
+                    code += IRTypes[Opcode.CGT].size;
                     break;
 
 
@@ -1404,7 +1427,7 @@ struct IR
                             res = b.toNumber() >= c.toNumber();
                     }
                     a.putVboolean(res);
-                    code += 4;
+                    code += IRTypes[Opcode.CGE].size;
                     break;
 
                 case Opcode.CEq:         // a = (b ==  c)
@@ -1501,7 +1524,10 @@ struct IR
                     res ^= (code.opcode == IRcne);
                     //Lceq:
                     a.putVboolean(res);
-                    code += 4;
+
+                    static assert (IRTypes[Opcode.CEq].size
+                                   == IRTypes[Opcode.CNE].size);
+                    code += IRTypes[Opcode.CNE].size;
                     break;
 
                 case Opcode.CID:         // a = (b === c)
@@ -1551,7 +1577,10 @@ struct IR
                     res ^= (code.opcode == IRcnid);
                     Lcid:
                     a.putVboolean(res);
-                    code += 4;
+
+                    static assert (IRTypes[Opcode.CID].size
+                                   == IRTypes[Opcode.CNID].size);
+                    code += IRTypes[Opcode.CID].size;
                     break;
 
                 case Opcode.JT:          // if (b) goto t
@@ -1559,7 +1588,7 @@ struct IR
                     if(b.toBoolean())
                         code += (code + 1).offset;
                     else
-                        code += 3;
+                        code += IRTypes[Opcode.JT].size;
                     break;
 
                 case Opcode.JF:          // if (!b) goto t
@@ -1567,7 +1596,7 @@ struct IR
                     if(!b.toBoolean())
                         code += (code + 1).offset;
                     else
-                        code += 3;
+                        code += IRTypes[Opcode.JF].size;
                     break;
 
                 case Opcode.JTB:         // if (b) goto t
@@ -1575,7 +1604,7 @@ struct IR
                     if(b.dbool)
                         code += (code + 1).offset;
                     else
-                        code += 3;
+                        code += IRTypes[Opcode.JTB].size;
                     break;
 
                 case Opcode.JFB:         // if (!b) goto t
@@ -1583,7 +1612,7 @@ struct IR
                     if(!b.dbool)
                         code += (code + 1).offset;
                     else
-                        code += 3;
+                        code += IRTypes[Opcode.JFB].size;
                     break;
 
                 case Opcode.Jmp:
@@ -1618,7 +1647,7 @@ struct IR
                     if(!res)
                         code += (code + 1).offset;
                     else
-                        code += 4;
+                        code += IRTypes[Opcode.JLT].size;
                     break;
 
                 case Opcode.JLE:         // if (b <=  c) goto c
@@ -1627,7 +1656,7 @@ struct IR
                     if(b.vtype == V_NUMBER && c.vtype == V_NUMBER)
                     {
                         if(b.number <= c.number)
-                            code += 4;
+                            code += IRTypes[Opcode.JLE].size;
                         else
                             code += (code + 1).offset;
                         break;
@@ -1649,7 +1678,7 @@ struct IR
                     if(!res)
                         code += (code + 1).offset;
                     else
-                        code += 4;
+                        code += IRTypes[Opcode.JLE].size;
                     break;
 
                 case Opcode.JLTC:        // if (b < constant) goto c
@@ -1658,7 +1687,7 @@ struct IR
                     if(!res)
                         code += (code + 1).offset;
                     else
-                        code += 5;
+                        code += IRTypes[Opcode.JLTC].size;
                     break;
 
                 case Opcode.JLEC:        // if (b <= constant) goto c
@@ -1667,7 +1696,7 @@ struct IR
                     if(!res)
                         code += (code + 1).offset;
                     else
-                        code += 5;
+                        code += IRTypes[Opcode.JLEC].size;
                     break;
 
                 case Opcode.Iter:                // a = iter(b)
@@ -1682,7 +1711,7 @@ struct IR
                     sta = o.putIterator(a);
                     if(sta)
                         goto Lthrow;
-                    code += 3;
+                    code += IRTypes[Opcode.Iter].size;
                     break;
 
                 case Opcode.Next:        // a, b.c, iter
@@ -1701,7 +1730,10 @@ struct IR
                     {
                         b = GETb(code);
                         b.Put(s, v);
-                        code += 5;
+
+                        static assert (IRTypes[Opcode.Next].size
+                                       == IRTypes[Opcode.NextS].size);
+                        code += IRTypes[Opcode.Next].size;
                     }
                     break;
 
@@ -1715,7 +1747,7 @@ struct IR
                     {
                         o = scope_tos(scopex);
                         o.Put(s, v, 0);
-                        code += 4;
+                        code += IRTypes[Opcode.NextScope].size;
                     }
                     break;
 
@@ -1750,7 +1782,10 @@ struct IR
                         assert(checksum == IR.verify(__LINE__, codestart));
                     if(sta)
                         goto Lthrow;
-                    code += 6;
+
+                    static assert (IRTypes[Opcode.Call].size
+                                   == IRTypes[Opcode.CallS].size);
+                    code += IRTypes[Opcode.CallS].size;
                     goto Lnext;
 
                     Lcallerror:
@@ -1786,7 +1821,7 @@ struct IR
                         assert(checksum == IR.verify(__LINE__, codestart));
                     if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.CallScope].size;
                     goto Lnext;
 
                 case Opcode.CallV:   // v(argc, argv) = a
@@ -1807,7 +1842,7 @@ struct IR
                     sta = o.Call(cc, o, a, GETd(code)[0 .. (code + 3).index]);
                     if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.CallV].size;
                     goto Lnext;
 
                 case Opcode.PutCall:        // b.c(argc, argv) = a
@@ -1841,7 +1876,10 @@ struct IR
                     sta = o.put_Value(a, GETe(code)[0 .. (code + 4).index]);
                     if(sta)
                         goto Lthrow;
-                    code += 6;
+
+                    static assert (IRTypes[Opcode.PutCall].size
+                                   == IRTypes[Opcode.PutCallS].size);
+                    code += IRTypes[Opcode.PutCallS].size;
                     goto Lnext;
 
                 case Opcode.PutCallScope:   // a = s(argc, argv)
@@ -1868,7 +1906,7 @@ struct IR
                     sta = o.put_Value(GETa(code), GETd(code)[0 .. (code + 3).index]);
                     if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.PutCallScope].size;
                     goto Lnext;
 
                 case Opcode.PutCallV:        // v(argc, argv) = a
@@ -1886,7 +1924,7 @@ struct IR
                     sta = o.put_Value(GETa(code), GETd(code)[0 .. (code + 3).index]);
                     if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.PutCallV].size;
                     goto Lnext;
 
                 case Opcode.New: // a = new b(argc, argv)
@@ -1898,7 +1936,7 @@ struct IR
                         assert(checksum == IR.verify(__LINE__, codestart));
                     if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.New].size;
                     goto Lnext;
 
                 case Opcode.Push:
@@ -1912,7 +1950,7 @@ struct IR
                     }
                     scopex ~= o;                // push entry onto scope chain
                     cc.scopex = scopex;
-                    code += 2;
+                    code += IRTypes[Opcode.Push].size;
                     break;
 
                 case Opcode.Pop:
@@ -1922,7 +1960,7 @@ struct IR
                     cc.scopex = scopex;
                     // If it's a Finally, we need to execute
                     // the finally block
-                    code += 1;
+                    code += IRTypes[Opcode.Pop].size;
 
                     if(o.isFinally())   // test could be eliminated with virtual func
                     {
@@ -1956,7 +1994,7 @@ struct IR
                     a.checkReference();
                     Value.copy(ret, a);
                     //writef("implicit return: %s\n", ret.toString());
-                    code += 2;
+                    code += IRTypes[Opcode.ImpRet].size;
                     goto Lnext;
 
                 case Opcode.Throw:
@@ -1976,7 +2014,7 @@ struct IR
                     ca = new Catch(offset, s);
                     scopex ~= ca;
                     cc.scopex = scopex;
-                    code += 3;
+                    code += IRTypes[Opcode.TryCatch].size;
                     break;
 
                 case Opcode.TryFinally:
@@ -1984,7 +2022,7 @@ struct IR
                     f = new Finally(code + (code + 1).offset);
                     scopex ~= f;
                     cc.scopex = scopex;
-                    code += 2;
+                    code += IRTypes[Opcode.TryFinally].size;
                     break;
 
                 case Opcode.Assert:
@@ -1999,12 +2037,12 @@ struct IR
                     else
                     {
                         RuntimeErrorx(ERR_ASSERT, (code + 1).index);
-                        code += 2;
+                        code += IRTypes[Opcode.Assert].size;
                         break;
                     }
                 }
                 case Opcode.End:
-                    code += 1;
+                    code += IRTypes[Opcode.End].size;
                     goto Linterrupt;
                 }
              }
@@ -2048,13 +2086,8 @@ struct IR
 
     static size_t size(Opcode opcode)
     {
-        size_t sz = 9999;
-
-        @safe @nogc nothrow static pure size_t sizeOf(T)(){ return T.sizeof; }
-        sz = IRTypeDispatcher!sizeOf(opcode) / IR.sizeof;
-
-        assert(sz <= 6);
-        return sz;
+        static size_t sizeOf(T)(){ return T.size; }
+        return IRTypeDispatcher!sizeOf(opcode);
     }
 
     debug static void printfunc(IR* code)

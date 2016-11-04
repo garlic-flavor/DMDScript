@@ -363,6 +363,7 @@ static assert (Instruction.sizeof == size_t.sizeof);
 private struct IR0(Opcode CODE)
 {
     enum Opcode code = CODE;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
 
@@ -376,6 +377,7 @@ private struct IR0(Opcode CODE)
 private struct IR1(Opcode CODE)
 {
     enum Opcode code = CODE;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     idx_t acc;  // the position of an acc buffer in local variable array.
@@ -400,6 +402,7 @@ private struct IR1(Opcode CODE)
 private struct IR2(Opcode CODE, T)
 {
     enum Opcode code = CODE;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     idx_t acc;
@@ -420,6 +423,7 @@ private struct IR2(Opcode CODE, T)
 private struct IR3(Opcode CODE, T, U)
 {
     enum Opcode code = CODE;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     idx_t acc;
@@ -450,7 +454,7 @@ private struct IR3(Opcode CODE, T, U)
 private struct IRcall4(Opcode CODE, T)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     idx_t acc;
@@ -474,7 +478,8 @@ private struct IRcall4(Opcode CODE, T)
 private struct IRcall5(Opcode CODE, T)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
+
 
     Instruction ir;
     idx_t acc;
@@ -515,7 +520,7 @@ private struct IRcall5(Opcode CODE, T)
 private struct IRget3(Opcode CODE, T)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     idx_t acc;
@@ -537,7 +542,7 @@ private struct IRget3(Opcode CODE, T)
 private struct IRScope3(Opcode CODE)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     idx_t acc;
@@ -568,7 +573,7 @@ private struct IRScope3(Opcode CODE)
 private struct IRnext3(Opcode CODE, T)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     sizediff_t offset;
@@ -591,7 +596,7 @@ private struct IRnext3(Opcode CODE, T)
 private struct IRnext4(Opcode CODE, T)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     sizediff_t offset;
@@ -619,7 +624,7 @@ private struct IRnext4(Opcode CODE, T)
 private struct IRjump1(Opcode CODE)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     sizediff_t offset;
@@ -637,7 +642,7 @@ private struct IRjump1(Opcode CODE)
 private struct IRjump2(Opcode CODE)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     sizediff_t offset;
@@ -657,7 +662,7 @@ private struct IRjump2(Opcode CODE)
 private struct IRjump3(Opcode CODE, T = idx_t)
 {
     enum Opcode code = CODE;
-    alias code this;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     sizediff_t offset;
@@ -680,6 +685,7 @@ private struct IRjump3(Opcode CODE, T = idx_t)
 private struct IRTryCatch
 {
     enum Opcode code = Opcode.TryCatch;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     sizediff_t offset;
@@ -705,6 +711,7 @@ private struct IRTryCatch
 private struct IRCheckRef
 {
     enum Opcode code = Opcode.CheckRef;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     Identifier* operand;
@@ -728,6 +735,7 @@ private struct IRCheckRef
 private struct IRAssert
 {
     enum Opcode code = Opcode.Assert;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
     Loc linnum;
