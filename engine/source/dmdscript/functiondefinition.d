@@ -149,7 +149,7 @@ class FunctionDefinition : TopStatement
                 {
                     LabelSymbol ls = cast(LabelSymbol)s;
                     if(!ls.statement)
-                        error(sc, errmsgtbl[ERR_UNDEFINED_LABEL],
+                        error(sc, Err.UndefinedLabel,
                               ls.toString(), toString());
                 }
             }
@@ -225,8 +225,8 @@ class FunctionDefinition : TopStatement
             topstatements = null;
             labtab = null;                      // maybe delete it?
         }
-        irs.gen0(0, IRret);
-        irs.gen0(0, IRend);
+        irs.gen_!(Opcode.Ret)(0);
+        irs.gen_!(Opcode.End)(0);
 
         //irs.validate();
 

@@ -120,11 +120,11 @@ Status* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject oth
 
     //writef("function.prototype.toString()\n");
     // othis must be a Function
-    if(!othis.isClass(TEXT_Function))
+    if(!othis.isClass(Text.Function))
     {
         ErrInfo errinfo;
         ret.putVundefined();
-        return Dobject.RuntimeError(&errinfo, ERR_TS_NOT_TRANSFERRABLE);
+        return Dobject.RuntimeError(&errinfo, Err.TsNotTransferrable);
     }
     else
     {
@@ -185,7 +185,7 @@ Status* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
             Ltypeerror:
             ret.putVundefined();
             ErrInfo errinfo;
-            return Dobject.RuntimeError(&errinfo, ERR_ARRAY_ARGS);
+            return Dobject.RuntimeError(&errinfo, Err.ArrayArgs);
         }
         Dobject a;
 
@@ -200,7 +200,7 @@ Status* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
         Value[] alist;
         Value* x;
 
-        x = a.Get(TEXT_length);
+        x = a.Get(Text.length);
         len = x ? x.toUint32() : 0;
 
         Value[] p1;
@@ -264,15 +264,15 @@ class DfunctionPrototype : Dfunction
 
         uint attributes = DontEnum;
 
-        classname = TEXT_Function;
+        classname = Text.Function;
         name = "prototype";
-        Put(TEXT_constructor, Dfunction_constructor, attributes);
+        Put(Text.constructor, Dfunction_constructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
-            { TEXT_toString, &Dfunction_prototype_toString, 0 },
-            { TEXT_apply, &Dfunction_prototype_apply, 2 },
-            { TEXT_call, &Dfunction_prototype_call, 1 },
+            { Text.toString, &Dfunction_prototype_toString, 0 },
+            { Text.apply, &Dfunction_prototype_apply, 2 },
+            { Text.call, &Dfunction_prototype_call, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, attributes);
@@ -302,15 +302,15 @@ class Dfunction : Dobject
   this(d_uint32 length, Dobject prototype)
   {
       super(prototype);
-      classname = TEXT_Function;
-      name = TEXT_Function;
-      Put(TEXT_length, length, DontDelete | DontEnum | ReadOnly);
-      Put(TEXT_arity, length, DontDelete | DontEnum | ReadOnly);
+      classname = Text.Function;
+      name = Text.Function;
+      Put(Text.length, length, DontDelete | DontEnum | ReadOnly);
+      Put(Text.arity, length, DontDelete | DontEnum | ReadOnly);
   }
 
   override immutable(char)[] getTypeof()
   {     // ECMA 11.4.3
-      return TEXT_function;
+      return Text._function;
   }
 
   override string toString()
@@ -334,7 +334,7 @@ class Dfunction : Dobject
       if(v.isPrimitive())
           goto Lfalse;
       V = v.toObject();
-      w = Get(TEXT_prototype);
+      w = Get(Text.prototype);
       if(w.isPrimitive())
       {
           ErrInfo errinfo;
@@ -368,7 +368,7 @@ class Dfunction : Dobject
       if(!v.isPrimitive())
       {
           o = v.toObject();
-          if(o.isClass(TEXT_Function))
+          if(o.isClass(Text.Function))
               r = cast(Dfunction)o;
       }
       return r;
@@ -390,7 +390,7 @@ class Dfunction : Dobject
       Dfunction_constructor = new DfunctionConstructor();
       Dfunction_prototype = new DfunctionPrototype();
 
-      Dfunction_constructor.Put(TEXT_prototype, Dfunction_prototype, DontEnum | DontDelete | ReadOnly);
+      Dfunction_constructor.Put(Text.prototype, Dfunction_prototype, DontEnum | DontDelete | ReadOnly);
 
       Dfunction_constructor.internal_prototype = Dfunction_prototype;
       Dfunction_constructor.proptable.previous = Dfunction_prototype.proptable;

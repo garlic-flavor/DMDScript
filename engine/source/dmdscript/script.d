@@ -250,9 +250,9 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
         }
     }
 
-    size_t inflen = TEXT_Infinity.length;
+    size_t inflen = (cast(string)(Text.Infinity)).length;
     if(len - i >= inflen &&
-       str[i .. i + inflen] == TEXT_Infinity)
+       str[i .. i + inflen] == Text.Infinity)
     {
         number = sign ? -d_number.infinity : d_number.infinity;
         endidx = eoff + i + inflen;

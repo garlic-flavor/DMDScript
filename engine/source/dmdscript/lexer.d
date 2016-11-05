@@ -42,103 +42,81 @@ import dmdscript.errmsgs;
         ?	&&	||
  */
 
-alias int TOK;
-
-enum
+enum Tok : int
 {
-    TOKreserved,
+    reserved,
 
     // Other
-    TOKlparen, TOKrparen,
-    TOKlbracket, TOKrbracket,
-    TOKlbrace, TOKrbrace,
-    TOKcolon, TOKneg,
-    TOKpos,
-    TOKsemicolon, TOKeof,
-    TOKarray, TOKcall,
-    TOKarraylit, TOKobjectlit,
-    TOKcomma, TOKassert,
+    Lparen, Rparen,
+    Lbracket, Rbracket,
+    Lbrace, Rbrace,
+    Colon, Neg,
+    Pos,
+    Semicolon, Eof,
+    Array, Call,
+    Arraylit, Objectlit,
+    Comma, Assert,
 
     // Operators
-    TOKless, TOKgreater,
-    TOKlessequal, TOKgreaterequal,
-    TOKequal, TOKnotequal,
-    TOKidentity, TOKnonidentity,
-    TOKshiftleft, TOKshiftright,
-    TOKshiftleftass, TOKshiftrightass,
-    TOKushiftright, TOKushiftrightass,
-    TOKplus, TOKminus, TOKplusass, TOKminusass,
-    TOKmultiply, TOKdivide, TOKpercent,
-    TOKmultiplyass, TOKdivideass, TOKpercentass,
-    TOKand, TOKor, TOKxor,
-    TOKandass, TOKorass, TOKxorass,
-    TOKassign, TOKnot, TOKtilde,
-    TOKplusplus, TOKminusminus, TOKdot,
-    TOKquestion, TOKandand, TOKoror,
+    Less, Greater,
+    Lessequal, Greaterequal,
+    Equal, Notequal,
+    Identity, Nonidentity,
+    Shiftleft, Shiftright,
+    Shiftleftass, Shiftrightass,
+    Ushiftright, Ushiftrightass,
+    Plus, Minus, Plusass, Minusass,
+    Multiply, Divide, Percent,
+    Multiplyass, Divideass, Percentass,
+    And, Or, Xor,
+    Andass, Orass, Xorass,
+    Assign, Not, Tilde,
+    Plusplus, Minusminus, Dot,
+    Question, Andand, Oror,
 
     // Leaf operators
-    TOKnumber, TOKidentifier, TOKstring,
-    TOKregexp, TOKreal,
+    Number, Identifier, String,
+    Regexp, Real,
 
     // Keywords
-    TOKbreak, TOKcase, TOKcontinue,
-    TOKdefault, TOKdelete, TOKdo,
-    TOKelse, TOKexport, TOKfalse,
-    TOKfor, TOKfunction, TOKif,
-    TOKimport, TOKin, TOKnew,
-    TOKnull, TOKreturn, 
-	TOKswitch, TOKthis, TOKtrue, 
-	TOKtypeof, TOKvar, TOKvoid, 
-	TOKwhile, TOKwith,
+    Break, Case, Continue,
+    Default, Delete, Do,
+    Else, Export, False,
+    For, Function, If,
+    Import, In, New,
+    Null, Return,
+    Switch, This, True,
+    Typeof, Var, Void,
+    While, With,
 
     // Reserved for ECMA extensions
-    TOKcatch, TOKclass,
-    TOKconst, TOKdebugger,
-    TOKenum, TOKextends,
-    TOKfinally, TOKsuper,
-    TOKthrow, TOKtry,
+    Catch, Class,
+    Const, Debugger,
+    Enum, Extends,
+    Finally, Super,
+    Throw, Try,
 
     // Java keywords reserved for unknown reasons
-    TOKabstract, TOKboolean,
-    TOKbyte, TOKchar,
-    TOKdouble, TOKfinal,
-    TOKfloat, TOKgoto,
-    TOKimplements, TOKinstanceof,
-    TOKint, TOKinterface,
-    TOKlong, TOKnative,
-    TOKpackage, TOKprivate,
-    TOKprotected, TOKpublic,
-    TOKshort, TOKstatic,
-    TOKsynchronized,
-    TOKtransient,
-
-    TOKmax
-};
-
-int isoctal(dchar c)
-{
-    return('0' <= c && c <= '7');
-}
-int isasciidigit(dchar c)
-{
-    return('0' <= c && c <= '9');
-}
-int isasciilower(dchar c)
-{
-    return('a' <= c && c <= 'z');
-}
-int isasciiupper(dchar c)
-{
-    return('A' <= c && c <= 'Z');
-}
-int ishex(dchar c)
-{
-    return
-        ('0' <= c && c <= '9') ||
-        ('a' <= c && c <= 'f') ||
-        ('A' <= c && c <= 'F');
+    Abstract, Boolean,
+    Byte, Char,
+    Double, Final,
+    Float, Goto,
+    Implements, Instanceof,
+    Int, Interface,
+    Long, Native,
+    Package, Private,
+    Protected, Public,
+    Short, Static,
+    Synchronized,
+    Transient,
 }
 
+import std.ascii :
+    isoctal = isOctalDigit,
+    isasciidigit = isDigit,
+    isasciilower = isLower,
+    isasciiupper = isUpper,
+    ishex = isHexDigit;
 
 /******************************************************/
 
@@ -147,7 +125,7 @@ struct Token
     Token* next;
     immutable(tchar) *ptr;       // pointer to first character of this token within buffer
     uint   linnum;
-    TOK    value;
+    Tok    value;
     immutable(tchar) *sawLineTerminator; // where we saw the last line terminator
     union
     {
@@ -157,7 +135,7 @@ struct Token
         Identifier* ident;
     };
 
-    static d_string[TOKmax] tochars;
+    static d_string[Tok.max+1] tochars;
 
     void print()
     {
@@ -173,11 +151,11 @@ struct Token
 
         switch(value)
         {
-        case TOKnumber:
+        case Tok.Number:
             p = format("%d", intvalue);
             break;
 
-        case TOKreal:
+        case Tok.Real:
             long l = cast(long)realvalue;
             if(l == realvalue)
                 p = format("%s", l);
@@ -185,12 +163,12 @@ struct Token
                 p = format("%s", realvalue);
             break;
 
-        case TOKstring:
-        case TOKregexp:
+        case Tok.String:
+        case Tok.Regexp:
             p = str;
             break;
 
-        case TOKidentifier:
+        case Tok.Identifier:
             p = ident.toString();
             break;
 
@@ -201,7 +179,7 @@ struct Token
         return p;
     }
 
-    static d_string toString(TOK value)
+    static d_string toString(Tok value)
     {
         import std.format : format;
         d_string p;
@@ -292,7 +270,7 @@ class Lexer
         return decode(base, idx);
     }
 
-    immutable(tchar) * inc(immutable(tchar) * p)
+    immutable(tchar)* inc(immutable(tchar) * p)
     {
         import std.utf : decode;
         size_t idx = p - base.ptr;
@@ -300,23 +278,16 @@ class Lexer
         return base.ptr + idx;
     }
 
-    void error(int msgnum)
+    void error(ARGS...)(string fmt, ARGS args)
     {
-        error(errmsgtbl[msgnum]);
-    }
-
-    void error(...)
-    {
-        import std.format : format, doFormat;
+        import std.format : format;
         import std.traits : Unqual, ForeachType;
-        import std.exception : assumeUnique;
-        import std.utf : encode;
 
         uint linnum = 1;
-        immutable(tchar) * s;
-        immutable(tchar) * slinestart;
-        immutable(tchar) * slineend;
-        Unqual!(ForeachType!d_string)[] buf;
+        immutable(tchar)* s;
+        immutable(tchar)* slinestart;
+        immutable(tchar)* slineend;
+        d_string buf;
 
         //FuncLog funclog(L"Lexer.error()");
         //writefln("TEXT START ------------\n%ls\nTEXT END ------------------", base);
@@ -349,20 +320,14 @@ class Lexer
         }
         slineend = s;
 
-        buf = format("%s(%d) : Error: ", sourcename, linnum).dup;
-
-        void putc(dchar c)
-        {
-            encode(buf, c);
-        }
-
-        doFormat(&putc, _arguments, _argptr);
+        buf = format("%s(%d) : Error: ", sourcename, linnum) ~
+            format(fmt, args);
 
         if(!errinfo.message)
         {
             uint len;
 
-            errinfo.message = buf.assumeUnique;
+            errinfo.message = buf;
             errinfo.linnum = linnum;
             errinfo.charpos = p - slinestart;
 
@@ -432,7 +397,7 @@ class Lexer
     }
 
 
-    TOK nextToken()
+    Tok nextToken()
     {
         Token* t;
 
@@ -476,7 +441,7 @@ class Lexer
         t = allocToken();
         *t = token;
         token.next = t;
-        token.value = TOKsemicolon;
+        token.value = Tok.Semicolon;
         token.ptr = loc;
         token.sawLineTerminator = null;
     }
@@ -525,7 +490,7 @@ class Lexer
             {
             case 0:
             case 0x1A:
-                t.value = TOKeof;               // end of file
+                t.value = Tok.Eof;               // end of file
                 return;
 
             case ' ':
@@ -547,7 +512,7 @@ class Lexer
             case '"':
             case '\'':
                 t.str = chompString(*p);
-                t.value = TOKstring;
+                t.value = Tok.String;
                 return;
 
             case '0':       case '1':   case '2':   case '3':   case '4':
@@ -649,7 +614,7 @@ class Lexer
                   }
                   else
                       t.ident = Identifier.build(id);
-                  t.value = TOKidentifier;
+                  t.value = Tok.Identifier;
                   return; }
 
             case '/':
@@ -658,7 +623,7 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKdivideass;
+                    t.value = Tok.Divideass;
                     return;
                 }
                 else if(c == '*')
@@ -689,8 +654,8 @@ class Lexer
 
                         case 0:
                         case 0x1A:
-                            error(ERR_BAD_C_COMMENT);
-                            t.value = TOKeof;
+                            error(Err.BadCComment);
+                            t.value = Tok.Eof;
                             return;
 
                         default:
@@ -717,7 +682,7 @@ class Lexer
                             t.sawLineTerminator = p;
                             break;
                         case 3: case 4:
-                            t.value = TOKeof;
+                            t.value = Tok.Eof;
                             return;
                         default:
                             assert(0);
@@ -749,9 +714,9 @@ class Lexer
                     continue;*/
                 }
                 else if((t.str = regexp()) != null)
-                    t.value = TOKregexp;
+                    t.value = Tok.Regexp;
                 else
-                    t.value = TOKdivide;
+                    t.value = Tok.Divide;
                 return;
 
             case '.':
@@ -762,7 +727,7 @@ class Lexer
                     t.value = number(t);
                 else
                 {
-                    t.value = TOKdot;
+                    t.value = Tok.Dot;
                     p = q;
                 }
                 return;
@@ -773,15 +738,15 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKandass;
+                    t.value = Tok.Andass;
                 }
                 else if(c == '&')
                 {
                     p++;
-                    t.value = TOKandand;
+                    t.value = Tok.Andand;
                 }
                 else
-                    t.value = TOKand;
+                    t.value = Tok.And;
                 return;
 
             case '|':
@@ -790,15 +755,15 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKorass;
+                    t.value = Tok.Orass;
                 }
                 else if(c == '|')
                 {
                     p++;
-                    t.value = TOKoror;
+                    t.value = Tok.Oror;
                 }
                 else
-                    t.value = TOKor;
+                    t.value = Tok.Or;
                 return;
 
             case '-':
@@ -807,7 +772,7 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKminusass;
+                    t.value = Tok.Minusass;
                 }
                 else if(c == '-')
                 {
@@ -829,7 +794,7 @@ class Lexer
                             {
                             case 0:
                             case 0x1A:
-                                t.value = TOKeof;
+                                t.value = Tok.Eof;
                                 p = q;
                                 return;
 
@@ -847,10 +812,10 @@ class Lexer
                             }
                         }
                     }
-                    t.value = TOKminusminus;
+                    t.value = Tok.Minusminus;
                 }
                 else
-                    t.value = TOKminus;
+                    t.value = Tok.Minus;
                 return;
 
             case '+':
@@ -859,15 +824,15 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKplusass;
+                    t.value = Tok.Plusass;
                 }
                 else if(c == '+')
                 {
                     p++;
-                    t.value = TOKplusplus;
+                    t.value = Tok.Plusplus;
                 }
                 else
-                    t.value = TOKplus;
+                    t.value = Tok.Plus;
                 return;
 
             case '<':
@@ -876,7 +841,7 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKlessequal;
+                    t.value = Tok.Lessequal;
                 }
                 else if(c == '<')
                 {
@@ -885,10 +850,10 @@ class Lexer
                     if(c == '=')
                     {
                         p++;
-                        t.value = TOKshiftleftass;
+                        t.value = Tok.Shiftleftass;
                     }
                     else
-                        t.value = TOKshiftleft;
+                        t.value = Tok.Shiftleft;
                 }
                 else if(c == '!' && p[1] == '-' && p[2] == '-')
                 {       // Special comment to end of line
@@ -907,8 +872,8 @@ class Lexer
 
                         case 0:
                         case 0x1A:                              // end of file
-                            error(ERR_BAD_HTML_COMMENT);
-                            t.value = TOKeof;
+                            error(Err.BadHTMLComment);
+                            t.value = Tok.Eof;
                             return;
 
                         default:
@@ -920,7 +885,7 @@ class Lexer
                     continue;
                 }
                 else
-                    t.value = TOKless;
+                    t.value = Tok.Less;
                 return;
 
             case '>':
@@ -929,7 +894,7 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKgreaterequal;
+                    t.value = Tok.Greaterequal;
                 }
                 else if(c == '>')
                 {
@@ -938,7 +903,7 @@ class Lexer
                     if(c == '=')
                     {
                         p++;
-                        t.value = TOKshiftrightass;
+                        t.value = Tok.Shiftrightass;
                     }
                     else if(c == '>')
                     {
@@ -947,29 +912,29 @@ class Lexer
                         if(c == '=')
                         {
                             p++;
-                            t.value = TOKushiftrightass;
+                            t.value = Tok.Ushiftrightass;
                         }
                         else
-                            t.value = TOKushiftright;
+                            t.value = Tok.Ushiftright;
                     }
                     else
-                        t.value = TOKshiftright;
+                        t.value = Tok.Shiftright;
                 }
                 else
-                    t.value = TOKgreater;
+                    t.value = Tok.Greater;
                 return;
 
-            case '(': p++; t.value = TOKlparen;    return;
-            case ')': p++; t.value = TOKrparen;    return;
-            case '[': p++; t.value = TOKlbracket;  return;
-            case ']': p++; t.value = TOKrbracket;  return;
-            case '{': p++; t.value = TOKlbrace;    return;
-            case '}': p++; t.value = TOKrbrace;    return;
-            case '~': p++; t.value = TOKtilde;     return;
-            case '?': p++; t.value = TOKquestion;  return;
-            case ',': p++; t.value = TOKcomma;     return;
-            case ';': p++; t.value = TOKsemicolon; return;
-            case ':': p++; t.value = TOKcolon;     return;
+            case '(': p++; t.value = Tok.Lparen;    return;
+            case ')': p++; t.value = Tok.Rparen;    return;
+            case '[': p++; t.value = Tok.Lbracket;  return;
+            case ']': p++; t.value = Tok.Rbracket;  return;
+            case '{': p++; t.value = Tok.Lbrace;    return;
+            case '}': p++; t.value = Tok.Rbrace;    return;
+            case '~': p++; t.value = Tok.Tilde;     return;
+            case '?': p++; t.value = Tok.Question;  return;
+            case ',': p++; t.value = Tok.Comma;     return;
+            case ';': p++; t.value = Tok.Semicolon; return;
+            case ':': p++; t.value = Tok.Colon;     return;
 
             case '*':
                 p++;
@@ -977,10 +942,10 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKmultiplyass;
+                    t.value = Tok.Multiplyass;
                 }
                 else
-                    t.value = TOKmultiply;
+                    t.value = Tok.Multiply;
                 return;
 
             case '%':
@@ -989,10 +954,10 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKpercentass;
+                    t.value = Tok.Percentass;
                 }
                 else
-                    t.value = TOKpercent;
+                    t.value = Tok.Percent;
                 return;
 
             case '^':
@@ -1001,10 +966,10 @@ class Lexer
                 if(c == '=')
                 {
                     p++;
-                    t.value = TOKxorass;
+                    t.value = Tok.Xorass;
                 }
                 else
-                    t.value = TOKxor;
+                    t.value = Tok.Xor;
                 return;
 
             case '=':
@@ -1017,13 +982,13 @@ class Lexer
                     if(c == '=')
                     {
                         p++;
-                        t.value = TOKidentity;
+                        t.value = Tok.Identity;
                     }
                     else
-                        t.value = TOKequal;
+                        t.value = Tok.Equal;
                 }
                 else
-                    t.value = TOKassign;
+                    t.value = Tok.Assign;
                 return;
 
             case '!':
@@ -1036,13 +1001,13 @@ class Lexer
                     if(c == '=')
                     {
                         p++;
-                        t.value = TOKnonidentity;
+                        t.value = Tok.Nonidentity;
                     }
                     else
-                        t.value = TOKnotequal;
+                        t.value = Tok.Notequal;
                 }
                 else
-                    t.value = TOKnot;
+                    t.value = Tok.Not;
                 return;
 
             case '\\':
@@ -1064,9 +1029,9 @@ class Lexer
                 else
                 {
                     if(isPrintable(d))
-                        error(errmsgtbl[ERR_BAD_CHAR_C], d);
+                        error(Err.BadCharC, d);
                     else
-                        error(errmsgtbl[ERR_BAD_CHAR_X], d);
+                        error(Err.BadCharX, d);
                 }
                 continue;
             }
@@ -1146,7 +1111,7 @@ class Lexer
                     p++;
                 }
                 if(n == 1)
-                    error(ERR_BAD_HEX_SEQUENCE);
+                    error(Err.BadHexSequence);
                 c = v;
             }
             else
@@ -1227,7 +1192,7 @@ class Lexer
 
             case 0:
             case 0x1A:
-                error(ERR_UNTERMINATED_STRING);
+                error(Err.UnterminatedString);
                 return null;
 
             default:
@@ -1354,7 +1319,7 @@ class Lexer
             c = *p;
             if(!ishex(c))
             {
-                error(ERR_BAD_U_SEQUENCE);
+                error(Err.BadUSequence);
                 break;
             }
             p++;
@@ -1374,7 +1339,7 @@ class Lexer
      * Read a number.
      */
 
-    TOK number(Token *t)
+    Tok number(Token *t)
     {
         import std.ascii : isDigit;
         import std.string : toStringz;
@@ -1442,13 +1407,13 @@ class Lexer
                             realvalue += v;
                         }
                         t.realvalue = realvalue;
-                        return TOKreal;
+                        return Tok.Real;
                     }
                     intvalue *= base;
                     intvalue += v;
                 }
                 t.realvalue = cast(double)intvalue;
-                return TOKreal;
+                return Tok.Real;
 
             case 'x':
             case 'X':
@@ -1487,16 +1452,16 @@ class Lexer
                 // convert double
                 realvalue = strtod(toStringz(start[0 .. p - start]), null);
                 t.realvalue = realvalue;
-                return TOKreal;
+                return Tok.Real;
             }
         }
 
         Lerr:
-        error(ERR_UNRECOGNIZED_N_LITERAL);
-        return TOKeof;
+        error(Err.UnrecognizedNLiteral);
+        return Tok.Eof;
     }
 
-    static TOK isKeyword(const (tchar)[] s)
+    static Tok isKeyword(const (tchar)[] s)
     {
         if(s[0] >= 'a' && s[0] <= 'w')
             switch(s.length)
@@ -1505,12 +1470,12 @@ class Lexer
                 if(s[0] == 'i')
                 {
                     if(s[1] == 'f')
-                        return TOKif;
+                        return Tok.If;
                     if(s[1] == 'n')
-                        return TOKin;
+                        return Tok.In;
                 }
                 else if(s[0] == 'd' && s[1] == 'o')
-                    return TOKdo;
+                    return Tok.Do;
                 break;
 
             case 3:
@@ -1518,23 +1483,23 @@ class Lexer
                 {
                 case 'f':
                     if(s[1] == 'o' && s[2] == 'r')
-                        return TOKfor;
+                        return Tok.For;
                     break;
                 case 'i':
                     if(s[1] == 'n' && s[2] == 't')
-                        return TOKint;
+                        return Tok.Int;
                     break;
                 case 'n':
                     if(s[1] == 'e' && s[2] == 'w')
-                        return TOKnew;
+                        return Tok.New;
                     break;
                 case 't':
                     if(s[1] == 'r' && s[2] == 'y')
-                        return TOKtry;
+                        return Tok.Try;
                     break;
                 case 'v':
                     if(s[1] == 'a' && s[2] == 'r')
-                        return TOKvar;
+                        return Tok.Var;
                     break;
                 default:
                     break;
@@ -1546,45 +1511,45 @@ class Lexer
                 {
                 case 'b':
                     if(s[1] == 'y' && s[2] == 't' && s[3] == 'e')
-                        return TOKbyte;
+                        return Tok.Byte;
                     break;
                 case 'c':
                     if(s[1] == 'a' && s[2] == 's' && s[3] == 'e')
-                        return TOKcase;
+                        return Tok.Case;
                     if(s[1] == 'h' && s[2] == 'a' && s[3] == 'r')
-                        return TOKchar;
+                        return Tok.Char;
                     break;
                 case 'e':
                     if(s[1] == 'l' && s[2] == 's' && s[3] == 'e')
-                        return TOKelse;
+                        return Tok.Else;
                     if(s[1] == 'n' && s[2] == 'u' && s[3] == 'm')
-                        return TOKenum;
+                        return Tok.Enum;
                     break;
                 case 'g':
                     if(s[1] == 'o' && s[2] == 't' && s[3] == 'o')
-                        return TOKgoto;
+                        return Tok.Goto;
                     break;
                 case 'l':
                     if(s[1] == 'o' && s[2] == 'n' && s[3] == 'g')
-                        return TOKlong;
+                        return Tok.Long;
                     break;
                 case 'n':
                     if(s[1] == 'u' && s[2] == 'l' && s[3] == 'l')
-                        return TOKnull;
+                        return Tok.Null;
                     break;
                 case 't':
                     if(s[1] == 'h' && s[2] == 'i' && s[3] == 's')
-                        return TOKthis;
+                        return Tok.This;
                     if(s[1] == 'r' && s[2] == 'u' && s[3] == 'e')
-                        return TOKtrue;
+                        return Tok.True;
                     break;
                 case 'w':
                     if(s[1] == 'i' && s[2] == 't' && s[3] == 'h')
-                        return TOKwith;
+                        return Tok.With;
                     break;
                 case 'v':
                     if(s[1] == 'o' && s[2] == 'i' && s[3] == 'd')
-                        return TOKvoid;
+                        return Tok.Void;
                     break;
                 default:
                     break;
@@ -1594,17 +1559,17 @@ class Lexer
             case 5:
                 switch(s)
                 {
-                case "break":               return TOKbreak;
-                case "catch":               return TOKcatch;
-                case "class":               return TOKclass;
-                case "const":               return TOKconst;
-                case "false":               return TOKfalse;
-                case "final":               return TOKfinal;
-                case "float":               return TOKfloat;
-                case "short":               return TOKshort;
-                case "super":               return TOKsuper;
-                case "throw":               return TOKthrow;
-                case "while":               return TOKwhile;
+                case "break":               return Tok.Break;
+                case "catch":               return Tok.Catch;
+                case "class":               return Tok.Class;
+                case "const":               return Tok.Const;
+                case "false":               return Tok.False;
+                case "final":               return Tok.Final;
+                case "float":               return Tok.Float;
+                case "short":               return Tok.Short;
+                case "super":               return Tok.Super;
+                case "throw":               return Tok.Throw;
+                case "while":               return Tok.While;
                 default:
                     break;
                 }
@@ -1613,16 +1578,16 @@ class Lexer
             case 6:
                 switch(s)
                 {
-                case "delete":              return TOKdelete;
-                case "double":              return TOKdouble;
-                case "export":              return TOKexport;
-                case "import":              return TOKimport;
-                case "native":              return TOKnative;
-                case "public":              return TOKpublic;
-                case "return":              return TOKreturn;
-                case "static":              return TOKstatic;
-                case "switch":              return TOKswitch;
-                case "typeof":              return TOKtypeof;
+                case "delete":              return Tok.Delete;
+                case "double":              return Tok.Double;
+                case "export":              return Tok.Export;
+                case "import":              return Tok.Import;
+                case "native":              return Tok.Native;
+                case "public":              return Tok.Public;
+                case "return":              return Tok.Return;
+                case "static":              return Tok.Static;
+                case "switch":              return Tok.Switch;
+                case "typeof":              return Tok.Typeof;
                 default:
                     break;
                 }
@@ -1631,12 +1596,12 @@ class Lexer
             case 7:
                 switch(s)
                 {
-                case "boolean":             return TOKboolean;
-                case "default":             return TOKdefault;
-                case "extends":             return TOKextends;
-                case "finally":             return TOKfinally;
-                case "package":             return TOKpackage;
-                case "private":             return TOKprivate;
+                case "boolean":             return Tok.Boolean;
+                case "default":             return Tok.Default;
+                case "extends":             return Tok.Extends;
+                case "finally":             return Tok.Finally;
+                case "package":             return Tok.Package;
+                case "private":             return Tok.Private;
                 default:
                     break;
                 }
@@ -1645,10 +1610,10 @@ class Lexer
             case 8:
                 switch(s)
                 {
-                case "abstract":    return TOKabstract;
-                case "continue":    return TOKcontinue;
-                case "debugger":    return TOKdebugger;
-                case "function":    return TOKfunction;
+                case "abstract":    return Tok.Abstract;
+                case "continue":    return Tok.Continue;
+                case "debugger":    return Tok.Debugger;
+                case "function":    return Tok.Function;
                 default:
                     break;
                 }
@@ -1657,9 +1622,9 @@ class Lexer
             case 9:
                 switch(s)
                 {
-                case "interface":   return TOKinterface;
-                case "protected":   return TOKprotected;
-                case "transient":   return TOKtransient;
+                case "interface":   return Tok.Interface;
+                case "protected":   return Tok.Protected;
+                case "transient":   return Tok.Transient;
                 default:
                     break;
                 }
@@ -1668,8 +1633,8 @@ class Lexer
             case 10:
                 switch(s)
                 {
-                case "implements":  return TOKimplements;
-                case "instanceof":  return TOKinstanceof;
+                case "implements":  return Tok.Implements;
+                case "instanceof":  return Tok.Instanceof;
                 default:
                     break;
                 }
@@ -1677,13 +1642,13 @@ class Lexer
 
             case 12:
                 if(s == "synchronized")
-                    return TOKsynchronized;
+                    return Tok.Synchronized;
                 break;
 
             default:
                 break;
             }
-        return TOKreserved;             // not a keyword
+        return Tok.reserved;             // not a keyword
     }
 }
 
@@ -1694,78 +1659,78 @@ class Lexer
 struct Keyword
 {
     string name;
-    TOK    value;
+    Tok    value;
 }
 
 static Keyword[] keywords =
 [
 //    {	"",		TOK		},
 
-    { "break", TOKbreak },
-    { "case", TOKcase },
-    { "continue", TOKcontinue },
-    { "default", TOKdefault },
-    { "delete", TOKdelete },
-    { "do", TOKdo },
-    { "else", TOKelse },
-    { "export", TOKexport },
-    { "false", TOKfalse },
-    { "for", TOKfor },
-    { "function", TOKfunction },
-    { "if", TOKif },
-    { "import", TOKimport },
-    { "in", TOKin },
-    { "new", TOKnew },
-    { "null", TOKnull },
-    { "return", TOKreturn },
-    { "switch", TOKswitch },
-    { "this", TOKthis },
-    { "true", TOKtrue },
-    { "typeof", TOKtypeof },
-    { "var", TOKvar },
-    { "void", TOKvoid },
-    { "while", TOKwhile },
-    { "with", TOKwith },
+    { "break", Tok.Break },
+    { "case", Tok.Case },
+    { "continue", Tok.Continue },
+    { "default", Tok.Default },
+    { "delete", Tok.Delete },
+    { "do", Tok.Do },
+    { "else", Tok.Else },
+    { "export", Tok.Export },
+    { "false", Tok.False },
+    { "for", Tok.For },
+    { "function", Tok.Function },
+    { "if", Tok.If },
+    { "import", Tok.Import },
+    { "in", Tok.In },
+    { "new", Tok.New },
+    { "null", Tok.Null },
+    { "return", Tok.Return },
+    { "switch", Tok.Switch },
+    { "this", Tok.This },
+    { "true", Tok.True },
+    { "typeof", Tok.Typeof },
+    { "var", Tok.Var },
+    { "void", Tok.Void },
+    { "while", Tok.While },
+    { "with", Tok.With },
 
-    { "catch", TOKcatch },
-    { "class", TOKclass },
-    { "const", TOKconst },
-    { "debugger", TOKdebugger },
-    { "enum", TOKenum },
-    { "extends", TOKextends },
-    { "finally", TOKfinally },
-    { "super", TOKsuper },
-    { "throw", TOKthrow },
-    { "try", TOKtry },
+    { "catch", Tok.Catch },
+    { "class", Tok.Class },
+    { "const", Tok.Const },
+    { "debugger", Tok.Debugger },
+    { "enum", Tok.Enum },
+    { "extends", Tok.Extends },
+    { "finally", Tok.Finally },
+    { "super", Tok.Super },
+    { "throw", Tok.Throw },
+    { "try", Tok.Try },
 
-    { "abstract", TOKabstract },
-    { "boolean", TOKboolean },
-    { "byte", TOKbyte },
-    { "char", TOKchar },
-    { "double", TOKdouble },
-    { "final", TOKfinal },
-    { "float", TOKfloat },
-    { "goto", TOKgoto },
-    { "implements", TOKimplements },
-    { "instanceof", TOKinstanceof },
-    { "int", TOKint },
-    { "interface", TOKinterface },
-    { "long", TOKlong },
-    { "native", TOKnative },
-    { "package", TOKpackage },
-    { "private", TOKprivate },
-    { "protected", TOKprotected },
-    { "public", TOKpublic },
-    { "short", TOKshort },
-    { "static", TOKstatic },
-    { "synchronized", TOKsynchronized },
-    { "transient", TOKtransient },
+    { "abstract", Tok.Abstract },
+    { "boolean", Tok.Boolean },
+    { "byte", Tok.Byte },
+    { "char", Tok.Char },
+    { "double", Tok.Double },
+    { "final", Tok.Final },
+    { "float", Tok.Float },
+    { "goto", Tok.Goto },
+    { "implements", Tok.Implements },
+    { "instanceof", Tok.Instanceof },
+    { "int", Tok.Int },
+    { "interface", Tok.Interface },
+    { "long", Tok.Long },
+    { "native", Tok.Native },
+    { "package", Tok.Package },
+    { "private", Tok.Private },
+    { "protected", Tok.Protected },
+    { "public", Tok.Public },
+    { "short", Tok.Short },
+    { "static", Tok.Static },
+    { "synchronized", Tok.Synchronized },
+    { "transient", Tok.Transient },
 ];
 
 void init()
 {
     uint u;
-    TOK v;
+    Tok v;
 
     for(u = 0; u < keywords.length; u++)
     {
@@ -1779,54 +1744,54 @@ void init()
         Token.tochars[v] = s;
     }
 
-    Token.tochars[TOKreserved] = "reserved";
-    Token.tochars[TOKeof] = "EOF";
-    Token.tochars[TOKlbrace] = "{";
-    Token.tochars[TOKrbrace] = "}";
-    Token.tochars[TOKlparen] = "(";
-    Token.tochars[TOKrparen] = "";
-    Token.tochars[TOKlbracket] = "[";
-    Token.tochars[TOKrbracket] = "]";
-    Token.tochars[TOKcolon] = ":";
-    Token.tochars[TOKsemicolon] = ";";
-    Token.tochars[TOKcomma] = ",";
-    Token.tochars[TOKor] = "|";
-    Token.tochars[TOKorass] = "|=";
-    Token.tochars[TOKxor] = "^";
-    Token.tochars[TOKxorass] = "^=";
-    Token.tochars[TOKassign] = "=";
-    Token.tochars[TOKless] = "<";
-    Token.tochars[TOKgreater] = ">";
-    Token.tochars[TOKlessequal] = "<=";
-    Token.tochars[TOKgreaterequal] = ">=";
-    Token.tochars[TOKequal] = "==";
-    Token.tochars[TOKnotequal] = "!=";
-    Token.tochars[TOKidentity] = "===";
-    Token.tochars[TOKnonidentity] = "!==";
-    Token.tochars[TOKshiftleft] = "<<";
-    Token.tochars[TOKshiftright] = ">>";
-    Token.tochars[TOKushiftright] = ">>>";
-    Token.tochars[TOKplus] = "+";
-    Token.tochars[TOKplusass] = "+=";
-    Token.tochars[TOKminus] = "-";
-    Token.tochars[TOKminusass] = "-=";
-    Token.tochars[TOKmultiply] = "*";
-    Token.tochars[TOKmultiplyass] = "*=";
-    Token.tochars[TOKdivide] = "/";
-    Token.tochars[TOKdivideass] = "/=";
-    Token.tochars[TOKpercent] = "%";
-    Token.tochars[TOKpercentass] = "%=";
-    Token.tochars[TOKand] = "&";
-    Token.tochars[TOKandass] = "&=";
-    Token.tochars[TOKdot] = ".";
-    Token.tochars[TOKquestion] = "?";
-    Token.tochars[TOKtilde] = "~";
-    Token.tochars[TOKnot] = "!";
-    Token.tochars[TOKandand] = "&&";
-    Token.tochars[TOKoror] = "||";
-    Token.tochars[TOKplusplus] = "++";
-    Token.tochars[TOKminusminus] = "--";
-    Token.tochars[TOKcall] = "CALL";
+    Token.tochars[Tok.reserved] = "reserved";
+    Token.tochars[Tok.Eof] = "EOF";
+    Token.tochars[Tok.Lbrace] = "{";
+    Token.tochars[Tok.Rbrace] = "}";
+    Token.tochars[Tok.Lparen] = "(";
+    Token.tochars[Tok.Rparen] = "";
+    Token.tochars[Tok.Lbracket] = "[";
+    Token.tochars[Tok.Rbracket] = "]";
+    Token.tochars[Tok.Colon] = ":";
+    Token.tochars[Tok.Semicolon] = ";";
+    Token.tochars[Tok.Comma] = ",";
+    Token.tochars[Tok.Or] = "|";
+    Token.tochars[Tok.Orass] = "|=";
+    Token.tochars[Tok.Xor] = "^";
+    Token.tochars[Tok.Xorass] = "^=";
+    Token.tochars[Tok.Assign] = "=";
+    Token.tochars[Tok.Less] = "<";
+    Token.tochars[Tok.Greater] = ">";
+    Token.tochars[Tok.Lessequal] = "<=";
+    Token.tochars[Tok.Greaterequal] = ">=";
+    Token.tochars[Tok.Equal] = "==";
+    Token.tochars[Tok.Notequal] = "!=";
+    Token.tochars[Tok.Identity] = "===";
+    Token.tochars[Tok.Nonidentity] = "!==";
+    Token.tochars[Tok.Shiftleft] = "<<";
+    Token.tochars[Tok.Shiftright] = ">>";
+    Token.tochars[Tok.Ushiftright] = ">>>";
+    Token.tochars[Tok.Plus] = "+";
+    Token.tochars[Tok.Plusass] = "+=";
+    Token.tochars[Tok.Minus] = "-";
+    Token.tochars[Tok.Minusass] = "-=";
+    Token.tochars[Tok.Multiply] = "*";
+    Token.tochars[Tok.Multiplyass] = "*=";
+    Token.tochars[Tok.Divide] = "/";
+    Token.tochars[Tok.Divideass] = "/=";
+    Token.tochars[Tok.Percent] = "%";
+    Token.tochars[Tok.Percentass] = "%=";
+    Token.tochars[Tok.And] = "&";
+    Token.tochars[Tok.Andass] = "&=";
+    Token.tochars[Tok.Dot] = ".";
+    Token.tochars[Tok.Question] = "?";
+    Token.tochars[Tok.Tilde] = "~";
+    Token.tochars[Tok.Not] = "!";
+    Token.tochars[Tok.Andand] = "&&";
+    Token.tochars[Tok.Oror] = "||";
+    Token.tochars[Tok.Plusplus] = "++";
+    Token.tochars[Tok.Minusminus] = "--";
+    Token.tochars[Tok.Call] = "CALL";
 
     Lexer.inited = true;
 }

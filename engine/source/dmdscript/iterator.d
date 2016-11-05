@@ -36,7 +36,7 @@ Dobject getPrototype(Dobject o)
         // use "prototype"
         Value* v;
 
-        v = o.Get(TEXT_prototype);
+        v = o.Get(Text.prototype);
         if(!v || v.isPrimitive())
             return null;
         o = v.toObject();

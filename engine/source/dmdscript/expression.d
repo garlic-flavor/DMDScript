@@ -45,9 +45,9 @@ class Expression
     uint signature = EXPRESSION_SIGNATURE;
 
     Loc loc;                    // file location
-    TOK op;
+    Tok op;
 
-    this(Loc loc, TOK op)
+    this(Loc loc, Tok op)
     {
         this.loc = loc;
         this.op = op;
@@ -57,7 +57,7 @@ class Expression
     invariant()
     {
         assert(signature == EXPRESSION_SIGNATURE);
-        assert(op != TOKreserved && op < TOKmax);
+        assert(op != Tok.reserved && op < Tok.max);
     }
 
     /**************************
@@ -145,7 +145,7 @@ class RealExpression : Expression
 
     this(Loc loc, real_t value)
     {
-        super(loc, TOKreal);
+        super(loc, Tok.Real);
         this.value = value;
     }
 
@@ -188,7 +188,7 @@ class IdentifierExpression : Expression
 
     this(Loc loc, Identifier*  ident)
     {
-        super(loc, TOKidentifier);
+        super(loc, Tok.Identifier);
         this.ident = ident;
     }
 
@@ -208,7 +208,7 @@ class IdentifierExpression : Expression
 
     override bool match(Expression e)
     {
-        if(e.op != TOKidentifier)
+        if(e.op != Tok.Identifier)
             return 0;
 
         IdentifierExpression ie = cast(IdentifierExpression)(e);
@@ -243,12 +243,12 @@ class ThisExpression : Expression
 {
     this(Loc loc)
     {
-        super(loc, TOKthis);
+        super(loc, Tok.This);
     }
 
     override d_string toString()
     {
-        return TEXT_this;
+        return Text._this;
     }
 
     override Expression semantic(Scope* sc)
@@ -269,12 +269,12 @@ class NullExpression : Expression
 {
     this(Loc loc)
     {
-        super(loc, TOKnull);
+        super(loc, Tok.Null);
     }
 
     override d_string toString()
     {
-        return TEXT_null;
+        return Text._null;
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -293,7 +293,7 @@ class StringExpression : Expression
     this(Loc loc, d_string str)
     {
         //writefln("StringExpression('%s')", string);
-        super(loc, TOKstring);
+        super(loc, Tok.String);
         this.str = str;
     }
 
@@ -341,7 +341,7 @@ class RegExpLiteral : Expression
     this(Loc loc, d_string str)
     {
         //writefln("RegExpLiteral('%s')", string);
-        super(loc, TOKregexp);
+        super(loc, Tok.Regexp);
         this.str = str;
     }
 
@@ -379,7 +379,7 @@ class RegExpLiteral : Expression
         // Generate new Regexp(pattern [, attribute])
 
         b = irs.alloc(1);
-        Identifier* re = Identifier.build(TEXT_RegExp);
+        Identifier* re = Identifier.build(Text.RegExp);
         irs.gen_!(Opcode.GetScope)(loc, b, re);
         argv = irs.alloc(argc);
         irs.gen_!(Opcode.String)(loc, argv, Identifier.build(pattern));
@@ -399,7 +399,7 @@ class BooleanExpression : Expression
 
     this(Loc loc, int boolean)
     {
-        super(loc, TOKboolean);
+        super(loc, Tok.Boolean);
         this.boolean = boolean;
     }
 
@@ -433,7 +433,7 @@ class ArrayLiteral : Expression
 
     this(Loc loc, Expression[] elements)
     {
-        super(loc, TOKarraylit);
+        super(loc, Tok.Arraylit);
         this.elements = elements;
     }
 
@@ -473,7 +473,7 @@ class ArrayLiteral : Expression
         b = irs.alloc(1);
         static Identifier* ar;
         if(!ar)
-            ar = Identifier.build(TEXT_Array);
+            ar = Identifier.build(Text.Array);
         irs.gen_!(Opcode.GetScope)(loc, b, ar);
         if(elements.length)
         {
@@ -513,7 +513,7 @@ class ArrayLiteral : Expression
                     e.toIR(irs, v);
                 else
                     irs.gen_!(Opcode.Undefined)(loc, v);
-                irs.gen_!(Opcode.PutS)(loc, v, ret, Identifier.build(TEXT_0));
+                irs.gen_!(Opcode.PutS)(loc, v, ret, Identifier.build(Text._0));
                 irs.release(v, 1);
             }
             irs.release(argv, argc);
@@ -549,7 +549,7 @@ class ObjectLiteral : Expression
 
     this(Loc loc, Field[] fields)
     {
-        super(loc, TOKobjectlit);
+        super(loc, Tok.Objectlit);
         this.fields = fields;
     }
 
@@ -584,8 +584,8 @@ class ObjectLiteral : Expression
         idx_t b;
 
         b = irs.alloc(1);
-        //irs.gen2(loc, IRstring, b, TEXT_Object);
-        irs.gen_!(Opcode.GetScope)(loc, b, Identifier.build(TEXT_Object));
+        //irs.gen2(loc, IRstring, b, Text.Object);
+        irs.gen_!(Opcode.GetScope)(loc, b, Identifier.build(Text.Object));
         // Generate new Object()
         irs.gen_!(Opcode.New)(loc, ret, b, 0, 0);
         if(fields.length)
@@ -610,7 +610,7 @@ class FunctionLiteral : Expression
 
     this(Loc loc, FunctionDefinition func)
     {
-        super(loc, TOKobjectlit);
+        super(loc, Tok.Objectlit);
         this.func = func;
     }
 
@@ -638,7 +638,7 @@ class UnaExp : Expression
 {
     Expression e1;
 
-    this(Loc loc, TOK op, Expression e1)
+    this(Loc loc, Tok op, Expression e1)
     {
         super(loc, op);
         this.e1 = e1;
@@ -665,7 +665,7 @@ class BinExp : Expression
     Expression e1;
     Expression e2;
 
-    this(Loc loc, TOK op, Expression e1, Expression e2)
+    this(Loc loc, Tok op, Expression e1, Expression e2)
     {
         super(loc, op);
         this.e1 = e1;
@@ -729,7 +729,7 @@ class PreExp : UnaExp
 
     this(Loc loc, Opcode ircode, Expression e)
     {
-        super(loc, TOKplusplus, e);
+        super(loc, Tok.Plusplus, e);
         this.ircode = ircode;
     }
 
@@ -779,7 +779,7 @@ class PostIncExp : UnaExp
 {
     this(Loc loc, Expression e)
     {
-        super(loc, TOKplusplus, e);
+        super(loc, Tok.Plusplus, e);
     }
 
     override Expression semantic(Scope* sc)
@@ -836,7 +836,7 @@ class PostDecExp : UnaExp
 {
     this(Loc loc, Expression e)
     {
-        super(loc, TOKplusplus, e);
+        super(loc, Tok.Plusplus, e);
     }
 
     override Expression semantic(Scope* sc)
@@ -895,7 +895,7 @@ class DotExp : UnaExp
 
     this(Loc loc, Expression e, Identifier*  ident)
     {
-        super(loc, TOKdot, e);
+        super(loc, Tok.Dot, e);
         this.ident = ident;
     }
 
@@ -956,7 +956,7 @@ class CallExp : UnaExp
     this(Loc loc, Expression e, Expression[] arguments)
     {
         //writef("CallExp(e1 = %x)\n", e);
-        super(loc, TOKcall, e);
+        super(loc, Tok.Call, e);
         this.arguments = arguments;
     }
 
@@ -976,7 +976,7 @@ class CallExp : UnaExp
         }
         if(arguments.length == 1)
         {
-            if(e1.op == TOKidentifier)
+            if(e1.op == Tok.Identifier)
             {
                 ie = cast(IdentifierExpression )e1;
                 if(ie.ident.toString() == "assert")
@@ -1060,7 +1060,7 @@ class AssertExp : UnaExp
 {
     this(Loc loc, Expression e)
     {
-        super(loc, TOKassert, e);
+        super(loc, Tok.Assert, e);
     }
 
     override void toBuffer(ref tchar[] buf)
@@ -1098,7 +1098,7 @@ class NewExp : UnaExp
 
     this(Loc loc, Expression e, Expression[] arguments)
     {
-        super(loc, TOKnew, e);
+        super(loc, Tok.New, e);
         this.arguments = arguments;
     }
 
@@ -1169,7 +1169,7 @@ class XUnaExp : UnaExp
 {
     Opcode ircode;
 
-    this(Loc loc, TOK op, Opcode ircode, Expression e)
+    this(Loc loc, Tok op, Opcode ircode, Expression e)
     {
         super(loc, op, e);
         this.ircode = ircode;
@@ -1187,7 +1187,7 @@ class NotExp : XUnaExp
 {
     this(Loc loc, Expression e)
     {
-        super(loc, TOKnot, Opcode.Not, e);
+        super(loc, Tok.Not, Opcode.Not, e);
     }
 
     override bool isBooleanResult()
@@ -1201,7 +1201,7 @@ class DeleteExp : UnaExp
     bool lval;
     this(Loc loc, Expression e)
     {
-        super(loc, TOKdelete, e);
+        super(loc, Tok.Delete, e);
     }
 
     override Expression semantic(Scope* sc)
@@ -1253,7 +1253,7 @@ class CommaExp : BinExp
 {
     this(Loc loc, Expression e1, Expression e2)
     {
-        super(loc, TOKcomma, e1, e2);
+        super(loc, Tok.Comma, e1, e2);
     }
 
     override void checkLvalue(Scope* sc)
@@ -1274,7 +1274,7 @@ class ArrayExp : BinExp
 {
     this(Loc loc, Expression e1, Expression e2)
     {
-        super(loc, TOKarray, e1, e2);
+        super(loc, Tok.Array, e1, e2);
     }
 
     override Expression semantic(Scope* sc)
@@ -1346,14 +1346,14 @@ class AssignExp : BinExp
 {
     this(Loc loc, Expression e1, Expression e2)
     {
-        super(loc, TOKassign, e1, e2);
+        super(loc, Tok.Assign, e1, e2);
     }
 
     override Expression semantic(Scope* sc)
     {
         //writefln("AssignExp.semantic()");
         super.semantic(sc);
-        if(e1.op != TOKcall)            // special case for CallExp lvalue's
+        if(e1.op != Tok.Call)            // special case for CallExp lvalue's
             e1.checkLvalue(sc);
         return this;
     }
@@ -1363,7 +1363,7 @@ class AssignExp : BinExp
         idx_t b;
 
         //writef("AssignExp::toIR('%s')\n", toChars());
-        if(e1.op == TOKcall)            // if CallExp
+        if(e1.op == Tok.Call)            // if CallExp
         {
             assert(cast(CallExp)(e1));  // make sure we got it right
 
@@ -1464,7 +1464,7 @@ class AddAssignExp : BinExp
 {
     this(Loc loc, Expression e1, Expression e2)
     {
-        super(loc, TOKplusass, e1, e2);
+        super(loc, Tok.Plusass, e1, e2);
     }
 
     override Expression semantic(Scope* sc)
@@ -1530,7 +1530,7 @@ class BinAssignExp : BinExp
 {
     Opcode ircode = Opcode.Error;
 
-    this(Loc loc, TOK op, Opcode ircode, Expression e1, Expression e2)
+    this(Loc loc, Tok op, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, op, e1, e2);
         this.ircode = ircode;
@@ -1598,7 +1598,7 @@ class AddExp : BinExp
 {
     this(Loc loc, Expression e1, Expression e2)
     {
-        super(loc, TOKplus, e1, e2);
+        super(loc, Tok.Plus, e1, e2);
     }
 
     override Expression semantic(Scope* sc)
@@ -1618,7 +1618,7 @@ class XBinExp : BinExp
 {
     Opcode ircode = Opcode.Error;
 
-    this(Loc loc, TOK op, Opcode ircode, Expression e1, Expression e2)
+    this(Loc loc, Tok op, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, op, e1, e2);
         this.ircode = ircode;
@@ -1636,7 +1636,7 @@ class OrOrExp : BinExp
 {
     this(Loc loc, Expression e1, Expression e2)
     {
-        super(loc, TOKoror, e1, e2);
+        super(loc, Tok.Oror, e1, e2);
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -1666,7 +1666,7 @@ class AndAndExp : BinExp
 {
     this(Loc loc, Expression e1, Expression e2)
     {
-        super(loc, TOKandand, e1, e2);
+        super(loc, Tok.Andand, e1, e2);
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -1696,7 +1696,7 @@ class CmpExp : BinExp
 {
     Opcode ircode = Opcode.Error;
 
-    this(Loc loc, TOK tok, Opcode ircode, Expression e1, Expression e2)
+    this(Loc loc, Tok tok, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, tok, e1, e2);
         this.ircode = ircode;
@@ -1719,7 +1719,7 @@ class InExp : BinExp
 {
     this(Loc loc, Expression e1, Expression e2)
     {
-        super(loc, TOKin, e1, e2);
+        super(loc, Tok.In, e1, e2);
     }
     override void toIR(IRstate* irs, idx_t ret)
     {
@@ -1735,7 +1735,7 @@ class CondExp : BinExp
 
     this(Loc loc, Expression econd, Expression e1, Expression e2)
     {
-        super(loc, TOKquestion, e1, e2);
+        super(loc, Tok.Question, e1, e2);
         this.econd = econd;
     }
 

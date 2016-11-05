@@ -51,12 +51,12 @@ class Darguments : Dobject
         this.parameters = parameters;
 
         if(caller)
-            Put(TEXT_caller, caller, DontEnum);
+            Put(Text.caller, caller, DontEnum);
         else
-            Put(TEXT_caller, &vnull, DontEnum);
+            Put(Text.caller, &vnull, DontEnum);
 
-        Put(TEXT_callee, callee, DontEnum);
-        Put(TEXT_length, arglist.length, DontEnum);
+        Put(Text.callee, callee, DontEnum);
+        Put(Text.length, arglist.length, DontEnum);
 
         for(uint a = 0; a < arglist.length; a++)
         {

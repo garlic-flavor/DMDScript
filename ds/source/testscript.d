@@ -106,7 +106,7 @@ int main(string[] args)
 		    break;
 
 		default:
-		    writefln(errmsgtbl[ERR_BAD_SWITCH],p);
+		    writefln(Err.BadSwitch,p);
 		    errors++;
 		    break;
 	    }

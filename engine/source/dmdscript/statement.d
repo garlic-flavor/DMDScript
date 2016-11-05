@@ -89,18 +89,12 @@ class TopStatement
         debug writefln("TopStatement.toIR(%p)", this);
     }
 
-    void error(Scope *sc, int msgnum)
+    void error(ARGS...)(Scope *sc, string fmt, ARGS args)
     {
-        error(sc, errmsgtbl[msgnum]);
-    }
-
-    void error(Scope *sc, ...)
-    {
-        import std.format : format, doFormat;
+        import std.format : format;
         import std.traits : Unqual, ForeachType;
-        import std.exception : assumeUnique;
 
-        Unqual!(ForeachType!d_string)[] buf;
+        d_string buf;
         d_string sourcename;
 
         if(sc.funcdef)
@@ -110,21 +104,13 @@ class TopStatement
             else if(sc.funcdef.name)
                 sourcename ~= sc.funcdef.name.toString();
         }
-        buf = format("%s(%d) : Error: ", sourcename, loc).dup;
-
-        void putc(dchar c)
-        {
-            std.utf.encode(buf, c);
-        }
-
-        std.format.doFormat(&putc, _arguments, _argptr);
-
+        buf = format("%s(%d) : Error: ", sourcename, loc) ~ format(fmt, args);
 
         if(!sc.errinfo.message)
         {
-            sc.errinfo.message = buf.assumeUnique;
+            sc.errinfo.message = buf;
             sc.errinfo.linnum = loc;
-            sc.errinfo.srcline = Lexer.locToSrcline(sc.getSource().ptr, loc);
+            sc.errinfo.srcline = Lexer.locToSrcline(sc.getSource.ptr, loc);
         }
     }
 
@@ -801,14 +787,14 @@ class DefaultStatement : Statement
 
             if(sw.swdefault)
             {
-                error(sc, ERR_SWITCH_REDUNDANT_DEFAULT);
+                error(sc, Err.SwitchRedundantDefault);
                 return null;
             }
             sw.swdefault = this;
         }
         else
         {
-            error(sc, ERR_MISPLACED_SWITCH_DEFAULT);
+            error(sc, Err.MisplacedSwitchDefault);
             return null;
         }
         return this;
@@ -1084,7 +1070,7 @@ class ForStatement : Statement
         u1 = irs.getIP();
         if(condition)
         {
-            if(condition.op == TOKless || condition.op == TOKlessequal)
+            if(condition.op == Tok.Less || condition.op == Tok.Lessequal)
             {
                 BinExp be = cast(BinExp)condition;
                 RealExpression re;
@@ -1094,10 +1080,10 @@ class ForStatement : Statement
                 b = irs.alloc(1);
                 be.e1.toIR(irs, b);
                 re = cast(RealExpression )be.e2;
-                if(be.e2.op == TOKreal && !isNaN(re.value))
+                if(be.e2.op == Tok.Real && !isNaN(re.value))
                 {
                     u2 = irs.getIP();
-                    if (condition.op == TOKless)
+                    if (condition.op == Tok.Less)
                         irs.gen_!(Opcode.JLTC)(loc, 0, b, re.value);
                     else
                         irs.gen_!(Opcode.JLEC)(loc, 0, b, re.value);
@@ -1107,7 +1093,7 @@ class ForStatement : Statement
                     c = irs.alloc(1);
                     be.e2.toIR(irs, c);
                     u2 = irs.getIP();
-                    if (condition.op == TOKless)
+                    if (condition.op == Tok.Less)
                         irs.gen_!(Opcode.JLT)(loc, 0, b, c);
                     else
                         irs.gen_!(Opcode.JLE)(loc, 0, b, c);
@@ -1204,7 +1190,7 @@ class ForInStatement : Statement
         }
         else
         {
-            error(sc, ERR_INIT_NOT_EXPRESSION);
+            error(sc, Err.InitNotExpression);
             return null;
         }
 
@@ -1423,7 +1409,7 @@ class ContinueStatement : Statement
             target = sc.continueTarget;
             if(!target)
             {
-                error(sc, ERR_MISPLACED_CONTINUE);
+                error(sc, Err.MisplacedContinue);
                 return null;
             }
         }
@@ -1489,7 +1475,7 @@ class BreakStatement : Statement
             target = sc.breakTarget;
             if(!target)
             {
-                error(sc, ERR_MISPLACED_BREAK);
+                error(sc, Err.MisplacedBreak);
                 return null;
             }
         }
@@ -1622,7 +1608,7 @@ class ReturnStatement : Statement
 
         // Don't allow return from eval functions or global function
         if(sc.funcdef.iseval || sc.funcdef.isglobal)
-            error(sc, ERR_MISPLACED_RETURN);
+            error(sc, Err.MisplacedReturn);
 
         return this;
     }
@@ -1738,7 +1724,7 @@ class ThrowStatement : Statement
             exp = exp.semantic(sc);
         else
         {
-            error(sc, ERR_NO_THROW_EXPRESSION);
+            error(sc, Err.NoThrowExpression);
             return new EmptyStatement(loc);
         }
         return this;

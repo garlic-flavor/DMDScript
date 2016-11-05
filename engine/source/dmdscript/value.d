@@ -240,7 +240,7 @@ struct Value
                 ErrInfo errinfo;
 
                 v.putVundefined;
-                throw new ErrorValue(Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_OBJECT_CANNOT_BE_PRIMITIVE]));
+                throw new ErrorValue(Dobject.RuntimeError(&errinfo, Err.ObjectCannotBePrimitive));
             }
         }
         else
@@ -516,29 +516,29 @@ struct Value
             throwRefError();
             assert(0);
         case V_UNDEFINED:
-            return TEXT_undefined;
+            return Text.undefined;
         case V_NULL:
-            return TEXT_null;
+            return Text._null;
         case V_BOOLEAN:
-            return dbool ? TEXT_true : TEXT_false;
+            return dbool ? Text._true : Text._false;
         case V_NUMBER:
         {
             d_string str;
             static enum d_string[10]  strs =
-                [   TEXT_0, TEXT_1, TEXT_2, TEXT_3, TEXT_4,
-                    TEXT_5, TEXT_6, TEXT_7, TEXT_8, TEXT_9 ];
+                [   Text._0, Text._1, Text._2, Text._3, Text._4,
+                    Text._5, Text._6, Text._7, Text._8, Text._9 ];
 
             //writefln("Vnumber.tostr(%g)", number);
             if(isNaN(number))
-                str = TEXT_NaN;
+                str = Text.NaN;
             else if(number >= 0 && number <= 9 && number == cast(int)number)
                 str = strs[cast(int)number];
             else if(isInfinity(number))
             {
                 if(number < 0)
-                    str = TEXT_negInfinity;
+                    str = Text.negInfinity;
                 else
-                    str = TEXT_Infinity;
+                    str = Text.Infinity;
             }
             else
             {
@@ -655,7 +655,7 @@ struct Value
             Value* v;
 
             //writefln("Vobject.toSource()");
-            v = Get(TEXT_toSource);
+            v = Get(Text.toSource);
             if(!v)
                 v = &vundefined;
             if(v.isPrimitive())
@@ -680,7 +680,7 @@ struct Value
                 else if(ret.isPrimitive())
                     return ret.toString();
             }
-            return TEXT_undefined;
+            return Text.undefined;
         }
         default:
             return toString();
@@ -839,11 +839,11 @@ struct Value
         switch(vtype)
         {
         case V_REF_ERROR:
-        case V_UNDEFINED:   s = TEXT_undefined;     break;
-        case V_NULL:        s = TEXT_object;        break;
-        case V_BOOLEAN:     s = TEXT_boolean;       break;
-        case V_NUMBER:      s = TEXT_number;        break;
-        case V_STRING:      s = TEXT_string;        break;
+        case V_UNDEFINED:   s = Text.undefined;     break;
+        case V_NULL:        s = Text.object;        break;
+        case V_BOOLEAN:     s = Text.boolean;       break;
+        case V_NUMBER:      s = Text.number;        break;
+        case V_STRING:      s = Text.string;        break;
         case V_OBJECT:      s = object.getTypeof(); break;
         default:
             debug writefln("vtype = %d", vtype);
@@ -1037,7 +1037,7 @@ struct Value
             ErrInfo errinfo;
 
             return Dobject.RuntimeError(&errinfo,
-                                        errmsgtbl[ERR_CANNOT_PUT_TO_PRIMITIVE],
+                                        Err.CannotPutToPrimitive,
                                         PropertyName, value.toString(),
                                         getType());
         }

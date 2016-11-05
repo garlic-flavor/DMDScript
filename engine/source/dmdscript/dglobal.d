@@ -533,7 +533,7 @@ Status* Dglobal_decodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* 
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(TEXT_decodeURI);
+        return URI_error(Text.decodeURI);
     }
     ret.putVstring(s);
     return null;
@@ -553,7 +553,7 @@ Status* Dglobal_decodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(TEXT_decodeURIComponent);
+        return URI_error(Text.decodeURIComponent);
     }
     ret.putVstring(s);
     return null;
@@ -574,7 +574,7 @@ Status* Dglobal_encodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* 
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(TEXT_encodeURI);
+        return URI_error(Text.encodeURI);
     }
     ret.putVstring(s);
     return null;
@@ -594,7 +594,7 @@ Status* Dglobal_encodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(TEXT_encodeURIComponent);
+        return URI_error(Text.encodeURIComponent);
     }
     ret.putVstring(s);
     return null;
@@ -719,7 +719,7 @@ Status* Dglobal_getenv(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
 
 Status* Dglobal_ScriptEngine(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
-    ret.putVstring(TEXT_DMDScript);
+    ret.putVstring(Text.DMDScript);
     return null;
 }
 
@@ -753,60 +753,60 @@ class Dglobal : Dobject
 
         Dobject f = Dfunction.getPrototype();
 
-        classname = TEXT_global;
+        classname = Text.global;
 
         // ECMA 15.1
         // Add in built-in objects which have attribute { DontEnum }
 
         // Value properties
 
-        Put(TEXT_NaN, d_number.nan, DontEnum | DontDelete);
-        Put(TEXT_Infinity, d_number.infinity, DontEnum| DontDelete);
-        Put(TEXT_undefined, &vundefined, DontEnum| DontDelete);
+        Put(Text.NaN, d_number.nan, DontEnum | DontDelete);
+        Put(Text.Infinity, d_number.infinity, DontEnum| DontDelete);
+        Put(Text.undefined, &vundefined, DontEnum| DontDelete);
         static enum NativeFunctionData[] nfd =
         [
             // Function properties
-            { TEXT_eval, &Dglobal_eval, 1 },
-            { TEXT_parseInt, &Dglobal_parseInt, 2 },
-            { TEXT_parseFloat, &Dglobal_parseFloat, 1 },
-            { TEXT_escape, &Dglobal_escape, 1 },
-            { TEXT_unescape, &Dglobal_unescape, 1 },
-            { TEXT_isNaN, &Dglobal_isNaN, 1 },
-            { TEXT_isFinite, &Dglobal_isFinite, 1 },
-            { TEXT_decodeURI, &Dglobal_decodeURI, 1 },
-            { TEXT_decodeURIComponent, &Dglobal_decodeURIComponent, 1 },
-            { TEXT_encodeURI, &Dglobal_encodeURI, 1 },
-            { TEXT_encodeURIComponent, &Dglobal_encodeURIComponent, 1 },
+            { Text.eval, &Dglobal_eval, 1 },
+            { Text.parseInt, &Dglobal_parseInt, 2 },
+            { Text.parseFloat, &Dglobal_parseFloat, 1 },
+            { Text.escape, &Dglobal_escape, 1 },
+            { Text.unescape, &Dglobal_unescape, 1 },
+            { Text.isNaN, &Dglobal_isNaN, 1 },
+            { Text.isFinite, &Dglobal_isFinite, 1 },
+            { Text.decodeURI, &Dglobal_decodeURI, 1 },
+            { Text.decodeURIComponent, &Dglobal_decodeURIComponent, 1 },
+            { Text.encodeURI, &Dglobal_encodeURI, 1 },
+            { Text.encodeURIComponent, &Dglobal_encodeURIComponent, 1 },
 
             // Dscript unique function properties
-            { TEXT_print, &Dglobal_print, 1 },
-            { TEXT_println, &Dglobal_println, 1 },
-            { TEXT_readln, &Dglobal_readln, 0 },
-            { TEXT_getenv, &Dglobal_getenv, 1 },
+            { Text.print, &Dglobal_print, 1 },
+            { Text.println, &Dglobal_println, 1 },
+            { Text.readln, &Dglobal_readln, 0 },
+            { Text.getenv, &Dglobal_getenv, 1 },
 
             // Jscript compatible extensions
-            { TEXT_ScriptEngine, &Dglobal_ScriptEngine, 0 },
-            { TEXT_ScriptEngineBuildVersion, &Dglobal_ScriptEngineBuildVersion, 0 },
-            { TEXT_ScriptEngineMajorVersion, &Dglobal_ScriptEngineMajorVersion, 0 },
-            { TEXT_ScriptEngineMinorVersion, &Dglobal_ScriptEngineMinorVersion, 0 },
+            { Text.ScriptEngine, &Dglobal_ScriptEngine, 0 },
+            { Text.ScriptEngineBuildVersion, &Dglobal_ScriptEngineBuildVersion, 0 },
+            { Text.ScriptEngineMajorVersion, &Dglobal_ScriptEngineMajorVersion, 0 },
+            { Text.ScriptEngineMinorVersion, &Dglobal_ScriptEngineMinorVersion, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, DontEnum);
 
         // Now handled by AssertExp()
-        // Put(TEXT_assert, Dglobal_assert(), DontEnum);
+        // Put(Text.assert, Dglobal_assert(), DontEnum);
 
         // Constructor properties
 
-        Put(TEXT_Object, Dobject_constructor, DontEnum);
-        Put(TEXT_Function, Dfunction_constructor, DontEnum);
-        Put(TEXT_Array, Darray_constructor, DontEnum);
-        Put(TEXT_String, Dstring_constructor, DontEnum);
-        Put(TEXT_Boolean, Dboolean_constructor, DontEnum);
-        Put(TEXT_Number, Dnumber_constructor, DontEnum);
-        Put(TEXT_Date, Ddate_constructor, DontEnum);
-        Put(TEXT_RegExp, Dregexp_constructor, DontEnum);
-        Put(TEXT_Error, Derror_constructor, DontEnum);
+        Put(Text.Object, Dobject_constructor, DontEnum);
+        Put(Text.Function, Dfunction_constructor, DontEnum);
+        Put(Text.Array, Darray_constructor, DontEnum);
+        Put(Text.String, Dstring_constructor, DontEnum);
+        Put(Text.Boolean, Dboolean_constructor, DontEnum);
+        Put(Text.Number, Dnumber_constructor, DontEnum);
+        Put(Text.Date, Ddate_constructor, DontEnum);
+        Put(Text.RegExp, Dregexp_constructor, DontEnum);
+        Put(Text.Error, Derror_constructor, DontEnum);
 
         foreach(d_string key, Dfunction ctor; ctorTable)
         {
@@ -816,20 +816,20 @@ class Dglobal : Dobject
         // Other properties
 
         assert(Dmath_object);
-        Put(TEXT_Math, Dmath_object, DontEnum);
+        Put(Text.Math, Dmath_object, DontEnum);
 
         // Build an "arguments" property out of argv[],
         // and add it to the global object.
         Darray arguments;
 
         arguments = new Darray();
-        Put(TEXT_arguments, arguments, DontDelete);
+        Put(Text.arguments, arguments, DontDelete);
         arguments.length.putVnumber(argv.length);
         for(int i = 0; i < argv.length; i++)
         {
             arguments.Put(i, argv[i].idup, DontEnum);
         }
-        arguments.Put(TEXT_callee, &vnull, DontEnum);
+        arguments.Put(Text.callee, &vnull, DontEnum);
     }
 }
 

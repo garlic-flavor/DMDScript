@@ -179,7 +179,7 @@ class Program
 
         // Set argv and argc for execute
         arguments = new Darray();
-        dglobal.Put(TEXT_arguments, arguments, DontDelete | DontEnum);
+        dglobal.Put(Text.arguments, arguments, DontDelete | DontEnum);
         arguments.length.putVnumber(args.length);
         for(int i = 0; i < args.length; i++)
         {

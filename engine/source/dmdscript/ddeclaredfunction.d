@@ -48,8 +48,8 @@ class DdeclaredFunction : Dfunction
 
         // ECMA 3 13.2
         o = new Dobject(Dobject.getPrototype());        // step 9
-        Put(TEXT_prototype, o, DontEnum);               // step 11
-        o.Put(TEXT_constructor, this, DontEnum);        // step 10
+        Put(Text.prototype, o, DontEnum);               // step 11
+        o.Put(Text.constructor, this, DontEnum);        // step 10
     }
 
     override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
@@ -101,7 +101,7 @@ class DdeclaredFunction : Dfunction
         // ECMA v3 10.1.8
         args = new Darguments(cc.caller, this, actobj, fd.parameters, arglist);
 
-        actobj.Put(TEXT_arguments, args, DontDelete);
+        actobj.Put(Text.arguments, args, DontDelete);
 
         // The following is not specified by ECMA, but seems to be supported
         // by jscript. The url www.grannymail.com has the following code
@@ -113,7 +113,7 @@ class DdeclaredFunction : Dfunction
         //		  this[i+1] = arguments[i]
         //	    }
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
-        Put(TEXT_arguments, args, DontDelete);          // make grannymail bug work
+        Put(Text.arguments, args, DontDelete);          // make grannymail bug work
 
 
 
@@ -162,13 +162,13 @@ class DdeclaredFunction : Dfunction
         //Value* v;
         //v=Get(TEXT_arguments);
         //writef("1v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
-        Put(TEXT_arguments, &vundefined, 0);
+        Put(Text.arguments, &vundefined, 0);
         //actobj.Put(TEXT_arguments, &vundefined, 0);
 
         version(none)
         {
             writef("args = %x, actobj = %x\n", args, actobj);
-            v = Get(TEXT_arguments);
+            v = Get(Text.arguments);
             writef("2v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
             v.object = null;
 
@@ -193,7 +193,7 @@ class DdeclaredFunction : Dfunction
         Value* v;
         Status* result;
 
-        v = Get(TEXT_prototype);
+        v = Get(Text.prototype);
         if(v.isPrimitive())
             proto = Dobject.getPrototype();
         else

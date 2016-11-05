@@ -80,12 +80,12 @@ template proto(alias TEXT_D1)
 
             d_string s;
 
-            Put(TEXT_constructor, ctorTable[TEXT_D1], DontEnum);
-            Put(TEXT_name, TEXT_D1, 0);
+            Put(Text.constructor, ctorTable[TEXT_D1], DontEnum);
+            Put(Text.name, TEXT_D1, 0);
             s = TEXT_D1 ~ ".prototype.message";
-            Put(TEXT_message, s, 0);
-            Put(TEXT_description, s, 0);
-            Put(TEXT_number, cast(d_number)0, 0);
+            Put(Text.message, s, 0);
+            Put(Text.description, s, 0);
+            Put(Text.number, cast(d_number)0, 0);
         }
     }
 
@@ -98,15 +98,15 @@ template proto(alias TEXT_D1)
         this(Dobject prototype)
         {
             super(prototype);
-            classname = TEXT_Error;
+            classname = Text.Error;
         }
 
         this(d_string m)
         {
             this(D0.getPrototype());
-            Put(TEXT_message, m, 0);
-            Put(TEXT_description, m, 0);
-            Put(TEXT_number, cast(d_number)0, 0);
+            Put(Text.message, m, 0);
+            Put(Text.description, m, 0);
+            Put(Text.number, cast(d_number)0, 0);
             errinfo.message = m;
         }
 
@@ -114,7 +114,7 @@ template proto(alias TEXT_D1)
         {
             this(perrinfo.message);
             errinfo = *perrinfo;
-            Put(TEXT_number, cast(d_number)perrinfo.code, 0);
+            Put(Text.number, cast(d_number)perrinfo.code, 0);
         }
 
         override void getErrInfo(ErrInfo* perrinfo, int linnum)
@@ -149,17 +149,17 @@ template proto(alias TEXT_D1)
             Dobject prototype = new D0_prototype();
             protoTable[TEXT_D1] = prototype;
 
-            constructor.Put(TEXT_prototype, prototype, DontEnum | DontDelete | ReadOnly);
+            constructor.Put(Text.prototype, prototype, DontEnum | DontDelete | ReadOnly);
         }
     }
 }
 
-alias proto!(TEXT_SyntaxError) syntaxerror;
-alias proto!(TEXT_EvalError) evalerror;
-alias proto!(TEXT_ReferenceError) referenceerror;
-alias proto!(TEXT_RangeError) rangeerror;
-alias proto!(TEXT_TypeError) typeerror;
-alias proto!(TEXT_URIError) urierror;
+alias proto!(Text.SyntaxError) syntaxerror;
+alias proto!(Text.EvalError) evalerror;
+alias proto!(Text.ReferenceError) referenceerror;
+alias proto!(Text.RangeError) rangeerror;
+alias proto!(Text.TypeError) typeerror;
+alias proto!(Text.URIError) urierror;
 
 /**********************************
  * Register initializer for each class.

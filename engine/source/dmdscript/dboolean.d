@@ -66,13 +66,13 @@ class DbooleanConstructor : Dfunction
 Status* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // othis must be a Boolean
-    if(!othis.isClass(TEXT_Boolean))
+    if(!othis.isClass(Text.Boolean))
     {
         ErrInfo errinfo;
 
         ret.putVundefined();
         return Dobject.RuntimeError(&errinfo, Err.FunctionWantsBool,
-                                    TEXT_toString,
+                                    Text.toString,
                                     othis.classname);
     }
     else
@@ -93,13 +93,13 @@ Status* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis
     //logflag = 1;
 
     // othis must be a Boolean
-    if(!othis.isClass(TEXT_Boolean))
+    if(!othis.isClass(Text.Boolean))
     {
         ErrInfo errinfo;
 
         ret.putVundefined();
         return Dobject.RuntimeError(&errinfo, Err.FunctionWantsBool,
-                                    TEXT_valueOf,
+                                    Text.valueOf,
                                     othis.classname);
     }
     else
@@ -121,12 +121,12 @@ class DbooleanPrototype : Dboolean
         super(Dobject_prototype);
         //Dobject f = Dfunction_prototype;
 
-        Put(TEXT_constructor, Dboolean_constructor, DontEnum);
+        Put(Text.constructor, Dboolean_constructor, DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { TEXT_toString, &Dboolean_prototype_toString, 0 },
-            { TEXT_valueOf, &Dboolean_prototype_valueOf, 0 },
+            { Text.toString, &Dboolean_prototype_toString, 0 },
+            { Text.valueOf, &Dboolean_prototype_valueOf, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, DontEnum);
@@ -142,14 +142,14 @@ class Dboolean : Dobject
     {
         super(Dboolean.getPrototype());
         value.putVboolean(b);
-        classname = TEXT_Boolean;
+        classname = Text.Boolean;
     }
 
     this(Dobject prototype)
     {
         super(prototype);
         value.putVboolean(false);
-        classname = TEXT_Boolean;
+        classname = Text.Boolean;
     }
 
     static Dfunction getConstructor()
@@ -167,7 +167,7 @@ class Dboolean : Dobject
         Dboolean_constructor = new DbooleanConstructor();
         Dboolean_prototype = new DbooleanPrototype();
 
-        Dboolean_constructor.Put(TEXT_prototype, Dboolean_prototype, DontEnum | DontDelete | ReadOnly);
+        Dboolean_constructor.Put(Text.prototype, Dboolean_prototype, DontEnum | DontDelete | ReadOnly);
     }
 }
 

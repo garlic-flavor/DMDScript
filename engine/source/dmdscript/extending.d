@@ -181,7 +181,7 @@ class Wrap(Which,string ClassName,Base=Dobject): Base
     {
         super(prototype);
         classname = ClassName;
-        //Put(TEXT_constructor,
+        //Put(Text.constructor,
     }
     alias ParameterTypeTuple!(Which.__ctor) ConstructorArgs;
     alias staticMap!(Unqual,ConstructorArgs) UConstructorArgs;

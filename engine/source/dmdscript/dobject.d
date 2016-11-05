@@ -63,7 +63,7 @@ class DobjectConstructor : Dfunction
     {
         super(1, Dfunction_prototype);
         if(Dobject_prototype)
-            Put(TEXT_prototype, Dobject_prototype, DontEnum | DontDelete | ReadOnly);
+            Put(Text.prototype, Dobject_prototype, DontEnum | DontDelete | ReadOnly);
     }
 
     override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
@@ -139,8 +139,8 @@ Status* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
     s = othis.classname;
 /+
     // Should we do [object] or [object Object]?
-    if (s == TEXT_Object)
-        string = TEXT_bobjectb;
+    if (s == Text.Object)
+        string = Text.bobjectb;
     else
  +/
     str = format("[object %s]", s);
@@ -158,7 +158,7 @@ Status* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject
     Value* v;
 
     //writef("Dobject.prototype.toLocaleString(ret = %x)\n", ret);
-    v = othis.Get(TEXT_toString);
+    v = othis.Get(Text.toString);
     if(v && !v.isPrimitive())   // if it's an Object
     {
         Status* a;
@@ -298,7 +298,7 @@ class Dobject
         internal_prototype = prototype;
         if(prototype)
             proptable.previous = prototype.proptable;
-        classname = TEXT_Object;
+        classname = Text.Object;
         value.putVobject(this);
 
         signature = DOBJECT_SIGNATURE;
@@ -418,7 +418,7 @@ class Dobject
         // Not ECMA, Microsoft extension
         //writef("Dobject.PutDefault(this = %p)\n", this);
         ErrInfo errinfo;
-        return RuntimeError(&errinfo, ERR_NO_DEFAULT_PUT);
+        return RuntimeError(&errinfo, Err.NoDefaultPut);
     }
 
     Status* put_Value(Value* ret, Value[] arglist)
@@ -426,7 +426,7 @@ class Dobject
         // Not ECMA, Microsoft extension
         //writef("Dobject.put_Value(this = %p)\n", this);
         ErrInfo errinfo;
-        return RuntimeError(&errinfo, ERR_FUNCTION_NOT_LVALUE);
+        return RuntimeError(&errinfo, Err.FunctionNotLvalue);
     }
 
     int CanPut(d_string PropertyName)
@@ -472,7 +472,7 @@ class Dobject
     {
         Dobject o;
         Value* v;
-        static enum d_string[2] table = [ TEXT_toString, TEXT_valueOf ];
+        static enum d_string[2] table = [ Text.toString, Text.valueOf ];
         int i = 0;                      // initializer necessary for /W4
 
         // ECMA 8.6.2.6
@@ -540,7 +540,7 @@ class Dobject
 
     d_string getTypeof()
     {   // ECMA 11.4.3
-        return TEXT_object;
+        return Text.object;
     }
 
 
@@ -551,15 +551,15 @@ class Dobject
 
     int isDarray() const
     {
-        return isClass(TEXT_Array);
+        return isClass(Text.Array);
     }
     int isDdate() const
     {
-        return isClass(TEXT_Date);
+        return isClass(Text.Date);
     }
     int isDregexp() const
     {
-        return isClass(TEXT_RegExp);
+        return isClass(Text.RegExp);
     }
 
     int isDarguments() const
@@ -586,26 +586,6 @@ class Dobject
             *perrinfo = errinfo;
     }
 
-    static Status* RuntimeError(ErrInfo* perrinfo, int msgnum)
-    {
-        return RuntimeError(perrinfo, errmsgtbl[msgnum]);
-    }
-
-
-    deprecated static Status* RuntimeError(ARGS...)(ErrInfo* perrinfo,
-                                                    int msgnum, string fmt,
-                                                    ARGS args)
-    {
-        import std.format : format;
-        Dobject o;
-
-        perrinfo.message = format(fmt, args);
-        o = new typeerror.D0(perrinfo);
-        auto v = new Status;
-        v.putVobject(o);
-        return v;
-    }
-
     static Status* RuntimeError(ARGS...)(ErrInfo* perrinfo, string fmt,
                                          ARGS args)
     {
@@ -618,11 +598,6 @@ class Dobject
         auto v = new Status;
         v.putVobject(o);
         return v;
-    }
-
-    static Status* ReferenceError(ErrInfo* perrinfo, int msgnum)
-    {
-        return ReferenceError(perrinfo, errmsgtbl[msgnum]);
     }
 
     static Status* ReferenceError(ARGS...)(ErrInfo* perrinfo, string fmt,
@@ -658,46 +633,6 @@ class Dobject
         return v;
     }
 
-    // static Status* ReferenceError(...)
-    // {
-    //     Dobject o;
-    //     ErrInfo errinfo;
-    //     //perrinfo.message = null;
-    //     Unqual!(ForeachType!d_string)[] buffer = null;
-
-    //     void putc(dchar c)
-    //     {
-    //         std.utf.encode(buffer, c);
-    //     }
-
-    //     std.format.doFormat(&putc, _arguments, _argptr);
-    //     errinfo.message = buffer.assumeUnique;
-
-    //     o = new referenceerror.D0(&errinfo);
-    //     auto v = new Status;
-    //     v.putVobject(o);
-    //     return v;
-    // }
-    static Status* RangeError(ErrInfo* perrinfo, int msgnum)
-    {
-        return RangeError(perrinfo, errmsgtbl[msgnum]);
-    }
-
-
-
-    deprecated static Status* RangeError(ARGS...)(ErrInfo* perrinfo, int,
-                                                  ARGS args)
-    {
-        Dobject o;
-
-        // perrinfo.message = std.format.format(fmt, args).to!d_string;
-
-        o = new rangeerror.D0(perrinfo);
-        auto v = new Status;
-        v.putVobject(o);
-        return v;
-    }
-
     static Status* RangeError(ARGS...)(ErrInfo* perrinfo, string fmt,
                                        ARGS args)
     {
@@ -712,27 +647,6 @@ class Dobject
         v.putVobject(o);
         return v;
     }
-
-    // static Status* RangeError(ErrInfo* perrinfo, ...)
-    // {
-    //     Dobject o;
-
-    //     //perrinfo.message = null;
-    //     Unqual!(ForeachType!d_string)[] buffer = null;
-
-    //     void putc(dchar c)
-    //     {
-    //         std.utf.encode(buffer, c);
-    //     }
-
-    //     std.format.doFormat(&putc, _arguments, _argptr);
-    //     perrinfo.message = buffer.assumeUnique;
-
-    //     o = new rangeerror.D0(perrinfo);
-    //     auto v = new Status;
-    //     v.putVobject(o);
-    //     return v;
-    // }
 
     Status* putIterator(Value* v)
     {
@@ -762,17 +676,17 @@ class Dobject
         Dobject op = Dobject_prototype;
         Dobject f = Dfunction_prototype;
 
-        op.Put(TEXT_constructor, Dobject_constructor, DontEnum);
+        op.Put(Text.constructor, Dobject_constructor, DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { TEXT_toString, &Dobject_prototype_toString, 0 },
-            { TEXT_toLocaleString, &Dobject_prototype_toLocaleString, 0 },
-            { TEXT_toSource, &Dobject_prototype_toSource, 0 },
-            { TEXT_valueOf, &Dobject_prototype_valueOf, 0 },
-            { TEXT_hasOwnProperty, &Dobject_prototype_hasOwnProperty, 1 },
-            { TEXT_isPrototypeOf, &Dobject_prototype_isPrototypeOf, 0 },
-            { TEXT_propertyIsEnumerable, &Dobject_prototype_propertyIsEnumerable, 0 },
+            { Text.toString, &Dobject_prototype_toString, 0 },
+            { Text.toLocaleString, &Dobject_prototype_toLocaleString, 0 },
+            { Text.toSource, &Dobject_prototype_toSource, 0 },
+            { Text.valueOf, &Dobject_prototype_valueOf, 0 },
+            { Text.hasOwnProperty, &Dobject_prototype_hasOwnProperty, 1 },
+            { Text.isPrototypeOf, &Dobject_prototype_isPrototypeOf, 0 },
+            { Text.propertyIsEnumerable, &Dobject_prototype_propertyIsEnumerable, 0 },
         ];
 
         DnativeFunction.initialize(op, nfd, DontEnum);

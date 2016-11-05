@@ -68,44 +68,44 @@ class DregexpConstructor : Dfunction
         name = "RegExp";
 
         // Static properties
-        Put(TEXT_input, &v, DontDelete);
-        Put(TEXT_multiline, &vb, DontDelete);
-        Put(TEXT_lastMatch, &v, ReadOnly | DontDelete);
-        Put(TEXT_lastParen, &v, ReadOnly | DontDelete);
-        Put(TEXT_leftContext, &v, ReadOnly | DontDelete);
-        Put(TEXT_rightContext, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar1, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar2, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar3, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar4, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar5, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar6, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar7, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar8, &v, ReadOnly | DontDelete);
-        Put(TEXT_dollar9, &v, ReadOnly | DontDelete);
+        Put(Text.input, &v, DontDelete);
+        Put(Text.multiline, &vb, DontDelete);
+        Put(Text.lastMatch, &v, ReadOnly | DontDelete);
+        Put(Text.lastParen, &v, ReadOnly | DontDelete);
+        Put(Text.leftContext, &v, ReadOnly | DontDelete);
+        Put(Text.rightContext, &v, ReadOnly | DontDelete);
+        Put(Text.dollar1, &v, ReadOnly | DontDelete);
+        Put(Text.dollar2, &v, ReadOnly | DontDelete);
+        Put(Text.dollar3, &v, ReadOnly | DontDelete);
+        Put(Text.dollar4, &v, ReadOnly | DontDelete);
+        Put(Text.dollar5, &v, ReadOnly | DontDelete);
+        Put(Text.dollar6, &v, ReadOnly | DontDelete);
+        Put(Text.dollar7, &v, ReadOnly | DontDelete);
+        Put(Text.dollar8, &v, ReadOnly | DontDelete);
+        Put(Text.dollar9, &v, ReadOnly | DontDelete);
 
-        Put(TEXT_index, &vnm1, ReadOnly | DontDelete);
-        Put(TEXT_lastIndex, &vnm1, ReadOnly | DontDelete);
+        Put(Text.index, &vnm1, ReadOnly | DontDelete);
+        Put(Text.lastIndex, &vnm1, ReadOnly | DontDelete);
 
-        input = Get(TEXT_input);
-        multiline = Get(TEXT_multiline);
-        lastMatch = Get(TEXT_lastMatch);
-        lastParen = Get(TEXT_lastParen);
-        leftContext = Get(TEXT_leftContext);
-        rightContext = Get(TEXT_rightContext);
+        input = Get(Text.input);
+        multiline = Get(Text.multiline);
+        lastMatch = Get(Text.lastMatch);
+        lastParen = Get(Text.lastParen);
+        leftContext = Get(Text.leftContext);
+        rightContext = Get(Text.rightContext);
         dollar[0] = lastMatch;
-        dollar[1] = Get(TEXT_dollar1);
-        dollar[2] = Get(TEXT_dollar2);
-        dollar[3] = Get(TEXT_dollar3);
-        dollar[4] = Get(TEXT_dollar4);
-        dollar[5] = Get(TEXT_dollar5);
-        dollar[6] = Get(TEXT_dollar6);
-        dollar[7] = Get(TEXT_dollar7);
-        dollar[8] = Get(TEXT_dollar8);
-        dollar[9] = Get(TEXT_dollar9);
+        dollar[1] = Get(Text.dollar1);
+        dollar[2] = Get(Text.dollar2);
+        dollar[3] = Get(Text.dollar3);
+        dollar[4] = Get(Text.dollar4);
+        dollar[5] = Get(Text.dollar5);
+        dollar[6] = Get(Text.dollar6);
+        dollar[7] = Get(Text.dollar7);
+        dollar[8] = Get(Text.dollar8);
+        dollar[9] = Get(Text.dollar9);
 
-        index = Get(TEXT_index);
-        lastIndex = Get(TEXT_lastIndex);
+        index = Get(Text.index);
+        lastIndex = Get(Text.lastIndex);
 
         // Should lastMatch be an alias for dollar[nparens],
         // or should it be a separate property?
@@ -152,7 +152,7 @@ class DregexpConstructor : Dfunction
             else
             {
                 ErrInfo errinfo;
-                return RuntimeError(&errinfo, ERR_TYPE_ERROR,
+                return RuntimeError(&errinfo, Err.TypeError,
                                     "RegExp.prototype.constructor");
             }
         }
@@ -255,12 +255,12 @@ class DregexpConstructor : Dfunction
         static immutable tchar[] from = "_*&+`'";
         static enum d_string[] to =
         [
-            TEXT_input,
-            TEXT_multiline,
-            TEXT_lastMatch,
-            TEXT_lastParen,
-            TEXT_leftContext,
-            TEXT_rightContext,
+            Text.input,
+            Text.multiline,
+            Text.lastMatch,
+            Text.lastParen,
+            Text.leftContext,
+            Text.rightContext,
         ];
 
         t = s;
@@ -288,7 +288,7 @@ Status* Dregexp_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
     {
         ret.putVundefined();
         ErrInfo errinfo;
-        return Dobject.RuntimeError(&errinfo, ERR_NOT_TRANSFERRABLE,
+        return Dobject.RuntimeError(&errinfo, Err.NotTransferrable,
                                     "RegExp.prototype.toString()");
     }
     else
@@ -329,11 +329,11 @@ Status* Dregexp_prototype_compile(Dobject pthis, CallContext* cc, Dobject othis,
     // RegExp.prototype.compile(pattern, attributes)
 
     // othis must be a RegExp
-    if(!othis.isClass(TEXT_RegExp))
+    if(!othis.isClass(Text.RegExp))
     {
         ErrInfo errinfo;
         ret.putVundefined();
-        return Dobject.RuntimeError(&errinfo, ERR_NOT_TRANSFERRABLE,
+        return Dobject.RuntimeError(&errinfo, Err.NotTransferrable,
                                     "RegExp.prototype.compile()");
     }
     else
@@ -384,18 +384,18 @@ class DregexpPrototype : Dregexp
     this()
     {
         super(Dobject_prototype);
-        classname = TEXT_Object;
+        classname = Text.Object;
         uint attributes = ReadOnly | DontDelete | DontEnum;
         Dobject f = Dfunction_prototype;
 
-        Put(TEXT_constructor, Dregexp_constructor, attributes);
+        Put(Text.constructor, Dregexp_constructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
-            { TEXT_toString, &Dregexp_prototype_toString, 0 },
-            { TEXT_compile, &Dregexp_prototype_compile, 2 },
-            { TEXT_exec, &Dregexp_prototype_exec, 1 },
-            { TEXT_test, &Dregexp_prototype_test, 1 },
+            { Text.toString, &Dregexp_prototype_toString, 0 },
+            { Text.compile, &Dregexp_prototype_compile, 2 },
+            { Text.exec, &Dregexp_prototype_exec, 1 },
+            { Text.test, &Dregexp_prototype_test, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, attributes);
@@ -426,20 +426,20 @@ class Dregexp : Dobject
         Value vb;
         vb.putVboolean(false);
 
-        classname = TEXT_RegExp;
+        classname = Text.RegExp;
 
         //writef("Dregexp.Dregexp(pattern = '%ls', attributes = '%ls')\n", d_string_ptr(pattern), d_string_ptr(attributes));
-        Put(TEXT_source, &v, ReadOnly | DontDelete | DontEnum);
-        Put(TEXT_global, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(TEXT_ignoreCase, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(TEXT_multiline, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(TEXT_lastIndex, 0.0, DontDelete | DontEnum);
+        Put(Text.source, &v, ReadOnly | DontDelete | DontEnum);
+        Put(Text.global, &vb, ReadOnly | DontDelete | DontEnum);
+        Put(Text.ignoreCase, &vb, ReadOnly | DontDelete | DontEnum);
+        Put(Text.multiline, &vb, ReadOnly | DontDelete | DontEnum);
+        Put(Text.lastIndex, 0.0, DontDelete | DontEnum);
 
-        source = Get(TEXT_source);
-        global = Get(TEXT_global);
-        ignoreCase = Get(TEXT_ignoreCase);
-        multiline = Get(TEXT_multiline);
-        lastIndex = Get(TEXT_lastIndex);
+        source = Get(Text.source);
+        global = Get(Text.global);
+        ignoreCase = Get(Text.ignoreCase);
+        multiline = Get(Text.multiline);
+        lastIndex = Get(Text.lastIndex);
 
         re = new RegExp(pattern, attributes);
         if(re.errors == 0)
@@ -466,19 +466,19 @@ class Dregexp : Dobject
         Value vb;
         vb.putVboolean(false);
 
-        classname = TEXT_RegExp;
+        classname = Text.RegExp;
 
-        Put(TEXT_source, &v, ReadOnly | DontDelete | DontEnum);
-        Put(TEXT_global, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(TEXT_ignoreCase, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(TEXT_multiline, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(TEXT_lastIndex, 0.0, DontDelete | DontEnum);
+        Put(Text.source, &v, ReadOnly | DontDelete | DontEnum);
+        Put(Text.global, &vb, ReadOnly | DontDelete | DontEnum);
+        Put(Text.ignoreCase, &vb, ReadOnly | DontDelete | DontEnum);
+        Put(Text.multiline, &vb, ReadOnly | DontDelete | DontEnum);
+        Put(Text.lastIndex, 0.0, DontDelete | DontEnum);
 
-        source = Get(TEXT_source);
-        global = Get(TEXT_global);
-        ignoreCase = Get(TEXT_ignoreCase);
-        multiline = Get(TEXT_multiline);
-        lastIndex = Get(TEXT_lastIndex);
+        source = Get(Text.source);
+        global = Get(Text.global);
+        ignoreCase = Get(Text.ignoreCase);
+        multiline = Get(Text.multiline);
+        lastIndex = Get(Text.lastIndex);
 
         re = new RegExp(null, null);
     }
@@ -488,7 +488,7 @@ class Dregexp : Dobject
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
 
-        v = Get(TEXT_exec);
+        v = Get(Text.exec);
         return v.toObject().Call(cc, this, ret, arglist);
     }
 
@@ -508,11 +508,11 @@ class Dregexp : Dobject
         //writef("Dregexp.exec(arglist.length = %d, rettype = %d)\n", arglist.length, rettype);
 
         // othis must be a RegExp
-        if(!othis.isClass(TEXT_RegExp))
+        if(!othis.isClass(Text.RegExp))
         {
             ret.putVundefined();
             ErrInfo errinfo;
-            return RuntimeError(&errinfo, ERR_NOT_TRANSFERRABLE,
+            return RuntimeError(&errinfo, Err.NotTransferrable,
                                 "RegExp.prototype.exec()");
         }
         else
@@ -602,9 +602,9 @@ class Dregexp : Dobject
                 {
                     Darray a = new Darray();
 
-                    a.Put(TEXT_input, r.input, 0);
-                    a.Put(TEXT_index, r.index, 0);
-                    a.Put(TEXT_lastIndex, r.lastIndex, 0);
+                    a.Put(Text.input, r.input, 0);
+                    a.Put(Text.index, r.index, 0);
+                    a.Put(Text.lastIndex, r.lastIndex, 0);
 
                     a.Put(cast(d_uint32)0, dc.lastMatch, cast(uint)0);
 
@@ -614,7 +614,7 @@ class Dregexp : Dobject
                     for(i = 1; i <= nmatches; i++)
                     {
                         if(i > r.nmatches)
-                            a.Put(i, TEXT_, 0);
+                            a.Put(i, Text.Empty, 0);
 
                         // Reuse values already put into dc.dollar[]
                         else if(r.nmatches <= 9)
@@ -708,7 +708,7 @@ class Dregexp : Dobject
                 writef("*p = %x, %x, %x, %x\n", p[0], p[1], p[2], p[3]);
         }
 
-        Dregexp_constructor.Put(TEXT_prototype, Dregexp_prototype, DontEnum | DontDelete | ReadOnly);
+        Dregexp_constructor.Put(Text.prototype, Dregexp_prototype, DontEnum | DontDelete | ReadOnly);
     }
 }
 

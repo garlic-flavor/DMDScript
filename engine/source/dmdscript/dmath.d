@@ -299,14 +299,14 @@ class Dmath : Dobject
 
         static enum MathConst[] table =
         [
-            { TEXT_E, std.math.E },
-            { TEXT_LN10, std.math.LN10 },
-            { TEXT_LN2, std.math.LN2 },
-            { TEXT_LOG2E, std.math.LOG2E },
-            { TEXT_LOG10E, std.math.LOG10E },
-            { TEXT_PI, std.math.PI },
-            { TEXT_SQRT1_2, std.math.SQRT1_2 },
-            { TEXT_SQRT2, std.math.SQRT2 },
+            { Text.E, std.math.E },
+            { Text.LN10, std.math.LN10 },
+            { Text.LN2, std.math.LN2 },
+            { Text.LOG2E, std.math.LOG2E },
+            { Text.LOG10E, std.math.LOG10E },
+            { Text.PI, std.math.PI },
+            { Text.SQRT1_2, std.math.SQRT1_2 },
+            { Text.SQRT2, std.math.SQRT2 },
         ];
 
         for(size_t u = 0; u < table.length; u++)
@@ -317,28 +317,28 @@ class Dmath : Dobject
             //writef("Put(%s,%.5g) = %x\n", *table[u].name, table[u].value, v);
         }
 
-        classname = TEXT_Math;
+        classname = Text.Math;
 
         static enum NativeFunctionData[] nfd =
         [
-            { TEXT_abs, &Dmath_abs, 1 },
-            { TEXT_acos, &Dmath_acos, 1 },
-            { TEXT_asin, &Dmath_asin, 1 },
-            { TEXT_atan, &Dmath_atan, 1 },
-            { TEXT_atan2, &Dmath_atan2, 2 },
-            { TEXT_ceil, &Dmath_ceil, 1 },
-            { TEXT_cos, &Dmath_cos, 1 },
-            { TEXT_exp, &Dmath_exp, 1 },
-            { TEXT_floor, &Dmath_floor, 1 },
-            { TEXT_log, &Dmath_log, 1 },
-            { TEXT_max, &Dmath_max, 2 },
-            { TEXT_min, &Dmath_min, 2 },
-            { TEXT_pow, &Dmath_pow, 2 },
-            { TEXT_random, &Dmath_random, 0 },
-            { TEXT_round, &Dmath_round, 1 },
-            { TEXT_sin, &Dmath_sin, 1 },
-            { TEXT_sqrt, &Dmath_sqrt, 1 },
-            { TEXT_tan, &Dmath_tan, 1 },
+            { Text.abs, &Dmath_abs, 1 },
+            { Text.acos, &Dmath_acos, 1 },
+            { Text.asin, &Dmath_asin, 1 },
+            { Text.atan, &Dmath_atan, 1 },
+            { Text.atan2, &Dmath_atan2, 2 },
+            { Text.ceil, &Dmath_ceil, 1 },
+            { Text.cos, &Dmath_cos, 1 },
+            { Text.exp, &Dmath_exp, 1 },
+            { Text.floor, &Dmath_floor, 1 },
+            { Text.log, &Dmath_log, 1 },
+            { Text.max, &Dmath_max, 2 },
+            { Text.min, &Dmath_min, 2 },
+            { Text.pow, &Dmath_pow, 2 },
+            { Text.random, &Dmath_random, 0 },
+            { Text.round, &Dmath_round, 1 },
+            { Text.sin, &Dmath_sin, 1 },
+            { Text.sqrt, &Dmath_sqrt, 1 },
+            { Text.tan, &Dmath_tan, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, attributes);

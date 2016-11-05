@@ -76,18 +76,18 @@ class Parser : Lexer
         p = new Parser("anonymous", params, 0);
 
         // Parse FormalParameterList
-        while(p.token.value != TOKeof)
+        while(p.token.value != Tok.Eof)
         {
-            if(p.token.value != TOKidentifier)
+            if(p.token.value != Tok.Identifier)
             {
                 p.error(Err.FplExpectedIdentifier, p.token.toString);
                 goto Lreturn;
             }
             parameters ~= p.token.ident;
             p.nextToken();
-            if(p.token.value == TOKcomma)
+            if(p.token.value == Tok.Comma)
                 p.nextToken();
-            else if(p.token.value == TOKeof)
+            else if(p.token.value == Tok.Eof)
                 break;
             else
             {
@@ -106,7 +106,7 @@ class Parser : Lexer
         {
             TopStatement ts;
 
-            if(p.token.value == TOKeof)
+            if(p.token.value == Tok.Eof)
                 break;
             ts = p.parseStatement();
             topstatements ~= ts;
@@ -131,7 +131,7 @@ class Parser : Lexer
     int parseProgram(out TopStatement[] topstatements, ErrInfo *perrinfo)
     {
         topstatements = parseTopStatements();
-        check(TOKeof);
+        check(Tok.Eof);
         //writef("parseProgram done\n");
         *perrinfo = errinfo;
         //clearstack();
@@ -148,15 +148,15 @@ class Parser : Lexer
         {
             switch(token.value)
             {
-            case TOKfunction:
+            case Tok.Function:
                 ts = parseFunction(0);
                 topstatements ~= ts;
                 break;
 
-            case TOKeof:
+            case Tok.Eof:
                 return topstatements;
 
-            case TOKrbrace:
+            case Tok.Rbrace:
                 return topstatements;
 
             default:
@@ -187,12 +187,12 @@ class Parser : Lexer
         loc = currentline;
         nextToken();
         name = null;
-        if(token.value == TOKidentifier)
+        if(token.value == Tok.Identifier)
         {
             name = token.ident;
             nextToken();
 
-            if(!flag && token.value == TOKdot)
+            if(!flag && token.value == Tok.Dot)
             {
                 // Regard:
                 //	function A.B() { }
@@ -203,10 +203,10 @@ class Parser : Lexer
                 e = new IdentifierExpression(loc, name);
                 name = null;
 
-                while(token.value == TOKdot)
+                while(token.value == Tok.Dot)
                 {
                     nextToken();
-                    if(token.value == TOKidentifier)
+                    if(token.value == Tok.Identifier)
                     {
                         e = new DotExp(loc, e, token.ident);
                         nextToken();
@@ -220,34 +220,34 @@ class Parser : Lexer
             }
         }
 
-        check(TOKlparen);
-        if(token.value == TOKrparen)
+        check(Tok.Lparen);
+        if(token.value == Tok.Rparen)
             nextToken();
         else
         {
             for(;; )
             {
-                if(token.value == TOKidentifier)
+                if(token.value == Tok.Identifier)
                 {
                     parameters ~= token.ident;
                     nextToken();
-                    if(token.value == TOKcomma)
+                    if(token.value == Tok.Comma)
                     {
                         nextToken();
                         continue;
                     }
-                    if(!check(TOKrparen))
+                    if(!check(Tok.Rparen))
                         break;
                 }
                 else
-                    error(ERR_EXPECTED_IDENTIFIER);
+                    error(Err.ExpectedIdentifier);
                 break;
             }
         }
 
-        check(TOKlbrace);
+        check(Tok.Lbrace);
         topstatements = parseTopStatements();
-        check(TOKrbrace);
+        check(Tok.Rbrace);
 
         f = new FunctionDefinition(loc, 0, name, parameters, topstatements);
         f.isliteral = flag;
@@ -282,11 +282,11 @@ class Parser : Lexer
         loc = currentline;
         switch(token.value)
         {
-        case TOKidentifier:
-        case TOKthis:
+        case Tok.Identifier:
+        case Tok.This:
             // Need to look ahead to see if it is a declaration, label, or expression
             t = peek(&token);
-            if(t.value == TOKcolon && token.value == TOKidentifier)
+            if(t.value == Tok.Colon && token.value == Tok.Identifier)
             {       // It's a label
                 Identifier *ident;
 
@@ -296,9 +296,9 @@ class Parser : Lexer
                 s = parseStatement();
                 s = new LabelStatement(loc, ident, s);
             }
-            else if(t.value == TOKassign ||
-                    t.value == TOKdot ||
-                    t.value == TOKlbracket)
+            else if(t.value == Tok.Assign ||
+                    t.value == Tok.Dot ||
+                    t.value == Tok.Lbracket)
             {
                 Expression exp;
 
@@ -316,22 +316,22 @@ class Parser : Lexer
             }
             break;
 
-        case TOKreal:
-        case TOKstring:
-        case TOKdelete:
-        case TOKlparen:
-        case TOKplusplus:
-        case TOKminusminus:
-        case TOKplus:
-        case TOKminus:
-        case TOKnot:
-        case TOKtilde:
-        case TOKtypeof:
-        case TOKnull:
-        case TOKnew:
-        case TOKtrue:
-        case TOKfalse:
-        case TOKvoid:
+        case Tok.Real:
+        case Tok.String:
+        case Tok.Delete:
+        case Tok.Lparen:
+        case Tok.Plusplus:
+        case Tok.Minusminus:
+        case Tok.Plus:
+        case Tok.Minus:
+        case Tok.Not:
+        case Tok.Tilde:
+        case Tok.Typeof:
+        case Tok.Null:
+        case Tok.New:
+        case Tok.True:
+        case Tok.False:
+        case Tok.Void:
         { Expression exp;
 
           exp = parseExpression(initial);
@@ -339,7 +339,7 @@ class Parser : Lexer
           s = new ExpStatement(loc, exp);
           break; }
 
-        case TOKvar:
+        case Tok.Var:
         {
             Identifier *ident;
             Expression init;
@@ -354,7 +354,7 @@ class Parser : Lexer
             {
                 loc = currentline;
 
-                if(token.value != TOKidentifier)
+                if(token.value != Tok.Identifier)
                 {
                     error(Err.ExpectedIdentifierParam, token.toString());
                     break;
@@ -362,7 +362,7 @@ class Parser : Lexer
                 ident = token.ident;
                 init = null;
                 nextToken();
-                if(token.value == TOKassign)
+                if(token.value == Tok.Assign)
                 {
                     uint flags_save;
 
@@ -374,7 +374,7 @@ class Parser : Lexer
                 }
                 v = new VarDeclaration(loc, ident, init);
                 vs.vardecls ~= v;
-                if(token.value != TOKcomma)
+                if(token.value != Tok.Comma)
                     break;
                 nextToken();
             }
@@ -383,14 +383,14 @@ class Parser : Lexer
             break;
         }
 
-        case TOKlbrace:
+        case Tok.Lbrace:
         { BlockStatement bs;
 
           nextToken();
           bs = new BlockStatement(loc);
-          /*while(token.value != TOKrbrace)
+          /*while(token.value != Tok.Rbrace)
           {
-              if(token.value == TOKeof)
+              if(token.value == Tok.Eof)
               {         
                   error(ERR_UNTERMINATED_BLOCK);
                   break;
@@ -403,12 +403,12 @@ class Parser : Lexer
 
           // The following is to accommodate the jscript bug:
           //	if (i) {return(0);}; else ...
-          /*if(token.value == TOKsemicolon)
+          /*if(token.value == Tok.Semicolon)
               nextToken();*/
 
           break; }
 
-        case TOKif:
+        case Tok.If:
         { Expression condition;
           Statement ifbody;
           Statement elsebody;
@@ -416,7 +416,7 @@ class Parser : Lexer
           nextToken();
           condition = parseParenExp();
           ifbody = parseStatement();
-          if(token.value == TOKelse)
+          if(token.value == Tok.Else)
           {
               nextToken();
               elsebody = parseStatement();
@@ -426,7 +426,7 @@ class Parser : Lexer
           s = new IfStatement(loc, condition, ifbody, elsebody);
           break; }
 
-        case TOKswitch:
+        case Tok.Switch:
         { Expression condition;
           Statement bdy;
 
@@ -436,22 +436,22 @@ class Parser : Lexer
           s = new SwitchStatement(loc, condition, bdy);
           break; }
 
-        case TOKcase:
+        case Tok.Case:
         { Expression exp;
 
           nextToken();
           exp = parseExpression();
-          check(TOKcolon);
+          check(Tok.Colon);
           s = new CaseStatement(loc, exp);
           break; }
 
-        case TOKdefault:
+        case Tok.Default:
             nextToken();
-            check(TOKcolon);
+            check(Tok.Colon);
             s = new DefaultStatement(loc);
             break;
 
-        case TOKwhile:
+        case Tok.While:
         { Expression condition;
           Statement bdy;
 
@@ -461,36 +461,36 @@ class Parser : Lexer
           s = new WhileStatement(loc, condition, bdy);
           break; }
 
-        case TOKsemicolon:
+        case Tok.Semicolon:
             nextToken();
             s = new EmptyStatement(loc);
             break;
 
-        case TOKdo:
+        case Tok.Do:
         { Statement bdy;
           Expression condition;
 
           nextToken();
           bdy = parseStatement();
-          check(TOKwhile);
+          check(Tok.While);
           condition = parseParenExp();
           //We do what most browsers now do, ie allow missing ';' 
           //like " do{ statement; }while(e) statement; " and that even w/o linebreak
-          if(token.value == TOKsemicolon)
+          if(token.value == Tok.Semicolon)
               nextToken();
           //parseOptionalSemi();
           s = new DoStatement(loc, bdy, condition);
           break; }
 
-        case TOKfor:
+        case Tok.For:
         {
             Statement init;
             Statement bdy;
 
             nextToken();
             flags |= inForHeader;
-            check(TOKlparen);
-            if(token.value == TOKvar)
+            check(Tok.Lparen);
+            if(token.value == Tok.Var)
             {
                 init = parseStatement();
             }
@@ -502,22 +502,22 @@ class Parser : Lexer
                 init = e ? new ExpStatement(loc, e) : null;
             }
 
-            if(token.value == TOKsemicolon)
+            if(token.value == Tok.Semicolon)
             {
                 Expression condition;
                 Expression increment;
 
                 nextToken();
                 condition = parseOptionalExpression();
-                check(TOKsemicolon);
+                check(Tok.Semicolon);
                 increment = parseOptionalExpression();
-                check(TOKrparen);
+                check(Tok.Rparen);
                 flags &= ~inForHeader;
 
                 bdy = parseStatement();
                 s = new ForStatement(loc, init, condition, increment, bdy);
             }
-            else if(token.value == TOKin)
+            else if(token.value == Tok.In)
             {
                 Expression inexp;
                 VarStatement vs;
@@ -533,7 +533,7 @@ class Parser : Lexer
 
                 nextToken();
                 inexp = parseExpression();
-                check(TOKrparen);
+                check(Tok.Rparen);
                 flags &= ~inForHeader;
                 bdy = parseStatement();
                 s = new ForInStatement(loc, init, inexp, bdy);
@@ -546,7 +546,7 @@ class Parser : Lexer
             break;
         }
 
-        case TOKwith:
+        case Tok.With:
         { Expression exp;
           Statement bdy;
 
@@ -556,17 +556,17 @@ class Parser : Lexer
           s = new WithStatement(loc, exp, bdy);
           break; }
 
-        case TOKbreak:
+        case Tok.Break:
         { Identifier* ident;
 
           nextToken();
-          if(token.sawLineTerminator && token.value != TOKsemicolon)
+          if(token.sawLineTerminator && token.value != Tok.Semicolon)
           {         // Assume we saw a semicolon
               ident = null;
           }
           else
           {
-              if(token.value == TOKidentifier)
+              if(token.value == Tok.Identifier)
               {
                   ident = token.ident;
                   nextToken();
@@ -578,17 +578,17 @@ class Parser : Lexer
           s = new BreakStatement(loc, ident);
           break; }
 
-        case TOKcontinue:
+        case Tok.Continue:
         { Identifier* ident;
 
           nextToken();
-          if(token.sawLineTerminator && token.value != TOKsemicolon)
+          if(token.sawLineTerminator && token.value != Tok.Semicolon)
           {         // Assume we saw a semicolon
               ident = null;
           }
           else
           {
-              if(token.value == TOKidentifier)
+              if(token.value == Tok.Identifier)
               {
                   ident = token.ident;
                   nextToken();
@@ -600,11 +600,11 @@ class Parser : Lexer
           s = new ContinueStatement(loc, ident);
           break; }
 
-        case TOKgoto:
+        case Tok.Goto:
         { Identifier* ident;
 
           nextToken();
-          if(token.value != TOKidentifier)
+          if(token.value != Tok.Identifier)
           {
               error(Err.GotoLabelExpected, token.toString());
               s = null;
@@ -616,11 +616,11 @@ class Parser : Lexer
           s = new GotoStatement(loc, ident);
           break; }
 
-        case TOKreturn:
+        case Tok.Return:
         { Expression exp;
 
           nextToken();
-          if(token.sawLineTerminator && token.value != TOKsemicolon)
+          if(token.sawLineTerminator && token.value != Tok.Semicolon)
           {         // Assume we saw a semicolon
               s = new ReturnStatement(loc, null);
           }
@@ -632,7 +632,7 @@ class Parser : Lexer
           }
           break; }
 
-        case TOKthrow:
+        case Tok.Throw:
         { Expression exp;
 
           nextToken();
@@ -641,7 +641,7 @@ class Parser : Lexer
           s = new ThrowStatement(loc, exp);
           break; }
 
-        case TOKtry:
+        case Tok.Try:
         { Statement bdy;
           Identifier* catchident;
           Statement catchbody;
@@ -649,15 +649,15 @@ class Parser : Lexer
 
           nextToken();
           bdy = parseStatement();
-          if(token.value == TOKcatch)
+          if(token.value == Tok.Catch)
           {
               nextToken();
-              check(TOKlparen);
+              check(Tok.Lparen);
               catchident = null;
-              if(token.value == TOKidentifier)
+              if(token.value == Tok.Identifier)
                   catchident = token.ident;
-              check(TOKidentifier);
-              check(TOKrparen);
+              check(Tok.Identifier);
+              check(Tok.Rparen);
               catchbody = parseStatement();
           }
           else
@@ -666,7 +666,7 @@ class Parser : Lexer
               catchbody = null;
           }
 
-          if(token.value == TOKfinally)
+          if(token.value == Tok.Finally)
           {
               nextToken();
               finalbody = parseStatement();
@@ -676,7 +676,7 @@ class Parser : Lexer
 
           if(!catchbody && !finalbody)
           {
-              error(ERR_TRY_CATCH_EXPECTED);
+              error(Err.TryCatchExpected);
               s = null;
           }
           else
@@ -702,7 +702,7 @@ class Parser : Lexer
     {
         Expression e;
 
-        if(token.value == TOKsemicolon || token.value == TOKrparen)
+        if(token.value == Tok.Semicolon || token.value == Tok.Rparen)
             e = null;
         else
             e = parseExpression(flags);
@@ -712,14 +712,14 @@ class Parser : Lexer
     // Follow ECMA 7.8.1 rules for inserting semicolons
     void parseOptionalSemi()
     {
-        if(token.value != TOKeof &&
-           token.value != TOKrbrace &&
+        if(token.value != Tok.Eof &&
+           token.value != Tok.Rbrace &&
            !(token.sawLineTerminator && (flags & inForHeader) == 0)
            )
-            check(TOKsemicolon);
+            check(Tok.Semicolon);
     }
 
-    int check(TOK value)
+    int check(Tok value)
     {
         if(token.value != value)
         {
@@ -737,9 +737,9 @@ class Parser : Lexer
     {
         Expression e;
 
-        check(TOKlparen);
+        check(Tok.Lparen);
         e = parseExpression();
-        check(TOKrparen);
+        check(Tok.Rparen);
         return e;
     }
 
@@ -751,57 +751,57 @@ class Parser : Lexer
         loc = currentline;
         switch(token.value)
         {
-        case TOKthis:
+        case Tok.This:
             e = new ThisExpression(loc);
             nextToken();
             break;
 
-        case TOKnull:
+        case Tok.Null:
             e = new NullExpression(loc);
             nextToken();
             break;
-        case TOKtrue:
+        case Tok.True:
             e = new BooleanExpression(loc, 1);
             nextToken();
             break;
 
-        case TOKfalse:
+        case Tok.False:
             e = new BooleanExpression(loc, 0);
             nextToken();
             break;
 
-        case TOKreal:
+        case Tok.Real:
             e = new RealExpression(loc, token.realvalue);
             nextToken();
             break;
 
-        case TOKstring:
+        case Tok.String:
             e = new StringExpression(loc, token.str);
             token.str = null;        // release to gc
             nextToken();
             break;
 
-        case TOKregexp:
+        case Tok.Regexp:
             e = new RegExpLiteral(loc, token.str);
             token.str = null;        // release to gc
             nextToken();
             break;
 
-        case TOKidentifier:
+        case Tok.Identifier:
             e = new IdentifierExpression(loc, token.ident);
             token.ident = null;                 // release to gc
             nextToken();
             break;
 
-        case TOKlparen:
+        case Tok.Lparen:
             e = parseParenExp();
             break;
 
-        case TOKlbracket:
+        case Tok.Lbracket:
             e = parseArrayLiteral();
             break;
 
-        case TOKlbrace:
+        case Tok.Lbrace:
             /*if(flags & initial)
             {
                 error(ERR_OBJ_LITERAL_IN_INITIALIZER);
@@ -811,13 +811,13 @@ class Parser : Lexer
             e = parseObjectLiteral();
             break;
 
-        case TOKfunction:
+        case Tok.Function:
             //	    if (flags & initial)
             //		goto Lerror;
             e = parseFunctionLiteral();
             break;
 
-        case TOKnew:
+        case Tok.New:
         { Expression newarg;
           Expression[] arguments;
 
@@ -840,10 +840,10 @@ class Parser : Lexer
     {
         Expression[] arguments = null;
 
-        if(token.value == TOKlparen)
+        if(token.value == Tok.Lparen)
         {
             nextToken();
-            if(token.value != TOKrparen)
+            if(token.value != Tok.Rparen)
             {
                 for(;; )
                 {
@@ -851,9 +851,9 @@ class Parser : Lexer
 
                     arg = parseAssignExp();
                     arguments ~= arg;
-                    if(token.value == TOKrparen)
+                    if(token.value == Tok.Rparen)
                         break;
-                    if(!check(TOKcomma))
+                    if(!check(Tok.Comma))
                         break;
                 }
             }
@@ -870,18 +870,18 @@ class Parser : Lexer
 
         //writef("parseArrayLiteral()\n");
         loc = currentline;
-        check(TOKlbracket);
-        if(token.value != TOKrbracket)
+        check(Tok.Lbracket);
+        if(token.value != Tok.Rbracket)
         {
             for(;; )
             {
-                if(token.value == TOKcomma)
+                if(token.value == Tok.Comma)
                     // Allow things like [1,2,,,3,]
                     // Like Explorer 4, and unlike Netscape, the
                     // trailing , indicates another null element.
                     //Netscape was right - FIXED
                     elements ~= cast(Expression)null;
-                else if(token.value == TOKrbracket)
+                else if(token.value == Tok.Rbracket)
                 {
                     //elements ~= cast(Expression)null;
                     break;
@@ -890,13 +890,13 @@ class Parser : Lexer
                 {
                     e = parseAssignExp();
                     elements ~= e;
-                    if(token.value != TOKcomma)
+                    if(token.value != Tok.Comma)
                         break;
                 }
                 nextToken();
             }
         }
-        check(TOKrbracket);
+        check(Tok.Rbracket);
         e = new ArrayLiteral(loc, elements);
         return e;
     }
@@ -909,8 +909,8 @@ class Parser : Lexer
 
         //writef("parseObjectLiteral()\n");
         loc = currentline;
-        check(TOKlbrace);
-        if(token.value == TOKrbrace)
+        check(Tok.Lbrace);
+        if(token.value == Tok.Rbrace)
             nextToken();
         else
         {
@@ -919,27 +919,27 @@ class Parser : Lexer
                 Field f;
                 Identifier* ident;
                 switch(token.value){
-                    case TOKidentifier:
+                    case Tok.Identifier:
                         ident = token.ident;
                         break;
-                    case TOKstring,TOKnumber,TOKreal:
+                    case Tok.String,Tok.Number,Tok.Real:
                         ident = Identifier.build(token.toString());
                     break;
                     default:
-                        error(ERR_EXPECTED_IDENTIFIER);
+                        error(Err.ExpectedIdentifier);
                     break;
                 }
                 nextToken();
-                check(TOKcolon);
+                check(Tok.Colon);
                 f = new Field(ident, parseAssignExp());
                 fields ~= f;
-                if(token.value != TOKcomma)
+                if(token.value != Tok.Comma)
                     break;
                 nextToken();
-                if(token.value == TOKrbrace)//allow trailing comma
+                if(token.value == Tok.Rbrace)//allow trailing comma
                     break;
             }
-            check(TOKrbrace);
+            check(Tok.Rbrace);
         }
         e = new ObjectLiteral(loc, fields);
         return e;
@@ -965,9 +965,9 @@ class Parser : Lexer
             //loc = (Loc)token.ptr;
             switch(token.value)
             {
-            case TOKdot:
+            case Tok.Dot:
                 nextToken();
-                if(token.value == TOKidentifier)
+                if(token.value == Tok.Identifier)
                 {
                     e = new DotExp(loc, e, token.ident);
                 }
@@ -978,13 +978,13 @@ class Parser : Lexer
                 }
                 break;
 
-            case TOKplusplus:
+            case Tok.Plusplus:
                 if(token.sawLineTerminator && !(flags & inForHeader))
                     goto Linsert;
                 e = new PostIncExp(loc, e);
                 break;
 
-            case TOKminusminus:
+            case Tok.Minusminus:
                 if(token.sawLineTerminator && !(flags & inForHeader))
                 {
                     Linsert:
@@ -995,7 +995,7 @@ class Parser : Lexer
                 e = new PostDecExp(loc, e);
                 break;
 
-            case TOKlparen:
+            case Tok.Lparen:
             {       // function call
                 Expression[] arguments;
 
@@ -1006,13 +1006,13 @@ class Parser : Lexer
                 continue;
             }
 
-            case TOKlbracket:
+            case Tok.Lbracket:
             {       // array dereference
                 Expression index;
 
                 nextToken();
                 index = parseExpression();
-                check(TOKrbracket);
+                check(Tok.Rbracket);
                 e = new ArrayExp(loc, e, index);
                 continue;
             }
@@ -1033,58 +1033,58 @@ class Parser : Lexer
         loc = currentline;
         switch(token.value)
         {
-        case TOKplusplus:
+        case Tok.Plusplus:
             nextToken();
             e = parseUnaryExp();
             e = new PreExp(loc, Opcode.PreInc, e);
             break;
 
-        case TOKminusminus:
+        case Tok.Minusminus:
             nextToken();
             e = parseUnaryExp();
             e = new PreExp(loc, Opcode.PreDec, e);
             break;
 
-        case TOKminus:
+        case Tok.Minus:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKneg, Opcode.Neg, e);
+            e = new XUnaExp(loc, Tok.Neg, Opcode.Neg, e);
             break;
 
-        case TOKplus:
+        case Tok.Plus:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKpos, Opcode.Pos, e);
+            e = new XUnaExp(loc, Tok.Pos, Opcode.Pos, e);
             break;
 
-        case TOKnot:
+        case Tok.Not:
             nextToken();
             e = parseUnaryExp();
             e = new NotExp(loc, e);
             break;
 
-        case TOKtilde:
+        case Tok.Tilde:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKtilde, Opcode.Com, e);
+            e = new XUnaExp(loc, Tok.Tilde, Opcode.Com, e);
             break;
 
-        case TOKdelete:
+        case Tok.Delete:
             nextToken();
             e = parsePrimaryExp(0);
             e = new DeleteExp(loc, e);
             break;
 
-        case TOKtypeof:
+        case Tok.Typeof:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKtypeof, Opcode.Typeof, e);
+            e = new XUnaExp(loc, Tok.Typeof, Opcode.Typeof, e);
             break;
 
-        case TOKvoid:
+        case Tok.Void:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, TOKvoid, Opcode.Undefined, e);
+            e = new XUnaExp(loc, Tok.Void, Opcode.Undefined, e);
             break;
 
         default:
@@ -1106,26 +1106,26 @@ class Parser : Lexer
         {
             switch(token.value)
             {
-            case TOKmultiply:
+            case Tok.Multiply:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, TOKmultiply, Opcode.Mul, e, e2);
+                e = new XBinExp(loc, Tok.Multiply, Opcode.Mul, e, e2);
                 continue;
 
-            case TOKregexp:
+            case Tok.Regexp:
                 // Rescan as if it was a "/"
                 rescan();
                 goto case;
-            case TOKdivide:
+            case Tok.Divide:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, TOKdivide, Opcode.Div, e, e2);
+                e = new XBinExp(loc, Tok.Divide, Opcode.Div, e, e2);
                 continue;
 
-            case TOKpercent:
+            case Tok.Percent:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, TOKpercent, Opcode.Mod, e, e2);
+                e = new XBinExp(loc, Tok.Percent, Opcode.Mod, e, e2);
                 continue;
 
             default:
@@ -1148,16 +1148,16 @@ class Parser : Lexer
         {
             switch(token.value)
             {
-            case TOKplus:
+            case Tok.Plus:
                 nextToken();
                 e2 = parseMulExp();
                 e = new AddExp(loc, e, e2);
                 continue;
 
-            case TOKminus:
+            case Tok.Minus:
                 nextToken();
                 e2 = parseMulExp();
-                e = new XBinExp(loc, TOKminus, Opcode.Sub, e, e2);
+                e = new XBinExp(loc, Tok.Minus, Opcode.Sub, e, e2);
                 continue;
 
             default:
@@ -1179,13 +1179,13 @@ class Parser : Lexer
         for(;; )
         {
             Opcode ircode;
-            TOK op = token.value;
+            auto op = token.value;
 
             switch(op)
             {
-            case TOKshiftleft:      ircode = Opcode.ShL;         goto L1;
-            case TOKshiftright:     ircode = Opcode.ShR;         goto L1;
-            case TOKushiftright:    ircode = Opcode.UShR;        goto L1;
+            case Tok.Shiftleft:      ircode = Opcode.ShL;         goto L1;
+            case Tok.Shiftright:     ircode = Opcode.ShR;         goto L1;
+            case Tok.Ushiftright:    ircode = Opcode.UShR;        goto L1;
 
                 L1: nextToken();
                 e2 = parseAddExp();
@@ -1211,14 +1211,14 @@ class Parser : Lexer
         for(;; )
         {
             Opcode ircode;
-            TOK op = token.value;
+            auto op = token.value;
 
             switch(op)
             {
-            case TOKless:           ircode = Opcode.CLT; goto L1;
-            case TOKlessequal:      ircode = Opcode.CLE; goto L1;
-            case TOKgreater:        ircode = Opcode.CGT; goto L1;
-            case TOKgreaterequal:   ircode = Opcode.CGE; goto L1;
+            case Tok.Less:           ircode = Opcode.CLT; goto L1;
+            case Tok.Lessequal:      ircode = Opcode.CLE; goto L1;
+            case Tok.Greater:        ircode = Opcode.CGT; goto L1;
+            case Tok.Greaterequal:   ircode = Opcode.CGE; goto L1;
 
                 L1:
                 nextToken();
@@ -1226,13 +1226,13 @@ class Parser : Lexer
                 e = new CmpExp(loc, op, ircode, e, e2);
                 continue;
 
-            case TOKinstanceof:
+            case Tok.Instanceof:
                 nextToken();
                 e2 = parseShiftExp();
-                e = new XBinExp(loc, TOKinstanceof, Opcode.Instance, e, e2);
+                e = new XBinExp(loc, Tok.Instanceof, Opcode.Instance, e, e2);
                 continue;
 
-            case TOKin:
+            case Tok.In:
                 if(flags & noIn)
                     break;              // disallow
                 nextToken();
@@ -1259,14 +1259,14 @@ class Parser : Lexer
         for(;; )
         {
             Opcode ircode;
-            TOK op = token.value;
+            auto op = token.value;
 
             switch(op)
             {
-            case TOKequal:       ircode = Opcode.CEq;        goto L1;
-            case TOKnotequal:    ircode = Opcode.CNE;        goto L1;
-            case TOKidentity:    ircode = Opcode.CID;        goto L1;
-            case TOKnonidentity: ircode = Opcode.CNID;       goto L1;
+            case Tok.Equal:       ircode = Opcode.CEq;        goto L1;
+            case Tok.Notequal:    ircode = Opcode.CNE;        goto L1;
+            case Tok.Identity:    ircode = Opcode.CID;        goto L1;
+            case Tok.Nonidentity: ircode = Opcode.CNID;       goto L1;
 
                 L1:
                 nextToken();
@@ -1290,11 +1290,11 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseEqualExp();
-        while(token.value == TOKand)
+        while(token.value == Tok.And)
         {
             nextToken();
             e2 = parseEqualExp();
-            e = new XBinExp(loc, TOKand, Opcode.And, e, e2);
+            e = new XBinExp(loc, Tok.And, Opcode.And, e, e2);
         }
         return e;
     }
@@ -1307,11 +1307,11 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseAndExp();
-        while(token.value == TOKxor)
+        while(token.value == Tok.Xor)
         {
             nextToken();
             e2 = parseAndExp();
-            e = new XBinExp(loc, TOKxor, Opcode.Xor, e, e2);
+            e = new XBinExp(loc, Tok.Xor, Opcode.Xor, e, e2);
         }
         return e;
     }
@@ -1324,11 +1324,11 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseXorExp();
-        while(token.value == TOKor)
+        while(token.value == Tok.Or)
         {
             nextToken();
             e2 = parseXorExp();
-            e = new XBinExp(loc, TOKor, Opcode.Or, e, e2);
+            e = new XBinExp(loc, Tok.Or, Opcode.Or, e, e2);
         }
         return e;
     }
@@ -1341,7 +1341,7 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseOrExp();
-        while(token.value == TOKandand)
+        while(token.value == Tok.Andand)
         {
             nextToken();
             e2 = parseOrExp();
@@ -1358,7 +1358,7 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseAndAndExp();
-        while(token.value == TOKoror)
+        while(token.value == Tok.Oror)
         {
             nextToken();
             e2 = parseAndAndExp();
@@ -1376,11 +1376,11 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseOrOrExp();
-        if(token.value == TOKquestion)
+        if(token.value == Tok.Question)
         {
             nextToken();
             e1 = parseAssignExp();
-            check(TOKcolon);
+            check(Tok.Colon);
             e2 = parseAssignExp();
             e = new CondExp(loc, e, e1, e2);
         }
@@ -1398,32 +1398,32 @@ class Parser : Lexer
         for(;; )
         {
             Opcode ircode;
-            TOK op = token.value;
+            auto op = token.value;
 
             switch(op)
             {
-            case TOKassign:
+            case Tok.Assign:
                 nextToken();
                 e2 = parseAssignExp();
                 e = new AssignExp(loc, e, e2);
                 continue;
 
-            case TOKplusass:
+            case Tok.Plusass:
                 nextToken();
                 e2 = parseAssignExp();
                 e = new AddAssignExp(loc, e, e2);
                 continue;
 
-            case TOKminusass:       ircode = Opcode.Sub;  goto L1;
-            case TOKmultiplyass:    ircode = Opcode.Mul;  goto L1;
-            case TOKdivideass:      ircode = Opcode.Div;  goto L1;
-            case TOKpercentass:     ircode = Opcode.Mod;  goto L1;
-            case TOKandass:         ircode = Opcode.And;  goto L1;
-            case TOKorass:          ircode = Opcode.Or;   goto L1;
-            case TOKxorass:         ircode = Opcode.Xor;  goto L1;
-            case TOKshiftleftass:   ircode = Opcode.ShL;  goto L1;
-            case TOKshiftrightass:  ircode = Opcode.ShR;  goto L1;
-            case TOKushiftrightass: ircode = Opcode.UShR; goto L1;
+            case Tok.Minusass:       ircode = Opcode.Sub;  goto L1;
+            case Tok.Multiplyass:    ircode = Opcode.Mul;  goto L1;
+            case Tok.Divideass:      ircode = Opcode.Div;  goto L1;
+            case Tok.Percentass:     ircode = Opcode.Mod;  goto L1;
+            case Tok.Andass:         ircode = Opcode.And;  goto L1;
+            case Tok.Orass:          ircode = Opcode.Or;   goto L1;
+            case Tok.Xorass:         ircode = Opcode.Xor;  goto L1;
+            case Tok.Shiftleftass:   ircode = Opcode.ShL;  goto L1;
+            case Tok.Shiftrightass:  ircode = Opcode.ShR;  goto L1;
+            case Tok.Ushiftrightass: ircode = Opcode.UShR; goto L1;
 
                 L1: nextToken();
                 e2 = parseAssignExp();
@@ -1450,7 +1450,7 @@ class Parser : Lexer
         this.flags = flags;
         loc = currentline;
         e = parseAssignExp();
-        while(token.value == TOKcomma)
+        while(token.value == Tok.Comma)
         {
             nextToken();
             e2 = parseAssignExp();

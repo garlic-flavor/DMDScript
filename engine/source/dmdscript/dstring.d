@@ -80,7 +80,7 @@ class DstringConstructor : Dfunction
 
         static enum NativeFunctionData[] nfd =
         [
-            { TEXT_fromCharCode, &Dstring_fromCharCode, 1 },
+            { Text.fromCharCode, &Dstring_fromCharCode, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, 0);
@@ -92,7 +92,7 @@ class DstringConstructor : Dfunction
         d_string s;
         Dobject o;
 
-        s = (arglist.length) ? arglist[0].toString() : TEXT_;
+        s = (arglist.length) ? arglist[0].toString() : Text.Empty;
         o = new Dstring(s);
         ret.putVobject(o);
         return null;
@@ -103,7 +103,7 @@ class DstringConstructor : Dfunction
         // ECMA 15.5.1
         d_string s;
 
-        s = (arglist.length) ? arglist[0].toString() : TEXT_;
+        s = (arglist.length) ? arglist[0].toString() : Text.Empty;
         ret.putVstring(s);
         return null;
     }
@@ -116,14 +116,14 @@ Status* Dstring_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
 {
     //writef("Dstring.prototype.toString()\n");
     // othis must be a String
-    if(!othis.isClass(TEXT_String))
+    if(!othis.isClass(Text.String))
     {
         ErrInfo errinfo;
 
         ret.putVundefined();
         return pthis.RuntimeError(&errinfo,
                                   Err.FunctionWantsString,
-                                  TEXT_toString,
+                                  Text.toString,
                                   othis.classname);
     }
     else
@@ -144,14 +144,14 @@ Status* Dstring_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
 
     //writef("string.prototype.valueOf()\n");
     // othis must be a String
-    if(!othis.isClass(TEXT_String))
+    if(!othis.isClass(Text.String))
     {
         ErrInfo errinfo;
 
         ret.putVundefined();
         return pthis.RuntimeError(&errinfo,
                                   Err.FunctionWantsString,
-                                  TEXT_valueOf,
+                                  Text.valueOf,
                                   othis.classname);
     }
     else
@@ -182,7 +182,7 @@ Status* Dstring_prototype_charAt(Dobject pthis, CallContext* cc, Dobject othis, 
     v = arglist.length ? &arglist[0] : &vundefined;
     pos = cast(int)v.toInteger();
 
-    result = TEXT_;
+    result = Text.Empty;
 
     if(pos >= 0)
     {
@@ -343,7 +343,7 @@ Status* Dstring_prototype_lastIndexOf(Dobject pthis, CallContext* cc, Dobject ot
             // This is the 'transferable' version
             Value* v;
             Status* a;
-            v = othis.Get(TEXT_toString);
+            v = othis.Get(Text.toString);
             a = v.Call(cc, othis, ret, null);
             if(a)                       // if exception was thrown
                 return a;
@@ -1162,42 +1162,42 @@ class DstringPrototype : Dstring
     {
         super(Dobject_prototype);
 
-        Put(TEXT_constructor, Dstring_constructor, DontEnum);
+        Put(Text.constructor, Dstring_constructor, DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { TEXT_toString, &Dstring_prototype_toString, 0 },
-            { TEXT_valueOf, &Dstring_prototype_valueOf, 0 },
-            { TEXT_charAt, &Dstring_prototype_charAt, 1 },
-            { TEXT_charCodeAt, &Dstring_prototype_charCodeAt, 1 },
-            { TEXT_concat, &Dstring_prototype_concat, 1 },
-            { TEXT_indexOf, &Dstring_prototype_indexOf, 1 },
-            { TEXT_lastIndexOf, &Dstring_prototype_lastIndexOf, 1 },
-            { TEXT_localeCompare, &Dstring_prototype_localeCompare, 1 },
-            { TEXT_match, &Dstring_prototype_match, 1 },
-            { TEXT_replace, &Dstring_prototype_replace, 2 },
-            { TEXT_search, &Dstring_prototype_search, 1 },
-            { TEXT_slice, &Dstring_prototype_slice, 2 },
-            { TEXT_split, &Dstring_prototype_split, 2 },
-            { TEXT_substr, &Dstring_prototype_substr, 2 },
-            { TEXT_substring, &Dstring_prototype_substring, 2 },
-            { TEXT_toLowerCase, &Dstring_prototype_toLowerCase, 0 },
-            { TEXT_toLocaleLowerCase, &Dstring_prototype_toLocaleLowerCase, 0 },
-            { TEXT_toUpperCase, &Dstring_prototype_toUpperCase, 0 },
-            { TEXT_toLocaleUpperCase, &Dstring_prototype_toLocaleUpperCase, 0 },
-            { TEXT_anchor, &Dstring_prototype_anchor, 1 },
-            { TEXT_fontcolor, &Dstring_prototype_fontcolor, 1 },
-            { TEXT_fontsize, &Dstring_prototype_fontsize, 1 },
-            { TEXT_link, &Dstring_prototype_link, 1 },
-            { TEXT_big, &Dstring_prototype_big, 0 },
-            { TEXT_blink, &Dstring_prototype_blink, 0 },
-            { TEXT_bold, &Dstring_prototype_bold, 0 },
-            { TEXT_fixed, &Dstring_prototype_fixed, 0 },
-            { TEXT_italics, &Dstring_prototype_italics, 0 },
-            { TEXT_small, &Dstring_prototype_small, 0 },
-            { TEXT_strike, &Dstring_prototype_strike, 0 },
-            { TEXT_sub, &Dstring_prototype_sub, 0 },
-            { TEXT_sup, &Dstring_prototype_sup, 0 },
+            { Text.toString, &Dstring_prototype_toString, 0 },
+            { Text.valueOf, &Dstring_prototype_valueOf, 0 },
+            { Text.charAt, &Dstring_prototype_charAt, 1 },
+            { Text.charCodeAt, &Dstring_prototype_charCodeAt, 1 },
+            { Text.concat, &Dstring_prototype_concat, 1 },
+            { Text.indexOf, &Dstring_prototype_indexOf, 1 },
+            { Text.lastIndexOf, &Dstring_prototype_lastIndexOf, 1 },
+            { Text.localeCompare, &Dstring_prototype_localeCompare, 1 },
+            { Text.match, &Dstring_prototype_match, 1 },
+            { Text.replace, &Dstring_prototype_replace, 2 },
+            { Text.search, &Dstring_prototype_search, 1 },
+            { Text.slice, &Dstring_prototype_slice, 2 },
+            { Text.split, &Dstring_prototype_split, 2 },
+            { Text.substr, &Dstring_prototype_substr, 2 },
+            { Text.substring, &Dstring_prototype_substring, 2 },
+            { Text.toLowerCase, &Dstring_prototype_toLowerCase, 0 },
+            { Text.toLocaleLowerCase, &Dstring_prototype_toLocaleLowerCase, 0 },
+            { Text.toUpperCase, &Dstring_prototype_toUpperCase, 0 },
+            { Text.toLocaleUpperCase, &Dstring_prototype_toLocaleUpperCase, 0 },
+            { Text.anchor, &Dstring_prototype_anchor, 1 },
+            { Text.fontcolor, &Dstring_prototype_fontcolor, 1 },
+            { Text.fontsize, &Dstring_prototype_fontsize, 1 },
+            { Text.link, &Dstring_prototype_link, 1 },
+            { Text.big, &Dstring_prototype_big, 0 },
+            { Text.blink, &Dstring_prototype_blink, 0 },
+            { Text.bold, &Dstring_prototype_bold, 0 },
+            { Text.fixed, &Dstring_prototype_fixed, 0 },
+            { Text.italics, &Dstring_prototype_italics, 0 },
+            { Text.small, &Dstring_prototype_small, 0 },
+            { Text.strike, &Dstring_prototype_strike, 0 },
+            { Text.sub, &Dstring_prototype_sub, 0 },
+            { Text.sup, &Dstring_prototype_sup, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, DontEnum);
@@ -1213,9 +1213,9 @@ class Dstring : Dobject
         import std.utf : toUCSindex;
 
         super(getPrototype());
-        classname = TEXT_String;
+        classname = Text.String;
 
-        Put(TEXT_length, toUCSindex(s, s.length), DontEnum | DontDelete | ReadOnly);
+        Put(Text.length, toUCSindex(s, s.length), DontEnum | DontDelete | ReadOnly);
         value.putVstring(s);
     }
 
@@ -1223,8 +1223,8 @@ class Dstring : Dobject
     {
         super(prototype);
 
-        classname = TEXT_String;
-        Put(TEXT_length, 0, DontEnum | DontDelete | ReadOnly);
+        classname = Text.String;
+        Put(Text.length, 0, DontEnum | DontDelete | ReadOnly);
         value.putVstring(null);
     }
 
@@ -1233,7 +1233,7 @@ class Dstring : Dobject
         Dstring_constructor = new DstringConstructor();
         Dstring_prototype = new DstringPrototype();
 
-        Dstring_constructor.Put(TEXT_prototype, Dstring_prototype, DontEnum | DontDelete | ReadOnly);
+        Dstring_constructor.Put(Text.prototype, Dstring_prototype, DontEnum | DontDelete | ReadOnly);
     }
 
     static Dfunction getConstructor()

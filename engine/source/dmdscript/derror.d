@@ -91,10 +91,10 @@ Status* Derror_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis,
     Value* v;
 
     //writef("Error.prototype.toString()\n");
-    v = othis.Get(TEXT_message);
+    v = othis.Get(Text.message);
     if(!v)
         v = &vundefined;
-    ret.putVstring(othis.Get(TEXT_name).toString()~": "~v.toString());
+    ret.putVstring(othis.Get(Text.name).toString()~": "~v.toString());
     return null;
 }
 
@@ -108,19 +108,19 @@ class DerrorPrototype : Derror
         Dobject f = Dfunction_prototype;
         //d_string m = d_string_ctor(DTEXT("Error.prototype.message"));
 
-        Put(TEXT_constructor, Derror_constructor, DontEnum);
+        Put(Text.constructor, Derror_constructor, DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { TEXT_toString, &Derror_prototype_toString, 0 },
+            { Text.toString, &Derror_prototype_toString, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, 0);
 
-        Put(TEXT_name, TEXT_Error, 0);
-        Put(TEXT_message, TEXT_, 0);
-        Put(TEXT_description, TEXT_, 0);
-        Put(TEXT_number, cast(d_number)(/*FACILITY |*/ 0), 0);
+        Put(Text.name, Text.Error, 0);
+        Put(Text.message, Text.Empty, 0);
+        Put(Text.description, Text.Empty, 0);
+        Put(Text.number, cast(d_number)(/*FACILITY |*/ 0), 0);
     }
 }
 
@@ -132,12 +132,12 @@ class Derror : Dobject
     this(Value * m, Value * v2)
     {
         super(getPrototype());
-        classname = TEXT_Error;
+        classname = Text.Error;
 
         immutable(char)[] msg;
         msg = m.toString();
-        Put(TEXT_message, msg, 0);
-        Put(TEXT_description, msg, 0);
+        Put(Text.message, msg, 0);
+        Put(Text.description, msg, 0);
         if(m.isString())
         {
         }
@@ -145,25 +145,25 @@ class Derror : Dobject
         {
             d_number n = m.toNumber();
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
-            Put(TEXT_number, n, 0);
+            Put(Text.number, n, 0);
         }
         if(v2.isString())
         {
-            Put(TEXT_description, v2.toString(), 0);
-            Put(TEXT_message, v2.toString(), 0);
+            Put(Text.description, v2.toString(), 0);
+            Put(Text.message, v2.toString(), 0);
         }
         else if(v2.isNumber())
         {
             d_number n = v2.toNumber();
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
-            Put(TEXT_number, n, 0);
+            Put(Text.number, n, 0);
         }
     }
 
     this(Dobject prototype)
     {
         super(prototype);
-        classname = TEXT_Error;
+        classname = Text.Error;
     }
 
     static Dfunction getConstructor()
@@ -181,7 +181,7 @@ class Derror : Dobject
         Derror_constructor = new DerrorConstructor();
         Derror_prototype = new DerrorPrototype();
 
-        Derror_constructor.Put(TEXT_prototype, Derror_prototype, DontEnum | DontDelete | ReadOnly);
+        Derror_constructor.Put(Text.prototype, Derror_prototype, DontEnum | DontDelete | ReadOnly);
     }
 }
 
