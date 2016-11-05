@@ -396,3 +396,4 @@ class Dfunction : Dobject
       Dfunction_constructor.proptable.previous = Dfunction_prototype.proptable;
   }
 }
+

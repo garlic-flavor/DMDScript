@@ -78,6 +78,8 @@ alias int d_int32;
 alias uint d_uint32;
 alias ushort d_uint16;
 alias immutable(char)[] d_string;
+alias d_time = long;
+enum d_time_nan = long.min;
 
 import dmdscript.value;
 import dmdscript.dobject;
@@ -318,4 +320,5 @@ int localeCompare(CallContext *cc, d_string s1, d_string s2)
 {   // no locale support here
     return std.string.cmp(s1, s2);
 }
+
 

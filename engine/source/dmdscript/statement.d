@@ -1862,3 +1862,4 @@ class TryStatement : ScopeStatement
         finalbdy = null;
     }
 }
+

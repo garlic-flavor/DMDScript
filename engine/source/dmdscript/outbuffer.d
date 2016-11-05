@@ -353,3 +353,4 @@ unittest
     //printf("buf = '%.*s'\n", buf.toString());
     assert(cmp(buf.toString(), "hello world 6") == 0);
 }
+

@@ -811,3 +811,4 @@ class Dglobal : Dobject
         arguments.Put(TEXT_callee, &vnull, DontEnum);
     }
 }
+

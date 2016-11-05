@@ -28,3 +28,4 @@ void main(){
     p.compile("TestExtending",src,null);
     p.execute(null);    
 }
+

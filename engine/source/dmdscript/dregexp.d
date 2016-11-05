@@ -19,7 +19,7 @@
 module dmdscript.dregexp;
 
 import std.algorithm;
-
+import std.regex;
 private import undead.regexp;
 
 import dmdscript.script;
@@ -723,3 +723,4 @@ class Dregexp : Dobject
         Dregexp_constructor.Put(TEXT_prototype, Dregexp_prototype, DontEnum | DontDelete | ReadOnly);
     }
 }
+

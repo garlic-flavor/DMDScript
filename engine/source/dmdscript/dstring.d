@@ -1229,3 +1229,4 @@ class Dstring : Dobject
         return Dstring_prototype;
     }
 }
+
