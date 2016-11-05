@@ -17,9 +17,6 @@
 
 module dmdscript.ddeclaredfunction;
 
-debug import std.stdio;
-import core.sys.posix.stdlib;
-import std.exception;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.dfunction;
@@ -31,6 +28,8 @@ import dmdscript.value;
 import dmdscript.functiondefinition;
 import dmdscript.text;
 import dmdscript.property;
+
+debug import std.stdio;
 
 /* ========================== DdeclaredFunction ================== */
 
@@ -59,6 +58,8 @@ class DdeclaredFunction : Dfunction
         // 2. Instantiate function variables as properties of
         //    activation object
         // 3. The 'this' value is the activation object
+
+        import core.sys.posix.stdlib : alloca;
 
         Dobject actobj;         // activation object
         Darguments args;
@@ -209,6 +210,7 @@ class DdeclaredFunction : Dfunction
 
     override string toString()
     {
+        import std.exception : assumeUnique;
         char[] s;
 
         //writef("DdeclaredFunction.toString()\n");

@@ -22,10 +22,6 @@ module dmdscript.darray;
 //also treats negative starting index in splice wrapping it around just like in slice
 version =  SliceSpliceExtension;
 
-import std.string;
-import core.sys.posix.stdlib;
-import std.math;
-
 import dmdscript.script;
 import dmdscript.value;
 import dmdscript.dobject;
@@ -605,6 +601,8 @@ static CallContext *comparecc;
 
 extern (C) int compare_value(const void* x, const void* y)
 {
+    import std.string : stdcmp = cmp;
+
     Value* vx = cast(Value*)x;
     Value* vy = cast(Value*)y;
     d_string sx;
@@ -643,7 +641,7 @@ extern (C) int compare_value(const void* x, const void* y)
         {
             sx = vx.toString();
             sy = vy.toString();
-            cmp = std.string.cmp(sx, sy);
+            cmp = stdcmp(sx, sy);
             if(cmp < 0)
                 cmp = -1;
             else if(cmp > 0)
@@ -655,6 +653,8 @@ extern (C) int compare_value(const void* x, const void* y)
 
 Status* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import core.sys.posix.stdlib : qsort;
+
     // ECMA v3 15.4.4.11
     Value* v;
     d_uint32 len;
@@ -695,6 +695,7 @@ Status* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Val
     Value* v1;
     version(Win32)      // eh and alloca() not working under linux
     {
+        import core.sys.posix.stdlib : alloca;
         if(parraydim < 128)
             v1 = cast(Value*)alloca(parraydim * Value.sizeof);
     }
@@ -746,8 +747,7 @@ Status* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Val
         }
 
         // Sort pvalues[]
-        core.sys.posix.stdlib.qsort(pvalues.ptr, nprops, Value.sizeof,
-                                    &compare_value);
+        qsort(pvalues.ptr, nprops, Value.sizeof, &compare_value);
 
         comparefn = null;
         comparecc = null;

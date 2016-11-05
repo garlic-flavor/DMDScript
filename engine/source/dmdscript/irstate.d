@@ -18,25 +18,21 @@
 
 module dmdscript.irstate;
 
-import core.stdc.stdarg;
-import core.sys.posix.stdlib;
-import core.stdc.string;
-import std.outbuffer;
-import core.memory;
-
-debug import std.stdio;
-
 import dmdscript.script;
 import dmdscript.statement;
 import dmdscript.opcodes;
 import dmdscript.ir;
 import dmdscript.identifier;
 
+debug import std.stdio;
+
 // The state of the interpreter machine as seen by the code generator, not
 // the interpreter.
 
 struct IRstate
 {
+    import std.outbuffer : OutBuffer;
+
     OutBuffer      codebuf;             // accumulate code here
     Statement      breakTarget;         // current statement that 'break' applies to
     Statement      continueTarget;      // current statement that 'continue' applies to
@@ -55,12 +51,13 @@ struct IRstate
 
     void validate()
     {
+        import core.memory : GC;
         assert(codebuf.offset <= codebuf.data.length);
         debug
         {
             if(codebuf.data.length > codebuf.data.capacity)
             {
-                writeln("ptr %p, length %d, capacity %d", codebuf.data.ptr, codebuf.data.length, core.memory.GC.sizeOf(codebuf.data.ptr));
+                writeln("ptr %p, length %d, capacity %d", codebuf.data.ptr, codebuf.data.length, GC.sizeOf(codebuf.data.ptr));
                 assert(0);
             }
         }
@@ -183,6 +180,7 @@ struct IRstate
 
     deprecated void gen(Loc loc, uint opcode, uint argc, ...)
     {
+        import core.stdc.stdarg;
         codebuf.reserve((1 + argc) * uint.sizeof);
         codebuf.write(combine(loc, opcode));
         for(uint i = 1; i <= argc; i++)
@@ -271,6 +269,9 @@ struct IRstate
 
     void optimize()
     {
+        import core.sys.posix.stdlib : alloca;
+        import core.stdc.string : memmove;
+
         // Determine the length of the code array
         IR* c;
         IR* c2;

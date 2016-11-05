@@ -20,20 +20,6 @@
 
 module dmdscript.lexer;
 
-import std.range;
-import std.algorithm;
-import std.string;
-import std.utf;
-import std.outbuffer;
-import std.ascii;
-import std.format;
-import std.uni;
-import std.exception;
-import std.traits;
-import core.sys.posix.stdlib;
-import core.stdc.string;
-import std.stdio;
-
 import dmdscript.script;
 import dmdscript.text;
 import dmdscript.identifier;
@@ -175,25 +161,28 @@ struct Token
 
     void print()
     {
+        import std.stdio : writefln;
         writefln(toString());
     }
 
     d_string toString()
     {
+        import std.format : format;
+
         d_string p;
 
         switch(value)
         {
         case TOKnumber:
-            p = std.string.format("%d", intvalue);
+            p = format("%d", intvalue);
             break;
 
         case TOKreal:
             long l = cast(long)realvalue;
             if(l == realvalue)
-                p = std.string.format("%s", l);
+                p = format("%s", l);
             else
-                p = std.string.format("%s", realvalue);
+                p = format("%s", realvalue);
             break;
 
         case TOKstring:
@@ -214,11 +203,12 @@ struct Token
 
     static d_string toString(TOK value)
     {
+        import std.format : format;
         d_string p;
 
         p = tochars[value];
         if(!p)
-            p = std.string.format("TOK%d", value);
+            p = format("TOK%d", value);
         return p;
     }
 }
@@ -230,6 +220,8 @@ struct Token
 
 class Lexer
 {
+    import std.outbuffer : OutBuffer;
+
     Identifier[d_string] stringtable;
     Token* freelist;
 
@@ -264,11 +256,13 @@ class Lexer
 
     this(d_string sourcename, d_string base, int useStringtable)
     {
+        import core.stdc.string : memset;
+
         //writefln("Lexer::Lexer(base = '%s')\n",base);
         if(!inited)
             init();
 
-        core.stdc.string.memset(&token, 0, token.sizeof);
+        memset(&token, 0, token.sizeof);
         this.useStringtable = useStringtable;
         this.sourcename = sourcename;
         if(!base.length || (base[$ - 1] != 0 && base[$ - 1] != 0x1A))
@@ -293,14 +287,16 @@ class Lexer
 
     dchar get(immutable(tchar)* p)
     {
+        import std.utf : decode;
         size_t idx = p - base.ptr;
-        return std.utf.decode(base, idx);
+        return decode(base, idx);
     }
 
     immutable(tchar) * inc(immutable(tchar) * p)
     {
+        import std.utf : decode;
         size_t idx = p - base.ptr;
-        std.utf.decode(base, idx);
+        decode(base, idx);
         return base.ptr + idx;
     }
 
@@ -311,6 +307,11 @@ class Lexer
 
     void error(...)
     {
+        import std.format : format, doFormat;
+        import std.traits : Unqual, ForeachType;
+        import std.exception : assumeUnique;
+        import std.utf : encode;
+
         uint linnum = 1;
         immutable(tchar) * s;
         immutable(tchar) * slinestart;
@@ -348,14 +349,14 @@ class Lexer
         }
         slineend = s;
 
-        buf = std.string.format("%s(%d) : Error: ", sourcename, linnum).dup;
+        buf = format("%s(%d) : Error: ", sourcename, linnum).dup;
 
         void putc(dchar c)
         {
-            std.utf.encode(buf, c);
+            encode(buf, c);
         }
 
-        std.format.doFormat(&putc, _arguments, _argptr);
+        doFormat(&putc, _arguments, _argptr);
 
         if(!errinfo.message)
         {
@@ -500,6 +501,13 @@ class Lexer
 
     void scan(Token* t)
     {
+        import std.ascii : isAlphaNum, isDigit, isPrintable;
+        import std.algorithm : startsWith;
+        import std.range : popFront;
+        import std.traits : Unqual, ForeachType;
+        import std.uni : isAlpha;
+        import std.utf : encode;
+
         tchar c;
         dchar d;
         d_string id;
@@ -567,7 +575,7 @@ class Lexer
 
                   static bool isidletter(dchar d)
                   {
-                      return std.ascii.isAlphaNum(d) || d == '_' || d == '$' || (d >= 0x80 && std.uni.isAlpha(d));
+                      return isAlphaNum(d) || d == '_' || d == '$' || (d >= 0x80 && isAlpha(d));
                   }
 
                   do
@@ -587,7 +595,7 @@ class Lexer
                               break;
                           }
                           buf = null;
-                          std.utf.encode(buf, d);
+                          encode(buf, d);
                           id ~= buf;
                           for(;; )
                           {
@@ -600,7 +608,7 @@ class Lexer
                                   if(isidletter(d))
                                   {
                                       buf = null;
-                                      std.utf.encode(buf, d);
+                                      encode(buf, d);
                                       id ~= buf;
                                   }
                                   else
@@ -612,7 +620,7 @@ class Lexer
                               else if(isidletter(d))
                               {
                                   buf = null;
-                                  std.utf.encode(buf, d);
+                                  encode(buf, d);
                                   id ~= buf;
                                   p = inc(p);
                               }
@@ -750,7 +758,7 @@ class Lexer
                 immutable(tchar) * q;
                 q = p + 1;
                 c = *q;
-                if(std.ascii.isDigit(c))
+                if(isDigit(c))
                     t.value = number(t);
                 else
                 {
@@ -1046,7 +1054,7 @@ class Lexer
                 goto default;
             default:
                 d = get(p);
-                if(d >= 0x80 && std.uni.isAlpha(d))
+                if(d >= 0x80 && isAlpha(d))
                     goto Lidentifier;
                 else if(isStrWhiteSpaceChar(d))
                 {
@@ -1055,7 +1063,7 @@ class Lexer
                 }
                 else
                 {
-                    if(std.ascii.isPrintable(d))
+                    if(isPrintable(d))
                         error(errmsgtbl[ERR_BAD_CHAR_C], d);
                     else
                         error(errmsgtbl[ERR_BAD_CHAR_X], d);
@@ -1071,6 +1079,8 @@ class Lexer
 
     dchar escapeSequence()
     {
+        import std.ascii : isDigit, isLower;
+
         uint c;
         int n;
 
@@ -1123,9 +1133,9 @@ class Lexer
                 v = 0;
                 for(;; )
                 {
-                    if(std.ascii.isDigit(c))
+                    if(isDigit(c))
                         c -= '0';
-                    else if(std.ascii.isLower(c))
+                    else if(isLower(c))
                         c -= 'a' - 10;
                     else            // 'A' <= c && c <= 'Z'
                         c -= 'A' - 10;
@@ -1140,7 +1150,7 @@ class Lexer
                 c = v;
             }
             else
-                error(errmsgtbl[ERR_UNDEFINED_ESC_SEQUENCE], c);
+                error(Err.UndefinedEscSequence, c);
             break;
 
         default:
@@ -1178,6 +1188,10 @@ class Lexer
 
     d_string chompString(tchar quote)
     {
+        import std.traits : Unqual, ForeachType;
+        import std.exception : assumeUnique;
+        import std.utf : encode;
+
         tchar c;
         dchar d;
         Unqual!(ForeachType!d_string)[] stringbuffer = null;
@@ -1202,13 +1216,13 @@ class Lexer
                     d = unicode();
                 else
                     d = escapeSequence();
-                std.utf.encode(stringbuffer, d);
+                encode(stringbuffer, d);
                 continue;
 
             case '\n':
             case '\r':
                 p++;
-                error(errmsgtbl[ERR_STRING_NO_END_QUOTE], quote);
+                error(Err.StringNoEndQuote, quote);
                 return null;
 
             case 0:
@@ -1232,6 +1246,8 @@ class Lexer
 
     d_string regexp()
     {
+        import std.ascii : isAlphaNum;
+
         tchar c;
         immutable(tchar) * s;
         immutable(tchar) * start;
@@ -1308,7 +1324,7 @@ class Lexer
         for(;; )
         {
             c = *s;
-            if(std.ascii.isAlphaNum(c) || c == '_' || c == '$')
+            if(isAlphaNum(c) || c == '_' || c == '$')
             {
                 s++;
             }
@@ -1326,6 +1342,7 @@ class Lexer
 
     dchar unicode()
     {
+        import std.ascii : isDigit;
         dchar value;
         uint n;
         dchar c;
@@ -1341,7 +1358,7 @@ class Lexer
                 break;
             }
             p++;
-            if(std.ascii.isDigit(c))
+            if(isDigit(c))
                 c -= '0';
             else if(isasciilower(c))
                 c -= 'a' - 10;
@@ -1359,6 +1376,10 @@ class Lexer
 
     TOK number(Token *t)
     {
+        import std.ascii : isDigit;
+        import std.string : toStringz;
+        import core.sys.posix.stdlib : strtod;
+
         immutable(tchar) * start;
         number_t intvalue;
         real realvalue;
@@ -1441,7 +1462,7 @@ class Lexer
                 goto Lnumber;
 
             case '.':
-                while(std.ascii.isDigit(*p))
+                while(isDigit(*p))
                     p++;
                 if(*p == 'e' || *p == 'E')
                 {
@@ -1455,16 +1476,16 @@ class Lexer
                 Lexponent:
                 if(*p == '+' || *p == '-')
                     p++;
-                if(!std.ascii.isDigit(*p))
+                if(!isDigit(*p))
                     goto Lerr;
                 do
                     p++;
-                while(std.ascii.isDigit(*p));
+                while(isDigit(*p));
                 goto Ldouble;
 
                 Ldouble:
                 // convert double
-                realvalue = core.sys.posix.stdlib.strtod(toStringz(start[0 .. p - start]), null);
+                realvalue = strtod(toStringz(start[0 .. p - start]), null);
                 t.realvalue = realvalue;
                 return TOKreal;
             }

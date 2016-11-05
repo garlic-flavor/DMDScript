@@ -17,14 +17,6 @@
 
 module dmdscript.dobject;
 
-import std.string;
-import core.stdc.stdarg;
-import core.stdc.string;
-import std.exception;
-import std.format;
-import std.utf;
-import std.traits;
-
 import dmdscript.script;
 import dmdscript.value;
 import dmdscript.dfunction;
@@ -137,6 +129,8 @@ class DobjectConstructor : Dfunction
 
 Status* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.format : format;
+
     d_string s;
     d_string str;
 
@@ -149,7 +143,7 @@ Status* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
         string = TEXT_bobjectb;
     else
  +/
-    str = std.string.format("[object %s]", s);
+    str = format("[object %s]", s);
     ret.putVstring(str);
     return null;
 }
@@ -602,9 +596,10 @@ class Dobject
                                                     int msgnum, string fmt,
                                                     ARGS args)
     {
+        import std.format : format;
         Dobject o;
 
-        perrinfo.message = std.format.format(fmt, args);
+        perrinfo.message = format(fmt, args);
         o = new typeerror.D0(perrinfo);
         auto v = new Status;
         v.putVobject(o);
@@ -614,10 +609,11 @@ class Dobject
     static Status* RuntimeError(ARGS...)(ErrInfo* perrinfo, string fmt,
                                          ARGS args)
     {
+        import std.format : format;
         import std.conv : to;
         Dobject o;
 
-        perrinfo.message = std.format.format(fmt, args).to!d_string;
+        perrinfo.message = format(fmt, args).to!d_string;
         o = new typeerror.D0(perrinfo);
         auto v = new Status;
         v.putVobject(o);
@@ -632,11 +628,12 @@ class Dobject
     static Status* ReferenceError(ARGS...)(ErrInfo* perrinfo, string fmt,
                                            ARGS args)
     {
+        import std.format : format;
         import std.conv : to;
 
         Dobject o;
 
-        perrinfo.message = std.format.format(fmt, args).to!d_string;
+        perrinfo.message = format(fmt, args).to!d_string;
 
         o = new referenceerror.D0(perrinfo);
         auto v = new Status;
@@ -646,13 +643,14 @@ class Dobject
 
     static Status* ReferenceError(ARGS...)(string fmt, ARGS args)
     {
+        import std.format : format;
         import std.conv : to;
 
         Dobject o;
         ErrInfo errinfo;
 
 
-        errinfo.message = std.format.format(fmt, args).to!d_string;
+        errinfo.message = format(fmt, args).to!d_string;
 
         o = new referenceerror.D0(&errinfo);
         auto v = new Status;
@@ -704,9 +702,10 @@ class Dobject
                                        ARGS args)
     {
         import std.conv : to;
+        import std.format : format;
         Dobject o;
 
-        perrinfo.message = std.format.format(fmt, args).to!d_string;
+        perrinfo.message = format(fmt, args).to!d_string;
 
         o = new rangeerror.D0(perrinfo);
         auto v = new Status;

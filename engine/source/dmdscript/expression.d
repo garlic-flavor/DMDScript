@@ -17,13 +17,12 @@
 
 module dmdscript.expression;
 
-import std.string;
-import std.algorithm;
-import std.string;
-import std.range;
-import std.exception;
-import std.ascii;
-debug import std.stdio;
+// import std.string;
+// import std.algorithm;
+// import std.string;
+// import std.range;
+// import std.exception;
+// import std.ascii;
 
 import dmdscript.script;
 import dmdscript.lexer;
@@ -35,6 +34,8 @@ import dmdscript.irstate;
 import dmdscript.ir;
 import dmdscript.opcodes;
 import dmdscript.identifier;
+
+debug import std.stdio;
 
 /******************************** Expression **************************/
 
@@ -71,6 +72,7 @@ class Expression
 
     override d_string toString()
     {
+        import std.exception : assumeUnique;
         char[] buf;
 
         toBuffer(buf);
@@ -84,6 +86,7 @@ class Expression
 
     void checkLvalue(Scope* sc)
     {
+        import std.format : format;
         d_string buf;
 
         //writefln("checkLvalue(), op = %d", op);
@@ -94,8 +97,8 @@ class Expression
             else if(sc.funcdef.name)
                 buf = sc.funcdef.name.toString();
         }
-        buf ~= std.string.format("(%d) : Error: ", loc);
-        buf ~= std.string.format(errmsgtbl[ERR_CANNOT_ASSIGN_TO], toString());
+        buf ~= format("(%d) : Error: ", loc);
+        buf ~= format(Err.CannotAssignTo, toString);
 
         if(!sc.errinfo.message)
         {
@@ -148,20 +151,24 @@ class RealExpression : Expression
 
     override d_string toString()
     {
+        import std.format : format;
+
         d_string buf;
         long i;
 
         i = cast(long)value;
         if(i == value)
-            buf = std.string.format("%d", i);
+            buf = format("%d", i);
         else
-            buf = std.string.format("%g", value);
+            buf = format("%g", value);
         return buf;
     }
 
     override void toBuffer(ref tchar[] buf)
     {
-        buf ~= std.string.format("%g", value);
+        import std.format : format;
+
+        buf ~= format("%g", value);
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -292,6 +299,9 @@ class StringExpression : Expression
 
     override void toBuffer(ref tchar[] buf)
     {
+        import std.format : format;
+        import std.ascii : isPrintable;
+
         buf ~= '"';
         foreach(dchar c; str)
         {
@@ -304,11 +314,11 @@ class StringExpression : Expression
             default:
                 Ldefault:
                 if(c & ~0xFF)
-                    buf ~= std.string.format("\\u%04x", c);
-                else if(std.ascii.isPrintable(c))
+                    buf ~= format("\\u%04x", c);
+                else if(isPrintable(c))
                     buf ~= cast(tchar)c;
                 else
-                    buf ~= std.string.format("\\x%02x", c);
+                    buf ~= format("\\x%02x", c);
                 break;
             }
         }
@@ -342,6 +352,7 @@ class RegExpLiteral : Expression
 
     override void toIR(IRstate* irs, idx_t ret)
     {
+        import std.string : lastIndexOf;
         d_string pattern;
         d_string attribute = null;
         int e;
@@ -355,7 +366,7 @@ class RegExpLiteral : Expression
 
         // Parse out pattern and attribute strings
         assert(str[0] == '/');
-        e = std.string.lastIndexOf(str, '/');
+        e = lastIndexOf(str, '/');
         assert(e != -1);
         pattern = str[1 .. e];
         argc = 1;

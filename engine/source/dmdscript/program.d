@@ -18,9 +18,6 @@
 
 module dmdscript.program;
 
-debug import std.stdio;
-import core.sys.posix.stdlib;
-
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.dglobal;
@@ -34,6 +31,8 @@ import dmdscript.parse;
 import dmdscript.scopex;
 import dmdscript.text;
 import dmdscript.property;
+
+debug import std.stdio;
 
 class Program
 {
@@ -191,6 +190,8 @@ class Program
         Value* v;
         version(Win32)          // eh and alloca() not working under linux
         {
+            import core.sys.posix.stdlib : alloca;
+
             if(globalfunction.nlocals < 128)
                 v = cast(Value*)alloca(globalfunction.nlocals * Value.sizeof);
         }

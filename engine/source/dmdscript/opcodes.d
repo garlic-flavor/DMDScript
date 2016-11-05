@@ -18,11 +18,6 @@
 
 module dmdscript.opcodes;
 
-import core.stdc.string;
-import std.string;
-import std.conv;
-import std.stdio;
-
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.statement;
@@ -361,6 +356,10 @@ struct IR
     static Status* call(CallContext* cc, Dobject othis,
                         IR* code, Value* ret, Value* locals)
     {
+        import std.conv : to;
+        import std.stdio : writef;
+        import std.string : cmp;
+
         Value* a;
         Value* b;
         Value* c;
@@ -1318,7 +1317,7 @@ struct IR
                             d_string x = b.toString();
                             d_string y = c.toString();
 
-                            res = std.string.cmp(x, y) < 0;
+                            res = cmp(x, y) < 0;
                         }
                         else
                             res = b.toNumber() < c.toNumber();
@@ -1342,7 +1341,7 @@ struct IR
                             d_string x = b.toString();
                             d_string y = c.toString();
 
-                            res = std.string.cmp(x, y) <= 0;
+                            res = cmp(x, y) <= 0;
                         }
                         else
                             res = b.toNumber() <= c.toNumber();
@@ -1366,7 +1365,7 @@ struct IR
                             d_string x = b.toString();
                             d_string y = c.toString();
 
-                            res = std.string.cmp(x, y) > 0;
+                            res = cmp(x, y) > 0;
                         }
                         else
                             res = b.toNumber() > c.toNumber();
@@ -1391,7 +1390,7 @@ struct IR
                             d_string x = b.toString();
                             d_string y = c.toString();
 
-                            res = std.string.cmp(x, y) >= 0;
+                            res = cmp(x, y) >= 0;
                         }
                         else
                             res = b.toNumber() >= c.toNumber();
@@ -1609,7 +1608,7 @@ struct IR
                             d_string x = b.toString();
                             d_string y = c.toString();
 
-                            res = std.string.cmp(x, y) < 0;
+                            res = cmp(x, y) < 0;
                         }
                         else
                             res = b.toNumber() < c.toNumber();
@@ -1640,7 +1639,7 @@ struct IR
                             d_string x = b.toString();
                             d_string y = c.toString();
 
-                            res = std.string.cmp(x, y) <= 0;
+                            res = cmp(x, y) <= 0;
                         }
                         else
                             res = b.toNumber() <= c.toNumber();
@@ -2036,6 +2035,8 @@ struct IR
 
     debug static void print(uint address, IR* code)
     {
+        import std.stdio : writeln;
+
         static string proc(T)(size_t address, IR* c)
         {
             import std.traits : Parameters;
@@ -2062,6 +2063,8 @@ struct IR
 
     debug static void printfunc(IR* code)
     {
+        import std.stdio : writef;
+
         IR* codestart = code;
 
         for(;; )

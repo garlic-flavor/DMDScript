@@ -18,9 +18,6 @@
 module dmdscript.dnumber;
 
 import std.math;
-import core.sys.posix.stdlib;
-import std.exception;
-import std.string;
 
 import dmdscript.script;
 import dmdscript.dobject;
@@ -220,6 +217,10 @@ number_t deconstruct_real(d_number x, int f, out int pe)
 
 Status* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import core.sys.posix.stdlib : alloca;
+    import std.exception : assumeUnique;
+    import std.string : sformat;
+
     // ECMA v3 15.7.4.5
     Value* v;
     d_number x;
@@ -288,7 +289,7 @@ Status* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis,
             else
             {
                 // n still doesn't give 20 digits, only 19
-                m = std.string.sformat(buffer[], "%d", cast(ulong)n);
+                m = sformat(buffer[], "%d", cast(ulong)n);
                 dup = 1;
             }
             if(f != 0)
@@ -341,6 +342,9 @@ Status* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis,
 
 Status* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import core.sys.posix.stdlib : alloca;
+    import std.string : format, sformat;
+
     // ECMA v3 15.7.4.6
     Value* varg;
     Value* v;
@@ -448,7 +452,7 @@ Status* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject 
                     }
                 }
                 // n still doesn't give 20 digits, only 19
-                m = std.string.sformat(buffer[], "%d", cast(ulong)n);
+                m = sformat(buffer[], "%d", cast(ulong)n);
             }
             if(f)
             {
@@ -466,7 +470,7 @@ Status* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject 
             // result = sign + m + "e" + c + e;
             d_string c = (e >= 0) ? "+" : "";
 
-            result = std.string.format("%s%se%s%d", sign ? "-" : "", m, c, e);
+            result = format("%s%se%s%d", sign ? "-" : "", m, c, e);
         }
     }
 
@@ -478,6 +482,9 @@ Status* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject 
 
 Status* Dnumber_prototype_toPrecision(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import core.sys.posix.stdlib : alloca;
+    import std.string : format, sformat;
+
     // ECMA v3 15.7.4.7
     Value* varg;
     Value* v;
@@ -548,13 +555,13 @@ Status* Dnumber_prototype_toPrecision(Dobject pthis, CallContext* cc, Dobject ot
                 n = deconstruct_real(x, p - 1, e);
 
                 // n still doesn't give 20 digits, only 19
-                m = std.string.sformat(buffer[], "%d", cast(ulong)n);
+                m = sformat(buffer[], "%d", cast(ulong)n);
 
                 if(e < -6 || e >= p)
                 {
                     // result = sign + m[0] + "." + m[1 .. p] + "e" + c + e;
                     d_string c = (e >= 0) ? "+" : "";
-                    result = std.string.format("%s%s.%se%s%d",
+                    result = format("%s%s.%se%s%d",
                                                (sign ? "-" : ""), m[0], m[1 .. $], c, e);
                     goto Ldone;
                 }

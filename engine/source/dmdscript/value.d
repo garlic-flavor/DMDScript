@@ -17,11 +17,11 @@
 
 module dmdscript.value;
 
-import std.math;
-import std.string;
-import std.stdio;
-import std.conv;
-import core.stdc.string;
+// import std.math;
+// import std.string;
+// import std.stdio;
+// import std.conv;
+// import core.stdc.string;
 
 import dmdscript.script;
 import dmdscript.dobject;
@@ -33,6 +33,8 @@ import dmdscript.program;
 import dmdscript.dstring;
 import dmdscript.dnumber;
 import dmdscript.dboolean;
+
+debug import std.stdio;
 
 // Porting issues:
 // A lot of scaling is done on arrays of Value's. Therefore, adjusting
@@ -177,7 +179,11 @@ struct Value
 
     static void copy(Value* to, Value* from)
     in { }
-    out { assert(memcmp(to, from, Value.sizeof) == 0); }
+    out
+    {
+        import core.stdc.string : memcmp;
+        assert(memcmp(to, from, Value.sizeof) == 0);
+    }
     body
 
     {
@@ -246,6 +252,8 @@ struct Value
 
     d_boolean toBoolean()
     {
+        import std.math : isNaN;
+
         switch(vtype)
         {
         case V_REF_ERROR:
@@ -337,6 +345,8 @@ struct Value
 
     d_number toInteger()
     {
+        import std.math : floor, isInfinity, isNaN;
+
         switch(vtype)
         {
         case V_REF_ERROR:
@@ -356,13 +366,13 @@ struct Value
             number = toNumber;
             if(number.isNaN)
                 number = 0;
-            else if(number == 0 || std.math.isinf(number))
+            else if(number == 0 || isInfinity(number))
             {
             }
             else if(number > 0)
-                number = std.math.floor(number);
+                number = floor(number);
             else
-                number = -std.math.floor(-number);
+                number = -floor(-number);
             return number; }
         }
         assert(0);
@@ -371,6 +381,8 @@ struct Value
 
     d_int32 toInt32()
     {
+        import std.math : floor, isInfinity, isNaN;
+
         switch(vtype)
         {
         case V_REF_ERROR:
@@ -391,14 +403,14 @@ struct Value
             number = toNumber();
             if(isNaN(number))
                 int32 = 0;
-            else if(number == 0 || std.math.isinf(number))
+            else if(number == 0 || isInfinity(number))
                 int32 = 0;
             else
             {
                 if(number > 0)
-                    number = std.math.floor(number);
+                    number = floor(number);
                 else
-                    number = -std.math.floor(-number);
+                    number = -floor(-number);
 
                 ll = cast(long)number;
                 int32 = cast(int)ll;
@@ -412,6 +424,8 @@ struct Value
 
     d_uint32 toUint32()
     {
+        import std.math : floor, isInfinity, isNaN;
+
         switch(vtype)
         {
         case V_REF_ERROR:
@@ -432,14 +446,14 @@ struct Value
             number = toNumber();
             if(isNaN(number))
                 uint32 = 0;
-            else if(number == 0 || std.math.isinf(number))
+            else if(number == 0 || isInfinity(number))
                 uint32 = 0;
             else
             {
                 if(number > 0)
-                    number = std.math.floor(number);
+                    number = floor(number);
                 else
-                    number = -std.math.floor(-number);
+                    number = -floor(-number);
 
                 ll = cast(long)number;
                 uint32 = cast(uint)ll;
@@ -452,6 +466,8 @@ struct Value
 
     d_uint16 toUint16()
     {
+        import std.math : floor, isInfinity, isNaN;
+
         switch(vtype)
         {
         case V_REF_ERROR:
@@ -471,14 +487,14 @@ struct Value
             number = toNumber();
             if(isNaN(number))
                 uint16 = 0;
-            else if(number == 0 || std.math.isinf(number))
+            else if(number == 0 || isInfinity(number))
                 uint16 = 0;
             else
             {
                 if(number > 0)
-                    number = std.math.floor(number);
+                    number = floor(number);
                 else
-                    number = -std.math.floor(-number);
+                    number = -floor(-number);
 
                 uint16 = cast(ushort)number;
             }
@@ -490,6 +506,10 @@ struct Value
 
     d_string toString()
     {
+        import std.format : sformat;
+        import std.math : isInfinity, isNaN;
+        import core.stdc.string : strlen;
+
         switch(vtype)
         {
         case V_REF_ERROR:
@@ -513,7 +533,7 @@ struct Value
                 str = TEXT_NaN;
             else if(number >= 0 && number <= 9 && number == cast(int)number)
                 str = strs[cast(int)number];
-            else if(std.math.isinf(number))
+            else if(isInfinity(number))
             {
                 if(number < 0)
                     str = TEXT_negInfinity;
@@ -531,7 +551,7 @@ struct Value
                 // library is upgraded to ANSI C 99 conformance, use
                 // 16 digits, which is all the GCC library will round correctly.
 
-                std.string.sformat(buffer, "%.16g\0", number);
+                sformat(buffer, "%.16g\0", number);
                 //std.c.stdio.sprintf(buffer.ptr, "%.16g", number);
 
                 // Trim leading spaces
@@ -569,7 +589,7 @@ struct Value
                         }
                     }
                 }
-                str = p[0 .. core.stdc.string.strlen(p)].idup;
+                str = p[0 .. strlen(p)].idup;
             }
             //writefln("str = '%s'", str);
             return str;
@@ -603,12 +623,15 @@ struct Value
 
     d_string toString(int radix)
     {
+        import std.math : isFinite;
+        import std.conv : to;
+
         if(vtype == V_NUMBER)
         {
             assert(2 <= radix && radix <= 36);
             if(!isFinite(number))
                 return toString();
-            return number >= 0.0 ? std.conv.to!(d_string)(cast(long)number, radix) : "-"~std.conv.to!(d_string)(cast(long)-number,radix);
+            return number >= 0.0 ? to!(d_string)(cast(long)number, radix) : "-"~to!(d_string)(cast(long)-number,radix);
         }
         else
         {
@@ -705,6 +728,8 @@ struct Value
 
     static int stringcmp(d_string s1, d_string s2)
     {
+        import core.stdc.string : memcmp;
+
         int c = s1.length - s2.length;
         if(c == 0)
         {
@@ -717,6 +742,9 @@ struct Value
 
     int opCmp(const (Value)v) const
     {
+        import std.math : isNaN;
+        import core.stdc.string : memcmp;
+
         switch(vtype)
         {
         case V_REF_ERROR:
@@ -1032,6 +1060,8 @@ struct Value
 
     Value* Get(d_string PropertyName)
     {
+        import std.format : format;
+
         if(vtype == V_OBJECT)
             return object.Get(PropertyName);
         else
@@ -1039,7 +1069,7 @@ struct Value
             // Should we generate the error, or just return undefined?
             d_string msg;
 
-            msg = std.string.format(Err.CannotGetFromPrimitive,
+            msg = format(Err.CannotGetFromPrimitive,
                                     PropertyName, getType, toString);
             throw new ScriptException(msg);
             //return &vundefined;
@@ -1048,6 +1078,8 @@ struct Value
 
     Value* Get(d_uint32 index)
     {
+        import std.format : format;
+
         if(vtype == V_OBJECT)
             return object.Get(index);
         else
@@ -1055,7 +1087,7 @@ struct Value
             // Should we generate the error, or just return undefined?
             d_string msg;
 
-            msg = std.string.format(Err.CannotGetIndexFromPrimitive,
+            msg = format(Err.CannotGetIndexFromPrimitive,
                                     index, getType, toString);
             throw new ScriptException(msg);
             //return &vundefined;
@@ -1064,6 +1096,8 @@ struct Value
 
     Value* Get(Identifier *id)
     {
+        import std.format : format;
+
         if(vtype == V_OBJECT)
             return object.Get(id);
         else if(vtype == V_REF_ERROR){
@@ -1075,7 +1109,7 @@ struct Value
             // Should we generate the error, or just return undefined?
             d_string msg;
 
-            msg = std.string.format(Err.CannotGetFromPrimitive,
+            msg = format(Err.CannotGetFromPrimitive,
                                     id.toString, getType, toString);
             throw new ScriptException(msg);
             //return &vundefined;
@@ -1170,6 +1204,8 @@ struct Value
 
     void dump()
     {
+        import std.stdio : writef;
+
         uint* v = cast(uint*)&this;
 
         writef("v[%x] = %8x, %8x, %8x, %8x\n", cast(uint)v, v[0], v[1], v[2], v[3]);
@@ -1210,7 +1246,11 @@ struct Status
     alias entity this;
 
     static void copy(Status* to, Status* from)
-    out { assert(memcmp(to, from, Status.sizeof) == 0); }
+    out
+    {
+        import core.stdc.string : memcmp;
+        assert(memcmp(to, from, Status.sizeof) == 0);
+    }
     body
     {
         *to = *from;

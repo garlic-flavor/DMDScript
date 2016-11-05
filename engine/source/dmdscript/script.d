@@ -17,12 +17,6 @@
 
 module dmdscript.script;
 
-import std.ascii;
-import std.string;
-import core.stdc.stdlib;
-import core.stdc.stdarg;
-import core.sys.posix.stdlib;
-
 /* =================== Configuration ======================= */
 
 const uint MAJOR_VERSION = 5;       // ScriptEngineMajorVersion
@@ -118,7 +112,8 @@ Global global;
 
 string banner()
 {
-    return std.string.format(
+    import std.conv : text;
+    return text(
                "DMDSsript-2 v0.1rc1\n",
                "Compiled by Digital Mars DMD D compiler\n",
                "http://www.digitalmars.com\n",
@@ -209,6 +204,9 @@ int StringToIndex(d_string name, out d_uint32 index)
 
 d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
 {
+    import std.string : toStringz;
+    import core.sys.posix.stdlib : strtod;
+
     // Convert StringNumericLiteral using ECMA 9.3.1
     d_number number;
     int sign = 0;
@@ -293,10 +291,10 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
     else
     {
         char* endptr;
-        const (char) * s = std.string.toStringz(str[i .. len]);
+        const (char) * s = toStringz(str[i .. len]);
 
         //endptr = s;//Fixed: No need to fill endptr prior to stdtod
-        number = core.sys.posix.stdlib.strtod(s, &endptr);
+        number = strtod(s, &endptr);
         endidx = (endptr - s) + i;
 
         //printf("s = '%s', endidx = %d, eoff = %d, number = %g\n", s, endidx, eoff, number);
@@ -318,7 +316,8 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
 
 int localeCompare(CallContext *cc, d_string s1, d_string s2)
 {   // no locale support here
-    return std.string.cmp(s1, s2);
+    import std.string : cmp;
+    return cmp(s1, s2);
 }
 
 

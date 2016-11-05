@@ -17,17 +17,6 @@
 
 module dmdscript.dglobal;
 
-import std.uri;
-import core.sys.posix.stdlib;
-import core.stdc.string;
-import std.algorithm;
-import std.math;
-import std.exception;
-import std.utf;
-import std.string;
-import std.traits;
-import std.stdio;
-
 import dmdscript.script;
 import dmdscript.protoerror;
 import dmdscript.parse;
@@ -59,6 +48,8 @@ d_string arg0string(Value[] arglist)
 
 Status* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import core.sys.posix.stdlib : alloca;
+
     // ECMA 15.1.2.1
     Value* v;
     immutable(char)[] s;
@@ -181,6 +172,8 @@ Lsyntaxerror:
 
 Status* Dglobal_parseInt(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.utf : decode;
+
     // ECMA 15.1.2.2
     Value* v2;
     immutable(char)* s;
@@ -198,7 +191,7 @@ Status* Dglobal_parseInt(Dobject pthis, CallContext* cc, Dobject othis, Value* r
     while(i < str.length)
     {
         size_t idx = i;
-        dchar c = std.utf.decode(str, idx);
+        dchar c = decode(str, idx);
         if(!isStrWhiteSpaceChar(c))
             break;
         i = idx;
@@ -328,6 +321,9 @@ tchar[16 + 1] TOHEX = "0123456789ABCDEF";
 
 Status* Dglobal_escape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.exception : assumeUnique;
+    import std.string : indexOf;
+
     // ECMA 15.1.2.4
     d_string s;
     uint escapes;
@@ -343,7 +339,7 @@ Status* Dglobal_escape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
         if(c >= 0x100)
             unicodes++;
         else
-        if(c == 0 || c >= 0x80 || (!ISURIALNUM(c) && std.string.indexOf("*@-_+./", c) == -1))
+        if(c == 0 || c >= 0x80 || (!ISURIALNUM(c) && indexOf("*@-_+./", c) == -1))
             escapes++;
     }
     if((escapes + unicodes) == 0)
@@ -368,7 +364,7 @@ Status* Dglobal_escape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
                 r[5] = TOHEX[c & 15];
                 r += 6;
             }
-            else if(c == 0 || c >= 0x80 || (!ISURIALNUM(c) && std.string.indexOf("*@-_+./", c) == -1))
+            else if(c == 0 || c >= 0x80 || (!ISURIALNUM(c) && indexOf("*@-_+./", c) == -1))
             {
                 r[0] = '%';
                 r[1] = TOHEX[c >> 4];
@@ -391,6 +387,10 @@ Status* Dglobal_escape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
 
 Status* Dglobal_unescape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.exception : assumeUnique;
+    import std.traits : Unqual, ForeachType;
+    import std.utf : encode;
+
     // ECMA 15.1.2.5
     d_string s;
     Unqual!(ForeachType!d_string)[] R; // char[] type is assumed.
@@ -414,7 +414,7 @@ Status* Dglobal_unescape(Dobject pthis, CallContext* cc, Dobject othis, Value* r
 
                     if(i == 6)
                     {
-                        std.utf.encode(R, cast(dchar)u);
+                        encode(R, cast(dchar)u);
                         k += 5;
                         goto L1;
                     }
@@ -441,7 +441,7 @@ Status* Dglobal_unescape(Dobject pthis, CallContext* cc, Dobject othis, Value* r
 
                     if(i == 3)
                     {
-                        std.utf.encode(R, cast(dchar)u);
+                        encode(R, cast(dchar)u);
                         k += 2;
                         goto L1;
                     }
@@ -471,6 +471,8 @@ Status* Dglobal_unescape(Dobject pthis, CallContext* cc, Dobject othis, Value* r
 
 Status* Dglobal_isNaN(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.math : isNaN;
+
     // ECMA 15.1.2.6
     Value* v;
     d_number n;
@@ -490,6 +492,8 @@ Status* Dglobal_isNaN(Dobject pthis, CallContext* cc, Dobject othis, Value* ret,
 
 Status* Dglobal_isFinite(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.math : isFinite;
+
     // ECMA 15.1.2.7
     Value* v;
     d_number n;
@@ -517,13 +521,14 @@ Status* URI_error(d_string s)
 
 Status* Dglobal_decodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.uri : decode, URIException;
     // ECMA v3 15.1.3.1
     d_string s;
 
     s = arg0string(arglist);
     try
     {
-        s = std.uri.decode(s);
+        s = decode(s);
     }
     catch(URIException u)
     {
@@ -536,13 +541,14 @@ Status* Dglobal_decodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* 
 
 Status* Dglobal_decodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.uri : decodeComponent, URIException;
     // ECMA v3 15.1.3.2
     d_string s;
 
     s = arg0string(arglist);
     try
     {
-        s = std.uri.decodeComponent(s);
+        s = decodeComponent(s);
     }
     catch(URIException u)
     {
@@ -555,13 +561,15 @@ Status* Dglobal_decodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis
 
 Status* Dglobal_encodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.uri : encode, URIException;
+
     // ECMA v3 15.1.3.3
     d_string s;
 
     s = arg0string(arglist);
     try
     {
-        s = std.uri.encode(s);
+        s = encode(s);
     }
     catch(URIException u)
     {
@@ -574,13 +582,14 @@ Status* Dglobal_encodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* 
 
 Status* Dglobal_encodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.uri : encodeComponent, URIException;
     // ECMA v3 15.1.3.4
     d_string s;
 
     s = arg0string(arglist);
     try
     {
-        s = std.uri.encodeComponent(s);
+        s = encodeComponent(s);
     }
     catch(URIException u)
     {
@@ -595,6 +604,7 @@ Status* Dglobal_encodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis
 
 static void dglobal_print(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.stdio : writef;
     // Our own extension
     if(arglist.length)
     {
@@ -622,6 +632,8 @@ Status* Dglobal_print(Dobject pthis, CallContext* cc, Dobject othis, Value* ret,
 
 Status* Dglobal_println(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.stdio : writef;
+
     // Our own extension
     dglobal_print(cc, othis, ret, arglist);
     writef("\n");
@@ -632,6 +644,12 @@ Status* Dglobal_println(Dobject pthis, CallContext* cc, Dobject othis, Value* re
 
 Status* Dglobal_readln(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.exception : assumeUnique;
+    import std.traits : Unqual, ForeachType;
+    import std.stdio : EOF;
+    import std.utf : encode;
+    import core.stdc.stdio : getchar;
+
     // Our own extension
     dchar c;
     Unqual!(ForeachType!d_string)[] s;
@@ -640,25 +658,25 @@ Status* Dglobal_readln(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
     {
         version(linux)
         {
-            c = core.stdc.stdio.getchar();
+            c = getchar();
             if(c == EOF)
                 break;
         }
         else version(Windows)
         {
-            c = core.stdc.stdio.getchar();
+            c = getchar();
             if(c == EOF)
                 break;
         }
         else version(OSX)
         {
-            c = core.stdc.stdio.getchar();
+            c = getchar();
             if(c == EOF)
                 break;
         }
         else version(FreeBSD)
         {
-            c = core.stdc.stdio.getchar();
+            c = getchar();
             if(c == EOF)
                 break;
         }
@@ -668,7 +686,7 @@ Status* Dglobal_readln(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
         }
         if(c == '\n')
             break;
-        std.utf.encode(s, c);
+        encode(s, c);
     }
     ret.putVstring(s.assumeUnique);
     return null;
@@ -678,12 +696,16 @@ Status* Dglobal_readln(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
 
 Status* Dglobal_getenv(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
+    import std.string : toStringz;
+    import core.sys.posix.stdlib : getenv;
+    import core.stdc.string : strlen;
+
     // Our own extension
     ret.putVundefined();
     if(arglist.length)
     {
         d_string s = arglist[0].toString();
-        char* p = getenv(std.string.toStringz(s));
+        char* p = getenv(toStringz(s));
         if(p)
             ret.putVstring(p[0 .. strlen(p)].idup);
         else

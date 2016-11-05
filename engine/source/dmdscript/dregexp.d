@@ -18,8 +18,6 @@
 
 module dmdscript.dregexp;
 
-import std.algorithm;
-
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.value;
@@ -251,6 +249,7 @@ class DregexpConstructor : Dfunction
     // Translate Perl property names to script property names
     static d_string perlAlias(d_string s)
     {
+        import std.algorithm : countUntil;
         d_string t;
 
         static immutable tchar[] from = "_*&+`'";
@@ -269,7 +268,7 @@ class DregexpConstructor : Dfunction
         {
             ptrdiff_t i;
 
-            i = std.algorithm.countUntil(from, s[1]);
+            i = countUntil(from, s[1]);
             if(i >= 0)
                 t = to[i];
         }

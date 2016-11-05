@@ -18,9 +18,6 @@
 
 module dmdscript.dfunction;
 
-import std.string;
-import core.sys.posix.stdlib;
-
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.value;
@@ -150,6 +147,8 @@ Status* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject oth
 Status* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.3.4.3
+
+    import core.sys.posix.stdlib : alloca;
 
     Value* thisArg;
     Value* argArray;
@@ -316,11 +315,12 @@ class Dfunction : Dobject
 
   override string toString()
   {
+      import std.string : format;
       // Native overrides of this function replace Identifier with the actual name.
       // Don't need to do parameter list, though.
       immutable(char)[] s;
 
-      s = std.string.format("function %s() { [native code] }", name);
+      s = format("function %s() { [native code] }", name);
       return s;
   }
 

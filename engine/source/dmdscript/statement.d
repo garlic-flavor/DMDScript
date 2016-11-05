@@ -17,13 +17,12 @@
 
 module dmdscript.statement;
 
-import std.string;
-import std.math;
-import std.format;
-import std.traits;
-import std.exception;
-import std.utf;
-debug import std.stdio;
+// import std.string;
+// import std.math;
+// import std.format;
+// import std.traits;
+// import std.exception;
+// import std.utf;
 
 import dmdscript.script;
 import dmdscript.value;
@@ -37,6 +36,8 @@ import dmdscript.lexer;
 import dmdscript.errmsgs;
 import dmdscript.functiondefinition;
 import dmdscript.opcodes;
+
+debug import std.stdio;
 
 enum
 {
@@ -95,6 +96,10 @@ class TopStatement
 
     void error(Scope *sc, ...)
     {
+        import std.format : format, doFormat;
+        import std.traits : Unqual, ForeachType;
+        import std.exception : assumeUnique;
+
         Unqual!(ForeachType!d_string)[] buf;
         d_string sourcename;
 
@@ -105,7 +110,7 @@ class TopStatement
             else if(sc.funcdef.name)
                 sourcename ~= sc.funcdef.name.toString();
         }
-        buf = std.string.format("%s(%d) : Error: ", sourcename, loc).dup;
+        buf = format("%s(%d) : Error: ", sourcename, loc).dup;
 
         void putc(dchar c)
         {
@@ -1062,6 +1067,8 @@ class ForStatement : Statement
 
     override void toIR(IRstate* irs)
     {
+        import std.math : isNaN;
+
         uint u1;
         uint u2 = 0;    // unneeded initialization keeps lint happy
 

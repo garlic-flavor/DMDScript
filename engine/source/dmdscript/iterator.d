@@ -18,7 +18,7 @@
 
 module dmdscript.iterator;
 
-import std.algorithm.sorting;
+import std.algorithm.sorting : sort;
 
 import dmdscript.script;
 import dmdscript.dobject;

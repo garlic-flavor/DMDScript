@@ -17,9 +17,6 @@
 
 module dmdscript.ddate;
 
-import std.math;
-import std.datetime;
-import core.time;
 debug import std.stdio;
 
 import dmdscript.script;
@@ -1553,6 +1550,8 @@ class Ddate : Dobject
 /* =========== ported from undead.date. =========== */
 private
 {
+    import std.datetime;
+
     enum d_time_origin = SysTime(DateTime(1970, 1, 1), UTC());
     d_time toDtime(in ref SysTime t)
     {
@@ -1585,6 +1584,7 @@ private
         import std.conv : to;
         import std.string : capitalize;
         import std.exception : assumeUnique;
+        import std.math : abs;
 
         auto buf = new char[29 + 7 + 1];
         auto st = t.fromDtime.toLocalTime;
@@ -1619,6 +1619,7 @@ private
     {
         import std.format : sformat;
         import std.exception : assumeUnique;
+        import std.math : abs;
 
         auto buf = new char[17 + 1];
         auto st = t.fromDtime.toLocalTime;
