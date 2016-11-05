@@ -71,7 +71,7 @@ Status* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othi
         ErrInfo errinfo;
 
         ret.putVundefined();
-        return Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_FUNCTION_WANTS_BOOL],
+        return Dobject.RuntimeError(&errinfo, Err.FunctionWantsBool,
                                     TEXT_toString,
                                     othis.classname);
     }
@@ -98,7 +98,7 @@ Status* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis
         ErrInfo errinfo;
 
         ret.putVundefined();
-        return Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_FUNCTION_WANTS_BOOL],
+        return Dobject.RuntimeError(&errinfo, Err.FunctionWantsBool,
                                     TEXT_valueOf,
                                     othis.classname);
     }

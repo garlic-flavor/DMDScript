@@ -83,7 +83,7 @@ struct Value
             throwRefError();
     }
     void throwRefError() const{
-        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], text));
+        throw new ErrorValue(Dobject.ReferenceError(Err.UndefinedVar, text));
     }
 
     void putSignalingUndefined(d_string id){
@@ -1024,9 +1024,9 @@ struct Value
             ErrInfo errinfo;
 
             return Dobject.RuntimeError(&errinfo,
-                                        errmsgtbl[ERR_CANNOT_PUT_INDEX_TO_PRIMITIVE],
+                                        Err.CannotPutIndexToPrimitive,
                                         index,
-                                        value.toString(), getType());
+                                        value.toString, getType);
         }
     }
 
@@ -1039,8 +1039,8 @@ struct Value
             // Should we generate the error, or just return undefined?
             d_string msg;
 
-            msg = std.string.format(errmsgtbl[ERR_CANNOT_GET_FROM_PRIMITIVE],
-                                    PropertyName, getType(), toString());
+            msg = std.string.format(Err.CannotGetFromPrimitive,
+                                    PropertyName, getType, toString);
             throw new ScriptException(msg);
             //return &vundefined;
         }
@@ -1055,8 +1055,8 @@ struct Value
             // Should we generate the error, or just return undefined?
             d_string msg;
 
-            msg = std.string.format(errmsgtbl[ERR_CANNOT_GET_INDEX_FROM_PRIMITIVE],
-                                    index, getType(), toString());
+            msg = std.string.format(Err.CannotGetIndexFromPrimitive,
+                                    index, getType, toString);
             throw new ScriptException(msg);
             //return &vundefined;
         }
@@ -1075,8 +1075,8 @@ struct Value
             // Should we generate the error, or just return undefined?
             d_string msg;
 
-            msg = std.string.format(errmsgtbl[ERR_CANNOT_GET_FROM_PRIMITIVE],
-                                    id.toString(), getType(), toString());
+            msg = std.string.format(Err.CannotGetFromPrimitive,
+                                    id.toString, getType, toString);
             throw new ScriptException(msg);
             //return &vundefined;
         }
@@ -1111,7 +1111,7 @@ struct Value
             ErrInfo errinfo;
             ret.putVundefined();
             return Dobject.RuntimeError(&errinfo,
-                                        errmsgtbl[ERR_PRIMITIVE_NO_CONSTRUCT], getType());
+                                        Err.PrimitiveNoConstruct, getType);
         }
     }
 
@@ -1135,7 +1135,7 @@ struct Value
             //PRINTF("Call method not implemented for primitive %p (%s)\n", this, d_string_ptr(toString()));
             ret.putVundefined();
             return Dobject.RuntimeError(&errinfo,
-                                        errmsgtbl[ERR_PRIMITIVE_NO_CALL], getType());
+                                        Err.PrimitiveNoCall, getType);
         }
     }
 
@@ -1147,8 +1147,7 @@ struct Value
         {
             ErrInfo errinfo;
             v.putVundefined();
-            return Dobject.RuntimeError(&errinfo,
-                                        errmsgtbl[ERR_FOR_IN_MUST_BE_OBJECT]);
+            return Dobject.RuntimeError(&errinfo, Err.ForInMustBeObject);
         }
     }
 

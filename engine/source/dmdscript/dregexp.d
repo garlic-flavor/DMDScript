@@ -175,7 +175,7 @@ class DregexpConstructor : Dfunction
                 for(int i = 0; i < d_string_len(P); i++)
                     writef("x%02x\n", d_string_ptr(P)[i]);
             }
-            errinfo.message = errmsgtbl[ERR_REGEXP_COMPILE];
+            errinfo.message = Err.RegexpCompile;
             o = new syntaxerror.D0(&errinfo);
             auto v = new Status;
             v.putVobject(o);

@@ -322,13 +322,13 @@ Status* cannotConvert(Value* b, int linnum)
     errinfo.linnum = linnum;
     if(b.isUndefinedOrNull())
     {
-        sta = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT4],
-                                 b.getType());
+        sta = Dobject.RuntimeError(&errinfo, Err.CannotConvertToObject4,
+                                 b.getType);
     }
     else
     {
-        sta = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT2],
-                                 b.getType(), b.toString());
+        sta = Dobject.RuntimeError(&errinfo, Err.CannotConvertToObject2,
+                                 b.getType, b.toString);
     }
     return sta;
 }
@@ -623,7 +623,7 @@ struct IR
                         //writef("%s %s.%s cannot convert to Object", b.getType(), b.toString(), s);
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                   errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT3],
+                                                   Err.CannotConvertToObject3,
                                                    b.getType(), b.toString(),
                                                    s);
                         goto Lthrow;
@@ -641,7 +641,7 @@ struct IR
                     id = (code+1).id;
                     s = id.value.text;
                     if(!scope_get(scopex, id))
-                        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
+                        throw new ErrorValue(Dobject.ReferenceError(Err.UndefinedVar,s));
                     code += IRTypes[Opcode.CheckRef].size;
                     break;
                 case Opcode.GetScope:            // a = s
@@ -719,7 +719,7 @@ struct IR
                     a = locals + (code + 1).index;
                     if(!v)
                     {
-                        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
+                        throw new ErrorValue(Dobject.ReferenceError(Err.UndefinedVar,s));
                         //a.putVundefined();
                         /+
                                             if (b)
@@ -798,7 +798,7 @@ struct IR
                     {
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                   errmsgtbl[ERR_CANNOT_ASSIGN], a.getType(),
+                                                   Err.CannotAssign, a.getType,
                                                    b.getType());
                         goto Lthrow;
                     }
@@ -928,7 +928,7 @@ struct IR
                     {
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                   errmsgtbl[ERR_RHS_MUST_BE_OBJECT],
+                                                   Err.RhsMustBeObject,
                                                    "instanceof", c.getType());
                         goto Lthrow;
                     }
@@ -1071,7 +1071,7 @@ struct IR
                     o = c.toObject();
                     if(!o){
                         ErrInfo errinfo;
-                        throw new ErrorValue(Dobject.RuntimeError(&errinfo,errmsgtbl[ERR_RHS_MUST_BE_OBJECT],"in",c.toString()));
+                        throw new ErrorValue(Dobject.RuntimeError(&errinfo,Err.RhsMustBeObject,"in",c.toString));
                     }
                     a.putVboolean(o.HasProperty(s));
                     code += IRTypes[Opcode.In].size;
@@ -1133,7 +1133,7 @@ struct IR
                             else
                             {
                                 //FIXED: as per ECMA v5 should throw ReferenceError
-                                sta = Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s);
+                                sta = Dobject.ReferenceError(Err.UndefinedVar, s);
                                 //a.putVundefined();
                                 goto Lthrow;
                             }
@@ -1149,7 +1149,7 @@ struct IR
                             Value.copy(a, v);
                         }
                         else
-                            throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s));
+                            throw new ErrorValue(Dobject.ReferenceError(Err.UndefinedVar, s));
                     }
                     static assert(IRTypes[Opcode.PreIncScope].size
                                   == IRTypes[Opcode.PreDecScope].size);
@@ -1763,7 +1763,7 @@ struct IR
                         //writef("%s %s.%s is undefined and has no Call method\n", b.getType(), b.toString(), s);
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                   errmsgtbl[ERR_UNDEFINED_NO_CALL3],
+                                                   Err.UndefinedNoCall3,
                                                    b.getType(), b.toString(),
                                                    s);
                         goto Lthrow;
@@ -1778,7 +1778,7 @@ struct IR
                     if(!v)
                     {
                         ErrInfo errinfo;
-                        sta = Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s);
+                        sta = Dobject.ReferenceError(Err.UndefinedVar,s);
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
                         goto Lthrow;
                     }
@@ -1803,8 +1803,8 @@ struct IR
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_UNDEFINED_NO_CALL2],
-                                                 b.getType(), b.toString());
+                                                   Err.UndefinedNoCall2,
+                                                   b.getType, b.toString);
                         goto Lthrow;
                     }
                     cc.callerothis = othis;        // pass othis to eval()
@@ -1839,8 +1839,8 @@ struct IR
                     {
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_CANNOT_ASSIGN_TO2],
-                                                 b.getType(), s);
+                                                   Err.CannotAssignTo2,
+                                                   b.getType, s);
                         goto Lthrow;
                     }
                     sta = o.put_Value(a, (locals + (code + 5).index)[0 .. (code + 4).argc]);
@@ -1860,7 +1860,7 @@ struct IR
                     {
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                   errmsgtbl[ERR_UNDEFINED_NO_CALL2],
+                                                   Err.UndefinedNoCall2,
                                                    "property", s);
                         goto Lthrow;
                     }
@@ -1869,8 +1869,8 @@ struct IR
                     {
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_CANNOT_ASSIGN_TO],
-                                                 s);
+                                                   Err.CannotAssignTo,
+                                                   s);
                         goto Lthrow;
                     }
                     sta = o.put_Value(locals + (code + 1).index, (locals + (code + 4).index)[0 .. (code + 3).index]);
@@ -1887,7 +1887,7 @@ struct IR
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
                         ErrInfo errinfo;
                         sta = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_UNDEFINED_NO_CALL2],
+                                                   Err.UndefinedNoCall2,
                                                  b.getType(), b.toString());
                         goto Lthrow;
                     }
@@ -2001,7 +2001,7 @@ struct IR
                     errinfo.linnum = (code + 1).index;
                     version(all)  // Not supported under some com servers
                     {
-                        sta = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_ASSERT], (code + 1).index);
+                        sta = Dobject.RuntimeError(&errinfo, Err.Assert, (code + 1).index);
                         goto Lthrow;
                     }
                     else

@@ -756,7 +756,7 @@ class CaseStatement : Statement
 
                 if(exp == cs.exp)
                 {
-                    error(sc, errmsgtbl[ERR_SWITCH_REDUNDANT_CASE], exp.toString());
+                    error(sc, Err.SwitchRedundantCase, exp.toString);
                     return null;
                 }
             }
@@ -764,7 +764,7 @@ class CaseStatement : Statement
         }
         else
         {
-            error(sc, errmsgtbl[ERR_MISPLACED_SWITCH_CASE], exp.toString());
+            error(sc, Err.MisplacedSwitchCase, exp.toString);
             return null;
         }
         return this;
@@ -1427,7 +1427,7 @@ class ContinueStatement : Statement
             ls = sc.searchLabel(ident);
             if(!ls || !ls.statement)
             {
-                error(sc, errmsgtbl[ERR_UNDEFINED_STATEMENT_LABEL], ident.toString());
+                error(sc, Err.UndefinedStatementLabel, ident.toString);
                 return null;
             }
             else
@@ -1493,18 +1493,18 @@ class BreakStatement : Statement
             ls = sc.searchLabel(ident);
             if(!ls || !ls.statement)
             {
-                error(sc, errmsgtbl[ERR_UNDEFINED_STATEMENT_LABEL], ident.toString());
+                error(sc, Err.UndefinedStatementLabel, ident.toString);
                 return null;
             }
             else if(!sc.breakTarget)
             {
-                error(sc, errmsgtbl[ERR_MISPLACED_BREAK]);
+                error(sc, Err.MisplacedBreak);
             }
             else{
                 //Scope* s;
                 //for(s = sc; s && s != ls.statement.whichScope; s = s.enclosing){ }
                 if(ls.statement.whichScope == *sc)
-                    error(sc,errmsgtbl[ERR_CANT_BREAK_INTERNAL],ls.ident.value.text);
+                    error(sc, Err.CantBreakInternal, ls.ident.value.text);
                 target = ls.statement;
             }
         }

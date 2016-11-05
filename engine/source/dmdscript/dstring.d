@@ -65,7 +65,7 @@ Status* Dstring_fromCharCode(Dobject pthis, CallContext* cc, Dobject othis, Valu
 
             ret.putVundefined();
             return pthis.RuntimeError(&errinfo,
-                                      errmsgtbl[ERR_NOT_VALID_UTF],
+                                      Err.NotValidUTF,
                                       "String", "fromCharCode()",
                                       u);
         }
@@ -129,7 +129,7 @@ Status* Dstring_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
 
         ret.putVundefined();
         return pthis.RuntimeError(&errinfo,
-                                  errmsgtbl[ERR_FUNCTION_WANTS_STRING],
+                                  Err.FunctionWantsString,
                                   TEXT_toString,
                                   othis.classname);
     }
@@ -157,7 +157,7 @@ Status* Dstring_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
 
         ret.putVundefined();
         return pthis.RuntimeError(&errinfo,
-                                  errmsgtbl[ERR_FUNCTION_WANTS_STRING],
+                                  Err.FunctionWantsString,
                                   TEXT_valueOf,
                                   othis.classname);
     }

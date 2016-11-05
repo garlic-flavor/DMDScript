@@ -338,7 +338,7 @@ class Dfunction : Dobject
       if(w.isPrimitive())
       {
           ErrInfo errinfo;
-          return RuntimeError(&errinfo, errmsgtbl[ERR_MUST_BE_OBJECT], w.getType());
+          return RuntimeError(&errinfo, Err.MustBeObject, w.getType());
       }
       o = w.toObject();
       for(;; )

@@ -86,7 +86,7 @@ Status* Dnumber_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
         ret.putVundefined();
         ErrInfo errinfo;
         return Dobject.RuntimeError(&errinfo,
-                                    errmsgtbl[ERR_FUNCTION_WANTS_NUMBER],
+                                    Err.FunctionWantsNumber,
                                     TEXT_toString,
                                     othis.classname);
     }
@@ -135,7 +135,7 @@ Status* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject
         ret.putVundefined();
         ErrInfo errinfo;
         return Dobject.RuntimeError(&errinfo,
-                                    errmsgtbl[ERR_FUNCTION_WANTS_NUMBER],
+                                    Err.FunctionWantsNumber,
                                     TEXT_toLocaleString,
                                     othis.classname);
     }
@@ -161,7 +161,7 @@ Status* Dnumber_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
         ret.putVundefined();
         ErrInfo errinfo;
         return Dobject.RuntimeError(&errinfo,
-                                    errmsgtbl[ERR_FUNCTION_WANTS_NUMBER],
+                                    Err.FunctionWantsNumber,
                                     TEXT_valueOf,
                                     othis.classname);
     }

@@ -80,7 +80,7 @@ class Parser : Lexer
         {
             if(p.token.value != TOKidentifier)
             {
-                p.error(errmsgtbl[ERR_FPL_EXPECTED_IDENTIFIER], p.token.toString());
+                p.error(Err.FplExpectedIdentifier, p.token.toString);
                 goto Lreturn;
             }
             parameters ~= p.token.ident;
@@ -91,7 +91,7 @@ class Parser : Lexer
                 break;
             else
             {
-                p.error(errmsgtbl[ERR_FPL_EXPECTED_COMMA], p.token.toString());
+                p.error(Err.FplExpectedComma, p.token.toString());
                 goto Lreturn;
             }
         }
@@ -213,7 +213,7 @@ class Parser : Lexer
                     }
                     else
                     {
-                        error(errmsgtbl[ERR_EXPECTED_IDENTIFIER_2PARAM], ".", token.toString());
+                        error(Err.ExpectedIdentifier2param, ".", token.toString);
                         break;
                     }
                 }
@@ -356,7 +356,7 @@ class Parser : Lexer
 
                 if(token.value != TOKidentifier)
                 {
-                    error(errmsgtbl[ERR_EXPECTED_IDENTIFIER_PARAM], token.toString());
+                    error(Err.ExpectedIdentifierParam, token.toString());
                     break;
                 }
                 ident = token.ident;
@@ -528,7 +528,7 @@ class Parser : Lexer
                 {
                     vs = cast(VarStatement)init;
                     if(vs.vardecls.length != 1)
-                        error(errmsgtbl[ERR_TOO_MANY_IN_VARS], vs.vardecls.length);
+                        error(Err.TooManyInVars, vs.vardecls.length);
                 }
 
                 nextToken();
@@ -540,7 +540,7 @@ class Parser : Lexer
             }
             else
             {
-                error(errmsgtbl[ERR_IN_EXPECTED], token.toString());
+                error(Err.InExpected, token.toString());
                 s = null;
             }
             break;
@@ -606,7 +606,7 @@ class Parser : Lexer
           nextToken();
           if(token.value != TOKidentifier)
           {
-              error(errmsgtbl[ERR_GOTO_LABEL_EXPECTED], token.toString());
+              error(Err.GotoLabelExpected, token.toString());
               s = null;
               break;
           }
@@ -686,7 +686,7 @@ class Parser : Lexer
           break; }
 
         default:
-            error(errmsgtbl[ERR_STATEMENT_EXPECTED], token.toString());
+            error(Err.StatementExpected, token.toString());
             nextToken();
             s = null;
             break;
@@ -723,7 +723,7 @@ class Parser : Lexer
     {
         if(token.value != value)
         {
-            error(errmsgtbl[ERR_EXPECTED_GENERIC], token.toString(), Token.toString(value));
+            error(Err.ExpectedGeneric, token.toString, Token.toString(value));
             return 0;
         }
         nextToken();
@@ -829,7 +829,7 @@ class Parser : Lexer
 
         default:
             //	Lerror:
-            error(errmsgtbl[ERR_EXPECTED_EXPRESSION], token.toString());
+            error(Err.ExpectedExpression, token.toString);
             nextToken();
             return null;
         }
@@ -973,7 +973,7 @@ class Parser : Lexer
                 }
                 else
                 {
-                    error(errmsgtbl[ERR_EXPECTED_IDENTIFIER_2PARAM], ".", token.toString());
+                    error(Err.ExpectedIdentifier2param, ".", token.toString);
                     return e;
                 }
                 break;

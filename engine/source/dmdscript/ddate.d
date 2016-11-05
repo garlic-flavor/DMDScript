@@ -309,7 +309,7 @@ Status* checkdate(Value* ret, d_string name, Dobject othis)
 {
     ret.putVundefined();
     ErrInfo errinfo;
-    return Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_FUNCTION_WANTS_DATE],
+    return Dobject.RuntimeError(&errinfo, Err.FunctionWantsDate,
                                 name, othis.classname);
 }
 

@@ -529,19 +529,19 @@ class Dobject
     Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         ErrInfo errinfo;
-        return RuntimeError(&errinfo, errmsgtbl[ERR_S_NO_CONSTRUCT], classname);
+        return RuntimeError(&errinfo, Err.SNoConstruct, classname);
     }
 
     Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         ErrInfo errinfo;
-        return RuntimeError(&errinfo, errmsgtbl[ERR_S_NO_CALL], classname);
+        return RuntimeError(&errinfo, Err.SNoCall, classname);
     }
 
     Status* HasInstance(Value* ret, Value* v)
     {   // ECMA v3 8.6.2
         ErrInfo errinfo;
-        return RuntimeError(&errinfo, errmsgtbl[ERR_S_NO_INSTANCE], classname);
+        return RuntimeError(&errinfo, Err.SNoInstance, classname);
     }
 
     d_string getTypeof()
