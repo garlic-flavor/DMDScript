@@ -64,13 +64,13 @@ enum
 
 struct Value
 {
-    uint  hash;                 // cache 'hash' value
+    uint  hash;               // cache 'hash' value
     ubyte vtype = V_UNDEFINED;
     union
     {
         d_boolean dbool;        // can be true or false
         d_number  number;
-        d_string string;
+        d_string  text;
         Dobject   object;
         d_int32   int32;
         d_uint32  uint32;
@@ -83,18 +83,18 @@ struct Value
             throwRefError();
     }
     void throwRefError() const{
-        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],string));
+        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], text));
     }
-    
+
     void putSignalingUndefined(d_string id){
         vtype = V_REF_ERROR;
-        string = id;
+        text = id;
     }
     void putVundefined()
     {
         vtype = V_UNDEFINED;
         hash = 0;
-        string = null;
+        text = null;
     }
 
     void putVnull()
@@ -127,14 +127,14 @@ struct Value
     {
         vtype = V_STRING;
         hash = 0;
-        string = s;
+        text = s;
     }
 
     void putVstring(d_string s, uint hash)
     {
         vtype = V_STRING;
         this.hash = hash;
-        this.string = s;
+        this.text = s;
     }
 
     void putVobject(Dobject o)
@@ -179,7 +179,7 @@ struct Value
     in { }
     out { assert(memcmp(to, from, Value.sizeof) == 0); }
     body
- 
+
     {
         /+version(all /*UseAsm*/)
         {
@@ -208,7 +208,7 @@ struct Value
         }
     }
 
-    void* toPrimitive(Value* v, d_string PreferredType)
+    void toPrimitive(Value* v, d_string PreferredType)
     {
         if(vtype == V_OBJECT)
         {
@@ -223,17 +223,17 @@ struct Value
                 If the return value is of type Object or Reference,
                 a runtime error is generated.
              */
-            void* a;
+            Status* a;
 
             assert(object);
             a = object.DefaultValue(v, PreferredType);
             if(a)
-                throw new ErrorValue(cast(Value*)a);
-            if(!v.isPrimitive())
+                throw new ErrorValue(a);
+            if(!v.isPrimitive)
             {
                 ErrInfo errinfo;
 
-                v.putVundefined();
+                v.putVundefined;
                 throw new ErrorValue(Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_OBJECT_CANNOT_BE_PRIMITIVE]));
             }
         }
@@ -241,7 +241,6 @@ struct Value
         {
             copy(v, &this);
         }
-        return null;
     }
 
 
@@ -260,7 +259,7 @@ struct Value
         case V_NUMBER:
             return !(number == 0.0 || isNaN(number));
         case V_STRING:
-            return string.length ? true : false;
+            return text.length ? true : false;
         case V_OBJECT:
             return true;
         default:
@@ -291,12 +290,12 @@ struct Value
             size_t len;
             size_t endidx;
 
-            len = string.length;
-            n = StringNumericLiteral(string, endidx, 0);
+            len = text.length;
+            n = StringNumericLiteral(text, endidx, 0);
 
             // Consume trailing whitespace
             //writefln("n = %s, string = '%s', endidx = %s, length = %s", n, string, endidx, string.length);
-            foreach(dchar c; string[endidx .. $])
+            foreach(dchar c; text[endidx .. $])
             {
                 if(!isStrWhiteSpaceChar(c))
                 {
@@ -310,15 +309,16 @@ struct Value
         case V_OBJECT:
         { Value val;
           Value* v;
-          void* a;
+          // void* a;
 
           //writefln("Vobject.toNumber()");
           v = &val;
-          a = toPrimitive(v, TypeNumber);
-          /*if(a)//rerr
+          toPrimitive(v, TypeNumber);
+          /*a = toPrimitive(v, TypeNumber);
+          if(a)//rerr
                   return d_number.nan;*/
-          if(v.isPrimitive())
-              return v.toNumber();
+          if(v.isPrimitive)
+              return v.toNumber;
           else
               return d_number.nan;
         }
@@ -340,7 +340,7 @@ struct Value
         switch(vtype)
         {
         case V_REF_ERROR:
-            throwRefError();
+            throwRefError;
             assert(0);
         case V_UNDEFINED:
             return d_number.nan;
@@ -350,19 +350,20 @@ struct Value
             return dbool ? 1 : 0;
 
         default:
-        { d_number number;
+        {
+            d_number number;
 
-          number = toNumber();
-          if(isNaN(number))
-              number = 0;
-          else if(number == 0 || std.math.isinf(number))
-          {
-          }
-          else if(number > 0)
-              number = std.math.floor(number);
-          else
-              number = -std.math.floor(-number);
-          return number; }
+            number = toNumber;
+            if(number.isNaN)
+                number = 0;
+            else if(number == 0 || std.math.isinf(number))
+            {
+            }
+            else if(number > 0)
+                number = std.math.floor(number);
+            else
+                number = -std.math.floor(-number);
+            return number; }
         }
         assert(0);
     }
@@ -382,26 +383,28 @@ struct Value
             return dbool ? 1 : 0;
 
         default:
-        { d_int32 int32;
-          d_number number;
-          long ll;
+        {
+            d_int32 int32;
+            d_number number;
+            long ll;
 
-          number = toNumber();
-          if(isNaN(number))
-              int32 = 0;
-          else if(number == 0 || std.math.isinf(number))
-              int32 = 0;
-          else
-          {
-              if(number > 0)
-                  number = std.math.floor(number);
-              else
-                  number = -std.math.floor(-number);
+            number = toNumber();
+            if(isNaN(number))
+                int32 = 0;
+            else if(number == 0 || std.math.isinf(number))
+                int32 = 0;
+            else
+            {
+                if(number > 0)
+                    number = std.math.floor(number);
+                else
+                    number = -std.math.floor(-number);
 
-              ll = cast(long)number;
-              int32 = cast(int)ll;
-          }
-          return int32; }
+                ll = cast(long)number;
+                int32 = cast(int)ll;
+            }
+            return int32;
+        }
         }
         assert(0);
     }
@@ -421,26 +424,28 @@ struct Value
             return dbool ? 1 : 0;
 
         default:
-        { d_uint32 uint32;
-          d_number number;
-          long ll;
+        {
+            d_uint32 uint32;
+            d_number number;
+            long ll;
 
-          number = toNumber();
-          if(isNaN(number))
-              uint32 = 0;
-          else if(number == 0 || std.math.isinf(number))
-              uint32 = 0;
-          else
-          {
-              if(number > 0)
-                  number = std.math.floor(number);
-              else
-                  number = -std.math.floor(-number);
+            number = toNumber();
+            if(isNaN(number))
+                uint32 = 0;
+            else if(number == 0 || std.math.isinf(number))
+                uint32 = 0;
+            else
+            {
+                if(number > 0)
+                    number = std.math.floor(number);
+                else
+                    number = -std.math.floor(-number);
 
-              ll = cast(long)number;
-              uint32 = cast(uint)ll;
-          }
-          return uint32; }
+                ll = cast(long)number;
+                uint32 = cast(uint)ll;
+            }
+            return uint32;
+        }
         }
         assert(0);
     }
@@ -459,24 +464,26 @@ struct Value
             return cast(d_uint16)(dbool ? 1 : 0);
 
         default:
-        { d_uint16 uint16;
-          d_number number;
+        {
+            d_uint16 uint16;
+            d_number number;
 
-          number = toNumber();
-          if(isNaN(number))
-              uint16 = 0;
-          else if(number == 0 || std.math.isinf(number))
-              uint16 = 0;
-          else
-          {
-              if(number > 0)
-                  number = std.math.floor(number);
-              else
-                  number = -std.math.floor(-number);
+            number = toNumber();
+            if(isNaN(number))
+                uint16 = 0;
+            else if(number == 0 || std.math.isinf(number))
+                uint16 = 0;
+            else
+            {
+                if(number > 0)
+                    number = std.math.floor(number);
+                else
+                    number = -std.math.floor(-number);
 
-              uint16 = cast(ushort)number;
-          }
-          return uint16; }
+                uint16 = cast(ushort)number;
+            }
+            return uint16;
+        }
         }
         assert(0);
     }
@@ -495,90 +502,93 @@ struct Value
         case V_BOOLEAN:
             return dbool ? TEXT_true : TEXT_false;
         case V_NUMBER:
-        { d_string str;
-          static enum d_string[10]  strs =
-          [   TEXT_0, TEXT_1, TEXT_2, TEXT_3, TEXT_4,
-                      TEXT_5, TEXT_6, TEXT_7, TEXT_8, TEXT_9 ];
+        {
+            d_string str;
+            static enum d_string[10]  strs =
+                [   TEXT_0, TEXT_1, TEXT_2, TEXT_3, TEXT_4,
+                    TEXT_5, TEXT_6, TEXT_7, TEXT_8, TEXT_9 ];
 
-          //writefln("Vnumber.tostr(%g)", number);
-          if(isNaN(number))
-              str = TEXT_NaN;
-          else if(number >= 0 && number <= 9 && number == cast(int)number)
-              str = strs[cast(int)number];
-          else if(std.math.isinf(number))
-          {
-              if(number < 0)
-                  str = TEXT_negInfinity;
-              else
-                  str = TEXT_Infinity;
-          }
-          else
-          {
-              tchar[100] buffer;                // should shrink this to max size,
-                                                // but doesn't really matter
-              tchar* p;
+            //writefln("Vnumber.tostr(%g)", number);
+            if(isNaN(number))
+                str = TEXT_NaN;
+            else if(number >= 0 && number <= 9 && number == cast(int)number)
+                str = strs[cast(int)number];
+            else if(std.math.isinf(number))
+            {
+                if(number < 0)
+                    str = TEXT_negInfinity;
+                else
+                    str = TEXT_Infinity;
+            }
+            else
+            {
+                tchar[100] buffer;                // should shrink this to max size,
+                // but doesn't really matter
+                tchar* p;
 
-              // ECMA 262 requires %.21g (21 digits) of precision. But, the
-              // C runtime library doesn't handle that. Until the C runtime
-              // library is upgraded to ANSI C 99 conformance, use
-              // 16 digits, which is all the GCC library will round correctly.
+                // ECMA 262 requires %.21g (21 digits) of precision. But, the
+                // C runtime library doesn't handle that. Until the C runtime
+                // library is upgraded to ANSI C 99 conformance, use
+                // 16 digits, which is all the GCC library will round correctly.
 
-              std.string.sformat(buffer, "%.16g\0", number);
-              //std.c.stdio.sprintf(buffer.ptr, "%.16g", number);
+                std.string.sformat(buffer, "%.16g\0", number);
+                //std.c.stdio.sprintf(buffer.ptr, "%.16g", number);
 
-              // Trim leading spaces
-              for(p = buffer.ptr; *p == ' '; p++)
-              {
-              }
+                // Trim leading spaces
+                for(p = buffer.ptr; *p == ' '; p++)
+                {
+                }
 
 
-              {             // Trim any 0's following exponent 'e'
-                  tchar* q;
-                  tchar* t;
+                {             // Trim any 0's following exponent 'e'
+                    tchar* q;
+                    tchar* t;
 
-                  for(q = p; *q; q++)
-                  {
-                      if(*q == 'e')
-                      {
-                          q++;
-                          if(*q == '+' || *q == '-')
-                              q++;
-                          t = q;
-                          while(*q == '0')
-                              q++;
-                          if(t != q)
-                          {
-                              for(;; )
-                              {
-                                  *t = *q;
-                                  if(*t == 0)
-                                      break;
-                                  t++;
-                                  q++;
-                              }
-                          }
-                          break;
-                      }
-                  }
-              }
-              str = p[0 .. core.stdc.string.strlen(p)].idup;
-          }
-          //writefln("str = '%s'", str);
-          return str; }
+                    for(q = p; *q; q++)
+                    {
+                        if(*q == 'e')
+                        {
+                            q++;
+                            if(*q == '+' || *q == '-')
+                                q++;
+                            t = q;
+                            while(*q == '0')
+                                q++;
+                            if(t != q)
+                            {
+                                for(;; )
+                                {
+                                    *t = *q;
+                                    if(*t == 0)
+                                        break;
+                                    t++;
+                                    q++;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                str = p[0 .. core.stdc.string.strlen(p)].idup;
+            }
+            //writefln("str = '%s'", str);
+            return str;
+        }
         case V_STRING:
-            return string;
+            return text;
         case V_OBJECT:
-        { Value val;
-          Value* v = &val;
-          void* a;
+        {
+            Value val;
+            Value* v = &val;
+            // void* a;
 
-          //writef("Vobject.toString()\n");
-          a = toPrimitive(v, TypeString);
-          //assert(!a);
-          if(v.isPrimitive())
-              return v.toString();
-          else
-              return v.toObject().classname;
+            //writef("Vobject.toString()\n");
+            toPrimitive(v, TypeString);
+            //assert(!a);
+            if(v.isPrimitive)
+                return v.toString;
+            else
+                return v.toObject.classname;
         }
         default:
             assert(0);
@@ -611,40 +621,44 @@ struct Value
         switch(vtype)
         {
         case V_STRING:
-        { d_string s;
+        {
+            d_string s;
 
-          s = "\"" ~ string ~ "\"";
-          return s; }
+            s = "\"" ~ text ~ "\"";
+            return s;
+        }
         case V_OBJECT:
-        { Value* v;
+        {
+            Value* v;
 
-          //writefln("Vobject.toSource()");
-          v = Get(TEXT_toSource);
-          if(!v)
-              v = &vundefined;
-          if(v.isPrimitive())
-              return v.toSource();
-          else          // it's an Object
-          {
-              void* a;
-              CallContext *cc;
-              Dobject o;
-              Value* ret;
-              Value val;
+            //writefln("Vobject.toSource()");
+            v = Get(TEXT_toSource);
+            if(!v)
+                v = &vundefined;
+            if(v.isPrimitive())
+                return v.toSource();
+            else          // it's an Object
+            {
+                Status* a;
+                CallContext *cc;
+                Dobject o;
+                Value* ret;
+                Value val;
 
-              o = v.object;
-              cc = Program.getProgram().callcontext;
-              ret = &val;
-              a = o.Call(cc, this.object, ret, null);
-              if(a)                             // if exception was thrown
-              {
-                  /*return a;*/
-                  writef("Vobject.toSource() failed with %x\n", a);
-              }
-              else if(ret.isPrimitive())
-                  return ret.toString();
-          }
-          return TEXT_undefined; }
+                o = v.object;
+                cc = Program.getProgram().callcontext;
+                ret = &val;
+                a = o.Call(cc, this.object, ret, null);
+                if(a)                             // if exception was thrown
+                {
+                    /*return a;*/
+                    debug writef("Vobject.toSource() failed with %x\n", a);
+                }
+                else if(ret.isPrimitive())
+                    return ret.toString();
+            }
+            return TEXT_undefined;
+        }
         default:
             return toString();
         }
@@ -669,7 +683,7 @@ struct Value
         case V_NUMBER:
             return new Dnumber(number);
         case V_STRING:
-            return new Dstring(string);
+            return new Dstring(text);
         case V_OBJECT:
             return object;
         default:
@@ -732,26 +746,26 @@ struct Value
             }
             else if(v.vtype == V_STRING)
             {
-                return stringcmp((cast(Value*)&this).toString(), v.string);    //TODO: remove this hack!
+                return stringcmp((cast(Value*)&this).toString(), v.text);    //TODO: remove this hack!
             }
             break;
         case V_STRING:
             if(v.vtype == V_STRING)
             {
                 //writefln("'%s'.compareTo('%s')", string, v.string);
-                int len = string.length - v.string.length;
+                int len = text.length - v.text.length;
                 if(len == 0)
                 {
-                    if(string.ptr == v.string.ptr)
+                    if(text.ptr == v.text.ptr)
                         return 0;
-                    len = memcmp(string.ptr, v.string.ptr, string.length);
+                    len = memcmp(text.ptr, v.text.ptr, text.length);
                 }
                 return len;
             }
             else if(v.vtype == V_NUMBER)
             {
-                //writefln("'%s'.compareTo(%g)\n", string, v.number);
-                return stringcmp(string, (cast(Value*)&v).toString());    //TODO: remove this hack!
+                //writefln("'%s'.compareTo(%g)\n", text, v.number);
+                return stringcmp(text, (cast(Value*)&v).toString());    //TODO: remove this hack!
             }
             break;
         case V_OBJECT:
@@ -784,7 +798,7 @@ struct Value
         case V_OBJECT:      s = TypeObject;    break;
         case V_ITER:        s = TypeIterator;  break;
         default:
-            writefln("vtype = %d", vtype);
+            debug writefln("vtype = %d", vtype);
             assert(0);
         }
         return s;
@@ -804,7 +818,7 @@ struct Value
         case V_STRING:      s = TEXT_string;        break;
         case V_OBJECT:      s = object.getTypeof(); break;
         default:
-            writefln("vtype = %d", vtype);
+            debug writefln("vtype = %d", vtype);
             assert(0);
         }
         return s;
@@ -856,7 +870,7 @@ struct Value
             index = toUint32();
             return true;
         case V_STRING:
-            return StringToIndex(string, index);
+            return StringToIndex(text, index);
         default:
             index = 0;
             return false;
@@ -968,7 +982,7 @@ struct Value
             // Since strings are immutable, if we've already
             // computed the hash, use previous value
             if(!hash)
-                hash = calcHash(string);
+                hash = calcHash(text);
             h = hash;
             break;
         case V_OBJECT:
@@ -986,7 +1000,7 @@ struct Value
         return h;
     }
 
-    Value* Put(d_string PropertyName, Value* value)
+    Status* Put(d_string PropertyName, Value* value)
     {
         if(vtype == V_OBJECT)
             return object.Put(PropertyName, value, 0);
@@ -1001,7 +1015,7 @@ struct Value
         }
     }
 
-    Value* Put(d_uint32 index, Value* vindex, Value* value)
+    Status* Put(d_uint32 index, Value* vindex, Value* value)
     {
         if(vtype == V_OBJECT)
             return object.Put(index, vindex, value, 0);
@@ -1084,7 +1098,7 @@ struct Value
         }
     }
  +/
-    void* Construct(CallContext *cc, Value *ret, Value[] arglist)
+    Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         if(vtype == V_OBJECT)
             return object.Construct(cc, ret, arglist);
@@ -1101,11 +1115,11 @@ struct Value
         }
     }
 
-    void* Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         if(vtype == V_OBJECT)
         {
-            void* a;
+            Status* a;
 
             a = object.Call(cc, othis, ret, arglist);
             //if (a) writef("Vobject.Call() returned %x\n", a);
@@ -1125,7 +1139,7 @@ struct Value
         }
     }
 
-    Value* putIterator(Value* v)
+    Status* putIterator(Value* v)
     {
         if(vtype == V_OBJECT)
             return object.putIterator(v);
@@ -1139,7 +1153,7 @@ struct Value
     }
 
 
-    void getErrInfo(ErrInfo *perrinfo, int linnum)
+    void getErrInfo(ErrInfo* perrinfo, int linnum)
     {
         if(vtype == V_OBJECT)
             object.getErrInfo(perrinfo, linnum);
@@ -1157,15 +1171,16 @@ struct Value
 
     void dump()
     {
-        uint *v = cast(uint *)&this;
+        uint* v = cast(uint*)&this;
 
         writef("v[%x] = %8x, %8x, %8x, %8x\n", cast(uint)v, v[0], v[1], v[2], v[3]);
     }
 }
-static if(size_t.sizeof == 4)
+static if (size_t.sizeof == 4)
   static assert(Value.sizeof == 16);
-else
+else static if (size_t.sizeof == 8)
   static assert(Value.sizeof == 24); //fat string point 2*8 + type tag & hash
+else static assert(0, "This machine is not supported.");
 
 Value vundefined = { V_UNDEFINED };
 Value vnull = { V_NULL };
@@ -1180,13 +1195,25 @@ string TypeObject = "Object";
 string TypeIterator = "Iterator";
 
 
-Value* signalingUndefined(string id){
+Value* signalingUndefined(d_string id){
     Value* p;
     p = new Value;
     p.putSignalingUndefined(id);
     return p;
 }
 
+/* Status contains the ending status of a function.
+ * Mostly, this contains an error status or a yielding status.
+ */
+struct Status
+{
+    Value entity;
+    alias entity this;
 
-
-
+    static void copy(Status* to, Status* from)
+    out { assert(memcmp(to, from, Status.sizeof) == 0); }
+    body
+    {
+        *to = *from;
+    }
+}

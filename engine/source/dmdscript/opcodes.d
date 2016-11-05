@@ -18,10 +18,10 @@
 
 module dmdscript.opcodes;
 
-import std.stdio;
 import core.stdc.string;
 import std.string;
 import std.conv;
+import std.stdio;
 
 import dmdscript.script;
 import dmdscript.dobject;
@@ -95,9 +95,9 @@ class Finally : Dobject
         return null;
     }
 
-    IR *finallyblock;    // code for FinallyBlock
+    IR* finallyblock;    // code for FinallyBlock
 
-    this(IR * finallyblock)
+    this(IR* finallyblock)
     {
         super(null);
         this.finallyblock = finallyblock;
@@ -230,7 +230,7 @@ Dobject scope_tos(Dobject[] scopex)
 /*****************************************
  */
 
-void PutValue(CallContext *cc, d_string s, Value* a)
+void PutValue(CallContext* cc, d_string s, Value* a)
 {
     // ECMA v3 8.7.2
     // Look for the object o in the scope chain.
@@ -256,7 +256,7 @@ void PutValue(CallContext *cc, d_string s, Value* a)
     {
         assert(d > 0);
         o = cc.scopex[d - 1];
-        
+
         v = o.Get(s, hash);
         if(v)
         {
@@ -274,7 +274,7 @@ void PutValue(CallContext *cc, d_string s, Value* a)
 }
 
 
-void PutValue(CallContext *cc, Identifier* id, Value* a)
+void PutValue(CallContext* cc, Identifier* id, Value* a)
 {
     // ECMA v3 8.7.2
     // Look for the object o in the scope chain.
@@ -314,50 +314,39 @@ void PutValue(CallContext *cc, Identifier* id, Value* a)
  * Helper function for Values that cannot be converted to Objects.
  */
 
-Value* cannotConvert(Value* b, int linnum)
+Status* cannotConvert(Value* b, int linnum)
 {
     ErrInfo errinfo;
+    Status* sta;
 
     errinfo.linnum = linnum;
     if(b.isUndefinedOrNull())
     {
-        b = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT4],
+        sta = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT4],
                                  b.getType());
     }
     else
     {
-        b = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT2],
+        sta = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT2],
                                  b.getType(), b.toString());
     }
-    return b;
+    return sta;
 }
 
-const uint INDEX_FACTOR = 16;   // or 1
+// enum size_t INDEX_FACTOR = Value.sizeof;//1;//or Value.sizeof;
 
 struct IR
 {
     union
     {
-        struct
-        {
-            version(LittleEndian)
-            {
-                ubyte opcode;
-                ubyte padding;
-                ushort linnum;
-            }
-            else
-            {
-                ushort linnum;
-                ubyte padding;
-                ubyte opcode;
-            }
-        }
-                    IR* code;
+        Instruction opcode;
+
+        IR*         code;
         Value*      value;
-        uint        index;      // index into local variable table
-        uint        hash;       // cached hash value
-        int         offset;
+        idx_t       index;      // index into local variable table
+        size_t      hash;       // cached hash value
+        size_t      argc;
+        sizediff_t  offset;
         Identifier* id;
         d_boolean   boolean;
         Statement   target;     // used for backpatch fixups
@@ -369,15 +358,16 @@ struct IR
      * This is the main interpreter loop.
      */
 
-    static void *call(CallContext *cc, Dobject othis,
-                      IR *code, Value* ret, Value* locals)
+    static Status* call(CallContext* cc, Dobject othis,
+                        IR* code, Value* ret, Value* locals)
     {
         Value* a;
         Value* b;
         Value* c;
         Value* v;
-        Iterator *iter;
-        Identifier *id;
+        Status* sta;
+        Iterator* iter;
+        Identifier* id;
         d_string s;
         d_string s2;
         d_number n;
@@ -394,7 +384,7 @@ struct IR
         Catch ca;
         Finally f;
         IR* codestart = code;
-        //Finally blocks are sort of called, sort of jumped to 
+        //Finally blocks are sort of called, sort of jumped to
         //So we are doing "push IP in some stack" + "jump"
         IR*[] finallyStack;      //it's a stack of backreferences for finally
         d_number inc;
@@ -403,56 +393,58 @@ struct IR
             finallyStack ~= code;
             code = f.finallyblock;
         }
-        Value* unwindStack(Value* err){
-                assert(scopex.length && scopex[0] !is null,"Null in scopex, Line " ~ to!string(code.linnum));
-                a = err;
-                //v = scope_get(scopex,Identifier.build("mycars2"));
-                //a.getErrInfo(null, GETlinnum(code));
-                
-                for(;; )
+        Status* unwindStack(Status* err)
+        {
+            assert(scopex.length && scopex[0] !is null,"Null in scopex, Line " ~ to!string(code.opcode.linnum));
+            sta = err;
+            a = &sta.entity;
+            //v = scope_get(scopex,Identifier.build("mycars2"));
+            //a.getErrInfo(null, GETlinnum(code));
+
+            for(;; )
+            {
+                if(scopex.length <= dimsave)
                 {
-                    if(scopex.length <= dimsave)
+                    ret.putVundefined();
+                    // 'a' may be pointing into the stack, which means
+                    // it gets scrambled on return. Therefore, we copy
+                    // its contents into a safe area in CallContext.
+                    assert(cc.value.sizeof == Status.sizeof);
+                    Status.copy(&cc.value, sta);
+                    return &cc.value;
+                }
+                o = scopex[$ - 1];
+                scopex = scopex[0 .. $ - 1];            // pop entry off scope chain
+
+                if(o.isCatch())
+                {
+                    ca = cast(Catch)o;
+                    //writef("catch('%s')\n", ca.name);
+                    o = new Dobject(Dobject.getPrototype());
+                    version(JSCRIPT_CATCH_BUG)
                     {
-                        ret.putVundefined();
-                        // 'a' may be pointing into the stack, which means
-                        // it gets scrambled on return. Therefore, we copy
-                        // its contents into a safe area in CallContext.
-                        assert(cc.value.sizeof == Value.sizeof);
-                        Value.copy(&cc.value, a);
-                        return &cc.value;
-                    }
-                    o = scopex[$ - 1];
-                    scopex = scopex[0 .. $ - 1];            // pop entry off scope chain
-                    
-                    if(o.isCatch())
-                    {
-                        ca = cast(Catch)o;
-                        //writef("catch('%s')\n", ca.name);
-                        o = new Dobject(Dobject.getPrototype());
-                        version(JSCRIPT_CATCH_BUG)
-                        {
-                            PutValue(cc, ca.name, a);
-                        }
-                        else
-                        {
-                            o.Put(ca.name, a, DontDelete);
-                        }
-                        scopex ~= o;
-                        cc.scopex = scopex;
-                        code = codestart + ca.offset;
-                        break;
+                        PutValue(cc, ca.name, a);
                     }
                     else
                     {
-                        if(o.isFinally())
-                        {
-                            f = cast(Finally)o;
-                            callFinally(f);
-                            break;
-                        }
+                        o.Put(ca.name, a, DontDelete);
+                    }
+                    scopex ~= o;
+                    cc.scopex = scopex;
+                    code = codestart + ca.offset;
+                    break;
+                }
+                else
+                {
+                    if(o.isFinally())
+                    {
+                        f = cast(Finally)o;
+                        callFinally(f);
+                        break;
                     }
                 }
-                return null;
+            }
+            return null;
         }
         /***************************************
          * Cache for getscope's
@@ -490,59 +482,6 @@ struct IR
             }
         }
 
-        version(all)
-        {
-            // Eliminate the scale factor of Value.sizeof by computing it at compile time
-            Value* GETa(IR* code)
-            {
-                return cast(Value*)(cast(void*)locals + (code + 1).index * (16 / INDEX_FACTOR));
-            }
-            Value* GETb(IR* code)
-            {
-                return cast(Value*)(cast(void*)locals + (code + 2).index * (16 / INDEX_FACTOR));
-            }
-            Value* GETc(IR* code)
-            {
-                return cast(Value*)(cast(void*)locals + (code + 3).index * (16 / INDEX_FACTOR));
-            }
-            Value* GETd(IR* code)
-            {
-                return cast(Value*)(cast(void*)locals + (code + 4).index * (16 / INDEX_FACTOR));
-            }
-            Value* GETe(IR* code)
-            {
-                return cast(Value*)(cast(void*)locals + (code + 5).index * (16 / INDEX_FACTOR));
-            }
-        }
-        else
-        {
-            Value* GETa(IR* code)
-            {
-                return &locals[(code + 1).index];
-            }
-            Value* GETb(IR* code)
-            {
-                return &locals[(code + 2).index];
-            }
-            Value* GETc(IR* code)
-            {
-                return &locals[(code + 3).index];
-            }
-            Value* GETd(IR* code)
-            {
-                return &locals[(code + 4).index];
-            }
-            Value* GETe(IR* code)
-            {
-                return &locals[(code + 5).index];
-            }
-        }
-
-        uint GETlinnum(IR* code)
-        {
-            return code.linnum;
-        }
-
         debug(VERIFY) uint checksum = IR.verify(__LINE__, code);
 
         version(none)
@@ -576,7 +515,7 @@ struct IR
 
         assert(code);
         assert(othis);
-        
+
         for(;; )
         {
             Lnext:
@@ -611,25 +550,27 @@ struct IR
 
                 //writef("\tIR%d:\n", code.opcode);
 
-                switch(code.opcode)
+                assert(code.opcode < Opcode.max,
+                       "Unrecognized IR instruction " ~ code.opcode.to!string);
+                final switch(code.opcode)
                 {
-                case IRerror:
+                case Opcode.Error:
                     assert(0);
 
-                case IRnop:
-                    code++;
+                case Opcode.Nop:
+                    code += IRTypes[Opcode.Nop].size;
                     break;
 
-                case IRget:                 // a = b.c
-                    a = GETa(code);
-                    b = GETb(code);
+                case Opcode.Get:                 // a = b.c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
                     {
-                        a = cannotConvert(b, GETlinnum(code));
+                        sta = cannotConvert(b, code.opcode.linnum);
                         goto Lthrow;
                     }
-                    c = GETc(code);
+                    c = locals + (code + 3).index;
                     if(c.vtype == V_NUMBER &&
                        (i32 = cast(d_int32)c.number) == c.number &&
                        i32 >= 0)
@@ -645,46 +586,46 @@ struct IR
                     if(!v)
                         v = &vundefined;
                     Value.copy(a, v);
-                    code += 4;
+                    code += IRTypes[Opcode.Get].size;
                     break;
 
-                case IRput:                 // b.c = a
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.Put:                 // b.c = a
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     if(c.vtype == V_NUMBER &&
                        (i32 = cast(d_int32)c.number) == c.number &&
                        i32 >= 0)
                     {
                         //writef("IRput %d\n", i32);
                         if(b.vtype == V_OBJECT)
-                            a = b.object.Put(cast(d_uint32)i32, c, a, 0);
+                            sta = b.object.Put(cast(d_uint32)i32, c, a, 0);
                         else
-                            a = b.Put(cast(d_uint32)i32, c, a);
+                            sta = b.Put(cast(d_uint32)i32, c, a);
                     }
                     else
                     {
                         s = c.toString();
-                        a = b.Put(s, a);
+                        sta = b.Put(s, a);
                     }
-                    if(a)
+                    if(sta)
                         goto Lthrow;
-                    code += 4;
+                    code += IRTypes[Opcode.Put].size;
                     break;
 
-                case IRgets:                // a = b.s
-                    a = GETa(code);
-                    b = GETb(code);
-                    s = (code + 3).id.value.string;
+                case Opcode.GetS:                // a = b.s
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    s = (code + 3).id.value.text;
                     o = b.toObject();
                     if(!o)
                     {
                         //writef("%s %s.%s cannot convert to Object", b.getType(), b.toString(), s);
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT3],
-                                                 b.getType(), b.toString(),
-                                                 s);
+                        sta = Dobject.RuntimeError(&errinfo,
+                                                   errmsgtbl[ERR_CANNOT_CONVERT_TO_OBJECT3],
+                                                   b.getType(), b.toString(),
+                                                   s);
                         goto Lthrow;
                     }
                     v = o.Get(s);
@@ -694,19 +635,19 @@ struct IR
                         v = &vundefined;
                     }
                     Value.copy(a, v);
-                    code += 4;
+                    code += IRTypes[Opcode.GetS].size;
                     goto Lnext;
-                case IRcheckref: // s
-	                id = (code+1).id;
-	                s = id.value.string;
-	                if(!scope_get(scopex, id))
-		                throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s)); 
-	                code += 2;
-	                break;
-                case IRgetscope:            // a = s
-                    a = GETa(code);
+                case Opcode.CheckRef: // s
+                    id = (code+1).id;
+                    s = id.value.text;
+                    if(!scope_get(scopex, id))
+                        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
+                    code += IRTypes[Opcode.CheckRef].size;
+                    break;
+                case Opcode.GetScope:            // a = s
+                    a = locals + (code + 1).index;
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
@@ -743,25 +684,25 @@ struct IR
                     //writef("v = %g\n", v.toNumber());
                     //writef("v = %s\n", d_string_ptr(v.toString()));
                     Value.copy(a, v);
-                    code += 3;
+                    code += IRTypes[Opcode.GetScope].size;
                     break;
 
-                case IRaddass:              // a = (b.c += a)
-                    c = GETc(code);
+                case Opcode.AddAsS:              // a = (b.c += a)
+                    c = locals + (code + 3).index;
                     s = c.toString();
                     goto Laddass;
 
-                case IRaddasss:             // a = (b.s += a)
-                    s = (code + 3).id.value.string;
+                case Opcode.AddAsSS:             // a = (b.s += a)
+                    s = (code + 3).id.value.text;
                     Laddass:
-                    b = GETb(code);
+                    b = locals + (code + 2).index;
                     v = b.Get(s);
                     goto Laddass2;
 
-                case IRaddassscope:         // a = (s += a)
+                case Opcode.AddAsSScope:         // a = (s += a)
                     b = null;               // Needed for the b.Put() below to shutup a compiler use-without-init warning
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
@@ -775,10 +716,10 @@ struct IR
                         v = scope_get(scopex, id);
                     }
                     Laddass2:
-                    a = GETa(code);
+                    a = locals + (code + 1).index;
                     if(!v)
                     {
-						throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
+                        throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s));
                         //a.putVundefined();
                         /+
                                             if (b)
@@ -819,184 +760,190 @@ struct IR
                             *v = *a;//full copy
                         }
                     }
-                    code += 4;
+
+                    static assert(IRTypes[Opcode.AddAsS].size
+                                  == IRTypes[Opcode.AddAsSS].size &&
+                                  IRTypes[Opcode.AddAsS].size
+                                  == IRTypes[Opcode.AddAsSScope].size);
+                    code += IRTypes[Opcode.AddAsSScope].size;
                     break;
 
-                case IRputs:            // b.s = a
-                    a = GETa(code);
-                    b = GETb(code);
+                case Opcode.PutS:            // b.s = a
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
                     {
-                        a = cannotConvert(b, GETlinnum(code));
+                        sta = cannotConvert(b, code.opcode.linnum);
                         goto Lthrow;
                     }
-                    a = o.Put((code + 3).id.value.string, a, 0);
-                    if(a)
+                    sta = o.Put((code + 3).id.value.text, a, 0);
+                    if(sta)
                         goto Lthrow;
-                    code += 4;
+                    code += IRTypes[Opcode.PutS].size;
                     goto Lnext;
 
-                case IRputscope:            // s = a
-                    a = GETa(code);
+                case Opcode.PutScope:            // s = a
+                    a = locals + (code + 1).index;
                     a.checkReference();
                     PutValue(cc, (code + 2).id, a);
-                    code += 3;
+                    code += IRTypes[Opcode.PutScope].size;
                     break;
 
-                case IRputdefault:              // b = a
-                    a = GETa(code);
-                    b = GETb(code);
+                case Opcode.PutDefault:              // b = a
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
                     {
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_CANNOT_ASSIGN], a.getType(),
-                                                 b.getType());
+                        sta = Dobject.RuntimeError(&errinfo,
+                                                   errmsgtbl[ERR_CANNOT_ASSIGN], a.getType(),
+                                                   b.getType());
                         goto Lthrow;
                     }
-                    a = o.PutDefault(a);
-                    if(a)
+                    sta = o.PutDefault(a);
+                    if(sta)
                         goto Lthrow;
-                    code += 3;
+                    code += IRTypes[Opcode.PutDefault].size;
                     break;
 
-                case IRputthis:             // s = a
+                case Opcode.PutThis:             // s = a
                     //a = cc.variable.Put((code + 2).id.value.string, GETa(code), DontDelete);
                     o = scope_tos(scopex);
                     assert(o);
-                    if(o.HasProperty((code + 2).id.value.string))
-                        a = o.Put((code+2).id.value.string,GETa(code),DontDelete);
+                    if(o.HasProperty((code + 2).id.value.text))
+                        sta = o.Put((code+2).id.value.text,locals + (code + 1).index,DontDelete);
                     else
-                        a = cc.variable.Put((code + 2).id.value.string, GETa(code), DontDelete);
-                    if (a) goto Lthrow;
-                    code += 3;
+                        sta = cc.variable.Put((code + 2).id.value.text, locals + (code + 1).index, DontDelete);
+                    if (sta)
+                        goto Lthrow;
+                    code += IRTypes[Opcode.PutThis].size;
                     break;
 
-                case IRmov:                 // a = b
-                    Value.copy(GETa(code), GETb(code));
-                    code += 3;
+                case Opcode.Mov:                 // a = b
+                    Value.copy(locals + (code + 1).index, locals + (code + 2).index);
+                    code += IRTypes[Opcode.Mov].size;
                     break;
 
-                case IRstring:              // a = "string"
-                    GETa(code).putVstring((code + 2).id.value.string);
-                    code += 3;
+                case Opcode.String:              // a = "string"
+                    (locals + (code + 1).index).putVstring(
+                        (code + 2).id.value.text);
+                    code += IRTypes[Opcode.String].size;
                     break;
 
-                case IRobject:              // a = object
-                { FunctionDefinition fd;
-                  fd = cast(FunctionDefinition)(code + 2).ptr;
-                  Dfunction fobject = new DdeclaredFunction(fd);
-                  fobject.scopex = scopex;
-                  GETa(code).putVobject(fobject);
-                  code += 3;
-                  break; }
-
-                case IRthis:                // a = this
-                    GETa(code).putVobject(othis);
+                case Opcode.Object:              // a = object
+                {
+                    FunctionDefinition fd;
+                    fd = cast(FunctionDefinition)(code + 2).ptr;
+                    Dfunction fobject = new DdeclaredFunction(fd);
+                    fobject.scopex = scopex;
+                    (locals + (code + 1).index).putVobject(fobject);
+                    code += IRTypes[Opcode.Object].size;
+                    break;
+                }
+                case Opcode.This:                // a = this
+                    (locals + (code + 1).index).putVobject(othis);
                     //writef("IRthis: %s, othis = %x\n", GETa(code).getType(), othis);
-                    code += 2;
+                    code += IRTypes[Opcode.This].size;
                     break;
 
-                case IRnumber:              // a = number
-                    GETa(code).putVnumber(*cast(d_number *)(code + 2));
-                    code += 4;
+                case Opcode.Number:              // a = number
+                    (locals + (code + 1).index).putVnumber(
+                        *cast(d_number*)(code + 2));
+                    code += IRTypes[Opcode.Number].size;
                     break;
 
-                case IRboolean:             // a = boolean
-                    GETa(code).putVboolean((code + 2).boolean);
-                    code += 3;
+                case Opcode.Boolean:             // a = boolean
+                    (locals + (code + 1).index).putVboolean((code + 2).boolean);
+                    code += IRTypes[Opcode.Boolean].size;
                     break;
 
-                case IRnull:                // a = null
-                    GETa(code).putVnull();
-                    code += 2;
+                case Opcode.Null:                // a = null
+                    (locals + (code + 1).index).putVnull();
+                    code += IRTypes[Opcode.Null].size;
                     break;
 
-                case IRundefined:           // a = undefined
-                    GETa(code).putVundefined();
-                    code += 2;
+                case Opcode.Undefined:           // a = undefined
+                    (locals + (code + 1).index).putVundefined();
+                    code += IRTypes[Opcode.Undefined].size;
                     break;
 
-                case IRthisget:             // a = othis.ident
-                    a = GETa(code);
-                    v = othis.Get((code + 2).id.value.string);
+                case Opcode.ThisGet:             // a = othis.ident
+                    a = locals + (code + 1).index;
+                    v = othis.Get((code + 2).id.value.text);
                     if(!v)
                         v = &vundefined;
                     Value.copy(a, v);
-                    code += 3;
+                    code += IRTypes[Opcode.ThisGet].size;
                     break;
 
-                case IRneg:                 // a = -a
-                    a = GETa(code);
+                case Opcode.Neg:                 // a = -a
+                    a = locals + (code + 1).index;
                     n = a.toNumber();
                     a.putVnumber(-n);
-                    code += 2;
+                    code += IRTypes[Opcode.Neg].size;
                     break;
 
-                case IRpos:                 // a = a
-                    a = GETa(code);
+                case Opcode.Pos:                 // a = a
+                    a = locals + (code + 1).index;
                     n = a.toNumber();
                     a.putVnumber(n);
-                    code += 2;
+                    code += IRTypes[Opcode.Pos].size;
                     break;
 
-                case IRcom:                 // a = ~a
-                    a = GETa(code);
+                case Opcode.Com:                 // a = ~a
+                    a = locals + (code + 1).index;
                     i32 = a.toInt32();
                     a.putVnumber(~i32);
-                    code += 2;
+                    code += IRTypes[Opcode.Com].size;
                     break;
 
-                case IRnot:                 // a = !a
-                    a = GETa(code);
+                case Opcode.Not:                 // a = !a
+                    a = locals + (code + 1).index;
                     a.putVboolean(!a.toBoolean());
-                    code += 2;
+                    code += IRTypes[Opcode.Not].size;
                     break;
 
-                case IRtypeof:      // a = typeof a
+                case Opcode.Typeof:      // a = typeof a
                     // ECMA 11.4.3 says that if the result of (a)
                     // is a Reference and GetBase(a) is null,
                     // then the result is "undefined". I don't know
                     // what kind of script syntax will generate this.
-                    a = GETa(code);
+                    a = locals + (code + 1).index;
                     a.putVstring(a.getTypeof());
-                    code += 2;
+                    code += IRTypes[Opcode.Typeof].size;
                     break;
 
-                case IRinstance:        // a = b instanceof c
+                case Opcode.Instance:        // a = b instanceof c
                 {
                     Dobject co;
 
                     // ECMA v3 11.8.6
 
-                    b = GETb(code);
+                    b = locals + (code + 2).index;
                     o = b.toObject();
-                    c = GETc(code);
+                    c = locals + (code + 3).index;
                     if(c.isPrimitive())
                     {
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_RHS_MUST_BE_OBJECT],
-                                                 "instanceof", c.getType());
+                        sta = Dobject.RuntimeError(&errinfo,
+                                                   errmsgtbl[ERR_RHS_MUST_BE_OBJECT],
+                                                   "instanceof", c.getType());
                         goto Lthrow;
                     }
                     co = c.toObject();
-                    a = GETa(code);
-                    v = cast(Value*)co.HasInstance(a, b);
-                    if(v)
-                    {
-                        a = v;
+                    a = locals + (code + 1).index;
+                    sta = co.HasInstance(a, b);
+                    if(sta)
                         goto Lthrow;
-                    }
-                    code += 4;
+                    code += IRTypes[Opcode.Instance].size;
                     break;
                 }
-                case IRadd:                     // a = b + c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.Add:                     // a = b + c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
 
                     if(b.vtype == V_NUMBER && c.vtype == V_NUMBER)
                     {
@@ -1023,141 +970,147 @@ struct IR
                         }
                     }
 
-                    code += 4;
+                    code += IRTypes[Opcode.Add].size;
                     break;
 
-                case IRsub:                 // a = b - c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.Sub:                 // a = b - c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     a.putVnumber(b.toNumber() - c.toNumber());
                     code += 4;
                     break;
 
-                case IRmul:                 // a = b * c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.Mul:                 // a = b * c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     a.putVnumber(b.toNumber() * c.toNumber());
-                    code += 4;
+                    code += IRTypes[Opcode.Mul].size;
                     break;
 
-                case IRdiv:                 // a = b / c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.Div:                 // a = b / c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
 
                     //writef("%g / %g = %g\n", b.toNumber() , c.toNumber(), b.toNumber() / c.toNumber());
                     a.putVnumber(b.toNumber() / c.toNumber());
-                    code += 4;
+                    code += IRTypes[Opcode.Div].size;
                     break;
 
-                case IRmod:                 // a = b % c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.Mod:                 // a = b % c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     a.putVnumber(b.toNumber() % c.toNumber());
-                    code += 4;
+                    code += IRTypes[Opcode.Mod].size;
                     break;
 
-                case IRshl:                 // a = b << c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.ShL:                 // a = b << c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     i32 = b.toInt32();
                     u32 = c.toUint32() & 0x1F;
                     i32 <<= u32;
                     a.putVnumber(i32);
-                    code += 4;
+                    code += IRTypes[Opcode.ShL].size;
                     break;
 
-                case IRshr:                 // a = b >> c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.ShR:                 // a = b >> c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     i32 = b.toInt32();
                     u32 = c.toUint32() & 0x1F;
                     i32 >>= cast(d_int32)u32;
                     a.putVnumber(i32);
-                    code += 4;
+                    code += IRTypes[Opcode.ShR].size;
                     break;
 
-                case IRushr:                // a = b >>> c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.UShR:                // a = b >>> c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     i32 = b.toUint32();
                     u32 = c.toUint32() & 0x1F;
                     u32 = (cast(d_uint32)i32) >> u32;
                     a.putVnumber(u32);
-                    code += 4;
+                    code += IRTypes[Opcode.UShR].size;
                     break;
 
-                case IRand:         // a = b & c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.And:         // a = b & c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     a.putVnumber(b.toInt32() & c.toInt32());
-                    code += 4;
+                    code += IRTypes[Opcode.And].size;
                     break;
 
-                case IRor:          // a = b | c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.Or:          // a = b | c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     a.putVnumber(b.toInt32() | c.toInt32());
-                    code += 4;
+                    code += IRTypes[Opcode.Or].size;
                     break;
 
-                case IRxor:         // a = b ^ c
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.Xor:         // a = b ^ c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     a.putVnumber(b.toInt32() ^ c.toInt32());
-                    code += 4;
+                    code += IRTypes[Opcode.Xor].size;
                     break;
-				case IRin:          // a = b in c
-					a = GETa(code);
-					b = GETb(code);
-					c = GETc(code);
-					s = b.toString();
-					o = c.toObject();
-					if(!o){
-						ErrInfo errinfo;
-						throw new ErrorValue(Dobject.RuntimeError(&errinfo,errmsgtbl[ERR_RHS_MUST_BE_OBJECT],"in",c.toString()));
-					}
-					a.putVboolean(o.HasProperty(s));
-					code += 4;
-					break;
-					
+                case Opcode.In:          // a = b in c
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
+                    s = b.toString();
+                    o = c.toObject();
+                    if(!o){
+                        ErrInfo errinfo;
+                        throw new ErrorValue(Dobject.RuntimeError(&errinfo,errmsgtbl[ERR_RHS_MUST_BE_OBJECT],"in",c.toString()));
+                    }
+                    a.putVboolean(o.HasProperty(s));
+                    code += IRTypes[Opcode.In].size;
+                    break;
+
                 /********************/
 
-                case IRpreinc:     // a = ++b.c
-                    c = GETc(code);
+                case Opcode.PreInc:     // a = ++b.c
+                    c = locals + (code + 3).index;
                     s = c.toString();
                     goto Lpreinc;
-                case IRpreincs:    // a = ++b.s
-                    s = (code + 3).id.value.string;
+                case Opcode.PreIncS:    // a = ++b.s
+                    s = (code + 3).id.value.text;
                     Lpreinc:
                     inc = 1;
                     Lpre:
-                    a = GETa(code);
-                    b = GETb(code);
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     v = b.Get(s);
                     if(!v)
                         v = &vundefined;
                     n = v.toNumber();
                     a.putVnumber(n + inc);
                     b.Put(s, a);
-                    code += 4;
+
+                    static assert(IRTypes[Opcode.PreInc].size
+                                  == IRTypes[Opcode.PreIncS].size &&
+                                  IRTypes[Opcode.PreDec].size
+                                  == IRTypes[Opcode.PreIncS].size &&
+                                  IRTypes[Opcode.PreDecS].size);
+                    code += IRTypes[Opcode.PreIncS].size;
                     break;
 
-                case IRpreincscope:        // a = ++s
+                case Opcode.PreIncScope:        // a = ++s
                     inc = 1;
                     Lprescope:
-                    a = GETa(code);
+                    a = locals + (code + 1).index;
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
@@ -1180,7 +1133,7 @@ struct IR
                             else
                             {
                                 //FIXED: as per ECMA v5 should throw ReferenceError
-                                a = Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s);
+                                sta = Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s);
                                 //a.putVundefined();
                                 goto Lthrow;
                             }
@@ -1196,36 +1149,38 @@ struct IR
                             Value.copy(a, v);
                         }
                         else
-                             throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s));
+                            throw new ErrorValue(Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR], s));
                     }
-                    code += 4;
+                    static assert(IRTypes[Opcode.PreIncScope].size
+                                  == IRTypes[Opcode.PreDecScope].size);
+                    code += IRTypes[Opcode.PreIncScope].size;
                     break;
 
-                case IRpredec:     // a = --b.c
-                    c = GETc(code);
+                case Opcode.PreDec:     // a = --b.c
+                    c = locals + (code + 3).index;
                     s = c.toString();
                     goto Lpredec;
-                case IRpredecs:    // a = --b.s
-                    s = (code + 3).id.value.string;
+                case Opcode.PreDecS:    // a = --b.s
+                    s = (code + 3).id.value.text;
                     Lpredec:
                     inc = -1;
                     goto Lpre;
 
-                case IRpredecscope:        // a = --s
+                case Opcode.PreDecScope:        // a = --s
                     inc = -1;
                     goto Lprescope;
 
                 /********************/
 
-                case IRpostinc:     // a = b.c++
-                    c = GETc(code);
+                case Opcode.PostInc:     // a = b.c++
+                    c = locals + (code + 3).index;
                     s = c.toString();
                     goto Lpostinc;
-                case IRpostincs:    // a = b.s++
-                    s = (code + 3).id.value.string;
+                case Opcode.PostIncS:    // a = b.s++
+                    s = (code + 3).id.value.text;
                     Lpostinc:
-                    a = GETa(code);
-                    b = GETb(code);
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     v = b.Get(s);
                     if(!v)
                         v = &vundefined;
@@ -1233,15 +1188,18 @@ struct IR
                     a.putVnumber(n + 1);
                     b.Put(s, a);
                     a.putVnumber(n);
-                    code += 4;
+
+                    static assert(IRTypes[Opcode.PostInc].size
+                                  == IRTypes[Opcode.PostIncS].size);
+                    code += IRTypes[Opcode.PostIncS].size;
                     break;
 
-                case IRpostincscope:        // a = s++
+                case Opcode.PostIncScope:        // a = s++
                     id = (code + 2).id;
                     v = scope_get(scopex, id, &o);
                     if(v && v != &vundefined)
                     {
-                        a = GETa(code);
+                        a = locals + (code + 1).index;
                         n = v.toNumber();
                         v.putVnumber(n + 1);
                         a.putVnumber(n);
@@ -1250,21 +1208,21 @@ struct IR
                     {
                         //GETa(code).putVundefined();
                         //FIXED: as per ECMA v5 should throw ReferenceError
-                        throw new ErrorValue(Dobject.ReferenceError(id.value.string));
+                        throw new ErrorValue(Dobject.ReferenceError(id.value.text));
                         //v = signalingUndefined(id.value.string);
                     }
-                    code += 3;
+                    code += IRTypes[Opcode.PostIncScope].size;
                     break;
 
-                case IRpostdec:     // a = b.c--
-                    c = GETc(code);
+                case Opcode.PostDec:     // a = b.c--
+                    c = locals + (code + 3).index;
                     s = c.toString();
                     goto Lpostdec;
-                case IRpostdecs:    // a = b.s--
-                    s = (code + 3).id.value.string;
+                case Opcode.PostDecS:    // a = b.s--
+                    s = (code + 3).id.value.text;
                     Lpostdec:
-                    a = GETa(code);
-                    b = GETb(code);
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     v = b.Get(s);
                     if(!v)
                         v = &vundefined;
@@ -1272,16 +1230,19 @@ struct IR
                     a.putVnumber(n - 1);
                     b.Put(s, a);
                     a.putVnumber(n);
-                    code += 4;
+
+                    static assert(IRTypes[Opcode.PostDecS].size
+                                  == IRTypes[Opcode.PostDec].size);
+                    code += IRTypes[Opcode.PostDecS].size;
                     break;
 
-                case IRpostdecscope:        // a = s--
+                case Opcode.PostDecScope:        // a = s--
                     id = (code + 2).id;
                     v = scope_get(scopex, id, &o);
                     if(v && v != &vundefined)
                     {
                         n = v.toNumber();
-                        a = GETa(code);
+                        a = locals + (code + 1).index;
                         v.putVnumber(n - 1);
                         a.putVnumber(n);
                     }
@@ -1289,15 +1250,15 @@ struct IR
                     {
                         //GETa(code).putVundefined();
                         //FIXED: as per ECMA v5 should throw ReferenceError
-                        throw new ErrorValue(Dobject.ReferenceError(id.value.string));
+                        throw new ErrorValue(Dobject.ReferenceError(id.value.text));
                         //v = signalingUndefined(id.value.string);
                     }
-                    code += 3;
+                    code += IRTypes[Opcode.PostDecScope].size;
                     break;
 
-                case IRdel:     // a = delete b.c
-                case IRdels:    // a = delete b.s
-                    b = GETb(code);
+                case Opcode.Del:     // a = delete b.c
+                case Opcode.DelS:    // a = delete b.s
+                    b = locals + (code + 2).index;
                     if(b.isPrimitive())
                         bo = true;
                     else
@@ -1305,24 +1266,27 @@ struct IR
                         o = b.toObject();
                         if(!o)
                         {
-                            a = cannotConvert(b, GETlinnum(code));
+                            sta = cannotConvert(b, code.opcode.linnum);
                             goto Lthrow;
                         }
                         s = (code.opcode == IRdel)
-                            ? GETc(code).toString()
-                            : (code + 3).id.value.string;
+                            ? (locals + (code + 3).index).toString()
+                            : (code + 3).id.value.text;
                         if(o.implementsDelete())
                             bo = o.Delete(s);
                         else
                             bo = !o.HasProperty(s);
                     }
-                    GETa(code).putVboolean(bo);
-                    code += 4;
+                    (locals + (code + 1).index).putVboolean(bo);
+
+                    static assert (IRTypes[Opcode.Del].size
+                                   == IRTypes[Opcode.DelS].size);
+                    code += IRTypes[Opcode.DelS].size;
                     break;
 
-                case IRdelscope:    // a = delete s
+                case Opcode.DelScope:    // a = delete s
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     //o = scope_tos(scopex);		// broken way
                     if(!scope_get(scopex, id, &o))
                         bo = true;
@@ -1330,8 +1294,8 @@ struct IR
                         bo = o.Delete(s);
                     else
                         bo = !o.HasProperty(s);
-                    GETa(code).putVboolean(bo);
-                    code += 3;
+                    (locals + (code + 1).index).putVboolean(bo);
+                    code += IRTypes[Opcode.DelScope].size;
                     break;
 
                 /* ECMA requires that if one of the numeric operands is NAN,
@@ -1339,10 +1303,10 @@ struct IR
                  * correct test for NAN operands.
                  */
 
-                case IRclt:         // a = (b <   c)
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.CLT:         // a = (b <   c)
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     if(b.vtype == V_NUMBER && c.vtype == V_NUMBER)
                         res = (b.number < c.number);
                     else
@@ -1360,13 +1324,13 @@ struct IR
                             res = b.toNumber() < c.toNumber();
                     }
                     a.putVboolean(res);
-                    code += 4;
+                    code += IRTypes[Opcode.CLT].size;
                     break;
 
-                case IRcle:         // a = (b <=  c)
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.CLE:         // a = (b <=  c)
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     if(b.vtype == V_NUMBER && c.vtype == V_NUMBER)
                         res = (b.number <= c.number);
                     else
@@ -1384,13 +1348,13 @@ struct IR
                             res = b.toNumber() <= c.toNumber();
                     }
                     a.putVboolean(res);
-                    code += 4;
+                    code += IRTypes[Opcode.CLE].size;
                     break;
 
-                case IRcgt:         // a = (b >   c)
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.CGT:         // a = (b >   c)
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     if(b.vtype == V_NUMBER && c.vtype == V_NUMBER)
                         res = (b.number > c.number);
                     else
@@ -1408,14 +1372,14 @@ struct IR
                             res = b.toNumber() > c.toNumber();
                     }
                     a.putVboolean(res);
-                    code += 4;
+                    code += IRTypes[Opcode.CGT].size;
                     break;
 
 
-                case IRcge:         // a = (b >=  c)
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.CGE:         // a = (b >=  c)
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     if(b.vtype == V_NUMBER && c.vtype == V_NUMBER)
                         res = (b.number >= c.number);
                     else
@@ -1433,14 +1397,14 @@ struct IR
                             res = b.toNumber() >= c.toNumber();
                     }
                     a.putVboolean(res);
-                    code += 4;
+                    code += IRTypes[Opcode.CGE].size;
                     break;
 
-                case IRceq:         // a = (b ==  c)
-                case IRcne:         // a = (b !=  c)
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.CEq:         // a = (b ==  c)
+                case Opcode.CNE:         // a = (b !=  c)
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     Lagain:
                     tx = b.getType();
                     ty = c.getType();
@@ -1464,10 +1428,10 @@ struct IR
                             if(logflag)
                             {
                                 writef("b = %x, c = %x\n", b, c);
-                                writef("cmp('%s', '%s')\n", b.string, c.string);
-                                writef("cmp(%d, %d)\n", b.string.length, c.string.length);
+                                writef("cmp('%s', '%s')\n", b.text, c.text);
+                                writef("cmp(%d, %d)\n", b.text.length, c.text.length);
                             }
-                            res = (b.string == c.string);
+                            res = (b.text == c.text);
                         }
                         else if(tx == TypeBoolean)
                             res = (b.dbool == c.dbool);
@@ -1502,22 +1466,24 @@ struct IR
                     }
                     else if(ty == TypeObject)
                     {
-                        v = cast(Value*)c.toPrimitive(c, null);
-                        if(v)
-                        {
-                            a = v;
-                            goto Lthrow;
-                        }
+                        c.toPrimitive(c, null);
+                        // v = cast(Value*)c.toPrimitive(c, null);
+                        // if(v)
+                        // {
+                        //     a = v;
+                        //     goto Lthrow;
+                        // }
                         goto Lagain;
                     }
                     else if(tx == TypeObject)
                     {
-                        v = cast(Value*)b.toPrimitive(b, null);
-                        if(v)
-                        {
-                            a = v;
-                            goto Lthrow;
-                        }
+                        b.toPrimitive(b, null);
+                        // v = cast(Value*)b.toPrimitive(b, null);
+                        // if(v)
+                        // {
+                        //     a = v;
+                        //     goto Lthrow;
+                        // }
                         goto Lagain;
                     }
                     else
@@ -1528,14 +1494,17 @@ struct IR
                     res ^= (code.opcode == IRcne);
                     //Lceq:
                     a.putVboolean(res);
-                    code += 4;
+
+                    static assert (IRTypes[Opcode.CEq].size
+                                   == IRTypes[Opcode.CNE].size);
+                    code += IRTypes[Opcode.CNE].size;
                     break;
 
-                case IRcid:         // a = (b === c)
-                case IRcnid:        // a = (b !== c)
-                    a = GETa(code);
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.CID:         // a = (b === c)
+                case Opcode.CNID:        // a = (b !== c)
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     version(none)
                     {
                         writeln("***\n");
@@ -1562,7 +1531,7 @@ struct IR
                             goto Lcid;
                         }
                         else if(tx == TypeString)
-                            res = (b.string == c.string);
+                            res = (b.text == c.text);
                         else if(tx == TypeBoolean)
                             res = (b.dbool == c.dbool);
                         else // TypeObject
@@ -1578,48 +1547,51 @@ struct IR
                     res ^= (code.opcode == IRcnid);
                     Lcid:
                     a.putVboolean(res);
-                    code += 4;
+
+                    static assert (IRTypes[Opcode.CID].size
+                                   == IRTypes[Opcode.CNID].size);
+                    code += IRTypes[Opcode.CID].size;
                     break;
 
-                case IRjt:          // if (b) goto t
-                    b = GETb(code);
+                case Opcode.JT:          // if (b) goto t
+                    b = locals + (code + 2).index;
                     if(b.toBoolean())
                         code += (code + 1).offset;
                     else
-                        code += 3;
+                        code += IRTypes[Opcode.JT].size;
                     break;
 
-                case IRjf:          // if (!b) goto t
-                    b = GETb(code);
+                case Opcode.JF:          // if (!b) goto t
+                    b = locals + (code + 2).index;
                     if(!b.toBoolean())
                         code += (code + 1).offset;
                     else
-                        code += 3;
+                        code += IRTypes[Opcode.JF].size;
                     break;
 
-                case IRjtb:         // if (b) goto t
-                    b = GETb(code);
+                case Opcode.JTB:         // if (b) goto t
+                    b = locals + (code + 2).index;
                     if(b.dbool)
                         code += (code + 1).offset;
                     else
-                        code += 3;
+                        code += IRTypes[Opcode.JTB].size;
                     break;
 
-                case IRjfb:         // if (!b) goto t
-                    b = GETb(code);
+                case Opcode.JFB:         // if (!b) goto t
+                    b = locals + (code + 2).index;
                     if(!b.dbool)
                         code += (code + 1).offset;
                     else
-                        code += 3;
+                        code += IRTypes[Opcode.JFB].size;
                     break;
 
-                case IRjmp:
+                case Opcode.Jmp:
                     code += (code + 1).offset;
                     break;
 
-                case IRjlt:         // if (b <   c) goto c
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.JLT:         // if (b <   c) goto c
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     if(b.vtype == V_NUMBER && c.vtype == V_NUMBER)
                     {
                         if(b.number < c.number)
@@ -1645,16 +1617,16 @@ struct IR
                     if(!res)
                         code += (code + 1).offset;
                     else
-                        code += 4;
+                        code += IRTypes[Opcode.JLT].size;
                     break;
 
-                case IRjle:         // if (b <=  c) goto c
-                    b = GETb(code);
-                    c = GETc(code);
+                case Opcode.JLE:         // if (b <=  c) goto c
+                    b = locals + (code + 2).index;
+                    c = locals + (code + 3).index;
                     if(b.vtype == V_NUMBER && c.vtype == V_NUMBER)
                     {
                         if(b.number <= c.number)
-                            code += 4;
+                            code += IRTypes[Opcode.JLE].size;
                         else
                             code += (code + 1).offset;
                         break;
@@ -1676,65 +1648,68 @@ struct IR
                     if(!res)
                         code += (code + 1).offset;
                     else
-                        code += 4;
+                        code += IRTypes[Opcode.JLE].size;
                     break;
 
-                case IRjltc:        // if (b < constant) goto c
-                    b = GETb(code);
+                case Opcode.JLTC:        // if (b < constant) goto c
+                    b = locals + (code + 2).index;
                     res = (b.toNumber() < *cast(d_number *)(code + 3));
                     if(!res)
                         code += (code + 1).offset;
                     else
-                        code += 5;
+                        code += IRTypes[Opcode.JLTC].size;
                     break;
 
-                case IRjlec:        // if (b <= constant) goto c
-                    b = GETb(code);
+                case Opcode.JLEC:        // if (b <= constant) goto c
+                    b = locals + (code + 2).index;
                     res = (b.toNumber() <= *cast(d_number *)(code + 3));
                     if(!res)
                         code += (code + 1).offset;
                     else
-                        code += 5;
+                        code += IRTypes[Opcode.JLEC].size;
                     break;
 
-                case IRiter:                // a = iter(b)
-                    a = GETa(code);
-                    b = GETb(code);
+                case Opcode.Iter:                // a = iter(b)
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
                     {
-                        a = cannotConvert(b, GETlinnum(code));
+                        sta = cannotConvert(b, code.opcode.linnum);
                         goto Lthrow;
                     }
-                    a = o.putIterator(a);
-                    if(a)
+                    sta = o.putIterator(a);
+                    if(sta)
                         goto Lthrow;
-                    code += 3;
+                    code += IRTypes[Opcode.Iter].size;
                     break;
 
-                case IRnext:        // a, b.c, iter
+                case Opcode.Next:        // a, b.c, iter
                                     // if (!(b.c = iter)) goto a; iter = iter.next
-                    s = GETc(code).toString();
+                    s = (locals + (code + 3).index).toString();
                     goto case_next;
 
-                case IRnexts:       // a, b.s, iter
-                    s = (code + 3).id.value.string;
+                case Opcode.NextS:       // a, b.s, iter
+                    s = (code + 3).id.value.text;
                     case_next:
-                    iter = GETd(code).iter;
+                    iter = (locals + (code + 4).index).iter;
                     v = iter.next();
                     if(!v)
                         code += (code + 1).offset;
                     else
                     {
-                        b = GETb(code);
+                        b = locals + (code + 2).index;
                         b.Put(s, v);
-                        code += 5;
+
+                        static assert (IRTypes[Opcode.Next].size
+                                       == IRTypes[Opcode.NextS].size);
+                        code += IRTypes[Opcode.Next].size;
                     }
                     break;
 
-                case IRnextscope:   // a, s, iter
-                    s = (code + 2).id.value.string;
-                    iter = GETc(code).iter;
+                case Opcode.NextScope:   // a, s, iter
+                    s = (code + 2).id.value.text;
+                    iter = (locals + (code + 3).index).iter;
                     v = iter.next();
                     if(!v)
                         code += (code + 1).offset;
@@ -1742,21 +1717,21 @@ struct IR
                     {
                         o = scope_tos(scopex);
                         o.Put(s, v, 0);
-                        code += 4;
+                        code += IRTypes[Opcode.NextScope].size;
                     }
                     break;
 
-                case IRcall:        // a = b.c(argc, argv)
-                    s = GETc(code).toString();
+                case Opcode.Call:        // a = b.c(argc, argv)
+                    s = (locals + (code + 3).index).toString();
                     goto case_call;
 
-                case IRcalls:       // a = b.s(argc, argv)
-                    s = (code + 3).id.value.string;
+                case Opcode.CallS:       // a = b.s(argc, argv)
+                    s = (code + 3).id.value.text;
                     goto case_call;
 
-                    case_call:               
-                    a = GETa(code);
-                    b = GETb(code);
+                    case_call:
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
                     {
@@ -1770,84 +1745,87 @@ struct IR
                         //writef("calling... '%s'\n", v.toString());
                         cc.callerothis = othis;
                         a.putVundefined();
-                        a = cast(Value*)v.Call(cc, o, a, GETe(code)[0 .. (code + 4).index]);
+                        sta = v.Call(cc, o, a, (locals + (code + 5).index)[0 .. (code + 4).index]);
                         //writef("regular call, a = %x\n", a);
                     }
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
-                    if(a)
+                    if(sta)
                         goto Lthrow;
-                    code += 6;
+
+                    static assert (IRTypes[Opcode.Call].size
+                                   == IRTypes[Opcode.CallS].size);
+                    code += IRTypes[Opcode.CallS].size;
                     goto Lnext;
 
                     Lcallerror:
                     {
                         //writef("%s %s.%s is undefined and has no Call method\n", b.getType(), b.toString(), s);
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_UNDEFINED_NO_CALL3],
-                                                 b.getType(), b.toString(),
-                                                 s);
+                        sta = Dobject.RuntimeError(&errinfo,
+                                                   errmsgtbl[ERR_UNDEFINED_NO_CALL3],
+                                                   b.getType(), b.toString(),
+                                                   s);
                         goto Lthrow;
                     }
 
-                case IRcallscope:   // a = s(argc, argv)
+                case Opcode.CallScope:   // a = s(argc, argv)
                     id = (code + 2).id;
-                    s = id.value.string;
-                    a = GETa(code);
+                    s = id.value.text;
+                    a = locals + (code + 1).index;
                     v = scope_get_lambda(scopex, id, &o);
                     //writefln("v.toString() = '%s'", v.toString());
                     if(!v)
                     {
                         ErrInfo errinfo;
-                        a = Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s);
+                        sta = Dobject.ReferenceError(errmsgtbl[ERR_UNDEFINED_VAR],s);
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
                         goto Lthrow;
                     }
                     // Should we pass othis or o? I think othis.
                     cc.callerothis = othis;        // pass othis to eval()
                     a.putVundefined();
-                    a = cast(Value*)v.Call(cc, o, a, GETd(code)[0 .. (code + 3).index]);
+                    sta = v.Call(cc, o, a, (locals + (code + 4).index)[0 .. (code + 3).index]);
                     //writef("callscope result = %x\n", a);
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
-                    if(a)
+                    if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.CallScope].size;
                     goto Lnext;
 
-                case IRcallv:   // v(argc, argv) = a
-                    a = GETa(code);
-                    b = GETb(code);
+                case Opcode.CallV:   // v(argc, argv) = a
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
                     {
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
+                        sta = Dobject.RuntimeError(&errinfo,
                                                  errmsgtbl[ERR_UNDEFINED_NO_CALL2],
                                                  b.getType(), b.toString());
                         goto Lthrow;
                     }
                     cc.callerothis = othis;        // pass othis to eval()
                     a.putVundefined();
-                    a = cast(Value*)o.Call(cc, o, a, GETd(code)[0 .. (code + 3).index]);
-                    if(a)
+                    sta = o.Call(cc, o, a, (locals + (code + 4).index)[0 .. (code + 3).index]);
+                    if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.CallV].size;
                     goto Lnext;
 
-                case IRputcall:        // b.c(argc, argv) = a
-                    s = GETc(code).toString();
+                case Opcode.PutCall:        // b.c(argc, argv) = a
+                    s = (locals + (code + 3).index).toString();
                     goto case_putcall;
 
-                case IRputcalls:       //  b.s(argc, argv) = a
-                    s = (code + 3).id.value.string;
+                case Opcode.PutCallS:       //  b.s(argc, argv) = a
+                    s = (code + 3).id.value.text;
                     goto case_putcall;
 
                     case_putcall:
-                    a = GETa(code);
-                    b = GETb(code);
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
                         goto Lcallerror;
@@ -1860,97 +1838,100 @@ struct IR
                     if(!o)
                     {
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
+                        sta = Dobject.RuntimeError(&errinfo,
                                                  errmsgtbl[ERR_CANNOT_ASSIGN_TO2],
                                                  b.getType(), s);
                         goto Lthrow;
                     }
-                    a = cast(Value*)o.put_Value(a, GETe(code)[0 .. (code + 4).index]);
-                    if(a)
+                    sta = o.put_Value(a, (locals + (code + 5).index)[0 .. (code + 4).argc]);
+                    if(sta)
                         goto Lthrow;
-                    code += 6;
+
+                    static assert (IRTypes[Opcode.PutCall].size
+                                   == IRTypes[Opcode.PutCallS].size);
+                    code += IRTypes[Opcode.PutCallS].size;
                     goto Lnext;
 
-                case IRputcallscope:   // a = s(argc, argv)
+                case Opcode.PutCallScope:   // a = s(argc, argv)
                     id = (code + 2).id;
-                    s = id.value.string;
+                    s = id.value.text;
                     v = scope_get_lambda(scopex, id, &o);
                     if(!v)
                     {
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
-                                                 errmsgtbl[ERR_UNDEFINED_NO_CALL2],
-                                                 "property", s);
+                        sta = Dobject.RuntimeError(&errinfo,
+                                                   errmsgtbl[ERR_UNDEFINED_NO_CALL2],
+                                                   "property", s);
                         goto Lthrow;
                     }
                     o = v.toObject();
                     if(!o)
                     {
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
+                        sta = Dobject.RuntimeError(&errinfo,
                                                  errmsgtbl[ERR_CANNOT_ASSIGN_TO],
                                                  s);
                         goto Lthrow;
                     }
-                    a = cast(Value*)o.put_Value(GETa(code), GETd(code)[0 .. (code + 3).index]);
-                    if(a)
+                    sta = o.put_Value(locals + (code + 1).index, (locals + (code + 4).index)[0 .. (code + 3).index]);
+                    if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.PutCallScope].size;
                     goto Lnext;
 
-                case IRputcallv:        // v(argc, argv) = a
-                    b = GETb(code);
+                case Opcode.PutCallV:        // v(argc, argv) = a
+                    b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
                     {
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
                         ErrInfo errinfo;
-                        a = Dobject.RuntimeError(&errinfo,
+                        sta = Dobject.RuntimeError(&errinfo,
                                                  errmsgtbl[ERR_UNDEFINED_NO_CALL2],
                                                  b.getType(), b.toString());
                         goto Lthrow;
                     }
-                    a = cast(Value*)o.put_Value(GETa(code), GETd(code)[0 .. (code + 3).index]);
-                    if(a)
+                    sta = o.put_Value(locals + (code + 1).index, (locals + (code + 4).index)[0 .. (code + 3).index]);
+                    if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.PutCallV].size;
                     goto Lnext;
 
-                case IRnew: // a = new b(argc, argv)
-                    a = GETa(code);
-                    b = GETb(code);
+                case Opcode.New: // a = new b(argc, argv)
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
                     a.putVundefined();
-                    a = cast(Value*)b.Construct(cc, a, GETd(code)[0 .. (code + 3).index]);
+                    sta = b.Construct(cc, a, (locals + (code + 4).index)[0 .. (code + 3).index]);
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
-                    if(a)
+                    if(sta)
                         goto Lthrow;
-                    code += 5;
+                    code += IRTypes[Opcode.New].size;
                     goto Lnext;
 
-                case IRpush:
+                case Opcode.Push:
                     SCOPECACHE_CLEAR();
-                    a = GETa(code);
+                    a = locals + (code + 1).index;
                     o = a.toObject();
                     if(!o)
                     {
-                        a = cannotConvert(a, GETlinnum(code));
+                        sta = cannotConvert(a, code.opcode.linnum);
                         goto Lthrow;
                     }
                     scopex ~= o;                // push entry onto scope chain
                     cc.scopex = scopex;
-                    code += 2;
+                    code += IRTypes[Opcode.Push].size;
                     break;
 
-                case IRpop:
+                case Opcode.Pop:
                     SCOPECACHE_CLEAR();
                     o = scopex[$ - 1];
                     scopex = scopex[0 .. $ - 1];        // pop entry off scope chain
                     cc.scopex = scopex;
                     // If it's a Finally, we need to execute
                     // the finally block
-                    code += 1;
-                    
+                    code += IRTypes[Opcode.Pop].size;
+
                     if(o.isFinally())   // test could be eliminated with virtual func
                     {
                         f = cast(Finally)o;
@@ -1961,88 +1942,88 @@ struct IR
 
                     goto Lnext;
 
-                case IRfinallyret:
+                case Opcode.FinallyRet:
                     assert(finallyStack.length);
                     code = finallyStack[$-1];
                     finallyStack = finallyStack[0..$-1];
                     goto Lnext;
-                case IRret:
+                case Opcode.Ret:
                     version(SCOPECACHE_LOG)
                         printf("scopecache_cnt = %d\n", scopecache_cnt);
                     return null;
 
-                case IRretexp:
-                    a = GETa(code);
+                case Opcode.RetExp:
+                    a = locals + (code + 1).index;
                     a.checkReference();
                     Value.copy(ret, a);
                     //writef("returns: %s\n", ret.toString());
                     return null;
 
-                case IRimpret:
-                    a = GETa(code);
+                case Opcode.ImpRet:
+                    a = locals + (code + 1).index;
                     a.checkReference();
                     Value.copy(ret, a);
                     //writef("implicit return: %s\n", ret.toString());
-                    code += 2;
+                    code += IRTypes[Opcode.ImpRet].size;
                     goto Lnext;
 
-                case IRthrow:
-                    a = GETa(code);
-                    cc.linnum = GETlinnum(code);
+                case Opcode.Throw:
+                    a = locals + (code + 1).index;
+                    sta = new Status(*a);
+                    cc.linnum = code.opcode.linnum;
                     Lthrow:
-                    assert(scopex[0] !is null);     
-                    v = unwindStack(a);
-                    if(v) 
-                        return v;
+                    assert(scopex[0] !is null);
+                    sta = unwindStack(sta);
+                    if(sta)
+                        return sta;
                     break;
-                case IRtrycatch:
+                case Opcode.TryCatch:
                     SCOPECACHE_CLEAR();
                     offset = (code - codestart) + (code + 1).offset;
-                    s = (code + 2).id.value.string;
+                    s = (code + 2).id.value.text;
                     ca = new Catch(offset, s);
                     scopex ~= ca;
                     cc.scopex = scopex;
-                    code += 3;
+                    code += IRTypes[Opcode.TryCatch].size;
                     break;
 
-                case IRtryfinally:
+                case Opcode.TryFinally:
                     SCOPECACHE_CLEAR();
                     f = new Finally(code + (code + 1).offset);
                     scopex ~= f;
                     cc.scopex = scopex;
-                    code += 2;
+                    code += IRTypes[Opcode.TryFinally].size;
                     break;
 
-                case IRassert:
+                case Opcode.Assert:
                 {
                     ErrInfo errinfo;
                     errinfo.linnum = (code + 1).index;
                     version(all)  // Not supported under some com servers
                     {
-                        a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_ASSERT], (code + 1).index);
+                        sta = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_ASSERT], (code + 1).index);
                         goto Lthrow;
                     }
                     else
                     {
                         RuntimeErrorx(ERR_ASSERT, (code + 1).index);
-                        code += 2;
+                        code += IRTypes[Opcode.Assert].size;
                         break;
                     }
                 }
-
-                default:
-                    //writef("1: Unrecognized IR instruction %d\n", code.opcode);
-                    assert(0);              // unrecognized IR instruction
+                case Opcode.End:
+                    code += IRTypes[Opcode.End].size;
+                    goto Linterrupt;
                 }
              }
             catch(ErrorValue err)
             {
-                v = unwindStack(&err.value);
-                if(v)//v is exception that was not caught
-                    return v;
+                sta = unwindStack(&err.value);
+                if(sta)//sta is exception that was not caught
+                    return sta;
             }
         }
-        
+
         Linterrupt:
         ret.putVundefined();
         return null;
@@ -2053,703 +2034,35 @@ struct IR
      * Useful for debugging.
      */
 
-    static void print(uint address, IR *code)
+    debug static void print(uint address, IR* code)
     {
-        switch(code.opcode)
+        static string proc(T)(size_t address, IR* c)
         {
-        case IRerror:
-            writef("\tIRerror\n");
-            break;
-
-        case IRnop:
-            writef("\tIRnop\n");
-            break;
-
-        case IRend:
-            writef("\tIRend\n");
-            break;
-
-        case IRget:                 // a = b.c
-            writef("\tIRget       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRput:                 // b.c = a
-            writef("\tIRput       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRgets:                // a = b.s
-            writef("\tIRgets      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
-            break;
-
-        case IRgetscope:            // a = othis.ident
-            writef("\tIRgetscope  %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.string, (code + 2).id.value.hash);
-            break;
-
-        case IRaddass:              // b.c += a
-            writef("\tIRaddass    %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRaddasss:             // b.s += a
-            writef("\tIRaddasss   %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
-            break;
-
-        case IRaddassscope:         // othis.ident += a
-            writef("\tIRaddassscope  %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.string, (code + 3).index);
-            break;
-
-        case IRputs:                // b.s = a
-            writef("\tIRputs      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
-            break;
-
-        case IRputscope:            // s = a
-            writef("\tIRputscope  %d, '%s'\n", (code + 1).index, (code + 2).id.value.string);
-            break;
-
-        case IRputdefault:                // b = a
-            writef("\tIRputdefault %d, %d\n", (code + 1).index, (code + 2).index);
-            break;
-
-        case IRputthis:             // b = s
-            writef("\tIRputthis   '%s', %d\n", (code + 2).id.value.string, (code + 1).index);
-            break;
-
-        case IRmov:                 // a = b
-            writef("\tIRmov       %d, %d\n", (code + 1).index, (code + 2).index);
-            break;
-
-        case IRstring:              // a = "string"
-            writef("\tIRstring    %d, '%s'\n", (code + 1).index, (code + 2).id.value.string);
-            break;
-
-        case IRobject:              // a = object
-            writef("\tIRobject    %d, %x\n", (code + 1).index, cast(void*)(code + 2).object);
-            break;
-
-        case IRthis:                // a = this
-            writef("\tIRthis      %d\n", (code + 1).index);
-            break;
-
-        case IRnumber:              // a = number
-            writef("\tIRnumber    %d, %g\n", (code + 1).index, *cast(d_number *)(code + 2));
-            break;
-
-        case IRboolean:             // a = boolean
-            writef("\tIRboolean   %d, %d\n", (code + 1).index, (code + 2).boolean);
-            break;
-
-        case IRnull:                // a = null
-            writef("\tIRnull      %d\n", (code + 1).index);
-            break;
-
-        case IRundefined:           // a = undefined
-            writef("\tIRundefined %d\n", (code + 1).index);
-            break;
-
-        case IRthisget:             // a = othis.ident
-            writef("\tIRthisget   %d, '%s'\n", (code + 1).index, (code + 2).id.value.string);
-            break;
-
-        case IRneg:                 // a = -a
-            writef("\tIRneg      %d\n", (code + 1).index);
-            break;
-
-        case IRpos:                 // a = a
-            writef("\tIRpos      %d\n", (code + 1).index);
-            break;
-
-        case IRcom:                 // a = ~a
-            writef("\tIRcom      %d\n", (code + 1).index);
-            break;
-
-        case IRnot:                 // a = !a
-            writef("\tIRnot      %d\n", (code + 1).index);
-            break;
-
-        case IRtypeof:              // a = typeof a
-            writef("\tIRtypeof   %d\n", (code + 1).index);
-            break;
-
-        case IRinstance:            // a = b instanceof c
-            writef("\tIRinstance  %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRadd:                 // a = b + c
-            writef("\tIRadd       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRsub:                 // a = b - c
-            writef("\tIRsub       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRmul:                 // a = b * c
-            writef("\tIRmul       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRdiv:                 // a = b / c
-            writef("\tIRdiv       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRmod:                 // a = b % c
-            writef("\tIRmod       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRshl:                 // a = b << c
-            writef("\tIRshl       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRshr:                 // a = b >> c
-            writef("\tIRshr       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRushr:                // a = b >>> c
-            writef("\tIRushr      %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRand:                 // a = b & c
-            writef("\tIRand       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRor:                  // a = b | c
-            writef("\tIRor        %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRxor:                 // a = b ^ c
-            writef("\tIRxor       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-			
-        case IRin:                 // a = b in c
-            writef("\tIRin        %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRpreinc:                  // a = ++b.c
-            writef("\tIRpreinc  %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRpreincs:            // a = ++b.s
-            writef("\tIRpreincs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
-            break;
-
-        case IRpreincscope:        // a = ++s
-            writef("\tIRpreincscope %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.string, (code + 3).hash);
-            break;
-
-        case IRpredec:             // a = --b.c
-            writef("\tIRpredec  %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRpredecs:            // a = --b.s
-            writef("\tIRpredecs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
-            break;
-
-        case IRpredecscope:        // a = --s
-            writef("\tIRpredecscope %d, '%s', hash=%d\n", (code + 1).index, (code + 2).id.value.string, (code + 3).hash);
-            break;
-
-        case IRpostinc:     // a = b.c++
-            writef("\tIRpostinc  %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRpostincs:            // a = b.s++
-            writef("\tIRpostincs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
-            break;
-
-        case IRpostincscope:        // a = s++
-            writef("\tIRpostincscope %d, %s\n", (code + 1).index, (code + 2).id.value.string);
-            break;
-
-        case IRpostdec:             // a = b.c--
-            writef("\tIRpostdec  %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRpostdecs:            // a = b.s--
-            writef("\tIRpostdecs %d, %d, %s\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
-            break;
-
-        case IRpostdecscope:        // a = s--
-            writef("\tIRpostdecscope %d, %s\n", (code + 1).index, (code + 2).id.value.string);
-            break;
-
-        case IRdel:                 // a = delete b.c
-            writef("\tIRdel       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRdels:                // a = delete b.s
-            writef("\tIRdels      %d, %d, '%s'\n", (code + 1).index, (code + 2).index, (code + 3).id.value.string);
-            break;
-
-        case IRdelscope:            // a = delete s
-            writef("\tIRdelscope  %d, '%s'\n", (code + 1).index, (code + 2).id.value.string);
-            break;
-
-        case IRclt:                 // a = (b <   c)
-            writef("\tIRclt       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRcle:                 // a = (b <=  c)
-            writef("\tIRcle       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRcgt:                 // a = (b >   c)
-            writef("\tIRcgt       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRcge:                 // a = (b >=  c)
-            writef("\tIRcge       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRceq:                 // a = (b ==  c)
-            writef("\tIRceq       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRcne:                 // a = (b !=  c)
-            writef("\tIRcne       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRcid:                 // a = (b === c)
-            writef("\tIRcid       %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRcnid:        // a = (b !== c)
-            writef("\tIRcnid      %d, %d, %d\n", (code + 1).index, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRjt:                  // if (b) goto t
-            writef("\tIRjt        %d, %d\n", (code + 1).index + address, (code + 2).index);
-            break;
-
-        case IRjf:                  // if (!b) goto t
-            writef("\tIRjf        %d, %d\n", (code + 1).index + address, (code + 2).index);
-            break;
-
-        case IRjtb:                 // if (b) goto t
-            writef("\tIRjtb       %d, %d\n", (code + 1).index + address, (code + 2).index);
-            break;
-
-        case IRjfb:                 // if (!b) goto t
-            writef("\tIRjfb       %d, %d\n", (code + 1).index + address, (code + 2).index);
-            break;
-
-        case IRjmp:
-            writef("\tIRjmp       %d\n", (code + 1).offset + address);
-            break;
-
-        case IRjlt:                 // if (b < c) goto t
-            writef("\tIRjlt       %d, %d, %d\n", (code + 1).index + address, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRjle:                 // if (b <= c) goto t
-            writef("\tIRjle       %d, %d, %d\n", (code + 1).index + address, (code + 2).index, (code + 3).index);
-            break;
-
-        case IRjltc:                // if (b < constant) goto t
-            writef("\tIRjltc      %d, %d, %g\n", (code + 1).index + address, (code + 2).index, *cast(d_number *)(code + 3));
-            break;
-
-        case IRjlec:                // if (b <= constant) goto t
-            writef("\tIRjlec      %d, %d, %g\n", (code + 1).index + address, (code + 2).index, *cast(d_number *)(code + 3));
-            break;
-
-        case IRiter:                // a = iter(b)
-            writef("\tIRiter    %d, %d\n", (code + 1).index, (code + 2).index);
-            break;
-
-        case IRnext:                // a, b.c, iter
-            writef("\tIRnext    %d, %d, %d, %d\n",
-                   (code + 1).index,
-                   (code + 2).index,
-                   (code + 3).index,
-                   (code + 4).index);
-            break;
-
-        case IRnexts:               // a, b.s, iter
-            writef("\tIRnexts   %d, %d, '%s', %d\n",
-                   (code + 1).index,
-                   (code + 2).index,
-                   (code + 3).id.value.string,
-                   (code + 4).index);
-            break;
-
-        case IRnextscope:           // a, s, iter
-            writef
-                ("\tIRnextscope   %d, '%s', %d\n",
-                (code + 1).index,
-                (code + 2).id.value.string,
-                (code + 3).index);
-            break;
-
-        case IRcall:                // a = b.c(argc, argv)
-            writef("\tIRcall     %d,%d,%d, argc=%d, argv=%d \n",
-                   (code + 1).index,
-                   (code + 2).index,
-                   (code + 3).index,
-                   (code + 4).index,
-                   (code + 5).index);
-            break;
-
-        case IRcalls:               // a = b.s(argc, argv)
-            writef
-                ("\tIRcalls     %d,%d,'%s', argc=%d, argv=%d \n",
-                (code + 1).index,
-                (code + 2).index,
-                (code + 3).id.value.string,
-                (code + 4).index,
-                (code + 5).index);
-            break;
-
-        case IRcallscope:           // a = s(argc, argv)
-            writef
-                ("\tIRcallscope %d,'%s', argc=%d, argv=%d \n",
-                (code + 1).index,
-                (code + 2).id.value.string,
-                (code + 3).index,
-                (code + 4).index);
-            break;
-
-        case IRputcall:                // a = b.c(argc, argv)
-            writef("\tIRputcall  %d,%d,%d, argc=%d, argv=%d \n",
-                   (code + 1).index,
-                   (code + 2).index,
-                   (code + 3).index,
-                   (code + 4).index,
-                   (code + 5).index);
-            break;
-
-        case IRputcalls:               // a = b.s(argc, argv)
-            writef
-                ("\tIRputcalls  %d,%d,'%s', argc=%d, argv=%d \n",
-                (code + 1).index,
-                (code + 2).index,
-                (code + 3).id.value.string,
-                (code + 4).index,
-                (code + 5).index);
-            break;
-
-        case IRputcallscope:           // a = s(argc, argv)
-            writef
-                ("\tIRputcallscope %d,'%s', argc=%d, argv=%d \n",
-                (code + 1).index,
-                (code + 2).id.value.string,
-                (code + 3).index,
-                (code + 4).index);
-            break;
-
-        case IRcallv:               // a = v(argc, argv)
-            writef("\tIRcallv    %d, %d(argc=%d, argv=%d)\n",
-                   (code + 1).index,
-                   (code + 2).index,
-                   (code + 3).index,
-                   (code + 4).index);
-            break;
-
-        case IRputcallv:               // a = v(argc, argv)
-            writef("\tIRputcallv %d, %d(argc=%d, argv=%d)\n",
-                   (code + 1).index,
-                   (code + 2).index,
-                   (code + 3).index,
-                   (code + 4).index);
-            break;
-
-        case IRnew:         // a = new b(argc, argv)
-            writef("\tIRnew      %d,%d, argc=%d, argv=%d \n",
-                   (code + 1).index,
-                   (code + 2).index,
-                   (code + 3).index,
-                   (code + 4).index);
-            break;
-
-        case IRpush:
-            writef("\tIRpush    %d\n", (code + 1).index);
-            break;
-
-        case IRpop:
-            writef("\tIRpop\n");
-            break;
-
-        case IRret:
-            writef("\tIRret\n");
-            return;
-
-        case IRretexp:
-            writef("\tIRretexp    %d\n", (code + 1).index);
-            return;
-
-        case IRimpret:
-            writef("\tIRimpret    %d\n", (code + 1).index);
-            return;
-
-        case IRthrow:
-            writef("\tIRthrow     %d\n", (code + 1).index);
-            break;
-
-        case IRassert:
-            writef("\tIRassert    %d\n", (code + 1).index);
-            break;
-		case IRcheckref:
-			writef("\tIRcheckref  %d\n",(code+1).index);
-			break;
-        case IRtrycatch:
-            writef("\tIRtrycatch  %d, '%s'\n", (code + 1).offset + address, (code + 2).id.value.string);
-            break;
-
-        case IRtryfinally:
-            writef("\tIRtryfinally %d\n", (code + 1).offset + address);
-            break;
-
-        case IRfinallyret:
-            writef("\tIRfinallyret\n");
-            break;
-
-        default:
-            writef("2: Unrecognized IR instruction %d\n", code.opcode);
-            assert(0);              // unrecognized IR instruction
+            import std.traits : Parameters;
+
+            alias Ps = Parameters!(T.toString);
+            static if      (0 == Ps.length)
+                return (cast(T*)c).toString;
+            else static if (1 == Ps.length && is(Ps[0] : size_t))
+                return (cast(T*)c).toString(address);
+            else static assert(0);
         }
+        IRTypeDispatcher!proc(code.opcode, address, code,).writeln;
     }
 
     /*********************************
      * Give size of opcode.
      */
 
-    static uint size(uint opcode)
+    static size_t size(Opcode opcode)
     {
-        uint sz = 9999;
-
-        switch(opcode)
-        {
-        case IRerror:
-        case IRnop:
-        case IRend:
-            sz = 1;
-            break;
-
-        case IRget:                 // a = b.c
-        case IRaddass:
-            sz = 4;
-            break;
-
-        case IRput:                 // b.c = a
-            sz = 4;
-            break;
-
-        case IRgets:                // a = b.s
-        case IRaddasss:
-            sz = 4;
-            break;
-
-        case IRgetscope:            // a = s
-            sz = 3;
-            break;
-
-        case IRaddassscope:
-            sz = 4;
-            break;
-
-        case IRputs:                // b.s = a
-            sz = 4;
-            break;
-
-        case IRputscope:        // s = a
-        case IRputdefault:      // b = a
-            sz = 3;
-            break;
-
-        case IRputthis:             // a = s
-            sz = 3;
-            break;
-
-        case IRmov:                 // a = b
-            sz = 3;
-            break;
-
-        case IRstring:              // a = "string"
-            sz = 3;
-            break;
-
-        case IRobject:              // a = object
-            sz = 3;
-            break;
-
-        case IRthis:                // a = this
-            sz = 2;
-            break;
-
-        case IRnumber:              // a = number
-            sz = 4;
-            break;
-
-        case IRboolean:             // a = boolean
-            sz = 3;
-            break;
-
-        case IRnull:                // a = null
-            sz = 2;
-            break;
-			
-		case IRcheckref:
-        case IRundefined:           // a = undefined
-            sz = 2;
-            break;
-		
-
-        case IRthisget:             // a = othis.ident
-            sz = 3;
-            break;
-		
-        case IRneg:                 // a = -a
-        case IRpos:                 // a = a
-        case IRcom:                 // a = ~a
-        case IRnot:                 // a = !a
-        case IRtypeof:              // a = typeof a
-            sz = 2;
-            break;
-
-        case IRinstance:            // a = b instanceof c
-        case IRadd:                 // a = b + c
-        case IRsub:                 // a = b - c
-        case IRmul:                 // a = b * c
-        case IRdiv:                 // a = b / c
-        case IRmod:                 // a = b % c
-        case IRshl:                 // a = b << c
-        case IRshr:                 // a = b >> c
-        case IRushr:                // a = b >>> c
-        case IRand:                 // a = b & c
-        case IRor:                  // a = b | c
-        case IRxor:                 // a = b ^ c
-		case IRin:                  // a = b in c
-            sz = 4;
-            break;
-
-        case IRpreinc:             // a = ++b.c
-        case IRpreincs:            // a = ++b.s
-        case IRpredec:             // a = --b.c
-        case IRpredecs:            // a = --b.s
-        case IRpostinc:            // a = b.c++
-        case IRpostincs:           // a = b.s++
-        case IRpostdec:            // a = b.c--
-        case IRpostdecs:           // a = b.s--
-            sz = 4;
-            break;
-
-        case IRpostincscope:        // a = s++
-        case IRpostdecscope:        // a = s--
-            sz = 3;
-            break;
-
-        case IRpreincscope:     // a = ++s
-        case IRpredecscope:     // a = --s
-            sz = 4;
-            break;
-
-        case IRdel:                 // a = delete b.c
-        case IRdels:                // a = delete b.s
-            sz = 4;
-            break;
-
-        case IRdelscope:            // a = delete s
-            sz = 3;
-            break;
-
-        case IRclt:                 // a = (b <   c)
-        case IRcle:                 // a = (b <=  c)
-        case IRcgt:                 // a = (b >   c)
-        case IRcge:                 // a = (b >=  c)
-        case IRceq:                 // a = (b ==  c)
-        case IRcne:                 // a = (b !=  c)
-        case IRcid:                 // a = (b === c)
-        case IRcnid:                // a = (b !== c)
-        case IRjlt:                 // if (b < c) goto t
-        case IRjle:                 // if (b <= c) goto t
-            sz = 4;
-            break;
-
-        case IRjltc:                // if (b < constant) goto t
-        case IRjlec:                // if (b <= constant) goto t
-            sz = 5;
-            break;
-
-        case IRjt:                  // if (b) goto t
-        case IRjf:                  // if (!b) goto t
-        case IRjtb:                 // if (b) goto t
-        case IRjfb:                 // if (!b) goto t
-            sz = 3;
-            break;
-
-        case IRjmp:
-            sz = 2;
-            break;
-
-        case IRiter:                // a = iter(b)
-            sz = 3;
-            break;
-
-        case IRnext:                // a, b.c, iter
-        case IRnexts:               // a, b.s, iter
-            sz = 5;
-            break;
-
-        case IRnextscope:           // a, s, iter
-            sz = 4;
-            break;
-
-        case IRcall:                // a = b.c(argc, argv)
-        case IRcalls:               // a = b.s(argc, argv)
-        case IRputcall:             //  b.c(argc, argv) = a
-        case IRputcalls:            //  b.s(argc, argv) = a
-            sz = 6;
-            break;
-
-        case IRcallscope:           // a = s(argc, argv)
-        case IRputcallscope:        // s(argc, argv) = a
-        case IRcallv:
-        case IRputcallv:
-            sz = 5;
-            break;
-
-        case IRnew:                 // a = new b(argc, argv)
-            sz = 5;
-            break;
-
-        case IRpush:
-            sz = 2;
-            break;
-
-        case IRpop:
-            sz = 1;
-            break;
-
-        case IRfinallyret:
-        case IRret:
-            sz = 1;
-            break;
-
-        case IRretexp:
-        case IRimpret:
-        case IRthrow:
-            sz = 2;
-            break;
-
-        case IRtrycatch:
-            sz = 3;
-            break;
-
-        case IRtryfinally:
-            sz = 2;
-            break;
-
-        case IRassert:
-            sz = 2;
-            break;
-
-        default:
-            writef("3: Unrecognized IR instruction %d, IRMAX = %d\n", opcode, IRMAX);
-            assert(0);              // unrecognized IR instruction
-        }
-        assert(sz <= 6);
-        return sz;
+        static size_t sizeOf(T)(){ return T.size; }
+        return IRTypeDispatcher!sizeOf(opcode);
     }
 
-    static void printfunc(IR *code)
+    debug static void printfunc(IR* code)
     {
-        IR *codestart = code;
+        IR* codestart = code;
 
         for(;; )
         {
@@ -2767,30 +2080,30 @@ struct IR
      * Useful for isolating memory corruption bugs.
      */
 
-    static uint verify(uint linnum, IR *codestart)
+    static uint verify(uint linnum, IR* codestart)
     {
         debug(VERIFY)
         {
             uint checksum = 0;
             uint sz;
             uint i;
-            IR *code;
+            IR* code;
 
             // Verify code
             for(code = codestart;; )
             {
                 switch(code.opcode)
                 {
-                case IRend:
+                case Opcode.End:
                     return checksum;
 
-                case IRerror:
+                case Opcode.Error:
                     writef("verify failure line %u\n", linnum);
                     assert(0);
                     break;
 
                 default:
-                    if(code.opcode >= IRMAX)
+                    if(code.opcode >= Opcode.max)
                     {
                         writef("undefined opcode %d in code %p\n", code.opcode, codestart);
                         assert(0);
@@ -2809,3 +2122,4 @@ struct IR
             return 0;
     }
 }
+static assert(IR.sizeof == size_t.sizeof);

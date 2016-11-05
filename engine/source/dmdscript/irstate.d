@@ -21,11 +21,10 @@ module dmdscript.irstate;
 import core.stdc.stdarg;
 import core.sys.posix.stdlib;
 import core.stdc.string;
-import dmdscript.outbuffer;
+import std.outbuffer;
 import core.memory;
-import core.stdc.stdio;
 
-import std.stdio;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.statement;
@@ -42,12 +41,12 @@ struct IRstate
     Statement      breakTarget;         // current statement that 'break' applies to
     Statement      continueTarget;      // current statement that 'continue' applies to
     ScopeStatement scopeContext;        // current ScopeStatement we're inside
-    uint[]         fixups;
+    size_t[]         fixups;
 
     //void next();	// close out current Block, and start a new one
 
-    uint locali = 1;            // leave location 0 as our "null"
-    uint nlocals = 1;
+    idx_t locali = 1;            // leave location 0 as our "null"
+    size_t nlocals = 1;
 
     void ctor()
     {
@@ -57,14 +56,19 @@ struct IRstate
     void validate()
     {
         assert(codebuf.offset <= codebuf.data.length);
-        if(codebuf.data.length > codebuf.data.capacity)
-            printf("ptr %p, length %d, capacity %d\n", codebuf.data.ptr, codebuf.data.length, core.memory.GC.sizeOf(codebuf.data.ptr));
-        assert(codebuf.data.length <= codebuf.data.capacity);
-        for(uint u = 0; u < codebuf.offset; )
+        debug
+        {
+            if(codebuf.data.length > codebuf.data.capacity)
+            {
+                writeln("ptr %p, length %d, capacity %d", codebuf.data.ptr, codebuf.data.length, core.memory.GC.sizeOf(codebuf.data.ptr));
+                assert(0);
+            }
+        }
+        for(size_t u = 0; u < codebuf.offset; )
         {
             IR* code = cast(IR*)(codebuf.data.ptr + u);
             assert(code.opcode < IRMAX);
-            u += IR.size(code.opcode) * 4;
+            u += IR.size(code.opcode) * IR.sizeof;
         }
     }
 
@@ -73,140 +77,111 @@ struct IRstate
      * index to them.
      */
 
-    uint alloc(uint nlocals)
+    idx_t alloc(size_t nlocals)
     {
-        uint n;
+        size_t n;
 
         n = locali;
         locali += nlocals;
         if(locali > this.nlocals)
             this.nlocals = locali;
         assert(n);
-        return n * INDEX_FACTOR;
+        return n;
     }
 
     /****************************************
      * Release this block of n locals starting at local.
      */
 
-    void release(uint local, uint n)
+    void release(idx_t local, size_t n)
     {
-        /+
+        /*
             local /= INDEX_FACTOR;
+            //assert(local + n == locali);
             if (local + n == locali)
                 locali = local;
-         +/
+        //*/
     }
 
-    uint mark()
+    size_t mark()
     {
         return locali;
     }
 
-    void release(uint i)
+    void release(idx_t i)
     {
-        //locali = i;
-    }
-
-    static uint combine(uint loc, uint opcode)
-    {
-        return (loc << 16) | opcode;
+        /*
+        assert(i);
+        locali = i;
+        //*/
     }
 
     /***************************************
      * Generate code.
      */
 
-    void gen0(Loc loc, uint opcode)
+    deprecated static size_t combine(Loc loc, uint opcode)
+    {
+        static if      (size_t.sizeof == 4)
+            return (loc << 16) | (opcode & 0xff);
+        else static if (size_t.sizeof == 8)
+            return ((cast(size_t)loc) << 32) | (opcode & 0xff);
+        else static assert(0);
+    }
+
+    deprecated void gen0(Loc loc, uint opcode)
     {
         codebuf.write(combine(loc, opcode));
     }
 
-    void gen1(Loc loc, uint opcode, uint arg)
+    deprecated void gen1(Loc loc, uint opcode, size_t arg)
     {
-        codebuf.reserve(2 * uint.sizeof);
-        version(all)
-        {
-            // Inline ourselves for speed (compiler doesn't do a good job)
-            uint *data = cast(uint *)(codebuf.data.ptr + codebuf.offset);
-            codebuf.offset += 2 * uint.sizeof;
-            data[0] = combine(loc, opcode);
-            data[1] = arg;
-        }
-        else
-        {
-            codebuf.write4n(combine(loc, opcode));
-            codebuf.write4n(arg);
-        }
+        codebuf.reserve(2 * size_t.sizeof);
+        // Inline ourselves for speed (compiler doesn't do a good job)
+        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += 2 * size_t.sizeof;
+        data[0] = combine(loc, opcode);
+        data[1] = arg;
     }
 
-    void gen2(Loc loc, uint opcode, uint arg1, uint arg2)
+    deprecated void gen2(Loc loc, uint opcode, size_t arg1, size_t arg2)
     {
-        codebuf.reserve(3 * uint.sizeof);
-        version(all)
-        {
-            // Inline ourselves for speed (compiler doesn't do a good job)
-            uint *data = cast(uint *)(codebuf.data.ptr + codebuf.offset);
-            codebuf.offset += 3 * uint.sizeof;
-            data[0] = combine(loc, opcode);
-            data[1] = arg1;
-            data[2] = arg2;
-        }
-        else
-        {
-            codebuf.write4n(combine(loc, opcode));
-            codebuf.write4n(arg1);
-            codebuf.write4n(arg2);
-        }
+        codebuf.reserve(3 * size_t.sizeof);
+        // Inline ourselves for speed (compiler doesn't do a good job)
+        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += 3 * size_t.sizeof;
+        data[0] = combine(loc, opcode);
+        data[1] = arg1;
+        data[2] = arg2;
     }
 
-    void gen3(Loc loc, uint opcode, uint arg1, uint arg2, uint arg3)
+    deprecated void gen3(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3)
     {
-        codebuf.reserve(4 * uint.sizeof);
-        version(all)
-        {
-            // Inline ourselves for speed (compiler doesn't do a good job)
-            uint *data = cast(uint *)(codebuf.data.ptr + codebuf.offset);
-            codebuf.offset += 4 * uint.sizeof;
-            data[0] = combine(loc, opcode);
-            data[1] = arg1;
-            data[2] = arg2;
-            data[3] = arg3;
-        }
-        else
-        {
-            codebuf.write4n(combine(loc, opcode));
-            codebuf.write4n(arg1);
-            codebuf.write4n(arg2);
-            codebuf.write4n(arg3);
-        }
+        codebuf.reserve(4 * size_t.sizeof);
+        // Inline ourselves for speed (compiler doesn't do a good job)
+        auto data = cast(uint*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += 4 * size_t.sizeof;
+        data[0] = combine(loc, opcode);
+        data[1] = arg1;
+        data[2] = arg2;
+        data[3] = arg3;
     }
 
-    void gen4(Loc loc, uint opcode, uint arg1, uint arg2, uint arg3, uint arg4)
+    deprecated void gen4(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3,
+              uint arg4)
     {
-        codebuf.reserve(5 * uint.sizeof);
-        version(all)
-        {
-            // Inline ourselves for speed (compiler doesn't do a good job)
-            uint *data = cast(uint *)(codebuf.data.ptr + codebuf.offset);
-            codebuf.offset += 5 * uint.sizeof;
-            data[0] = combine(loc, opcode);
-            data[1] = arg1;
-            data[2] = arg2;
-            data[3] = arg3;
-            data[4] = arg4;
-        }
-        else
-        {
-            codebuf.write4n(combine(loc, opcode));
-            codebuf.write4n(arg1);
-            codebuf.write4n(arg2);
-            codebuf.write4n(arg3);
-            codebuf.write4n(arg4);
-        }
+        codebuf.reserve(5 * size_t.sizeof);
+        // Inline ourselves for speed (compiler doesn't do a good job)
+        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += 5 * size_t.sizeof;
+        data[0] = combine(loc, opcode);
+        data[1] = arg1;
+        data[2] = arg2;
+        data[3] = arg3;
+        data[4] = arg4;
     }
 
-    void gen(Loc loc, uint opcode, uint argc, ...)
+    deprecated void gen(Loc loc, uint opcode, uint argc, ...)
     {
         codebuf.reserve((1 + argc) * uint.sizeof);
         codebuf.write(combine(loc, opcode));
@@ -215,6 +190,26 @@ struct IRstate
             codebuf.write(va_arg!(uint)(_argptr));
         }
     }
+
+    //
+    void gen_(Opcode OP, A...)(A args)
+    {
+        alias T = IRTypes[OP];
+        codebuf.reserve(T.sizeof);
+        auto data = cast(T*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += T.sizeof;
+        *data = T(args);
+    }
+
+    //
+    void gen_(T, A...)(A args)
+    {
+        codebuf.reserve(T.sizeof);
+        auto data = cast(T*)(codebuf.data.ptr + codebuf.offset);
+        codebuf.offset += T.sizeof;
+        *data = T(args);
+    }
+
 
     void pops(uint npops)
     {
@@ -226,28 +221,28 @@ struct IRstate
      * Get the current "instruction pointer"
      */
 
-    uint getIP()
+    size_t getIP()
     {
         if(!codebuf)
             return 0;
-        return codebuf.offset / 4;
+        return codebuf.offset / IR.sizeof;
     }
 
     /******************************
      * Patch a value into the existing codebuf.
      */
 
-    void patchJmp(uint index, uint value)
+    void patchJmp(size_t index, size_t value)
     {
-        assert((index + 1) * 4 < codebuf.offset);
-        (cast(uint *)(codebuf.data))[index + 1] = value - index;
+        assert((index + 1) * IR.sizeof < codebuf.offset);
+        (cast(size_t*)(codebuf.data))[index + 1] = value - index;
     }
 
     /*******************************
      * Add this IP to list of jump instructions to patch.
      */
 
-    void addFixup(uint index)
+    void addFixup(size_t index)
     {
         fixups ~= index;
     }
@@ -258,16 +253,16 @@ struct IRstate
 
     void doFixups()
     {
-        uint i;
-        uint index;
-        uint value;
+        size_t i;
+        size_t index;
+        size_t value;
         Statement s;
 
         for(i = 0; i < fixups.length; i++)
         {
             index = fixups[i];
-            assert((index + 1) * 4 < codebuf.offset);
-            s = (cast(Statement *)codebuf.data)[index + 1];
+            assert((index + 1) * IR.sizeof < codebuf.offset);
+            s = (cast(Statement*)codebuf.data)[index + 1];
             value = s.getTarget();
             patchJmp(index, value);
         }
@@ -277,13 +272,13 @@ struct IRstate
     void optimize()
     {
         // Determine the length of the code array
-        IR *c;
-        IR *c2;
-        IR *code;
-        uint length;
-        uint i;
+        IR* c;
+        IR* c2;
+        IR* code;
+        size_t length;
+        size_t i;
 
-        code = cast(IR *)codebuf.data;
+        code = cast(IR*)codebuf.data;
         for(c = code; c.opcode != IRend; c += IR.size(c.opcode))
         {
         }
@@ -297,20 +292,20 @@ struct IRstate
         {
             switch(c.opcode)
             {
-            case IRjf:
-            case IRjt:
-            case IRjfb:
-            case IRjtb:
-            case IRjmp:
-            case IRjlt:
-            case IRjle:
-            case IRjltc:
-            case IRjlec:
-            case IRtrycatch:
-            case IRtryfinally:
-            case IRnextscope:
-            case IRnext:
-            case IRnexts:
+            case Opcode.JF:
+            case Opcode.JT:
+            case Opcode.JFB:
+            case Opcode.JTB:
+            case Opcode.Jmp:
+            case Opcode.JLT:
+            case Opcode.JLE:
+            case Opcode.JLTC:
+            case Opcode.JLEC:
+            case Opcode.TryCatch:
+            case Opcode.TryFinally:
+            case Opcode.NextScope:
+            case Opcode.Next:
+            case Opcode.NextS:
                 //writefln("set %d", (c - code) + (c + 1).offset);
                 b[(c - code) + (c + 1).offset] = true;
                 break;
@@ -326,7 +321,7 @@ struct IRstate
         // Allocate on stack for smaller arrays
         IR** plocals;
         if(nlocals < 128)
-            plocals = cast(IR * *)alloca(nlocals * local[0].sizeof);
+            plocals = cast(IR**)alloca(nlocals * local[0].sizeof);
 
         if(plocals)
         {
@@ -352,39 +347,39 @@ struct IRstate
 
             switch(c.opcode)
             {
-            case IRnop:
+            case Opcode.Nop:
                 break;
 
-            case IRnumber:
-            case IRstring:
-            case IRboolean:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+            case Opcode.Number:
+            case Opcode.String:
+            case Opcode.Boolean:
+                local[(c + 1).index] = c;
                 break;
 
-            case IRadd:
-            case IRsub:
-            case IRcle:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+            case Opcode.Add:
+            case Opcode.Sub:
+            case Opcode.CLE:
+                local[(c + 1).index] = c;
                 break;
 
-            case IRputthis:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+            case Opcode.PutThis:
+                local[(c + 1).index] = c;
                 goto Lreset;
 
-            case IRputscope:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+            case Opcode.PutScope:
+                local[(c + 1).index] = c;
                 break;
 
-            case IRgetscope:
+            case Opcode.GetScope:
             {
                 Identifier* cs = (c + 2).id;
-                IR *cimax = null;
+                IR* cimax = null;
                 for(i = nlocals; i--; )
                 {
-                    IR *ci = local[i];
+                    IR* ci = local[i];
                     if(ci &&
                        (ci.opcode == IRgetscope || ci.opcode == IRputscope) &&
-                       (ci + 2).id.value.string == cs.value.string
+                       (ci + 2).id.value.text == cs.value.text
                        )
                     {
                         if(cimax)
@@ -399,47 +394,47 @@ struct IRstate
                 if(1 && cimax)
                 {
                     //writef("IRgetscope . IRmov %d, %d\n", (c + 1).index, (cimax + 1).index);
-                    c.opcode = IRmov;
+                    c.opcode = Opcode.Mov;
                     (c + 2).index = (cimax + 1).index;
-                    local[(c + 1).index / INDEX_FACTOR] = cimax;
+                    local[(c + 1).index] = cimax;
                 }
                 else
-                    local[(c + 1).index / INDEX_FACTOR] = c;
+                    local[(c + 1).index] = c;
                 break;
             }
 
-            case IRnew:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+            case Opcode.New:
+                local[(c + 1).index] = c;
                 goto Lreset;
 
-            case IRcallscope:
-            case IRputcall:
-            case IRputcalls:
-            case IRputcallscope:
-            case IRputcallv:
-            case IRcallv:
-                local[(c + 1).index / INDEX_FACTOR] = c;
+            case Opcode.CallScope:
+            case Opcode.PutCall:
+            case Opcode.PutCallS:
+            case Opcode.PutCallScope:
+            case Opcode.PutCallV:
+            case Opcode.CallV:
+                local[(c + 1).index] = c;
                 goto Lreset;
 
-            case IRmov:
-                local[(c + 1).index / INDEX_FACTOR] = local[(c + 2).index / INDEX_FACTOR];
+            case Opcode.Mov:
+                local[(c + 1).index] = local[(c + 2).index];
                 break;
 
-            case IRput:
-            case IRpostincscope:
-            case IRaddassscope:
+            case Opcode.Put:
+            case Opcode.PostIncScope:
+            case Opcode.AddAsSScope:
                 goto Lreset;
 
-            case IRjf:
-            case IRjfb:
-            case IRjtb:
-            case IRjmp:
-            case IRjt:
-            case IRret:
-            case IRjlt:
-            case IRjle:
-            case IRjltc:
-            case IRjlec:
+            case Opcode.JF:
+            case Opcode.JFB:
+            case Opcode.JTB:
+            case Opcode.Jmp:
+            case Opcode.JT:
+            case Opcode.Ret:
+            case Opcode.JLT:
+            case Opcode.JLE:
+            case Opcode.JLTC:
+            case Opcode.JLEC:
                 break;
 
             default:
@@ -456,29 +451,29 @@ struct IRstate
         // Remove all IRnop's
         for(c = code; c.opcode != IRend; )
         {
-            uint offset;
-            uint o;
-            uint c2off;
+            size_t offset;
+            size_t o;
+            size_t c2off;
 
-            if(c.opcode == IRnop)
+            if(c.opcode == Opcode.Nop)
             {
                 offset = (c - code);
                 for(c2 = code; c2.opcode != IRend; c2 += IR.size(c2.opcode))
                 {
                     switch(c2.opcode)
                     {
-                    case IRjf:
-                    case IRjt:
-                    case IRjfb:
-                    case IRjtb:
-                    case IRjmp:
-                    case IRjlt:
-                    case IRjle:
-                    case IRjltc:
-                    case IRjlec:
-                    case IRnextscope:
-                    case IRtryfinally:
-                    case IRtrycatch:
+                    case Opcode.JF:
+                    case Opcode.JT:
+                    case Opcode.JFB:
+                    case Opcode.JTB:
+                    case Opcode.Jmp:
+                    case Opcode.JLT:
+                    case Opcode.JLE:
+                    case Opcode.JLTC:
+                    case Opcode.JLEC:
+                    case Opcode.NextScope:
+                    case Opcode.TryFinally:
+                    case Opcode.TryCatch:
                         c2off = c2 - code;
                         o = c2off + (c2 + 1).offset;
                         if(c2off <= offset && offset < o)
@@ -499,7 +494,7 @@ struct IRstate
                 }
 
                 length--;
-                memmove(c, c + 1, (length - offset) * uint.sizeof);
+                memmove(c, c + 1, (length - offset) * IR.sizeof);
             }
             else
                 c += IR.size(c.opcode);

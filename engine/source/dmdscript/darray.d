@@ -48,7 +48,7 @@ class DarrayConstructor : Dfunction
         name = "Array";
     }
 
-    override void* Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.4.2
         Darray a;
@@ -120,7 +120,7 @@ class DarrayConstructor : Dfunction
         return null;
     }
 
-    override void* Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.4.1
         return Construct(cc, ret, arglist);
@@ -130,7 +130,7 @@ class DarrayConstructor : Dfunction
 
 /* ===================== Darray_prototype_toString ================= */
 
-void *Darray_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     //writef("Darray_prototype_toString()\n");
     array_join(othis, ret, null);
@@ -139,7 +139,7 @@ void *Darray_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, V
 
 /* ===================== Darray_prototype_toLocaleString ================= */
 
-void *Darray_prototype_toLocaleString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.3
     d_string separator;
@@ -182,7 +182,7 @@ void *Darray_prototype_toLocaleString(Dobject pthis, CallContext *cc, Dobject ot
             v = ot.Get(TEXT_toLocaleString);
             if(v && !v.isPrimitive())   // if it's an Object
             {
-                void* a;
+                Status* a;
                 Dobject o;
                 Value rt;
 
@@ -202,7 +202,7 @@ void *Darray_prototype_toLocaleString(Dobject pthis, CallContext *cc, Dobject ot
 
 /* ===================== Darray_prototype_concat ================= */
 
-void *Darray_prototype_concat(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_concat(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.4
     Darray A;
@@ -248,7 +248,7 @@ void *Darray_prototype_concat(Dobject pthis, CallContext *cc, Dobject othis, Val
 
 /* ===================== Darray_prototype_join ================= */
 
-void *Darray_prototype_join(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_join(Dobject pthis, CallContext* cc, Dobject othis, Value *ret, Value[] arglist)
 {
     array_join(othis, ret, arglist);
     return null;
@@ -285,7 +285,7 @@ void array_join(Dobject othis, Value* ret, Value[] arglist)
 
 /* ===================== Darray_prototype_toSource ================= */
 
-void *Darray_prototype_toSource(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     d_string separator;
     d_string r;
@@ -315,7 +315,7 @@ void *Darray_prototype_toSource(Dobject pthis, CallContext *cc, Dobject othis, V
 
 /* ===================== Darray_prototype_pop ================= */
 
-void *Darray_prototype_pop(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_pop(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.6
     Value* v;
@@ -345,7 +345,7 @@ void *Darray_prototype_pop(Dobject pthis, CallContext *cc, Dobject othis, Value 
 
 /* ===================== Darray_prototype_push ================= */
 
-void *Darray_prototype_push(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_push(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.7
     Value* v;
@@ -368,7 +368,7 @@ void *Darray_prototype_push(Dobject pthis, CallContext *cc, Dobject othis, Value
 
 /* ===================== Darray_prototype_reverse ================= */
 
-void *Darray_prototype_reverse(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_reverse(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.4.4.4
     d_uint32 a;
@@ -407,7 +407,7 @@ void *Darray_prototype_reverse(Dobject pthis, CallContext *cc, Dobject othis, Va
 
 /* ===================== Darray_prototype_shift ================= */
 
-void *Darray_prototype_shift(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_shift(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.9
     Value* v;
@@ -421,7 +421,7 @@ void *Darray_prototype_shift(Dobject pthis, CallContext *cc, Dobject othis, Valu
     if(!v)
         v = &vundefined;
     len = v.toUint32();
-    
+
     if(len)
     {
         result = othis.Get(0u);
@@ -451,7 +451,7 @@ void *Darray_prototype_shift(Dobject pthis, CallContext *cc, Dobject othis, Valu
 
 /* ===================== Darray_prototype_slice ================= */
 
-void *Darray_prototype_slice(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_slice(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.10
     d_uint32 len;
@@ -484,11 +484,14 @@ version(SliceSpliceExtension){
 
     default:
         start = arglist[0].toNumber();
-		if(arglist[1].isUndefined())
-			end = len;
-		else{
-			end = arglist[1].toNumber();
-		}
+        if(arglist[1].isUndefined())
+        {
+            end = len;
+        }
+        else
+        {
+            end = arglist[1].toNumber();
+        }
         break;
     }
     if(start < 0)
@@ -525,7 +528,8 @@ version(SliceSpliceExtension){
             r8 = len;
     }
 }
-else{//Canonical ECMA all kinds of infinity maped to 0
+else
+{//Canonical ECMA all kinds of infinity maped to 0
     int start;
     int end;
     switch(arglist.length)
@@ -542,11 +546,14 @@ else{//Canonical ECMA all kinds of infinity maped to 0
 
     default:
         start = arglist[0].toInt32();
-		if(arglist[1].isUndefined())
-			end = len;
-		else{
-			end = arglist[1].toInt32();
-		}
+        if(arglist[1].isUndefined())
+        {
+            end = len;
+        }
+        else
+        {
+            end = arglist[1].toInt32();
+        }
         break;
     }
     if(start < 0)
@@ -646,7 +653,7 @@ extern (C) int compare_value(const void* x, const void* y)
     return cmp;
 }
 
-void *Darray_prototype_sort(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.11
     Value* v;
@@ -661,7 +668,7 @@ void *Darray_prototype_sort(Dobject pthis, CallContext *cc, Dobject othis, Value
     // for every array member. Additionally, the qsort() by index
     // can be avoided if we can deduce it is not a sparse array.
 
-    Property *p;
+    Property* p;
     Value[] pvalues;
     d_uint32[] pindices;
     d_uint32 parraydim;
@@ -768,28 +775,28 @@ void *Darray_prototype_sort(Dobject pthis, CallContext *cc, Dobject othis, Value
 
 /* ===================== Darray_prototype_splice ================= */
 
-void *Darray_prototype_splice(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_splice(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.12
     d_uint32 len;
     d_uint32 k;
-    
+
     Value* v;
     Darray A;
     d_uint32 a;
     d_uint32 delcnt;
     d_uint32 inscnt;
     d_uint32 startidx;
-    
+
     v = othis.Get(TEXT_length);
     if(!v)
         v = &vundefined;
     len = v.toUint32();
-    
+
 version(SliceSpliceExtension){
     d_number start;
     d_number deleteCount;
-    
+
     switch(arglist.length)
     {
     case 0:
@@ -805,7 +812,7 @@ version(SliceSpliceExtension){
     default:
         start = arglist[0].toNumber();
         deleteCount = arglist[1].toNumber();
-		//checked later
+        //checked later
         break;
     }
     if(start == d_number.infinity)
@@ -822,7 +829,7 @@ version(SliceSpliceExtension){
         else
             startidx = cast(uint)start;
     }
-	startidx = startidx > len ? len : startidx; 
+    startidx = startidx > len ? len : startidx;
     if(deleteCount == d_number.infinity)
         delcnt = len;
     else if(deleteCount == -d_number.infinity)
@@ -831,7 +838,9 @@ version(SliceSpliceExtension){
         delcnt = (cast(uint)deleteCount > 0) ? cast(uint) deleteCount : 0;
     if(delcnt > len - startidx)
         delcnt = len - startidx;
-}else{    
+}
+else
+{
     long start;
     d_int32 deleteCount;
     switch(arglist.length)
@@ -849,16 +858,16 @@ version(SliceSpliceExtension){
     default:
         start = arglist[0].toInt32();
         deleteCount = arglist[1].toInt32();
-		//checked later
+        //checked later
         break;
     }
     startidx = cast(uint)start;
-	startidx = startidx > len ? len : startidx; 
+    startidx = startidx > len ? len : startidx;
     delcnt = (deleteCount > 0) ? deleteCount : 0;
     if(delcnt > len - startidx)
         delcnt = len - startidx;
 }
-	
+
     A = new Darray();
 
     // If deleteCount is not specified, ECMA implies it should
@@ -921,7 +930,7 @@ version(SliceSpliceExtension){
 
 /* ===================== Darray_prototype_unshift ================= */
 
-void *Darray_prototype_unshift(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Darray_prototype_unshift(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.13
     Value* v;
@@ -1004,15 +1013,15 @@ class Darray : Dobject
         classname = TEXT_Array;
     }
 
-    override  Value* Put(Identifier* key, Value* value, uint attributes)
+    override Status* Put(Identifier* key, Value* value, uint attributes)
     {
-        Value* result = proptable.put(&key.value, key.value.hash, value, attributes);
+        auto result = proptable.put(&key.value, key.value.hash, value, attributes);
         if(!result)
-            Put(key.value.string, value, attributes);
+            Put(key.value.text, value, attributes);
         return null;
     }
 
-    override Value* Put(d_string name, Value* v, uint attributes)
+    override Status* Put(d_string name, Value* v, uint attributes)
     {
         d_uint32 i;
         uint c;
@@ -1086,12 +1095,12 @@ class Darray : Dobject
         return null;
     }
 
-    override Value* Put(d_string name, Dobject o, uint attributes)
+    override Status* Put(d_string name, Dobject o, uint attributes)
     {
         return Put(name, &o.value, attributes);
     }
 
-    override Value* Put(d_string PropertyName, d_number n, uint attributes)
+    override Status* Put(d_string PropertyName, d_number n, uint attributes)
     {
         Value v;
 
@@ -1099,15 +1108,15 @@ class Darray : Dobject
         return Put(PropertyName, &v, attributes);
     }
 
-    override Value* Put(d_string PropertyName, d_string string, uint attributes)
+    override Status* Put(d_string PropertyName, d_string str, uint attributes)
     {
         Value v;
 
-        v.putVstring(string);
+        v.putVstring(str);
         return Put(PropertyName, &v, attributes);
     }
 
-    override Value* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
+    override Status* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
     {
         if(index >= ulength)
             ulength = index + 1;
@@ -1116,7 +1125,7 @@ class Darray : Dobject
         return null;
     }
 
-    override Value* Put(d_uint32 index, Value* value, uint attributes)
+    override Status* Put(d_uint32 index, Value* value, uint attributes)
     {
         if(index >= ulength)
         {
@@ -1128,7 +1137,7 @@ class Darray : Dobject
         return null;
     }
 
-    final Value* Put(d_uint32 index, d_string string, uint attributes)
+    final Status* Put(d_uint32 index, d_string str, uint attributes)
     {
         if(index >= ulength)
         {
@@ -1136,14 +1145,14 @@ class Darray : Dobject
             length.number = ulength;
         }
 
-        proptable.put(index, string, attributes);
+        proptable.put(index, str, attributes);
         return null;
     }
 
     override Value* Get(Identifier* id)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
-        if(id.value.string == TEXT_length)
+        if(id.value.text == TEXT_length)
         {
             length.number = ulength;
             return &length;
@@ -1217,4 +1226,5 @@ class Darray : Dobject
         Darray_constructor.Put(TEXT_prototype, Darray_prototype, DontEnum |  ReadOnly);
     }
 }
+
 

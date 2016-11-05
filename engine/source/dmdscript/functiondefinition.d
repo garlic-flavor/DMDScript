@@ -18,7 +18,7 @@
 
 module dmdscript.functiondefinition;
 
-import std.stdio;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.identifier;
@@ -54,9 +54,9 @@ class FunctionDefinition : TopStatement
     int nestDepth;
     int withdepth;              // max nesting of ScopeStatement's
 
-    SymbolTable *labtab;        // symbol table for LabelSymbol's
+    SymbolTable* labtab;        // symbol table for LabelSymbol's
 
-    IR *code;
+    IR* code;
     uint nlocals;
 
 
@@ -69,7 +69,7 @@ class FunctionDefinition : TopStatement
     }
 
     this(Loc loc, int isglobal,
-         Identifier * name, Identifier *[] parameters,
+         Identifier*  name, Identifier* [] parameters,
          TopStatement[] topstatements)
     {
         super(loc);
@@ -84,7 +84,7 @@ class FunctionDefinition : TopStatement
     
     int isAnonymous() { return name is null; }
         
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         uint i;
         TopStatement ts;
@@ -196,7 +196,7 @@ class FunctionDefinition : TopStatement
         }
     }
 
-    override void toIR(IRstate *ignore)
+    override void toIR(IRstate* ignore)
     {
         IRstate irs;
         uint i;
@@ -233,7 +233,7 @@ class FunctionDefinition : TopStatement
         irs.doFixups();
         irs.optimize();
 
-        code = cast(IR *)irs.codebuf.data;
+        code = cast(IR* )irs.codebuf.data;
         irs.codebuf.data = null;
         nlocals = irs.nlocals;
     }

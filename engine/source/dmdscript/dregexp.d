@@ -116,7 +116,7 @@ class DregexpConstructor : Dfunction
         // any difference.
     }
 
-    override void* Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 262 v3 15.10.4.1
 
@@ -177,7 +177,7 @@ class DregexpConstructor : Dfunction
             }
             errinfo.message = errmsgtbl[ERR_REGEXP_COMPILE];
             o = new syntaxerror.D0(&errinfo);
-            Value* v = new Value;
+            auto v = new Status;
             v.putVobject(o);
             return v;
         }
@@ -188,7 +188,7 @@ class DregexpConstructor : Dfunction
         }
     }
 
-    override void* Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 262 v3 15.10.3.1
         if(arglist.length >= 1)
@@ -213,22 +213,22 @@ class DregexpConstructor : Dfunction
     }
 
 
-    override Value* Get(d_string PropertyName) const
+    override Value* Get(d_string PropertyName)
     {
         return Dfunction.Get(perlAlias(PropertyName));
     }
 
-    override Value* Put(d_string PropertyName, Value* value, uint attributes)
+    override Status* Put(d_string PropertyName, Value* value, uint attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), value, attributes);
     }
 
-    override Value* Put(d_string PropertyName, Dobject o, uint attributes)
+    override Status* Put(d_string PropertyName, Dobject o, uint attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), o, attributes);
     }
 
-    override Value* Put(d_string PropertyName, d_number n, uint attributes)
+    override Status* Put(d_string PropertyName, d_number n, uint attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), n, attributes);
     }
@@ -280,7 +280,7 @@ class DregexpConstructor : Dfunction
 
 /* ===================== Dregexp_prototype_toString =============== */
 
-void* Dregexp_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dregexp_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // othis must be a RegExp
     Dregexp r;
@@ -308,7 +308,7 @@ void* Dregexp_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, 
 
 /* ===================== Dregexp_prototype_test =============== */
 
-void* Dregexp_prototype_test(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dregexp_prototype_test(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.10.6.3 says this is equivalent to:
     //	RegExp.prototype.exec(string) != null
@@ -317,7 +317,7 @@ void* Dregexp_prototype_test(Dobject pthis, CallContext *cc, Dobject othis, Valu
 
 /* ===================== Dregexp_prototype_exec ============= */
 
-void* Dregexp_prototype_exec(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dregexp_prototype_exec(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return Dregexp.exec(othis, ret, arglist, EXEC_ARRAY);
 }
@@ -325,7 +325,7 @@ void* Dregexp_prototype_exec(Dobject pthis, CallContext *cc, Dobject othis, Valu
 
 /* ===================== Dregexp_prototype_compile ============= */
 
-void* Dregexp_prototype_compile(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dregexp_prototype_compile(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // RegExp.prototype.compile(pattern, attributes)
 
@@ -409,11 +409,11 @@ class DregexpPrototype : Dregexp
 
 class Dregexp : Dobject
 {
-    Value *global;
-    Value *ignoreCase;
-    Value *multiline;
-    Value *lastIndex;
-    Value *source;
+    Value* global;
+    Value* ignoreCase;
+    Value* multiline;
+    Value* lastIndex;
+    Value* source;
 
     RegExp re;
 
@@ -484,7 +484,7 @@ class Dregexp : Dobject
         re = new RegExp(null, null);
     }
 
-    override void* Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
@@ -504,7 +504,7 @@ class Dregexp : Dobject
         return r;
     }
 
-    static void* exec(Dobject othis, Value* ret, Value[] arglist, int rettype)
+    static Status* exec(Dobject othis, Value* ret, Value[] arglist, int rettype)
     {
         //writef("Dregexp.exec(arglist.length = %d, rettype = %d)\n", arglist.length, rettype);
 
@@ -532,7 +532,7 @@ class Dregexp : Dobject
                 Dfunction df;
 
                 df = Dregexp.getConstructor();
-                s = (cast(DregexpConstructor)df).input.string;
+                s = (cast(DregexpConstructor)df).input.text;
             }
 
             dr = cast(Dregexp)othis;
@@ -948,6 +948,6 @@ package
     private:
         Regex!char r;
         RegexMatch!string m;
-        string src;
+        d_string src;
     }
 }

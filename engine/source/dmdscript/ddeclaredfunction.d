@@ -17,7 +17,7 @@
 
 module dmdscript.ddeclaredfunction;
 
-import std.stdio;
+debug import std.stdio;
 import core.sys.posix.stdlib;
 import std.exception;
 import dmdscript.script;
@@ -53,7 +53,7 @@ class DdeclaredFunction : Dfunction
         o.Put(TEXT_constructor, this, DontEnum);        // step 10
     }
 
-    override void *Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // 1. Create activation object per ECMA 10.1.6
         // 2. Instantiate function variables as properties of
@@ -64,7 +64,7 @@ class DdeclaredFunction : Dfunction
         Darguments args;
         Value[] locals;
         uint i;
-        void *result;
+        Status* result;
 
         //writefln("DdeclaredFunction.Call() '%s'", toString());
         //writefln("this.scopex.length = %d", this.scopex.length);
@@ -79,9 +79,10 @@ class DdeclaredFunction : Dfunction
         // Generate the activation object
         // ECMA v3 10.1.6
         actobj = new Dobject(null);
-        
+
         Value vtmp;//should not be referenced by the end of func
-        if(fd.name){ 
+        if(fd.name)
+        {
            vtmp.putVobject(this);
            actobj.Put(fd.name,&vtmp,DontDelete);
         }
@@ -113,18 +114,18 @@ class DdeclaredFunction : Dfunction
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
         Put(TEXT_arguments, args, DontDelete);          // make grannymail bug work
 
-        
-        
+
+
 
         Dobject[] newScopex;
         newScopex = this.scopex.dup;//copy this function object scope chain
         assert(newScopex.length != 0);
         newScopex ~= actobj;//and put activation object on top of it
-        
+
         fd.instantiate(newScopex, actobj, DontDelete);
 
         Dobject[] scopesave = cc.scopex;
-        cc.scopex = newScopex; 
+        cc.scopex = newScopex;
         auto scoperootsave = cc.scoperoot;
         cc.scoperoot++;//to accaunt extra activation object on scopex chain
         Dobject variablesave = cc.variable;
@@ -183,13 +184,13 @@ class DdeclaredFunction : Dfunction
         return result;
     }
 
-    override void *Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 3 13.2.2
         Dobject othis;
         Dobject proto;
         Value* v;
-        void *result;
+        Status* result;
 
         v = Get(TEXT_prototype);
         if(v.isPrimitive())

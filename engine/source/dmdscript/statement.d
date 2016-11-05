@@ -17,10 +17,13 @@
 
 module dmdscript.statement;
 
-import std.stdio;
 import std.string;
 import std.math;
 import std.format;
+import std.traits;
+import std.exception;
+import std.utf;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.value;
@@ -34,7 +37,6 @@ import dmdscript.lexer;
 import dmdscript.errmsgs;
 import dmdscript.functiondefinition;
 import dmdscript.opcodes;
-import dmdscript.utf;
 
 enum
 {
@@ -77,13 +79,13 @@ class TopStatement
 
     Statement semantic(Scope *sc)
     {
-        writefln("TopStatement.semantic(%p)", this);
+        debug writefln("TopStatement.semantic(%p)", this);
         return null;
     }
 
     void toIR(IRstate *irs)
     {
-        writefln("TopStatement.toIR(%p)", this);
+        debug writefln("TopStatement.toIR(%p)", this);
     }
 
     void error(Scope *sc, int msgnum)
@@ -93,7 +95,7 @@ class TopStatement
 
     void error(Scope *sc, ...)
     {
-        d_string buf;
+        Unqual!(ForeachType!d_string)[] buf;
         d_string sourcename;
 
         if(sc.funcdef)
@@ -103,11 +105,11 @@ class TopStatement
             else if(sc.funcdef.name)
                 sourcename ~= sc.funcdef.name.toString();
         }
-        buf = std.string.format("%s(%d) : Error: ", sourcename, loc);
+        buf = std.string.format("%s(%d) : Error: ", sourcename, loc).dup;
 
         void putc(dchar c)
         {
-            dmdscript.utf.encode(buf, c);
+            std.utf.encode(buf, c);
         }
 
         std.format.doFormat(&putc, _arguments, _argptr);
@@ -115,7 +117,7 @@ class TopStatement
 
         if(!sc.errinfo.message)
         {
-            sc.errinfo.message = buf;
+            sc.errinfo.message = buf.assumeUnique;
             sc.errinfo.linnum = loc;
             sc.errinfo.srcline = Lexer.locToSrcline(sc.getSource().ptr, loc);
         }
@@ -131,7 +133,7 @@ class TopStatement
 
 class Statement : TopStatement
 {
-    LabelSymbol *label;
+    LabelSymbol* label;
 
     this(Loc loc)
     {
@@ -146,13 +148,13 @@ class Statement : TopStatement
 
     override Statement semantic(Scope *sc)
     {
-        writef("Statement.semantic(%p)\n", this);
+        debug writef("Statement.semantic(%p)\n", this);
         return this;
     }
 
     override void toIR(IRstate *irs)
     {
-        writef("Statement.toIR(%p)\n", this);
+        debug writef("Statement.toIR(%p)\n", this);
     }
 
     uint getBreak()
@@ -196,13 +198,13 @@ class EmptyStatement : Statement
         buf ~= ";\n";
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         //writef("EmptyStatement.semantic(%p)\n", this);
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
     }
 }
@@ -228,7 +230,7 @@ class ExpStatement : Statement
         buf ~= ";\n";
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         //writef("exp = '%s'\n", exp.toString());
         //writef("ExpStatement.semantic(this = %x, exp = %x, exp.vptr = %x, %x, %x)\n", this, exp, ((uint *)exp)[0], /*(*(uint **)exp)[12],*/ *(uint *)(*(uint **)exp)[12]);
@@ -243,7 +245,7 @@ class ExpStatement : Statement
         return new ImpliedReturnStatement(loc, exp);
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         //writef("ExpStatement.toIR(%p)\n", exp);
         if(exp)
@@ -264,10 +266,10 @@ class ExpStatement : Statement
 class VarDeclaration
 {
     Loc loc;
-    Identifier *name;
+    Identifier* name;
     Expression init;
 
-    this(Loc loc, Identifier * name, Expression init)
+    this(Loc loc, Identifier* name, Expression init)
     {
         this.loc = loc;
         this.init = init;
@@ -287,7 +289,7 @@ class VarStatement : Statement
         st = VARSTATEMENT;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         FunctionDefinition fd;
         uint i;
@@ -334,7 +336,7 @@ class VarStatement : Statement
         }
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint i;
         uint ret;
@@ -360,7 +362,7 @@ class VarStatement : Statement
                 {
                     vd.init.toIR(irs, ret);
                     property.id = Identifier.build(vd.name.toString());
-                    irs.gen2(loc, IRputthis, ret, property.index);
+                    irs.gen_!(Opcode.PutThis)(loc, ret, property.id);
                 }
             }
             irs.release(marksave);
@@ -380,7 +382,7 @@ class BlockStatement : Statement
         super(loc);
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         uint i;
 
@@ -423,7 +425,7 @@ class BlockStatement : Statement
         buf ~= "}\n";
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         foreach(TopStatement s; statements)
         {
@@ -446,8 +448,8 @@ class LabelStatement : Statement
     uint breakIP;
     ScopeStatement scopeContext;
     Scope whichScope;
-    
-    this(Loc loc, Identifier * ident, Statement statement)
+
+    this(Loc loc, Identifier* ident, Statement statement)
     {
         //writef("LabelStatement.LabelStatement(%p, '%s', %p)\n", this, ident.toChars(), statement);
         super(loc);
@@ -458,7 +460,7 @@ class LabelStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         LabelSymbol ls;
 
@@ -500,7 +502,7 @@ class LabelStatement : Statement
             buf ~= '\n';
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         gotoIP = irs.getIP();
         statement.toIR(irs);
@@ -544,7 +546,7 @@ class IfStatement : Statement
         this.elsebody = elsebody;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         //writef("IfStatement.semantic(%p)\n", sc);
         assert(condition);
@@ -567,7 +569,7 @@ class IfStatement : Statement
 
 
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint u1;
@@ -577,13 +579,16 @@ class IfStatement : Statement
         c = irs.alloc(1);
         condition.toIR(irs, c);
         u1 = irs.getIP();
-        irs.gen2(loc, (condition.isBooleanResult() ? IRjfb : IRjf), 0, c);
+        if (condition.isBooleanResult)
+            irs.gen_!(Opcode.JFB)(loc, 0, c);
+        else
+            irs.gen_!(Opcode.JF)(loc, 0, c);
         irs.release(c, 1);
         ifbody.toIR(irs);
         if(elsebody)
         {
             u2 = irs.getIP();
-            irs.gen1(loc, IRjmp, 0);
+            irs.gen_!(Opcode.Jmp)(loc, 0);
             irs.patchJmp(u1, irs.getIP());
             elsebody.toIR(irs);
             irs.patchJmp(u2, irs.getIP());
@@ -624,7 +629,7 @@ class SwitchStatement : Statement
         cases = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         condition = condition.semantic(sc);
 
@@ -643,9 +648,9 @@ class SwitchStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
-        uint c;
+        idx_t c;
         uint udefault;
         uint marksave;
 
@@ -660,7 +665,7 @@ class SwitchStatement : Statement
 
         if(cases.length)
         {
-            uint x;
+            idx_t x;
 
             x = irs.alloc(1);
             for(uint i = 0; i < cases.length; i++)
@@ -670,13 +675,13 @@ class SwitchStatement : Statement
                 x = irs.alloc(1);
                 cs = cases[i];
                 cs.exp.toIR(irs, x);
-                irs.gen3(loc, IRcid, x, c, x);
+                irs.gen_!(Opcode.CID)(loc, x, c, x);
                 cs.patchIP = irs.getIP();
-                irs.gen2(loc, IRjt, 0, x);
+                irs.gen_!(Opcode.JT)(loc, 0, x);
             }
         }
         udefault = irs.getIP();
-        irs.gen1(loc, IRjmp, 0);
+        irs.gen_!(Opcode.Jmp)(loc, 0);
 
         Statement breakSave = irs.breakTarget;
         irs.breakTarget = this;
@@ -735,7 +740,7 @@ class CaseStatement : Statement
         patchIP = ~0u;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         //writef("CaseStatement.semantic(%p)\n", sc);
         exp = exp.semantic(sc);
@@ -765,7 +770,7 @@ class CaseStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         caseIP = irs.getIP();
     }
@@ -783,7 +788,7 @@ class DefaultStatement : Statement
         defaultIP = ~0u;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(sc.switchTarget)
         {
@@ -804,7 +809,7 @@ class DefaultStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         defaultIP = irs.getIP();
     }
@@ -830,7 +835,7 @@ class DoStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         Statement continueSave = sc.continueTarget;
         Statement breakSave = sc.breakTarget;
@@ -855,7 +860,7 @@ class DoStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint u1;
@@ -872,7 +877,10 @@ class DoStatement : Statement
         c = irs.alloc(1);
         continueIP = irs.getIP();
         condition.toIR(irs, c);
-        irs.gen2(loc, (condition.isBooleanResult() ? IRjtb : IRjt), u1 - irs.getIP(), c);
+        if (condition.isBooleanResult)
+            irs.gen_!(Opcode.JTB)(loc, u1 - irs.getIP(), c);
+        else
+            irs.gen_!(Opcode.JT)(loc, u1 - irs.getIP(), c);
         breakIP = irs.getIP();
         irs.release(marksave);
 
@@ -920,7 +928,7 @@ class WhileStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         Statement continueSave = sc.continueTarget;
         Statement breakSave = sc.breakTarget;
@@ -945,7 +953,7 @@ class WhileStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint u1;
@@ -963,9 +971,12 @@ class WhileStatement : Statement
         c = irs.alloc(1);
         condition.toIR(irs, c);
         u2 = irs.getIP();
-        irs.gen2(loc, (condition.isBooleanResult() ? IRjfb : IRjf), 0, c);
+        if (condition.isBooleanResult)
+            irs.gen_!(Opcode.JFB)(loc, 0, c);
+        else
+            irs.gen_!(Opcode.JF)(loc, 0, c);
         bdy.toIR(irs);
-        irs.gen1(loc, IRjmp, u1 - irs.getIP());
+        irs.gen_!(Opcode.Jmp)(loc, u1 - irs.getIP());
         irs.patchJmp(u2, irs.getIP());
         breakIP = irs.getIP();
 
@@ -1018,7 +1029,7 @@ class ForStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         Statement continueSave = sc.continueTarget;
         Statement breakSave = sc.breakTarget;
@@ -1049,7 +1060,7 @@ class ForStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint u1;
         uint u2 = 0;    // unneeded initialization keeps lint happy
@@ -1079,14 +1090,20 @@ class ForStatement : Statement
                 if(be.e2.op == TOKreal && !isNaN(re.value))
                 {
                     u2 = irs.getIP();
-                    irs.gen(loc, (condition.op == TOKless) ? IRjltc : IRjlec, 4, 0, b, re.value);
+                    if (condition.op == TOKless)
+                        irs.gen_!(Opcode.JLTC)(loc, 0, b, re.value);
+                    else
+                        irs.gen_!(Opcode.JLEC)(loc, 0, b, re.value);
                 }
                 else
                 {
                     c = irs.alloc(1);
                     be.e2.toIR(irs, c);
                     u2 = irs.getIP();
-                    irs.gen3(loc, (condition.op == TOKless) ? IRjlt : IRjle, 0, b, c);
+                    if (condition.op == TOKless)
+                        irs.gen_!(Opcode.JLT)(loc, 0, b, c);
+                    else
+                        irs.gen_!(Opcode.JLE)(loc, 0, b, c);
                 }
             }
             else
@@ -1096,14 +1113,17 @@ class ForStatement : Statement
                 c = irs.alloc(1);
                 condition.toIR(irs, c);
                 u2 = irs.getIP();
-                irs.gen2(loc, (condition.isBooleanResult() ? IRjfb : IRjf), 0, c);
+                if (condition.isBooleanResult)
+                    irs.gen_!(Opcode.JFB)(loc, 0, c);
+                else
+                    irs.gen_!(Opcode.JF)(loc, 0, c);
             }
         }
         bdy.toIR(irs);
         continueIP = irs.getIP();
         if(increment)
             increment.toIR(irs, 0);
-        irs.gen1(loc, IRjmp, u1 - irs.getIP());
+        irs.gen_!(Opcode.Jmp)(loc, u1 - irs.getIP);
         if(condition)
             irs.patchJmp(u2, irs.getIP());
 
@@ -1158,7 +1178,7 @@ class ForInStatement : Statement
         scopeContext = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         Statement continueSave = sc.continueTarget;
         Statement breakSave = sc.breakTarget;
@@ -1201,21 +1221,21 @@ class ForInStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
-        uint e;
-        uint iter;
+        idx_t e;
+        idx_t iter;
         ExpStatement es;
         VarStatement vs;
         uint base;
         IR property;
-        int opoff;
+        OpOffset opoff;
         uint marksave = irs.mark();
 
         e = irs.alloc(1);
         inexp.toIR(irs, e);
         iter = irs.alloc(1);
-        irs.gen2(loc, IRiter, iter, e);
+        irs.gen_!(Opcode.Iter)(loc, iter, e);
 
         Statement continueSave = irs.continueTarget;
         Statement breakSave = irs.breakTarget;
@@ -1237,7 +1257,7 @@ class ForInStatement : Statement
             vd = vs.vardecls[0];
 
             property.id = Identifier.build(vd.name.toString());
-            opoff = 2;
+            opoff = OpOffset.Scope;
             base = ~0u;
         }
         else
@@ -1246,12 +1266,22 @@ class ForInStatement : Statement
         }
 
         continueIP = irs.getIP();
-        if(opoff == 2)
-            irs.gen3(loc, IRnextscope, 0, property.index, iter);
-        else
-            irs.gen(loc, IRnext + opoff, 4, 0, base, property.index, iter);
+        final switch (opoff)
+        {
+        case OpOffset.None:
+            irs.gen_!(Opcode.Next)(loc, 0, base, property.index, iter);
+            break;
+        case OpOffset.S:
+            irs.gen_!(Opcode.NextS)(loc, 0, base, property.id, iter);
+            break;
+        case OpOffset.Scope:
+            irs.gen_!(Opcode.NextScope)(loc, 0, property.id, iter);
+            break;
+        case OpOffset.V:
+            assert(0);
+        }
         bdy.toIR(irs);
-        irs.gen1(loc, IRjmp, continueIP - irs.getIP());
+        irs.gen_!(Opcode.Jmp)(loc, continueIP - irs.getIP());
         irs.patchJmp(continueIP, irs.getIP());
 
         breakIP = irs.getIP();
@@ -1313,7 +1343,7 @@ class WithStatement : ScopeStatement
         this.bdy = bdy;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         exp = exp.semantic(sc);
 
@@ -1343,7 +1373,7 @@ class WithStatement : ScopeStatement
 
 
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint c;
         uint marksave = irs.mark();
@@ -1352,9 +1382,9 @@ class WithStatement : ScopeStatement
 
         c = irs.alloc(1);
         exp.toIR(irs, c);
-        irs.gen1(loc, IRpush, c);
+        irs.gen_!(Opcode.Push)(loc, c);
         bdy.toIR(irs);
-        irs.gen0(loc, IRpop);
+        irs.gen_!(Opcode.Pop)(loc);
 
         irs.scopeContext = enclosingScope;
         irs.release(marksave);
@@ -1369,17 +1399,17 @@ class WithStatement : ScopeStatement
 
 class ContinueStatement : Statement
 {
-    Identifier *ident;
+    Identifier* ident;
     Statement target;
 
-    this(Loc loc, Identifier * ident)
+    this(Loc loc, Identifier* ident)
     {
         super(loc);
         this.ident = ident;
         target = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(ident == null)
         {
@@ -1406,7 +1436,7 @@ class ContinueStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         ScopeStatement w;
         ScopeStatement tw;
@@ -1432,19 +1462,19 @@ class ContinueStatement : Statement
 
 class BreakStatement : Statement
 {
-    Identifier *ident;
+    Identifier* ident;
     Statement target;
 
-    this(Loc loc, Identifier * ident)
+    this(Loc loc, Identifier* ident)
     {
         super(loc);
         this.ident = ident;
         target = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
-//	writef("BreakStatement.semantic(%p)\n", sc);
+//      writef("BreakStatement.semantic(%p)\n", sc);
         if(ident == null)
         {
             target = sc.breakTarget;
@@ -1472,14 +1502,14 @@ class BreakStatement : Statement
                 //Scope* s;
                 //for(s = sc; s && s != ls.statement.whichScope; s = s.enclosing){ }
                 if(ls.statement.whichScope == *sc)
-                    error(sc,errmsgtbl[ERR_CANT_BREAK_INTERNAL],ls.ident.value.string);
+                    error(sc,errmsgtbl[ERR_CANT_BREAK_INTERNAL],ls.ident.value.text);
                 target = ls.statement;
-            }                
+            }
         }
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         ScopeStatement w;
         ScopeStatement tw;
@@ -1507,7 +1537,7 @@ class BreakStatement : Statement
 
 class GotoStatement : Statement
 {
-    Identifier *ident;
+    Identifier* ident;
     LabelSymbol label;
 
     this(Loc loc, Identifier * ident)
@@ -1517,7 +1547,7 @@ class GotoStatement : Statement
         label = null;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         LabelSymbol ls;
 
@@ -1531,7 +1561,7 @@ class GotoStatement : Statement
         return this;
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         assert(label);
 
@@ -1574,7 +1604,7 @@ class ReturnStatement : Statement
         this.exp = exp;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(exp)
             exp = exp.semantic(sc);
@@ -1595,7 +1625,7 @@ class ReturnStatement : Statement
         buf ~= ";\n";
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         ScopeStatement w;
         int npops;
@@ -1612,19 +1642,19 @@ class ReturnStatement : Statement
             exp.toIR(irs, e);
             if(npops)
             {
-                irs.gen1(loc, IRimpret, e);
+                irs.gen_!(Opcode.ImpRet)(loc, e);
                 irs.pops(npops);
-                irs.gen0(loc, IRret);
+                irs.gen_!(Opcode.Ret)(loc);
             }
             else
-                irs.gen1(loc, IRretexp, e);
+                irs.gen_!(Opcode.RetExp)(loc, e);
             irs.release(e, 1);
         }
         else
         {
             if(npops)
                 irs.pops(npops);
-            irs.gen0(loc, IRret);
+            irs.gen_!(Opcode.Ret)(loc);
         }
 
         // Help GC
@@ -1648,7 +1678,7 @@ class ImpliedReturnStatement : Statement
         this.exp = exp;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(exp)
             exp = exp.semantic(sc);
@@ -1662,7 +1692,7 @@ class ImpliedReturnStatement : Statement
         buf ~= ";\n";
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         if(exp)
         {
@@ -1670,7 +1700,7 @@ class ImpliedReturnStatement : Statement
 
             e = irs.alloc(1);
             exp.toIR(irs, e);
-            irs.gen1(loc, IRimpret, e);
+            irs.gen_!(Opcode.ImpRet)(loc, e);
             irs.release(e, 1);
 
             // Help GC
@@ -1691,7 +1721,7 @@ class ThrowStatement : Statement
         this.exp = exp;
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         if(exp)
             exp = exp.semantic(sc);
@@ -1711,14 +1741,14 @@ class ThrowStatement : Statement
         buf ~= ";\n";
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint e;
 
         assert(exp);
         e = irs.alloc(1);
         exp.toIR(irs, e);
-        irs.gen1(loc, IRthrow, e);
+        irs.gen_!(Opcode.Throw)(loc, e);
         irs.release(e, 1);
 
         // Help GC
@@ -1736,7 +1766,7 @@ class TryStatement : ScopeStatement
     Statement finalbdy;
 
     this(Loc loc, Statement bdy,
-         Identifier * catchident, Statement catchbdy,
+         Identifier* catchident, Statement catchbdy,
          Statement finalbdy)
     {
         super(loc);
@@ -1748,7 +1778,7 @@ class TryStatement : ScopeStatement
             npops = 2;          // 2 items in scope chain
     }
 
-    override Statement semantic(Scope *sc)
+    override Statement semantic(Scope* sc)
     {
         enclosingScope = sc.scopeContext;
         sc.scopeContext = this;
@@ -1789,7 +1819,7 @@ class TryStatement : ScopeStatement
         }
     }
 
-    override void toIR(IRstate *irs)
+    override void toIR(IRstate* irs)
     {
         uint f;
         uint c;
@@ -1801,55 +1831,55 @@ class TryStatement : ScopeStatement
         if(finalbdy)
         {
             f = irs.getIP();
-            irs.gen1(loc, IRtryfinally, 0);
+            irs.gen_!(Opcode.TryFinally)(loc, 0);
             if(catchbdy)
             {
                 c = irs.getIP();
-                irs.gen2(loc, IRtrycatch, 0, cast(uint)Identifier.build(catchident.toString()));
+                irs.gen_!(Opcode.TryCatch)(loc, 0, Identifier.build(catchident.toString));
                 bdy.toIR(irs);
-                irs.gen0(loc, IRpop);           // remove catch clause
-                irs.gen0(loc, IRpop);           // call finalbdy
+                irs.gen_!(Opcode.Pop)(loc);           // remove catch clause
+                irs.gen_!(Opcode.Pop)(loc);           // call finalbdy
 
                 e = irs.getIP();
-                irs.gen1(loc, IRjmp, 0);
+                irs.gen_!(Opcode.Jmp)(loc, 0);
                 irs.patchJmp(c, irs.getIP());
                 catchbdy.toIR(irs);
-                irs.gen0(loc, IRpop);           // remove catch object
-                irs.gen0(loc, IRpop);           // call finalbdy code
+                irs.gen_!(Opcode.Pop)(loc);           // remove catch object
+                irs.gen_!(Opcode.Pop)(loc);           // call finalbdy code
                 e2 = irs.getIP();
-                irs.gen1(loc, IRjmp, 0);        // jmp past finalbdy
+                irs.gen_!(Opcode.Jmp)(loc, 0);        // jmp past finalbdy
 
                 irs.patchJmp(f, irs.getIP());
                 irs.scopeContext = enclosingScope;
                 finalbdy.toIR(irs);
-                irs.gen0(loc, IRfinallyret);
+                irs.gen_!(Opcode.FinallyRet)(loc);
                 irs.patchJmp(e, irs.getIP());
                 irs.patchJmp(e2, irs.getIP());
             }
             else // finalbdy only
             {
                 bdy.toIR(irs);
-                irs.gen0(loc, IRpop);
+                irs.gen_!(Opcode.Pop)(loc);
                 e = irs.getIP();
-                irs.gen1(loc, IRjmp, 0);
+                irs.gen_!(Opcode.Jmp)(loc, 0);
                 irs.patchJmp(f, irs.getIP());
                 irs.scopeContext = enclosingScope;
                 finalbdy.toIR(irs);
-                irs.gen0(loc, IRfinallyret);
+                irs.gen_!(Opcode.FinallyRet)(loc);
                 irs.patchJmp(e, irs.getIP());
             }
         }
         else // catchbdy only
         {
             c = irs.getIP();
-            irs.gen2(loc, IRtrycatch, 0, cast(uint)Identifier.build(catchident.toString()));
+            irs.gen_!(Opcode.TryCatch)(loc, 0, Identifier.build(catchident.toString));
             bdy.toIR(irs);
-            irs.gen0(loc, IRpop);
+            irs.gen_!(Opcode.Pop)(loc);
             e = irs.getIP();
-            irs.gen1(loc, IRjmp, 0);
+            irs.gen_!(Opcode.Jmp)(loc, 0);
             irs.patchJmp(c, irs.getIP());
             catchbdy.toIR(irs);
-            irs.gen0(loc, IRpop);
+            irs.gen_!(Opcode.Pop)(loc);
             irs.patchJmp(e, irs.getIP());
         }
         irs.scopeContext = enclosingScope;
@@ -1862,4 +1892,3 @@ class TryStatement : ScopeStatement
         finalbdy = null;
     }
 }
-

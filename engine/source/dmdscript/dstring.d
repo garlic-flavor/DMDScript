@@ -24,10 +24,11 @@ import core.stdc.string;
 import std.exception;
 import std.algorithm;
 import std.range;
-import std.stdio;
 import std.string;
 import std.utf;
 import std.math;
+import std.traits;
+debug import std.stdio;
 
 import dmdscript.script;
 import dmdscript.dobject;
@@ -40,16 +41,15 @@ import dmdscript.text;
 import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.dnative;
-import dmdscript.utf;
 
 //alias script.tchar tchar;
 
 /* ===================== Dstring_fromCharCode ==================== */
 
-void* Dstring_fromCharCode(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_fromCharCode(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.5.3.2
-    d_string s;
+    Unqual!(ForeachType!d_string)[] s = null;
 
     for(size_t i = 0; i < arglist.length; i++)
     {
@@ -69,10 +69,10 @@ void* Dstring_fromCharCode(Dobject pthis, CallContext *cc, Dobject othis, Value 
                                       "String", "fromCharCode()",
                                       u);
         }
-        dmdscript.utf.encode(s, u);
+        std.utf.encode(s, u);
         //writefln("s[0] = %x, s = '%s'", s[0], s);
     }
-    ret.putVstring(s);
+    ret.putVstring(s.assumeUnique);
     return null;
 }
 
@@ -93,7 +93,7 @@ class DstringConstructor : Dfunction
         DnativeFunction.initialize(this, nfd, 0);
     }
 
-    override void *Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.5.2
         d_string s;
@@ -105,7 +105,7 @@ class DstringConstructor : Dfunction
         return null;
     }
 
-    override void *Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.5.1
         d_string s;
@@ -119,7 +119,7 @@ class DstringConstructor : Dfunction
 
 /* ===================== Dstring_prototype_toString =============== */
 
-void* Dstring_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     //writef("Dstring.prototype.toString()\n");
     // othis must be a String
@@ -135,7 +135,7 @@ void* Dstring_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, 
     }
     else
     {
-        Value *v;
+        Value* v;
 
         v = &(cast(Dstring)othis).value;
         Value.copy(ret, v);
@@ -145,7 +145,7 @@ void* Dstring_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, 
 
 /* ===================== Dstring_prototype_valueOf =============== */
 
-void* Dstring_prototype_valueOf(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Does same thing as String.prototype.toString()
 
@@ -163,7 +163,7 @@ void* Dstring_prototype_valueOf(Dobject pthis, CallContext *cc, Dobject othis, V
     }
     else
     {
-        Value *v;
+        Value* v;
 
         v = &(cast(Dstring)othis).value;
         Value.copy(ret, v);
@@ -173,11 +173,11 @@ void* Dstring_prototype_valueOf(Dobject pthis, CallContext *cc, Dobject othis, V
 
 /* ===================== Dstring_prototype_charAt =============== */
 
-void* Dstring_prototype_charAt(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_charAt(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.5.4.4
 
-    Value *v;
+    Value* v;
     int pos;            // ECMA says pos should be a d_number,
                         // but int should behave the same
     d_string s;
@@ -214,11 +214,11 @@ void* Dstring_prototype_charAt(Dobject pthis, CallContext *cc, Dobject othis, Va
 
 /* ===================== Dstring_prototype_charCodeAt ============= */
 
-void* Dstring_prototype_charCodeAt(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_charCodeAt(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.5.4.5
 
-    Value *v;
+    Value* v;
     int pos;            // ECMA says pos should be a d_number,
                         // but int should behave the same
     d_string s;
@@ -257,7 +257,7 @@ void* Dstring_prototype_charCodeAt(Dobject pthis, CallContext *cc, Dobject othis
 
 /* ===================== Dstring_prototype_concat ============= */
 
-void* Dstring_prototype_concat(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_concat(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.6
     d_string s;
@@ -274,7 +274,7 @@ void* Dstring_prototype_concat(Dobject pthis, CallContext *cc, Dobject othis, Va
 
 /* ===================== Dstring_prototype_indexOf ============= */
 
-void* Dstring_prototype_indexOf(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_indexOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.5.4.6
     // String.prototype.indexOf(searchString, position)
@@ -321,12 +321,12 @@ void* Dstring_prototype_indexOf(Dobject pthis, CallContext *cc, Dobject othis, V
 
 /* ===================== Dstring_prototype_lastIndexOf ============= */
 
-void* Dstring_prototype_lastIndexOf(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_lastIndexOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.8
     // String.prototype.lastIndexOf(searchString, position)
 
-    Value *v1;
+    Value* v1;
     ptrdiff_t pos;            // ECMA says pos should be a d_number,
                         // but I can't find a reason.
     d_string s;
@@ -338,8 +338,8 @@ void* Dstring_prototype_lastIndexOf(Dobject pthis, CallContext *cc, Dobject othi
     {
         {
             // This is the 'transferable' version
-            Value *v;
-            void *a;
+            Value* v;
+            Status* a;
             v = othis.Get(TEXT_toString);
             a = v.Call(cc, othis, ret, null);
             if(a)                       // if exception was thrown
@@ -359,7 +359,7 @@ void* Dstring_prototype_lastIndexOf(Dobject pthis, CallContext *cc, Dobject othi
     if(arglist.length >= 2)
     {
         d_number n;
-        Value *v = &arglist[1];
+        Value* v = &arglist[1];
 
         n = v.toNumber();
         if(std.math.isNaN(n) || n > sUCSdim)
@@ -395,13 +395,13 @@ void* Dstring_prototype_lastIndexOf(Dobject pthis, CallContext *cc, Dobject othi
 
 /* ===================== Dstring_prototype_localeCompare ============= */
 
-void* Dstring_prototype_localeCompare(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_localeCompare(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.9
     d_string s1;
     d_string s2;
     d_number n;
-    Value *v;
+    Value* v;
 
     v = &othis.value;
     s1 = v.toString();
@@ -413,7 +413,7 @@ void* Dstring_prototype_localeCompare(Dobject pthis, CallContext *cc, Dobject ot
 
 /* ===================== Dstring_prototype_match ============= */
 
-void* Dstring_prototype_match(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_match(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.10
     Dregexp r;
@@ -446,7 +446,7 @@ void* Dstring_prototype_match(Dobject pthis, CallContext *cc, Dobject othis, Val
         {
             r.lastIndex.putVnumber(i);
             Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_STRING);
-            if(!ret.string)             // if match failed
+            if(!ret.text)             // if match failed
             {
                 r.lastIndex.putVnumber(i);
                 break;
@@ -469,16 +469,16 @@ void* Dstring_prototype_match(Dobject pthis, CallContext *cc, Dobject othis, Val
 
 /* ===================== Dstring_prototype_replace ============= */
 
-void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_replace(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.11
     // String.prototype.replace(searchValue, replaceValue)
 
-    d_string string;
+    d_string str;
     d_string searchString;
     d_string newstring;
-    Value *searchValue;
-    Value *replaceValue;
+    Value* searchValue;
+    Value* replaceValue;
     Dregexp r;
     RegExp re;
     d_string replacement;
@@ -491,7 +491,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
     Value* v;
 
     v = &othis.value;
-    string = v.toString();
+    str = v.toString();
     searchValue = (arglist.length >= 1) ? &arglist[0] : &vundefined;
     replaceValue = (arglist.length >= 2) ? &arglist[1] : &vundefined;
     r = Dregexp.isRegExp(searchValue);
@@ -502,13 +502,13 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
 
         re = r.re;
         i = 0;
-        result = string;
+        result = str;
 
         r.lastIndex.putVnumber(0);
         for(;; )
         {
             Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_STRING);
-            if(!ret.string)             // if match failed
+            if(!ret.text)             // if match failed
                 break;
 
             m = re.nmatches;
@@ -516,15 +516,15 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
             {
                 Value* alist;
 
-                alist = cast(Value *)alloca((m + 3) * Value.sizeof);
+                alist = cast(Value* )alloca((m + 3) * Value.sizeof);
                 assert(alist);
-                alist[0].putVstring(ret.string);
+                alist[0].putVstring(ret.text);
                 for(i = 0; i < m; i++)
                 {
                     alist[1 + i].putVstring(re.captures(1 + i));
                 }
                 alist[m + 1].putVnumber(re.index);
-                alist[m + 2].putVstring(string);
+                alist[m + 2].putVstring(str);
                 f.Call(cc, f, ret, alist[0 .. m + 3]);
                 replacement = ret.toString();
             }
@@ -535,9 +535,9 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
             }
             ptrdiff_t starti = re.index;
             ptrdiff_t endi = re.lastIndex;
-            result = string[0 .. starti] ~
+            result = str[0 .. starti] ~
                      replacement ~
-                     string[endi .. $];
+                     str[endi .. $];
 
             if(re.global)
             {
@@ -559,32 +559,32 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
     else
     {
         searchString = searchValue.toString();
-        ptrdiff_t match = std.string.indexOf(string, searchString);
+        ptrdiff_t match = std.string.indexOf(str, searchString);
         if(match >= 0)
         {
-            pmatch[0] = string[match .. match + searchString.length];
+            pmatch[0] = str[match .. match + searchString.length];
             if(f)
             {
                 Value[3] alist;
 
                 alist[0].putVstring(searchString);
                 alist[1].putVnumber(match);
-                alist[2].putVstring(string);
+                alist[2].putVstring(str);
                 f.Call(cc, f, ret, alist);
                 replacement = ret.toString();
             }
             else
             {
                 newstring = replaceValue.toString();
-                replacement = RegExp.replace3(newstring, string, pmatch[]);
+                replacement = RegExp.replace3(newstring, str, pmatch[]);
             }
-            result = string[0 .. match] ~
+            result = str[0 .. match] ~
                      replacement ~
-                     string[match + searchString.length .. $];
+                     str[match + searchString.length .. $];
         }
         else
         {
-            result = string;
+            result = str;
         }
     }
 
@@ -594,7 +594,7 @@ void* Dstring_prototype_replace(Dobject pthis, CallContext *cc, Dobject othis, V
 
 /* ===================== Dstring_prototype_search ============= */
 
-void* Dstring_prototype_search(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_search(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.12
     Dregexp r;
@@ -621,7 +621,7 @@ void* Dstring_prototype_search(Dobject pthis, CallContext *cc, Dobject othis, Va
 
 /* ===================== Dstring_prototype_slice ============= */
 
-void* Dstring_prototype_slice(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_slice(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.13
     ptrdiff_t start;
@@ -629,7 +629,7 @@ void* Dstring_prototype_slice(Dobject pthis, CallContext *cc, Dobject othis, Val
     ptrdiff_t sUCSdim;
     d_string s;
     d_string r;
-    Value *v;
+    Value* v;
 
     v = &othis.value;
     s = v.toString();
@@ -684,7 +684,7 @@ void* Dstring_prototype_slice(Dobject pthis, CallContext *cc, Dobject othis, Val
 
 /* ===================== Dstring_prototype_split ============= */
 
-void* Dstring_prototype_split(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_split(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.14
     // String.prototype.split(separator, limit)
@@ -715,7 +715,7 @@ void* Dstring_prototype_split(Dobject pthis, CallContext *cc, Dobject othis, Val
         break;
     }
 
-    Value *v;
+    Value* v;
     v = &othis.value;
     S = v.toString();
     A = new Darray;
@@ -830,7 +830,7 @@ void* Dstring_prototype_split(Dobject pthis, CallContext *cc, Dobject othis, Val
 
 /* ===================== Dstring_prototype_substr ============= */
 
-void *dstring_substring(d_string s, size_t sUCSdim, d_number start, d_number end, Value *ret)
+Status* dstring_substring(d_string s, size_t sUCSdim, d_number start, d_number end, Value* ret)
 {
     d_string sb;
     d_int32 sb_len;
@@ -866,7 +866,7 @@ void *dstring_substring(d_string s, size_t sUCSdim, d_number start, d_number end
     return null;
 }
 
-void* Dstring_prototype_substr(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_substr(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Javascript: TDG pg. 689
     // String.prototype.substr(start, length)
@@ -898,7 +898,7 @@ void* Dstring_prototype_substr(Dobject pthis, CallContext *cc, Dobject othis, Va
 
 /* ===================== Dstring_prototype_substring ============= */
 
-void* Dstring_prototype_substring(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_substring(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.5.4.9
     // String.prototype.substring(start)
@@ -920,8 +920,7 @@ void* Dstring_prototype_substring(Dobject pthis, CallContext *cc, Dobject othis,
         //writef("s = '%ls', start = %d, end = %d\n", s, start, end);
     }
 
-    void* p = dstring_substring(s, sUCSdim, start, end, ret);
-    return p;
+    return dstring_substring(s, sUCSdim, start, end, ret);
 }
 
 /* ===================== Dstring_prototype_toLowerCase ============= */
@@ -934,7 +933,7 @@ enum CASE
     LocaleUpper
 };
 
-void *tocase(Dobject othis, Value *ret, CASE caseflag)
+Status* tocase(Dobject othis, Value* ret, CASE caseflag)
 {
     d_string s;
 
@@ -961,7 +960,7 @@ void *tocase(Dobject othis, Value *ret, CASE caseflag)
     return null;
 }
 
-void* Dstring_prototype_toLowerCase(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_toLowerCase(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.5.4.11
     // String.prototype.toLowerCase()
@@ -972,7 +971,7 @@ void* Dstring_prototype_toLowerCase(Dobject pthis, CallContext *cc, Dobject othi
 
 /* ===================== Dstring_prototype_toLocaleLowerCase ============= */
 
-void* Dstring_prototype_toLocaleLowerCase(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_toLocaleLowerCase(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.17
 
@@ -982,7 +981,7 @@ void* Dstring_prototype_toLocaleLowerCase(Dobject pthis, CallContext *cc, Dobjec
 
 /* ===================== Dstring_prototype_toUpperCase ============= */
 
-void* Dstring_prototype_toUpperCase(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_toUpperCase(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.5.4.12
     // String.prototype.toUpperCase()
@@ -992,7 +991,7 @@ void* Dstring_prototype_toUpperCase(Dobject pthis, CallContext *cc, Dobject othi
 
 /* ===================== Dstring_prototype_toLocaleUpperCase ============= */
 
-void* Dstring_prototype_toLocaleUpperCase(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_toLocaleUpperCase(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.5.4.18
 
@@ -1001,7 +1000,7 @@ void* Dstring_prototype_toLocaleUpperCase(Dobject pthis, CallContext *cc, Dobjec
 
 /* ===================== Dstring_prototype_anchor ============= */
 
-void *dstring_anchor(Dobject othis, Value* ret, d_string tag, d_string name, Value[] arglist)
+Status* dstring_anchor(Dobject othis, Value* ret, d_string tag, d_string name, Value[] arglist)
 {
     // For example:
     //	"foo".anchor("bar")
@@ -1031,7 +1030,7 @@ void *dstring_anchor(Dobject othis, Value* ret, d_string tag, d_string name, Val
 }
 
 
-void* Dstring_prototype_anchor(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_anchor(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Non-standard extension
     // String.prototype.anchor(anchor)
@@ -1043,17 +1042,17 @@ void* Dstring_prototype_anchor(Dobject pthis, CallContext *cc, Dobject othis, Va
     return dstring_anchor(othis, ret, "A", "NAME", arglist);
 }
 
-void* Dstring_prototype_fontcolor(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_fontcolor(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_anchor(othis, ret, "FONT", "COLOR", arglist);
 }
 
-void* Dstring_prototype_fontsize(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_fontsize(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_anchor(othis, ret, "FONT", "SIZE", arglist);
 }
 
-void* Dstring_prototype_link(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_link(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_anchor(othis, ret, "A", "HREF", arglist);
 }
@@ -1065,7 +1064,7 @@ void* Dstring_prototype_link(Dobject pthis, CallContext *cc, Dobject othis, Valu
  * Produce <tag>othis</tag>
  */
 
-void *dstring_bracket(Dobject othis, Value* ret, d_string tag)
+Status* dstring_bracket(Dobject othis, Value* ret, d_string tag)
 {
     d_string foo = othis.value.toString();
     d_string s;
@@ -1082,7 +1081,7 @@ void *dstring_bracket(Dobject othis, Value* ret, d_string tag)
     return null;
 }
 
-void* Dstring_prototype_big(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_big(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Non-standard extension
     // String.prototype.big()
@@ -1094,42 +1093,42 @@ void* Dstring_prototype_big(Dobject pthis, CallContext *cc, Dobject othis, Value
     return dstring_bracket(othis, ret, "BIG");
 }
 
-void* Dstring_prototype_blink(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_blink(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_bracket(othis, ret, "BLINK");
 }
 
-void* Dstring_prototype_bold(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_bold(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_bracket(othis, ret, "B");
 }
 
-void* Dstring_prototype_fixed(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_fixed(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_bracket(othis, ret, "TT");
 }
 
-void* Dstring_prototype_italics(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_italics(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_bracket(othis, ret, "I");
 }
 
-void* Dstring_prototype_small(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_small(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_bracket(othis, ret, "SMALL");
 }
 
-void* Dstring_prototype_strike(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_strike(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_bracket(othis, ret, "STRIKE");
 }
 
-void* Dstring_prototype_sub(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_sub(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_bracket(othis, ret, "SUB");
 }
 
-void* Dstring_prototype_sup(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dstring_prototype_sup(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return dstring_bracket(othis, ret, "SUP");
 }
@@ -1226,4 +1225,3 @@ class Dstring : Dobject
         return Dstring_prototype;
     }
 }
-

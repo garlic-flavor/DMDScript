@@ -37,7 +37,7 @@ class DbooleanConstructor : Dfunction
         name = "Boolean";
     }
 
-    override void *Construct(CallContext *cc, Value *ret, Value[] arglist)
+    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.6.2
         d_boolean b;
@@ -49,7 +49,7 @@ class DbooleanConstructor : Dfunction
         return null;
     }
 
-    override void *Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.6.1
         d_boolean b;
@@ -63,7 +63,7 @@ class DbooleanConstructor : Dfunction
 
 /* ===================== Dboolean_prototype_toString =============== */
 
-void* Dboolean_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // othis must be a Boolean
     if(!othis.isClass(TEXT_Boolean))
@@ -87,7 +87,7 @@ void* Dboolean_prototype_toString(Dobject pthis, CallContext *cc, Dobject othis,
 
 /* ===================== Dboolean_prototype_valueOf =============== */
 
-void* Dboolean_prototype_valueOf(Dobject pthis, CallContext *cc, Dobject othis, Value *ret, Value[] arglist)
+Status* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     //FuncLog f("Boolean.prototype.valueOf()");
     //logflag = 1;

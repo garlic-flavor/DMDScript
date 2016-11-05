@@ -22,22 +22,23 @@ module dmdscript.lexer;
 
 import std.range;
 import std.algorithm;
-import std.stdio;
 import std.string;
 import std.utf;
 import std.outbuffer;
 import std.ascii;
 import std.format;
 import std.uni;
+import std.exception;
+import std.traits;
 import core.sys.posix.stdlib;
 import core.stdc.string;
+import std.stdio;
 
 import dmdscript.script;
 import dmdscript.text;
 import dmdscript.identifier;
 import dmdscript.scopex;
 import dmdscript.errmsgs;
-import dmdscript.utf;
 
 /* Tokens:
         (	)
@@ -157,17 +158,17 @@ int ishex(dchar c)
 
 struct Token
 {
-    Token *next;
-           immutable(tchar) *ptr;       // pointer to first character of this token within buffer
+    Token* next;
+    immutable(tchar) *ptr;       // pointer to first character of this token within buffer
     uint   linnum;
     TOK    value;
-           immutable(tchar) *sawLineTerminator; // where we saw the last line terminator
+    immutable(tchar) *sawLineTerminator; // where we saw the last line terminator
     union
     {
         number_t    intvalue;
         real_t      realvalue;
-        d_string    string;
-        Identifier *ident;
+        d_string    str;
+        Identifier* ident;
     };
 
     static d_string[TOKmax] tochars;
@@ -197,7 +198,7 @@ struct Token
 
         case TOKstring:
         case TOKregexp:
-            p = string;
+            p = str;
             break;
 
         case TOKidentifier:
@@ -235,8 +236,8 @@ class Lexer
     d_string sourcename;        // for error message strings
 
     d_string base;              // pointer to start of buffer
-    immutable(char) * end;      // past end of buffer
-    immutable(char) * p;        // current character
+    immutable(char)* end;      // past end of buffer
+    immutable(char)* p;        // current character
     uint currentline;
     Token token;
     OutBuffer stringbuffer;
@@ -246,9 +247,9 @@ class Lexer
     static bool inited;
 
 
-    Token*  allocToken()
+    Token* allocToken()
     {
-        Token *t;
+        Token* t;
 
         if(freelist)
         {
@@ -314,7 +315,7 @@ class Lexer
         immutable(tchar) * s;
         immutable(tchar) * slinestart;
         immutable(tchar) * slineend;
-        d_string buf;
+        Unqual!(ForeachType!d_string)[] buf;
 
         //FuncLog funclog(L"Lexer.error()");
         //writefln("TEXT START ------------\n%ls\nTEXT END ------------------", base);
@@ -347,11 +348,11 @@ class Lexer
         }
         slineend = s;
 
-        buf = std.string.format("%s(%d) : Error: ", sourcename, linnum);
+        buf = std.string.format("%s(%d) : Error: ", sourcename, linnum).dup;
 
         void putc(dchar c)
         {
-            dmdscript.utf.encode(buf, c);
+            std.utf.encode(buf, c);
         }
 
         std.format.doFormat(&putc, _arguments, _argptr);
@@ -360,7 +361,7 @@ class Lexer
         {
             uint len;
 
-            errinfo.message = buf;
+            errinfo.message = buf.assumeUnique;
             errinfo.linnum = linnum;
             errinfo.charpos = p - slinestart;
 
@@ -432,7 +433,7 @@ class Lexer
 
     TOK nextToken()
     {
-        Token *t;
+        Token* t;
 
         if(token.next)
         {
@@ -449,9 +450,9 @@ class Lexer
         return token.value;
     }
 
-    Token *peek(Token *ct)
+    Token* peek(Token* ct)
     {
-        Token *t;
+        Token* t;
 
         if(ct.next)
             t = ct.next;
@@ -465,7 +466,7 @@ class Lexer
         return t;
     }
 
-    void insertSemicolon(immutable(tchar) *loc)
+    void insertSemicolon(immutable(tchar)* loc)
     {
         // Push current token back into the input, and
         // create a new current token that is a semicolon
@@ -497,11 +498,12 @@ class Lexer
      * Turn next token in buffer into a token.
      */
 
-    void scan(Token *t)
+    void scan(Token* t)
     {
         tchar c;
         dchar d;
         d_string id;
+        Unqual!(ForeachType!d_string)[] buf;
 
         //writefln("Lexer.scan()");
         t.sawLineTerminator = null;
@@ -536,7 +538,7 @@ class Lexer
 
             case '"':
             case '\'':
-                t.string = string(*p);
+                t.str = chompString(*p);
                 t.value = TOKstring;
                 return;
 
@@ -584,7 +586,9 @@ class Lexer
                               p = ps;
                               break;
                           }
-                          dmdscript.utf.encode(id, d);
+                          buf = null;
+                          std.utf.encode(buf, d);
+                          id ~= buf;
                           for(;; )
                           {
                               d = get(p);
@@ -594,7 +598,11 @@ class Lexer
                                   p++;
                                   d = unicode();
                                   if(isidletter(d))
-                                      dmdscript.utf.encode(id, d);
+                                  {
+                                      buf = null;
+                                      std.utf.encode(buf, d);
+                                      id ~= buf;
+                                  }
                                   else
                                   {
                                       p = pstart;
@@ -603,7 +611,9 @@ class Lexer
                               }
                               else if(isidletter(d))
                               {
-                                  dmdscript.utf.encode(id, d);
+                                  buf = null;
+                                  std.utf.encode(buf, d);
+                                  id ~= buf;
                                   p = inc(p);
                               }
                               else
@@ -689,11 +699,10 @@ class Lexer
                     do{
                         r.popFront();
                         j = startsWith(r,'\n','\r','\0',0x1A,'\u2028','\u2029');
-                        
                     }while(!j);
                     p = &r[0];
                     switch(j){
-                        case 1: 
+                        case 1:
                             currentline++;
                             goto case;
                         case 2: case 5: case 6:
@@ -703,7 +712,7 @@ class Lexer
                             t.value = TOKeof;
                             return;
                         default:
-                            assert(0);                            
+                            assert(0);
                     }
                     p = inc(p);
                     continue;
@@ -731,7 +740,7 @@ class Lexer
                     p++;
                     continue;*/
                 }
-                else if((t.string = regexp()) != null)
+                else if((t.str = regexp()) != null)
                     t.value = TOKregexp;
                 else
                     t.value = TOKdivide;
@@ -1167,11 +1176,11 @@ class Lexer
     /**************************************
      */
 
-    d_string string(tchar quote)
+    d_string chompString(tchar quote)
     {
         tchar c;
         dchar d;
-        d_string stringbuffer;
+        Unqual!(ForeachType!d_string)[] stringbuffer = null;
 
         //printf("Lexer.string('%c')\n", quote);
         p++;
@@ -1184,7 +1193,7 @@ class Lexer
             case '\'':
                 p++;
                 if(c == quote)
-                    return stringbuffer;
+                    return stringbuffer.assumeUnique;
                 break;
 
             case '\\':
@@ -1193,7 +1202,7 @@ class Lexer
                     d = unicode();
                 else
                     d = escapeSequence();
-                dmdscript.utf.encode(stringbuffer, d);
+                std.utf.encode(stringbuffer, d);
                 continue;
 
             case '\n':
@@ -1800,5 +1809,4 @@ void init()
 
     Lexer.inited = true;
 }
-
 

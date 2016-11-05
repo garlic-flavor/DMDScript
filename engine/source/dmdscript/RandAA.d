@@ -575,11 +575,11 @@ public:
                 }
             }
             return (flag == USED) ? &vals[pos] : null;
-	}
-	void insertAlt(ref K key, ref V val, hash_t hashFull){
-		assignNoRehashCheck(key, val, hashFull);
-		rehash();
-	}
+        }
+    void insertAlt(ref K key, ref V val, hash_t hashFull){
+        assignNoRehashCheck(key, val, hashFull);
+        rehash();
+    }
 
     ///
     void opIndexAssign(V val, K index)
@@ -675,7 +675,7 @@ public:
         size_t i = findExisting(index);
         if(i == size_t.max)
         {
-            throw new KeyError("Could not find key " ~ to !string(index));
+            throw new KeyError("Could not find key " ~ to!string(index));
         }
         else
         {
@@ -795,8 +795,8 @@ public:
     }
 }
 
-import std.random, std.exception, std.stdio;
 /*
+import std.random, std.exception, std.stdio;
    // Test it out.
    void unit_tests() {
     string[string] builtin;

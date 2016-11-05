@@ -42,7 +42,7 @@ class Darguments : Dobject
     }
 
     this(Dobject caller, Dobject callee, Dobject actobj,
-         Identifier *[] parameters, Value[] arglist)
+         Identifier*[] parameters, Value[] arglist)
 
     {
         super(Dobject.getPrototype());
@@ -87,7 +87,7 @@ class Darguments : Dobject
                : Dobject.Get(index, vindex);
     }
 
-    override Value* Put(string PropertyName, Value* value, uint attributes)
+    override Status* Put(d_string PropertyName, Value* value, uint attributes)
     {
         d_uint32 index;
 
@@ -97,17 +97,17 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, value, attributes);
     }
 
-    override Value* Put(Identifier* key, Value* value, uint attributes)
+    override Status* Put(Identifier* key, Value* value, uint attributes)
     {
         d_uint32 index;
 
-        if(StringToIndex(key.value.string, index) && index < parameters.length)
+        if(StringToIndex(key.value.text, index) && index < parameters.length)
             return actobj.Put(key, value, attributes);
         else
             return Dobject.Put(key, value, attributes);
     }
 
-    override Value* Put(string PropertyName, Dobject o, uint attributes)
+    override Status* Put(d_string PropertyName, Dobject o, uint attributes)
     {
         d_uint32 index;
 
@@ -117,7 +117,7 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, o, attributes);
     }
 
-    override Value* Put(string PropertyName, d_number n, uint attributes)
+    override Status* Put(d_string PropertyName, d_number n, uint attributes)
     {
         d_uint32 index;
 
@@ -127,7 +127,7 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, n, attributes);
     }
 
-    override Value* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
+    override Status* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
     {
         if(index < parameters.length)
             return actobj.Put(index, vindex, value, attributes);
@@ -135,7 +135,7 @@ class Darguments : Dobject
             return Dobject.Put(index, vindex, value, attributes);
     }
 
-    override Value* Put(d_uint32 index, Value* value, uint attributes)
+    override Status* Put(d_uint32 index, Value* value, uint attributes)
     {
         if(index < parameters.length)
             return actobj.Put(index, value, attributes);

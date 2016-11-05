@@ -20,13 +20,13 @@ module dmdscript.dglobal;
 import std.uri;
 import core.sys.posix.stdlib;
 import core.stdc.string;
-import core.stdc.stdio;
-import std.stdio;
 import std.algorithm;
 import std.math;
 import std.exception;
 import std.utf;
 import std.string;
+import std.traits;
+import std.stdio;
 
 import dmdscript.script;
 import dmdscript.protoerror;
@@ -48,9 +48,8 @@ import dmdscript.dnumber;
 import dmdscript.dboolean;
 import dmdscript.dfunction;
 import dmdscript.dnative;
-import dmdscript.utf;
 
-immutable(char)[] arg0string(Value[] arglist)
+d_string arg0string(Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &vundefined;
     return v.toString();
@@ -58,14 +57,14 @@ immutable(char)[] arg0string(Value[] arglist)
 
 /* ====================== Dglobal_eval ================ */
 
-void* Dglobal_eval(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.1.2.1
     Value* v;
     immutable(char)[] s;
     FunctionDefinition fd;
     ErrInfo errinfo;
-    void *result;
+    Status* result;
 
     //FuncLog funclog(L"Global.eval()");
 
@@ -116,7 +115,7 @@ void* Dglobal_eval(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Va
         locals = p1;
     }
 
-   
+
     version(none)
     {
         Array scopex;
@@ -142,7 +141,7 @@ void* Dglobal_eval(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Va
     }
     else
     {
-        
+
         // The scope chain is initialized to contain the same objects,
         // in the same order, as the calling context's scope chain.
         // This includes objects added to the calling context's
@@ -173,39 +172,39 @@ Lsyntaxerror:
 
     ret.putVundefined();
     o = new syntaxerror.D0(&errinfo);
-    Value* v2 = new Value;
+    auto v2 = new Status;
     v2.putVobject(o);
     return v2;
 }
 
 /* ====================== Dglobal_parseInt ================ */
 
-void* Dglobal_parseInt(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_parseInt(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.1.2.2
     Value* v2;
-    immutable(char) * s;
-    immutable(char) * z;
+    immutable(char)* s;
+    immutable(char)* z;
     d_int32 radix;
     int sign = 1;
     d_number number;
     size_t i;
-    d_string string;
+    d_string str;
 
-    string = arg0string(arglist);
+    str = arg0string(arglist);
 
     //writefln("Dglobal_parseInt('%s')", string);
 
-    while(i < string.length)
+    while(i < str.length)
     {
         size_t idx = i;
-        dchar c = std.utf.decode(string, idx);
+        dchar c = std.utf.decode(str, idx);
         if(!isStrWhiteSpaceChar(c))
             break;
         i = idx;
     }
-    s = string.ptr + i;
-    i = string.length - i;
+    s = str.ptr + i;
+    i = str.length - i;
 
     if(i)
     {
@@ -285,7 +284,7 @@ void* Dglobal_parseInt(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 
     version(none)     // ECMA says to silently ignore trailing characters
     {
-        while(z - &string[0] < string.length)
+        while(z - &str[0] < str.length)
         {
             if(!isStrWhiteSpaceChar(*z))
             {
@@ -303,14 +302,14 @@ void* Dglobal_parseInt(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 
 /* ====================== Dglobal_parseFloat ================ */
 
-void* Dglobal_parseFloat(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_parseFloat(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.1.2.3
     d_number n;
     size_t endidx;
 
-    d_string string = arg0string(arglist);
-    n = StringNumericLiteral(string, endidx, 1);
+    d_string str = arg0string(arglist);
+    n = StringNumericLiteral(str, endidx, 1);
 
     ret.putVnumber(n);
     return null;
@@ -327,7 +326,7 @@ int ISURIALNUM(dchar c)
 
 tchar[16 + 1] TOHEX = "0123456789ABCDEF";
 
-void* Dglobal_escape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_escape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.1.2.4
     d_string s;
@@ -390,11 +389,11 @@ void* Dglobal_escape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, 
 
 /* ====================== Dglobal_unescape ================ */
 
-void* Dglobal_unescape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_unescape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.1.2.5
     d_string s;
-    d_string R;
+    Unqual!(ForeachType!d_string)[] R; // char[] type is assumed.
 
     s = arg0string(arglist);
     //writefln("Dglobal.unescape(s = '%s')", s);
@@ -415,7 +414,7 @@ void* Dglobal_unescape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 
                     if(i == 6)
                     {
-                        dmdscript.utf.encode(R, cast(dchar)u);
+                        std.utf.encode(R, cast(dchar)u);
                         k += 5;
                         goto L1;
                     }
@@ -442,7 +441,7 @@ void* Dglobal_unescape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 
                     if(i == 3)
                     {
-                        dmdscript.utf.encode(R, cast(dchar)u);
+                        std.utf.encode(R, cast(dchar)u);
                         k += 2;
                         goto L1;
                     }
@@ -464,13 +463,13 @@ void* Dglobal_unescape(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
         ;
     }
 
-    ret.putVstring(R);
+    ret.putVstring(R.assumeUnique);
     return null;
 }
 
 /* ====================== Dglobal_isNaN ================ */
 
-void* Dglobal_isNaN(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_isNaN(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.1.2.6
     Value* v;
@@ -489,7 +488,7 @@ void* Dglobal_isNaN(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, V
 
 /* ====================== Dglobal_isFinite ================ */
 
-void* Dglobal_isFinite(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_isFinite(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.1.2.7
     Value* v;
@@ -508,15 +507,15 @@ void* Dglobal_isFinite(Dobject pthis, CallContext *cc, Dobject othis, Value* ret
 
 /* ====================== Dglobal_ URI Functions ================ */
 
-void* URI_error(d_string s)
+Status* URI_error(d_string s)
 {
     Dobject o = new urierror.D0(s ~ "() failure");
-    Value* v = new Value;
+    auto v = new Status;
     v.putVobject(o);
     return v;
 }
 
-void* Dglobal_decodeURI(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_decodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.1.3.1
     d_string s;
@@ -535,7 +534,7 @@ void* Dglobal_decodeURI(Dobject pthis, CallContext *cc, Dobject othis, Value* re
     return null;
 }
 
-void* Dglobal_decodeURIComponent(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_decodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.1.3.2
     d_string s;
@@ -554,7 +553,7 @@ void* Dglobal_decodeURIComponent(Dobject pthis, CallContext *cc, Dobject othis, 
     return null;
 }
 
-void* Dglobal_encodeURI(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_encodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.1.3.3
     d_string s;
@@ -573,7 +572,7 @@ void* Dglobal_encodeURI(Dobject pthis, CallContext *cc, Dobject othis, Value* re
     return null;
 }
 
-void* Dglobal_encodeURIComponent(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_encodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.1.3.4
     d_string s;
@@ -594,7 +593,7 @@ void* Dglobal_encodeURIComponent(Dobject pthis, CallContext *cc, Dobject othis, 
 
 /* ====================== Dglobal_print ================ */
 
-static void dglobal_print(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+static void dglobal_print(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Our own extension
     if(arglist.length)
@@ -612,7 +611,7 @@ static void dglobal_print(CallContext *cc, Dobject othis, Value* ret, Value[] ar
     ret.putVundefined();
 }
 
-void* Dglobal_print(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_print(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Our own extension
     dglobal_print(cc, othis, ret, arglist);
@@ -621,7 +620,7 @@ void* Dglobal_print(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, V
 
 /* ====================== Dglobal_println ================ */
 
-void* Dglobal_println(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_println(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Our own extension
     dglobal_print(cc, othis, ret, arglist);
@@ -631,11 +630,11 @@ void* Dglobal_println(Dobject pthis, CallContext *cc, Dobject othis, Value* ret,
 
 /* ====================== Dglobal_readln ================ */
 
-void* Dglobal_readln(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_readln(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Our own extension
     dchar c;
-    d_string s;
+    Unqual!(ForeachType!d_string)[] s;
 
     for(;; )
     {
@@ -669,15 +668,15 @@ void* Dglobal_readln(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, 
         }
         if(c == '\n')
             break;
-        dmdscript.utf.encode(s, c);
+        std.utf.encode(s, c);
     }
-    ret.putVstring(s);
+    ret.putVstring(s.assumeUnique);
     return null;
 }
 
 /* ====================== Dglobal_getenv ================ */
 
-void* Dglobal_getenv(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_getenv(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // Our own extension
     ret.putVundefined();
@@ -696,25 +695,25 @@ void* Dglobal_getenv(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, 
 
 /* ====================== Dglobal_ScriptEngine ================ */
 
-void* Dglobal_ScriptEngine(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_ScriptEngine(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     ret.putVstring(TEXT_DMDScript);
     return null;
 }
 
-void* Dglobal_ScriptEngineBuildVersion(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_ScriptEngineBuildVersion(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     ret.putVnumber(BUILD_VERSION);
     return null;
 }
 
-void* Dglobal_ScriptEngineMajorVersion(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_ScriptEngineMajorVersion(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     ret.putVnumber(MAJOR_VERSION);
     return null;
 }
 
-void* Dglobal_ScriptEngineMinorVersion(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+Status* Dglobal_ScriptEngineMinorVersion(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     ret.putVnumber(MINOR_VERSION);
     return null;
@@ -741,7 +740,7 @@ class Dglobal : Dobject
 
         Put(TEXT_NaN, d_number.nan, DontEnum | DontDelete);
         Put(TEXT_Infinity, d_number.infinity, DontEnum| DontDelete);
-		Put(TEXT_undefined, &vundefined, DontEnum| DontDelete);
+        Put(TEXT_undefined, &vundefined, DontEnum| DontDelete);
         static enum NativeFunctionData[] nfd =
         [
             // Function properties

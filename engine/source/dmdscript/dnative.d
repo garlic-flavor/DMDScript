@@ -25,11 +25,11 @@ import dmdscript.value;
 
 /******************* DnativeFunction ****************************/
 
-alias void *function(Dobject pthis, CallContext *cc, Dobject othis, Value* ret, Value[] arglist) PCall;
+alias Status* function(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist) PCall;
 
 struct NativeFunctionData
 {
-    d_string string;
+    d_string str;
     PCall     pcall;
     d_uint32  length;
 }
@@ -52,7 +52,7 @@ class DnativeFunction : Dfunction
         pcall = func;
     }
 
-    override void* Call(CallContext *cc, Dobject othis, Value* ret, Value[] arglist)
+    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         return (*pcall)(this, cc, othis, ret, arglist);
     }
@@ -70,8 +70,8 @@ class DnativeFunction : Dfunction
         {
             NativeFunctionData* n = &nfd[i];
 
-            o.Put(n.string,
-                  new DnativeFunction(n.pcall, n.string, n.length, f),
+            o.Put(n.str,
+                  new DnativeFunction(n.pcall, n.str, n.length, f),
                   attributes);
         }
     }

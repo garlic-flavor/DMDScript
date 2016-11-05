@@ -34,7 +34,7 @@ Dobject getPrototype(Dobject o)
     else
     {
         // use "prototype"
-        Value *v;
+        Value* v;
 
         v = o.Get(TEXT_prototype);
         if(!v || v.isPrimitive())
@@ -46,7 +46,7 @@ Dobject getPrototype(Dobject o)
 
 struct Iterator
 {
-            Value[] keys;
+    Value[] keys;
     size_t  keyindex;
     Dobject o;
     Dobject ostart;
@@ -72,7 +72,7 @@ struct Iterator
         keyindex = 0;
     }
 
-    Value *next()
+    Value* next()
     {
         Property* p;
 
