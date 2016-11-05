@@ -812,6 +812,7 @@ class PostIncExp : UnaExp
             else
                 irs.gen_!(Opcode.PreIncScope)(loc, ret, property.id,
                                               property.id.toHash);
+            break;
         case OpOffset.V:
             assert(0);
         }

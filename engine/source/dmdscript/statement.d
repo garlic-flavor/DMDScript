@@ -1448,6 +1448,8 @@ class ContinueStatement : Statement
             irs.pops(w.npops);
         }
         irs.addFixup(irs.getIP());
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// check this. IRjmp's operand is an offset value, not an absolute address.
         irs.gen1(loc, IRjmp, cast(uint)cast(void*)this);
     }
 
@@ -1523,6 +1525,7 @@ class BreakStatement : Statement
         }
 
         irs.addFixup(irs.getIP());
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         irs.gen1(loc, IRjmp, cast(uint)cast(void*)this);
     }
 
@@ -1583,6 +1586,7 @@ class GotoStatement : Statement
         }
 
         irs.addFixup(irs.getIP());
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         irs.gen1(loc, IRjmp, cast(uint)cast(void*)this);
     }
 

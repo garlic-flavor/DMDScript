@@ -758,7 +758,7 @@ package
             {
                 r = regex(pattern, attributes);
             }
-            catch
+            catch(Throwable)
             {
                 errors = 1;
             }

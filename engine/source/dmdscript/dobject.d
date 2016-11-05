@@ -597,75 +597,143 @@ class Dobject
         return RuntimeError(perrinfo, errmsgtbl[msgnum]);
     }
 
-    static Status* RuntimeError(ErrInfo* perrinfo, ...)
+
+    deprecated static Status* RuntimeError(ARGS...)(ErrInfo* perrinfo,
+                                                    int msgnum, string fmt,
+                                                    ARGS args)
     {
         Dobject o;
 
-        //perrinfo.message = null;
-        char[] buffer = null;
-
-        void putc(dchar c)
-        {
-            std.utf.encode(buffer, c);
-        }
-
-        std.format.doFormat(&putc, _arguments, _argptr);
-        perrinfo.message = assumeUnique(buffer);
+        perrinfo.message = std.format.format(fmt, args);
         o = new typeerror.D0(perrinfo);
         auto v = new Status;
         v.putVobject(o);
         return v;
     }
+
+    static Status* RuntimeError(ARGS...)(ErrInfo* perrinfo, string fmt,
+                                         ARGS args)
+    {
+        import std.conv : to;
+        Dobject o;
+
+        perrinfo.message = std.format.format(fmt, args).to!d_string;
+        o = new typeerror.D0(perrinfo);
+        auto v = new Status;
+        v.putVobject(o);
+        return v;
+    }
+
     static Status* ReferenceError(ErrInfo* perrinfo, int msgnum)
     {
         return ReferenceError(perrinfo, errmsgtbl[msgnum]);
     }
 
-    static Status* ReferenceError(...)
+    static Status* ReferenceError(ARGS...)(ErrInfo* perrinfo, string fmt,
+                                           ARGS args)
     {
+        import std.conv : to;
+
+        Dobject o;
+
+        perrinfo.message = std.format.format(fmt, args).to!d_string;
+
+        o = new referenceerror.D0(perrinfo);
+        auto v = new Status;
+        v.putVobject(o);
+        return v;
+    }
+
+    static Status* ReferenceError(ARGS...)(string fmt, ARGS args)
+    {
+        import std.conv : to;
+
         Dobject o;
         ErrInfo errinfo;
-        //perrinfo.message = null;
-        Unqual!(ForeachType!d_string)[] buffer = null;
 
-        void putc(dchar c)
-        {
-            std.utf.encode(buffer, c);
-        }
 
-        std.format.doFormat(&putc, _arguments, _argptr);
-        errinfo.message = buffer.assumeUnique;
+        errinfo.message = std.format.format(fmt, args).to!d_string;
 
         o = new referenceerror.D0(&errinfo);
         auto v = new Status;
         v.putVobject(o);
         return v;
     }
+
+    // static Status* ReferenceError(...)
+    // {
+    //     Dobject o;
+    //     ErrInfo errinfo;
+    //     //perrinfo.message = null;
+    //     Unqual!(ForeachType!d_string)[] buffer = null;
+
+    //     void putc(dchar c)
+    //     {
+    //         std.utf.encode(buffer, c);
+    //     }
+
+    //     std.format.doFormat(&putc, _arguments, _argptr);
+    //     errinfo.message = buffer.assumeUnique;
+
+    //     o = new referenceerror.D0(&errinfo);
+    //     auto v = new Status;
+    //     v.putVobject(o);
+    //     return v;
+    // }
     static Status* RangeError(ErrInfo* perrinfo, int msgnum)
     {
         return RangeError(perrinfo, errmsgtbl[msgnum]);
     }
 
-    static Status* RangeError(ErrInfo* perrinfo, ...)
+
+
+    deprecated static Status* RangeError(ARGS...)(ErrInfo* perrinfo, int,
+                                                  ARGS args)
     {
         Dobject o;
 
-        //perrinfo.message = null;
-        Unqual!(ForeachType!d_string)[] buffer = null;
-
-        void putc(dchar c)
-        {
-            std.utf.encode(buffer, c);
-        }
-
-        std.format.doFormat(&putc, _arguments, _argptr);
-        perrinfo.message = buffer.assumeUnique;
+        // perrinfo.message = std.format.format(fmt, args).to!d_string;
 
         o = new rangeerror.D0(perrinfo);
         auto v = new Status;
         v.putVobject(o);
         return v;
     }
+
+    static Status* RangeError(ARGS...)(ErrInfo* perrinfo, string fmt,
+                                       ARGS args)
+    {
+        import std.conv : to;
+        Dobject o;
+
+        perrinfo.message = std.format.format(fmt, args).to!d_string;
+
+        o = new rangeerror.D0(perrinfo);
+        auto v = new Status;
+        v.putVobject(o);
+        return v;
+    }
+
+    // static Status* RangeError(ErrInfo* perrinfo, ...)
+    // {
+    //     Dobject o;
+
+    //     //perrinfo.message = null;
+    //     Unqual!(ForeachType!d_string)[] buffer = null;
+
+    //     void putc(dchar c)
+    //     {
+    //         std.utf.encode(buffer, c);
+    //     }
+
+    //     std.format.doFormat(&putc, _arguments, _argptr);
+    //     perrinfo.message = buffer.assumeUnique;
+
+    //     o = new rangeerror.D0(perrinfo);
+    //     auto v = new Status;
+    //     v.putVobject(o);
+    //     return v;
+    // }
 
     Status* putIterator(Value* v)
     {

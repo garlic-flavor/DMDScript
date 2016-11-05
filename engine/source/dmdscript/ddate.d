@@ -1735,7 +1735,7 @@ private
             dp.parse(s, st);
             return st.toDtime;
         }
-        catch
+        catch(Throwable)
             return d_time_nan;
     }
 

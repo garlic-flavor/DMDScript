@@ -214,7 +214,7 @@ struct IRstate
     void pops(uint npops)
     {
         while(npops--)
-            gen0(0, IRpop);
+            gen_!(Opcode.Pop)(0);
     }
 
     /******************************
