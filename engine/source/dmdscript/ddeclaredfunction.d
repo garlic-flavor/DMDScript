@@ -72,7 +72,7 @@ class DdeclaredFunction : Dfunction
         //writefln("\tinstantiate(this = %x, fd = %x)", cast(uint)cast(void*)this, cast(uint)cast(void*)fd);
 
         // if it's an empty function, just return
-        if(fd.code[0].opcode == IRret)
+        if(fd.code[0].opcode == Opcode.Ret)
         {
             return null;
         }

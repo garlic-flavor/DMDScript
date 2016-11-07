@@ -20,130 +20,12 @@
 
 module dmdscript.ir;
 
-enum
-{
-    IRerror,
-    IRnop,                      // no operation
-    IRend,                      // end of function
-    IRstring,
-    IRthisget,
-    IRnumber,
-    IRobject,
-    IRthis,
-    IRnull,
-    IRundefined,
-    IRboolean,
-    IRcall,
-    IRcalls = IRcall + 1,
-    IRcallscope = IRcalls + 1,
-    IRcallv = IRcallscope + 1,
-    IRputcall,
-    IRputcalls = IRputcall + 1,
-    IRputcallscope = IRputcalls + 1,
-    IRputcallv = IRputcallscope + 1,
-    IRget,
-    IRgets = IRget + 1,         // 's' versions must be original + 1
-    IRgetscope = IRgets + 1,
-    IRput,
-    IRputs = IRput + 1,
-    IRputscope = IRputs + 1,
-    IRdel,
-    IRdels = IRdel + 1,
-    IRdelscope = IRdels + 1,
-    IRnext,
-    IRnexts = IRnext + 1,
-    IRnextscope = IRnexts + 1,
-    IRaddass,
-    IRaddasss = IRaddass + 1,
-    IRaddassscope = IRaddasss + 1,
-    IRputthis,
-    IRputdefault,
-    IRmov,
-    IRret,
-    IRretexp,
-    IRimpret,
-    IRneg,
-    IRpos,
-    IRcom,
-    IRnot,
-    IRadd,
-    IRsub,
-    IRmul,
-    IRdiv,
-    IRmod,
-    IRshl,
-    IRshr,
-    IRushr,
-    IRand,
-    IRor,
-    IRxor,
-    IRin,
-    IRpreinc,
-    IRpreincs = IRpreinc + 1,
-    IRpreincscope = IRpreincs + 1,
-
-    IRpredec,
-    IRpredecs = IRpredec + 1,
-    IRpredecscope = IRpredecs + 1,
-
-    IRpostinc,
-    IRpostincs = IRpostinc + 1,
-    IRpostincscope = IRpostincs + 1,
-
-    IRpostdec,
-    IRpostdecs = IRpostdec + 1,
-    IRpostdecscope = IRpostdecs + 1,
-
-    IRnew,
-
-    IRclt,
-    IRcle,
-    IRcgt,
-    IRcge,
-    IRceq,
-    IRcne,
-    IRcid,
-    IRcnid,
-
-    IRjt,
-    IRjf,
-    IRjtb,
-    IRjfb,
-    IRjmp,
-
-    IRjlt,              // commonly appears as loop control
-    IRjle,              // commonly appears as loop control
-
-    IRjltc,             // commonly appears as loop control
-    IRjlec,             // commonly appears as loop control
-
-    IRtypeof,
-    IRinstance,
-
-    IRpush,
-    IRpop,
-
-    IRiter,
-    IRassert,
-
-    IRthrow,
-    IRtrycatch,
-    IRtryfinally,
-    IRfinallyret,
-    IRcheckref,//like scope get w/o target, occures mostly on (legal) programmer mistakes
-    IRMAX
-}
-
 /* More self explanatory internal representation.
 (This is a test implementation.)
 
 # An example of memory mapping.
 
 ## about IRnumber
-
-    +--- I choose fixed order. (The original depends on the machine's native.)
-    |
-|-------|
 
  +--- = Opcode.Number
  |
@@ -193,6 +75,7 @@ import dmdscript.script : Loc, d_number, d_boolean;
 import dmdscript.identifier : Identifier;
 import dmdscript.functiondefinition : FunctionDefinition;
 
+//
 enum OpOffset : ubyte
 {
     None,
@@ -201,6 +84,7 @@ enum OpOffset : ubyte
     V,
 }
 
+//
 enum Opcode : ubyte
 {
     Error = 0,
@@ -316,6 +200,7 @@ enum Opcode : ubyte
 
 // this holds an index value that points a Value* in the local variable array.
 alias idx_t = size_t;
+//
 enum idx_t idxNull = 0;
 
 //
@@ -373,6 +258,7 @@ private struct IR0(Opcode CODE)
     debug string toString() const
     { return ir.toString; }
 }
+
 //
 private struct IR1(Opcode CODE)
 {
@@ -679,6 +565,27 @@ private struct IRjump3(Opcode CODE, T = idx_t)
 
     debug string toString(size_t base = 0) const
     { return text(ir, " if(", operand1, ", ", operand2, ") ", offset, base); }
+}
+
+//
+struct IRJmpToStatement
+{
+    import dmdscript.statement : Statement;
+
+    enum Opcode code = Opcode.Jmp;
+    enum size_t size = typeof(this).sizeof / Instruction.sizeof;
+
+    Instruction ir;
+    Statement statement;
+
+    this(Loc loc, Statement statement)
+    {
+        ir = Instruction(loc, code);
+        this.statement = statement;
+    }
+
+    debug string toString(size_t base = 0) const
+    { return text(ir, " ", (cast(size_t)cast(void*)statement) + base); }
 }
 
 //

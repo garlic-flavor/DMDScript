@@ -33,10 +33,10 @@ struct IRstate
 {
     import std.outbuffer : OutBuffer;
 
-    OutBuffer      codebuf;             // accumulate code here
-    Statement      breakTarget;         // current statement that 'break' applies to
-    Statement      continueTarget;      // current statement that 'continue' applies to
-    ScopeStatement scopeContext;        // current ScopeStatement we're inside
+    OutBuffer      codebuf;        // accumulate code here
+    Statement      breakTarget;    // current statement that 'break' applies to
+    Statement      continueTarget; // current statement that 'continue' applies to
+    ScopeStatement scopeContext;   // current ScopeStatement we're inside
     size_t[]         fixups;
 
     //void next();	// close out current Block, and start a new one
@@ -57,14 +57,15 @@ struct IRstate
         {
             if(codebuf.data.length > codebuf.data.capacity)
             {
-                writeln("ptr %p, length %d, capacity %d", codebuf.data.ptr, codebuf.data.length, GC.sizeOf(codebuf.data.ptr));
+                writeln("ptr %p, length %d, capacity %d", codebuf.data.ptr,
+                        codebuf.data.length, GC.sizeOf(codebuf.data.ptr));
                 assert(0);
             }
         }
         for(size_t u = 0; u < codebuf.offset; )
         {
             IR* code = cast(IR*)(codebuf.data.ptr + u);
-            assert(code.opcode < IRMAX);
+            assert(code.opcode <= Opcode.max);
             u += IR.size(code.opcode) * IR.sizeof;
         }
     }
@@ -116,79 +117,6 @@ struct IRstate
     /***************************************
      * Generate code.
      */
-
-    deprecated static size_t combine(Loc loc, uint opcode)
-    {
-        static if      (size_t.sizeof == 4)
-            return (loc << 16) | (opcode & 0xff);
-        else static if (size_t.sizeof == 8)
-            return ((cast(size_t)loc) << 32) | (opcode & 0xff);
-        else static assert(0);
-    }
-
-    deprecated void gen0(Loc loc, uint opcode)
-    {
-        codebuf.write(combine(loc, opcode));
-    }
-
-    deprecated void gen1(Loc loc, uint opcode, size_t arg)
-    {
-        codebuf.reserve(2 * size_t.sizeof);
-        // Inline ourselves for speed (compiler doesn't do a good job)
-        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
-        codebuf.offset += 2 * size_t.sizeof;
-        data[0] = combine(loc, opcode);
-        data[1] = arg;
-    }
-
-    deprecated void gen2(Loc loc, uint opcode, size_t arg1, size_t arg2)
-    {
-        codebuf.reserve(3 * size_t.sizeof);
-        // Inline ourselves for speed (compiler doesn't do a good job)
-        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
-        codebuf.offset += 3 * size_t.sizeof;
-        data[0] = combine(loc, opcode);
-        data[1] = arg1;
-        data[2] = arg2;
-    }
-
-    deprecated void gen3(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3)
-    {
-        codebuf.reserve(4 * size_t.sizeof);
-        // Inline ourselves for speed (compiler doesn't do a good job)
-        auto data = cast(uint*)(codebuf.data.ptr + codebuf.offset);
-        codebuf.offset += 4 * size_t.sizeof;
-        data[0] = combine(loc, opcode);
-        data[1] = arg1;
-        data[2] = arg2;
-        data[3] = arg3;
-    }
-
-    deprecated void gen4(Loc loc, uint opcode, size_t arg1, size_t arg2, size_t arg3,
-              uint arg4)
-    {
-        codebuf.reserve(5 * size_t.sizeof);
-        // Inline ourselves for speed (compiler doesn't do a good job)
-        auto data = cast(size_t*)(codebuf.data.ptr + codebuf.offset);
-        codebuf.offset += 5 * size_t.sizeof;
-        data[0] = combine(loc, opcode);
-        data[1] = arg1;
-        data[2] = arg2;
-        data[3] = arg3;
-        data[4] = arg4;
-    }
-
-    deprecated void gen(Loc loc, uint opcode, uint argc, ...)
-    {
-        import core.stdc.stdarg;
-        codebuf.reserve((1 + argc) * uint.sizeof);
-        codebuf.write(combine(loc, opcode));
-        for(uint i = 1; i <= argc; i++)
-        {
-            codebuf.write(va_arg!(uint)(_argptr));
-        }
-    }
-
     //
     void gen_(Opcode OP, A...)(A args)
     {
@@ -233,7 +161,7 @@ struct IRstate
     void patchJmp(size_t index, size_t value)
     {
         assert((index + 1) * IR.sizeof < codebuf.offset);
-        (cast(size_t*)(codebuf.data))[index + 1] = value - index;
+        (cast(IR*)(codebuf.data))[index + 1].offset = value - index;
     }
 
     /*******************************
@@ -260,6 +188,7 @@ struct IRstate
         {
             index = fixups[i];
             assert((index + 1) * IR.sizeof < codebuf.offset);
+            assert((cast(IR*)codebuf.data)[index].opcode == Opcode.Jmp);
             s = (cast(Statement*)codebuf.data)[index + 1];
             value = s.getTarget();
             patchJmp(index, value);
@@ -280,7 +209,7 @@ struct IRstate
         size_t i;
 
         code = cast(IR*)codebuf.data;
-        for(c = code; c.opcode != IRend; c += IR.size(c.opcode))
+        for(c = code; c.opcode != Opcode.End; c += IR.size(c.opcode))
         {
         }
         length = c - code + 1;
@@ -289,7 +218,7 @@ struct IRstate
         byte[] b = new byte[length]; //TODO: that was a bit array, maybe should use std.container
 
         // Set bit for each target of a jump
-        for(c = code; c.opcode != IRend; c += IR.size(c.opcode))
+        for(c = code; c.opcode != Opcode.End; c += IR.size(c.opcode))
         {
             switch(c.opcode)
             {
@@ -336,7 +265,7 @@ struct IRstate
         }
 
         // Optimize
-        for(c = code; c.opcode != IRend; c += IR.size(c.opcode))
+        for(c = code; c.opcode != Opcode.End; c += IR.size(c.opcode))
         {
             uint offset = (c - code);
 
@@ -379,7 +308,8 @@ struct IRstate
                 {
                     IR* ci = local[i];
                     if(ci &&
-                       (ci.opcode == IRgetscope || ci.opcode == IRputscope) &&
+                       (ci.opcode == Opcode.GetScope ||
+                        ci.opcode == Opcode.PutScope) &&
                        (ci + 2).id.value.text == cs.value.text
                        )
                     {
@@ -450,7 +380,7 @@ struct IRstate
 
         //return;
         // Remove all IRnop's
-        for(c = code; c.opcode != IRend; )
+        for(c = code; c.opcode != Opcode.End; )
         {
             size_t offset;
             size_t o;
@@ -459,7 +389,8 @@ struct IRstate
             if(c.opcode == Opcode.Nop)
             {
                 offset = (c - code);
-                for(c2 = code; c2.opcode != IRend; c2 += IR.size(c2.opcode))
+                for(c2 = code; c2.opcode != Opcode.End;
+                    c2 += IR.size(c2.opcode))
                 {
                     switch(c2.opcode)
                     {

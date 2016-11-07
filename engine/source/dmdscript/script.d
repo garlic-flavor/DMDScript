@@ -40,11 +40,55 @@ alias uint Loc;                 // file location (line number)
 
 struct ErrInfo
 {
-    d_string message;           // error message (null if no error)
-    d_string srcline;           // string of source line (null if not known)
-    uint     linnum;            // source line number (1 based, 0 if not available)
-    int      charpos;           // character position (1 based, 0 if not available)
-    int      code;              // error code (0 if not known)
+    string message;      // error message (null if no error)
+    string sourcename;
+    string source;
+    immutable(char)* pos;
+    string srcline;      // string of source line (null if not known)
+    Loc   linnum;       // source line number (1 based, 0 if not available)
+    int    charpos;      // character position (1 based, 0 if not available)
+    int    code;         // error code (0 if not known)
+
+    string toString()
+    {
+        if (message.length == 0) return "No Error";
+
+        import std.conv : text;
+        import std.array : replace;
+        import std.range : repeat, take;
+
+        string buf;
+        enum Tab = "    ";
+
+        if (0 < sourcename.length && 0 < srcline.length)
+            buf = text(sourcename, "(", linnum, "): Error: ", message);
+        else
+            buf = "Error: " ~ message;
+
+        if (0 == srcline.length && 0 < source.length)
+        {
+            if      (pos !is null)
+                srcline = source.getLineAt(pos, linnum, charpos);
+            else if (0 < linnum)
+                srcline = source.getLineAt(linnum);
+        }
+
+        if (0 < srcline.length)
+        {
+            size_t col;
+            for (size_t i = 0; i < srcline.length && i < charpos; ++i)
+            {
+                if (srcline[i] == '\t') col += Tab.length;
+                else ++col;
+            }
+
+            buf ~= text("\n", srcline.replace("\t", Tab));
+
+            if (0 < charpos)
+                buf ~= text("\n", ' '.repeat.take(col), "^");
+        }
+        return buf;
+    }
 }
 
 class ScriptException : Exception
@@ -321,3 +365,75 @@ int localeCompare(CallContext *cc, d_string s1, d_string s2)
 }
 
 
+package @trusted @nogc nothrow pure
+string getLineAt(string base, const(char)* p, out Loc linnum, out int charpos)
+{
+    assert(base.ptr <= p && p <= base.ptr + base.length);
+
+    immutable(tchar)* s;
+    immutable(tchar)* slinestart;
+
+    linnum = 1;
+    if (0 == base.length || p is null) return null;
+
+    // Find the beginning of the line
+    slinestart = base.ptr;
+    for(s = base.ptr; s < p; ++s)
+    {
+        if(*s == '\n')
+        {
+            ++linnum;
+            slinestart = s + 1;
+        }
+    }
+    charpos = cast(int)(p - slinestart);
+
+    // Find the end of the line
+    loop: for(;;)
+    {
+        switch(*s)
+        {
+        case '\n':
+        case 0:
+        case 0x1A:
+            break loop;
+        default:
+            ++s;
+        }
+    }
+    while(slinestart < s && s[-1] == '\r') --s;
+    return slinestart[0.. s - slinestart];
+}
+
+package @trusted @nogc pure nothrow
+string getLineAt(string src, Loc loc)
+{
+    immutable(char)* slinestart;
+    immutable(char)* s;
+    uint linnum = 1;
+
+    if(!src)
+        return null;
+    slinestart = src.ptr;
+    loop: for(s = src.ptr;; ++s)
+    {
+        switch(*s)
+        {
+        case '\n':
+            if(loc <= linnum) break loop;
+            slinestart = s + 1;
+            ++linnum;
+            break;
+
+        case 0:
+        case 0x1A:
+            break loop;
+        default:
+        }
+    }
+
+    // Remove trailing \r's
+    while(slinestart < s && s[-1] == '\r') --s;
+
+    return slinestart[0 .. slinestart - s];
+}

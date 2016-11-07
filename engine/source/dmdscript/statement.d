@@ -92,9 +92,8 @@ class TopStatement
     void error(ARGS...)(Scope *sc, string fmt, ARGS args)
     {
         import std.format : format;
-        import std.traits : Unqual, ForeachType;
+        import std.conv : to;
 
-        d_string buf;
         d_string sourcename;
 
         if(sc.funcdef)
@@ -102,15 +101,15 @@ class TopStatement
             if(sc.funcdef.isAnonymous)
                 sourcename = "anonymous";
             else if(sc.funcdef.name)
-                sourcename ~= sc.funcdef.name.toString();
+                sourcename ~= sc.funcdef.name.toString;
         }
-        buf = format("%s(%d) : Error: ", sourcename, loc) ~ format(fmt, args);
 
         if(!sc.errinfo.message)
         {
-            sc.errinfo.message = buf;
+            sc.errinfo.message = format(fmt, args);
+            sc.errinfo.sourcename = sourcename.to!string;
+            sc.errinfo.source = sc.getSource;
             sc.errinfo.linnum = loc;
-            sc.errinfo.srcline = Lexer.locToSrcline(sc.getSource.ptr, loc);
         }
     }
 
@@ -1441,9 +1440,7 @@ class ContinueStatement : Statement
             irs.pops(w.npops);
         }
         irs.addFixup(irs.getIP());
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// check this. IRjmp's operand is an offset value, not an absolute address.
-        irs.gen1(loc, IRjmp, cast(uint)cast(void*)this);
+        irs.gen_!IRJmpToStatement(loc, this);
     }
 
     override uint getTarget()
@@ -1518,8 +1515,7 @@ class BreakStatement : Statement
         }
 
         irs.addFixup(irs.getIP());
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        irs.gen1(loc, IRjmp, cast(uint)cast(void*)this);
+        irs.gen_!IRJmpToStatement(loc, this);
     }
 
     override uint getTarget()
@@ -1579,8 +1575,7 @@ class GotoStatement : Statement
         }
 
         irs.addFixup(irs.getIP());
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        irs.gen1(loc, IRjmp, cast(uint)cast(void*)this);
+        irs.gen_!IRJmpToStatement(loc, this);
     }
 
     override uint getTarget()

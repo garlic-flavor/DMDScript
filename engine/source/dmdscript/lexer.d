@@ -20,11 +20,20 @@
 
 module dmdscript.lexer;
 
+import std.ascii :
+    isoctal = isOctalDigit,
+    isasciidigit = isDigit,
+    isasciilower = isLower,
+    isasciiupper = isUpper,
+    ishex = isHexDigit;
+
 import dmdscript.script;
 import dmdscript.text;
 import dmdscript.identifier;
 import dmdscript.scopex;
 import dmdscript.errmsgs;
+
+debug import std.stdio;
 
 /* Tokens:
         (	)
@@ -111,22 +120,17 @@ enum Tok : int
     Transient,
 }
 
-import std.ascii :
-    isoctal = isOctalDigit,
-    isasciidigit = isDigit,
-    isasciilower = isLower,
-    isasciiupper = isUpper,
-    ishex = isHexDigit;
-
 /******************************************************/
 
 struct Token
 {
-    Token* next;
-    immutable(tchar) *ptr;       // pointer to first character of this token within buffer
+    private Token* next;
+    // pointer to first character of this token within buffer
+    immutable(tchar)* ptr;
     uint   linnum;
     Tok    value;
-    immutable(tchar) *sawLineTerminator; // where we saw the last line terminator
+    // where we saw the last line terminator
+    immutable(tchar)* sawLineTerminator;
     union
     {
         number_t    intvalue;
@@ -135,32 +139,32 @@ struct Token
         Identifier* ident;
     };
 
-    static d_string[Tok.max+1] tochars;
+    // static d_string[Tok.max+1] tochars;
+    // alias tochars = ._tochars;
 
-    void print()
+    debug void print()
     {
-        import std.stdio : writefln;
         writefln(toString());
     }
 
     d_string toString()
     {
-        import std.format : format;
+        import std.conv : to;
 
         d_string p;
 
         switch(value)
         {
         case Tok.Number:
-            p = format("%d", intvalue);
+            p = intvalue.to!d_string;
             break;
 
         case Tok.Real:
             long l = cast(long)realvalue;
             if(l == realvalue)
-                p = format("%s", l);
+                p = l.to!d_string;
             else
-                p = format("%s", realvalue);
+                p = realvalue.to!d_string;
             break;
 
         case Tok.String:
@@ -169,7 +173,7 @@ struct Token
             break;
 
         case Tok.Identifier:
-            p = ident.toString();
+            p = ident.toString;
             break;
 
         default:
@@ -179,20 +183,8 @@ struct Token
         return p;
     }
 
-    static d_string toString(Tok value)
-    {
-        import std.format : format;
-        d_string p;
-
-        p = tochars[value];
-        if(!p)
-            p = format("TOK%d", value);
-        return p;
-    }
+    alias toString = .tochars;
 }
-
-
-
 
 /*******************************************************************/
 
@@ -200,24 +192,23 @@ class Lexer
 {
     import std.outbuffer : OutBuffer;
 
-    Identifier[d_string] stringtable;
-    Token* freelist;
+    private Identifier[d_string] stringtable;
+    private Token* freelist;
 
-    d_string sourcename;        // for error message strings
+    private d_string sourcename;        // for error message strings
 
-    d_string base;              // pointer to start of buffer
-    immutable(char)* end;      // past end of buffer
-    immutable(char)* p;        // current character
+    private d_string base;              // pointer to start of buffer
+    private immutable(char)* end;      // past end of buffer
+    private immutable(char)* p;        // current character
     uint currentline;
     Token token;
-    OutBuffer stringbuffer;
-    int useStringtable;         // use for Identifiers
+    private OutBuffer stringbuffer;
+    private int useStringtable;         // use for Identifiers
 
     ErrInfo errinfo;            // syntax error information
-    static bool inited;
 
 
-    Token* allocToken()
+    private Token* allocToken()
     {
         Token* t;
 
@@ -234,16 +225,11 @@ class Lexer
 
     this(d_string sourcename, d_string base, int useStringtable)
     {
-        import core.stdc.string : memset;
-
         //writefln("Lexer::Lexer(base = '%s')\n",base);
-        if(!inited)
-            init();
 
-        memset(&token, 0, token.sizeof);
         this.useStringtable = useStringtable;
         this.sourcename = sourcename;
-        if(!base.length || (base[$ - 1] != 0 && base[$ - 1] != 0x1A))
+        if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
             base ~= cast(tchar)0x1A;
         this.base = base;
         this.end = base.ptr + base.length;
@@ -252,150 +238,42 @@ class Lexer
         freelist = null;
     }
 
-
-    ~this()
-    {
-        //writef(L"~Lexer()\n");
-        freelist = null;
-        sourcename = null;
-        base = null;
-        end = null;
-        p = null;
-    }
-
     dchar get(immutable(tchar)* p)
     {
         import std.utf : decode;
+        assert(base.ptr <= p && p < base.ptr + base.length);
         size_t idx = p - base.ptr;
         return decode(base, idx);
     }
 
     immutable(tchar)* inc(immutable(tchar) * p)
     {
-        import std.utf : decode;
+        import std.utf : stride;
+        assert(base.ptr <= p && p < base.ptr + base.length);
         size_t idx = p - base.ptr;
-        decode(base, idx);
-        return base.ptr + idx;
+        return base.ptr + idx + stride(base, idx);
     }
 
     void error(ARGS...)(string fmt, ARGS args)
     {
         import std.format : format;
-        import std.traits : Unqual, ForeachType;
-
-        uint linnum = 1;
-        immutable(tchar)* s;
-        immutable(tchar)* slinestart;
-        immutable(tchar)* slineend;
-        d_string buf;
-
-        //FuncLog funclog(L"Lexer.error()");
-        //writefln("TEXT START ------------\n%ls\nTEXT END ------------------", base);
-
-        // Find the beginning of the line
-        slinestart = base.ptr;
-        for(s = base.ptr; s != p; s++)
-        {
-            if(*s == '\n')
-            {
-                linnum++;
-                slinestart = s + 1;
-            }
-        }
-
-        // Find the end of the line
-        for(;; )
-        {
-            switch(*s)
-            {
-            case '\n':
-            case 0:
-            case 0x1A:
-                break;
-            default:
-                s++;
-                continue;
-            }
-            break;
-        }
-        slineend = s;
-
-        buf = format("%s(%d) : Error: ", sourcename, linnum) ~
-            format(fmt, args);
 
         if(!errinfo.message)
         {
-            uint len;
-
-            errinfo.message = buf;
-            errinfo.linnum = linnum;
-            errinfo.charpos = p - slinestart;
-
-            len = slineend - slinestart;
-            errinfo.srcline = slinestart[0 .. len];
+            errinfo.message = format(fmt, args);
+            errinfo.sourcename = sourcename;
+            errinfo.source = base;
+            errinfo.pos = p;
         }
 
         // Consume input until the end
-        while(*p != 0x1A && *p != 0)
-            p++;
+        assert(base.ptr < end);
+        p = end - 1;
+
         token.next = null;              // dump any lookahead
 
-        version(none)
-        {
-            writefln(errinfo.message);
-            fflush(stdout);
-            exit(EXIT_FAILURE);
-        }
+        debug throw new Exception(errinfo.toString);
     }
-
-    /************************************************
-     * Given source text, convert loc to a string for the corresponding line.
-     */
-
-    static d_string locToSrcline(immutable(char) *src, Loc loc)
-    {
-        immutable(char) * slinestart;
-        immutable(char) * slineend;
-        immutable(char) * s;
-        uint linnum = 1;
-        uint len;
-
-        if(!src)
-            return null;
-        slinestart = src;
-        for(s = src;; s++)
-        {
-            switch(*s)
-            {
-            case '\n':
-                if(linnum == loc)
-                {
-                    slineend = s;
-                    break;
-                }
-                slinestart = s + 1;
-                linnum++;
-                continue;
-
-            case 0:
-            case 0x1A:
-                slineend = s;
-                break;
-
-            default:
-                continue;
-            }
-            break;
-        }
-
-        // Remove trailing \r's
-        while(slinestart < slineend && slineend[-1] == '\r')
-            --slineend;
-
-        len = slineend - slinestart;
-        return slinestart[0 .. len];
-    }
-
 
     Tok nextToken()
     {
@@ -412,7 +290,6 @@ class Lexer
         {
             scan(&token);
         }
-        //token.print();
         return token.value;
     }
 
@@ -1655,144 +1532,179 @@ class Lexer
 
 /****************************************
  */
-
-struct Keyword
+// This function seems that only be called at error handling,
+// and for debugging.
+private d_string tochars(Tok tok)
 {
-    string name;
-    Tok    value;
-}
+    import std.conv : to;
+    import std.string : toLower;
 
-static Keyword[] keywords =
-[
-//    {	"",		TOK		},
-
-    { "break", Tok.Break },
-    { "case", Tok.Case },
-    { "continue", Tok.Continue },
-    { "default", Tok.Default },
-    { "delete", Tok.Delete },
-    { "do", Tok.Do },
-    { "else", Tok.Else },
-    { "export", Tok.Export },
-    { "false", Tok.False },
-    { "for", Tok.For },
-    { "function", Tok.Function },
-    { "if", Tok.If },
-    { "import", Tok.Import },
-    { "in", Tok.In },
-    { "new", Tok.New },
-    { "null", Tok.Null },
-    { "return", Tok.Return },
-    { "switch", Tok.Switch },
-    { "this", Tok.This },
-    { "true", Tok.True },
-    { "typeof", Tok.Typeof },
-    { "var", Tok.Var },
-    { "void", Tok.Void },
-    { "while", Tok.While },
-    { "with", Tok.With },
-
-    { "catch", Tok.Catch },
-    { "class", Tok.Class },
-    { "const", Tok.Const },
-    { "debugger", Tok.Debugger },
-    { "enum", Tok.Enum },
-    { "extends", Tok.Extends },
-    { "finally", Tok.Finally },
-    { "super", Tok.Super },
-    { "throw", Tok.Throw },
-    { "try", Tok.Try },
-
-    { "abstract", Tok.Abstract },
-    { "boolean", Tok.Boolean },
-    { "byte", Tok.Byte },
-    { "char", Tok.Char },
-    { "double", Tok.Double },
-    { "final", Tok.Final },
-    { "float", Tok.Float },
-    { "goto", Tok.Goto },
-    { "implements", Tok.Implements },
-    { "instanceof", Tok.Instanceof },
-    { "int", Tok.Int },
-    { "interface", Tok.Interface },
-    { "long", Tok.Long },
-    { "native", Tok.Native },
-    { "package", Tok.Package },
-    { "private", Tok.Private },
-    { "protected", Tok.Protected },
-    { "public", Tok.Public },
-    { "short", Tok.Short },
-    { "static", Tok.Static },
-    { "synchronized", Tok.Synchronized },
-    { "transient", Tok.Transient },
-];
-
-void init()
-{
-    uint u;
-    Tok v;
-
-    for(u = 0; u < keywords.length; u++)
+    switch(tok)
     {
-        d_string s;
-
-        //writefln("keyword[%d] = '%s'", u, keywords[u].name);
-        s = keywords[u].name;
-        v = keywords[u].value;
-
-        //writefln("tochars[%d] = '%s'", v, s);
-        Token.tochars[v] = s;
+    case Tok.Lbrace: return "{";
+    case Tok.Rbrace: return "}";
+    case Tok.Lparen: return "(";
+    case Tok.Rparen: return "";
+    case Tok.Lbracket: return "[";
+    case Tok.Rbracket: return "]";
+    case Tok.Colon: return ":";
+    case Tok.Semicolon: return ";";
+    case Tok.Comma: return ",";
+    case Tok.Or: return "|";
+    case Tok.Orass: return "|=";
+    case Tok.Xor: return "^";
+    case Tok.Xorass: return "^=";
+    case Tok.Assign: return "=";
+    case Tok.Less: return "<";
+    case Tok.Greater: return ">";
+    case Tok.Lessequal: return "<=";
+    case Tok.Greaterequal: return ">=";
+    case Tok.Equal: return "==";
+    case Tok.Notequal: return "!=";
+    case Tok.Identity: return "===";
+    case Tok.Nonidentity: return "!==";
+    case Tok.Shiftleft: return "<<";
+    case Tok.Shiftright: return ">>";
+    case Tok.Ushiftright: return ">>>";
+    case Tok.Plus: return "+";
+    case Tok.Plusass: return "+=";
+    case Tok.Minus: return "-";
+    case Tok.Minusass: return "-=";
+    case Tok.Multiply: return "*";
+    case Tok.Multiplyass: return "*=";
+    case Tok.Divide: return "/";
+    case Tok.Divideass: return "/=";
+    case Tok.Percent: return "%";
+    case Tok.Percentass: return "%=";
+    case Tok.And: return "&";
+    case Tok.Andass: return "&=";
+    case Tok.Dot: return ".";
+    case Tok.Question: return "?";
+    case Tok.Tilde: return "~";
+    case Tok.Not: return "!";
+    case Tok.Andand: return "&&";
+    case Tok.Oror: return "||";
+    case Tok.Plusplus: return "++";
+    case Tok.Minusminus: return "--";
+    default:
+        return tok.to!d_string.toLower;
     }
-
-    Token.tochars[Tok.reserved] = "reserved";
-    Token.tochars[Tok.Eof] = "EOF";
-    Token.tochars[Tok.Lbrace] = "{";
-    Token.tochars[Tok.Rbrace] = "}";
-    Token.tochars[Tok.Lparen] = "(";
-    Token.tochars[Tok.Rparen] = "";
-    Token.tochars[Tok.Lbracket] = "[";
-    Token.tochars[Tok.Rbracket] = "]";
-    Token.tochars[Tok.Colon] = ":";
-    Token.tochars[Tok.Semicolon] = ";";
-    Token.tochars[Tok.Comma] = ",";
-    Token.tochars[Tok.Or] = "|";
-    Token.tochars[Tok.Orass] = "|=";
-    Token.tochars[Tok.Xor] = "^";
-    Token.tochars[Tok.Xorass] = "^=";
-    Token.tochars[Tok.Assign] = "=";
-    Token.tochars[Tok.Less] = "<";
-    Token.tochars[Tok.Greater] = ">";
-    Token.tochars[Tok.Lessequal] = "<=";
-    Token.tochars[Tok.Greaterequal] = ">=";
-    Token.tochars[Tok.Equal] = "==";
-    Token.tochars[Tok.Notequal] = "!=";
-    Token.tochars[Tok.Identity] = "===";
-    Token.tochars[Tok.Nonidentity] = "!==";
-    Token.tochars[Tok.Shiftleft] = "<<";
-    Token.tochars[Tok.Shiftright] = ">>";
-    Token.tochars[Tok.Ushiftright] = ">>>";
-    Token.tochars[Tok.Plus] = "+";
-    Token.tochars[Tok.Plusass] = "+=";
-    Token.tochars[Tok.Minus] = "-";
-    Token.tochars[Tok.Minusass] = "-=";
-    Token.tochars[Tok.Multiply] = "*";
-    Token.tochars[Tok.Multiplyass] = "*=";
-    Token.tochars[Tok.Divide] = "/";
-    Token.tochars[Tok.Divideass] = "/=";
-    Token.tochars[Tok.Percent] = "%";
-    Token.tochars[Tok.Percentass] = "%=";
-    Token.tochars[Tok.And] = "&";
-    Token.tochars[Tok.Andass] = "&=";
-    Token.tochars[Tok.Dot] = ".";
-    Token.tochars[Tok.Question] = "?";
-    Token.tochars[Tok.Tilde] = "~";
-    Token.tochars[Tok.Not] = "!";
-    Token.tochars[Tok.Andand] = "&&";
-    Token.tochars[Tok.Oror] = "||";
-    Token.tochars[Tok.Plusplus] = "++";
-    Token.tochars[Tok.Minusminus] = "--";
-    Token.tochars[Tok.Call] = "CALL";
-
-    Lexer.inited = true;
+    assert(0);
 }
 
+/+
+private enum string[] _tochars =
+[
+    // Keywords
+    Tok.Break: "break",
+    Tok.Case: "case",
+    Tok.Continue: "continue",
+    Tok.Default: "default",
+    Tok.Delete: "delete",
+    Tok.Do: "do",
+    Tok.Else: "else",
+    Tok.Export: "export",
+    Tok.False: "false",
+    Tok.For: "for",
+    Tok.Function: "function",
+    Tok.If: "if",
+    Tok.Import: "import",
+    Tok.In: "in",
+    Tok.New: "new",
+    Tok.Null: "null",
+    Tok.Return: "return",
+    Tok.Switch: "switch",
+    Tok.This: "this",
+    Tok.True: "true",
+    Tok.Typeof: "typeof",
+    Tok.Var: "var",
+    Tok.Void: "void",
+    Tok.While: "while",
+    Tok.With: "with",
+
+    Tok.Catch: "catch",
+    Tok.Class: "class",
+    Tok.Const: "const",
+    Tok.Debugger: "debugger",
+    Tok.Enum: "enum",
+    Tok.Extends: "extends",
+    Tok.Finally: "finally",
+    Tok.Super: "super",
+    Tok.Throw: "throw",
+    Tok.Try: "try",
+
+    Tok.Abstract: "abstract",
+    Tok.Boolean: "boolean",
+    Tok.Byte: "byte",
+    Tok.Char: "char",
+    Tok.Double: "double",
+    Tok.Final: "final",
+    Tok.Float: "float",
+    Tok.Goto: "goto",
+    Tok.Implements: "implements",
+    Tok.Instanceof: "instanceof",
+    Tok.Int: "int",
+    Tok.Interface: "interface",
+    Tok.Long: "long",
+    Tok.Native: "native",
+    Tok.Package: "package",
+    Tok.Private: "private",
+    Tok.Protected: "protected",
+    Tok.Public: "public",
+    Tok.Short: "short",
+    Tok.Static: "static",
+    Tok.Synchronized: "synchronized",
+    Tok.Transient: "transient",
+
+    //
+    Tok.reserved: "reserved",
+    Tok.Eof: "EOF",
+    Tok.Lbrace: "{",
+    Tok.Rbrace: "}",
+    Tok.Lparen: "(",
+    Tok.Rparen: "",
+    Tok.Lbracket: "[",
+    Tok.Rbracket: "]",
+    Tok.Colon: ":",
+    Tok.Semicolon: ";",
+    Tok.Comma: ",",
+    Tok.Or: "|",
+    Tok.Orass: "|=",
+    Tok.Xor: "^",
+    Tok.Xorass: "^=",
+    Tok.Assign: "=",
+    Tok.Less: "<",
+    Tok.Greater: ">",
+    Tok.Lessequal: "<=",
+    Tok.Greaterequal: ">=",
+    Tok.Equal: "==",
+    Tok.Notequal: "!=",
+    Tok.Identity: "===",
+    Tok.Nonidentity: "!==",
+    Tok.Shiftleft: "<<",
+    Tok.Shiftright: ">>",
+    Tok.Ushiftright: ">>>",
+    Tok.Plus: "+",
+    Tok.Plusass: "+=",
+    Tok.Minus: "-",
+    Tok.Minusass: "-=",
+    Tok.Multiply: "*",
+    Tok.Multiplyass: "*=",
+    Tok.Divide: "/",
+    Tok.Divideass: "/=",
+    Tok.Percent: "%",
+    Tok.Percentass: "%=",
+    Tok.And: "&",
+    Tok.Andass: "&=",
+    Tok.Dot: ".",
+    Tok.Question: "?",
+    Tok.Tilde: "~",
+    Tok.Not: "!",
+    Tok.Andand: "&&",
+    Tok.Oror: "||",
+    Tok.Plusplus: "++",
+    Tok.Minusminus: "--",
+    Tok.Call: "CALL",
+];
+debug static assert(_tochars.length == Tok.max+1);
++/

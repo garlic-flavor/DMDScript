@@ -1268,7 +1268,7 @@ struct IR
                             sta = cannotConvert(b, code.opcode.linnum);
                             goto Lthrow;
                         }
-                        s = (code.opcode == IRdel)
+                        s = (code.opcode == Opcode.Del)
                             ? (locals + (code + 3).index).toString()
                             : (code + 3).id.value.text;
                         if(o.implementsDelete())
@@ -1490,7 +1490,7 @@ struct IR
                         res = false;
                     }
 
-                    res ^= (code.opcode == IRcne);
+                    res ^= (code.opcode == Opcode.CNE);
                     //Lceq:
                     a.putVboolean(res);
 
@@ -1523,7 +1523,7 @@ struct IR
                             d_number y = c.number;
 
                             // Ensure that a NAN operand produces false
-                            if(code.opcode == IRcid)
+                            if(code.opcode == Opcode.CID)
                                 res = (x == y);
                             else
                                 res = (x != y);
@@ -1543,7 +1543,7 @@ struct IR
                         res = false;
                     }
 
-                    res ^= (code.opcode == IRcnid);
+                    res ^= (code.opcode == Opcode.CNID);
                     Lcid:
                     a.putVboolean(res);
 
@@ -2072,7 +2072,7 @@ struct IR
             //writef("%2d(%d):", code - codestart, code.linnum);
             writef("%2d:", code - codestart);
             print(code - codestart, code);
-            if(code.opcode == IRend)
+            if(code.opcode == Opcode.End)
                 return;
             code += size(code.opcode);
         }

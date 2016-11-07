@@ -17,13 +17,6 @@
 
 module dmdscript.expression;
 
-// import std.string;
-// import std.algorithm;
-// import std.string;
-// import std.range;
-// import std.exception;
-// import std.ascii;
-
 import dmdscript.script;
 import dmdscript.lexer;
 import dmdscript.scopex;
@@ -87,24 +80,23 @@ class Expression
     void checkLvalue(Scope* sc)
     {
         import std.format : format;
-        d_string buf;
+        d_string sourcename;
 
         //writefln("checkLvalue(), op = %d", op);
         if(sc.funcdef)
         {
             if(sc.funcdef.isAnonymous)
-                buf = "anonymous";
+                sourcename = "anonymous";
             else if(sc.funcdef.name)
-                buf = sc.funcdef.name.toString();
+                sourcename = sc.funcdef.name.toString;
         }
-        buf ~= format("(%d) : Error: ", loc);
-        buf ~= format(Err.CannotAssignTo, toString);
 
         if(!sc.errinfo.message)
         {
-            sc.errinfo.message = buf;
+            sc.errinfo.message = format(Err.CannotAssignTo, toString);
+            sc.errinfo.sourcename = sourcename;
+            sc.errinfo.source = sc.getSource;
             sc.errinfo.linnum = loc;
-            sc.errinfo.srcline = Lexer.locToSrcline(sc.getSource().ptr, loc);
         }
     }
 

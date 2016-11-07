@@ -91,7 +91,7 @@ class Parser : Lexer
                 break;
             else
             {
-                p.error(Err.FplExpectedComma, p.token.toString());
+                p.error(Err.FplExpectedComma, p.token.toString);
                 goto Lreturn;
             }
         }
@@ -356,7 +356,7 @@ class Parser : Lexer
 
                 if(token.value != Tok.Identifier)
                 {
-                    error(Err.ExpectedIdentifierParam, token.toString());
+                    error(Err.ExpectedIdentifierParam, token.toString);
                     break;
                 }
                 ident = token.ident;
@@ -540,7 +540,7 @@ class Parser : Lexer
             }
             else
             {
-                error(Err.InExpected, token.toString());
+                error(Err.InExpected, token.toString);
                 s = null;
             }
             break;
@@ -606,7 +606,7 @@ class Parser : Lexer
           nextToken();
           if(token.value != Tok.Identifier)
           {
-              error(Err.GotoLabelExpected, token.toString());
+              error(Err.GotoLabelExpected, token.toString);
               s = null;
               break;
           }
@@ -686,7 +686,7 @@ class Parser : Lexer
           break; }
 
         default:
-            error(Err.StatementExpected, token.toString());
+            error(Err.StatementExpected, token.toString);
             nextToken();
             s = null;
             break;
@@ -923,7 +923,7 @@ class Parser : Lexer
                         ident = token.ident;
                         break;
                     case Tok.String,Tok.Number,Tok.Real:
-                        ident = Identifier.build(token.toString());
+                        ident = Identifier.build(token.toString);
                     break;
                     default:
                         error(Err.ExpectedIdentifier);
