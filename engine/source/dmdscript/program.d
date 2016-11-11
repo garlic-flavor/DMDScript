@@ -93,11 +93,11 @@ class Program
         //writef("parse_common()\n");
         Parser p = new Parser(progIdentifier, srctext, 1);
 
-        ErrInfo errinfo;
-        if(p.parseProgram(topstatements, &errinfo))
+        ScriptException exception;
+        if(p.parseProgram(topstatements, exception))
         {
             topstatements[] = null;
-            throw new ScriptException(&errinfo);
+            throw exception;
         }
 
         if(pfd)
@@ -132,13 +132,14 @@ class Program
         sc.src = srctext;
         globalfunction.semantic(&sc);
 
-        msg = sc.errinfo.message;
+        if (sc.exception !is null)
+            msg = sc.exception.message;
         if(msg)                         // if semantic() failed
         {
             globalfunction.topstatements[] = null;
             globalfunction.topstatements = null;
             globalfunction = null;
-            throw new ScriptException(&sc.errinfo);
+            throw sc.exception;
         }
 
         if(pfd)
@@ -219,12 +220,10 @@ class Program
         result = IR.call(cc, cc.global, globalfunction.code, &ret, locals.ptr);
         if(result)
         {
-            ErrInfo errinfo;
-
-            result.getErrInfo(&errinfo, cc.linnum);
+            auto exception = result.getException(cc.linnum);
             cc.linnum = 0;
-            delete p1;
-            throw new ScriptException(&errinfo);
+            p1 = null;
+            throw exception;
         }
         //writef("-Program.execute()\n");
 

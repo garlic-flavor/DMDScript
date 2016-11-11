@@ -68,6 +68,36 @@ class D0_constructor : Dfunction
 }
 
 
+package class D0base : Dobject
+{
+    ScriptException exception;
+
+    protected this(Dobject prototype)
+    {
+        super(prototype);
+        classname = Text.Error;
+    }
+
+    protected this(Dobject prototype, d_string m)
+    {
+        this(prototype);
+        Put(Text.message, m, 0);
+        Put(Text.description, m, 0);
+        Put(Text.number, cast(d_number)0, 0);
+        exception = new ScriptException(m);
+    }
+
+    protected this(Dobject prototype, ScriptException exception)
+    {
+        this(prototype);
+        assert(exception !is null);
+        this.exception = exception;
+        Put(Text.message, exception.message, 0);
+        Put(Text.description, exception.toString, 0);
+        Put(Text.number, cast(d_number)exception.code, 0);
+    }
+}
+
 template proto(alias TEXT_D1)
 {
     /* ===================== D0_prototype ==================== */
@@ -91,40 +121,16 @@ template proto(alias TEXT_D1)
 
     /* ===================== D0 ==================== */
 
-    class D0 : Dobject
+    class D0 : D0base
     {
-        ErrInfo errinfo;
-
-        this(Dobject prototype)
-        {
-            super(prototype);
-            classname = Text.Error;
-        }
+        private this(Dobject prototype)
+        { super(prototype); }
 
         this(d_string m)
-        {
-            this(D0.getPrototype());
-            Put(Text.message, m, 0);
-            Put(Text.description, m, 0);
-            Put(Text.number, cast(d_number)0, 0);
-            errinfo.message = m;
-        }
+        { super(D0.getPrototype, m); }
 
-        this(ErrInfo * perrinfo)
-        {
-            this(perrinfo.message);
-            errinfo = *perrinfo;
-            Put(Text.number, cast(d_number)perrinfo.code, 0);
-        }
-
-        override void getErrInfo(ErrInfo* perrinfo, int linnum)
-        {
-            if(linnum && errinfo.linnum == 0)
-                errinfo.linnum = linnum;
-            if(perrinfo)
-                *perrinfo = errinfo;
-            //writefln("getErrInfo(linnum = %d), errinfo.linnum = %d", linnum, errinfo.linnum);
-        }
+        this(ScriptException exception)
+        { super(D0.getPrototype, exception); }
 
         static Dfunction getConstructor()
         {

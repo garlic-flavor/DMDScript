@@ -68,12 +68,8 @@ Status* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othi
     // othis must be a Boolean
     if(!othis.isClass(Text.Boolean))
     {
-        ErrInfo errinfo;
-
-        ret.putVundefined();
-        return Dobject.RuntimeError(&errinfo, Err.FunctionWantsBool,
-                                    Text.toString,
-                                    othis.classname);
+        ret.putVundefined;
+        return FunctionWantsBoolError(Text.toString, othis.classname);
     }
     else
     {
@@ -95,12 +91,8 @@ Status* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis
     // othis must be a Boolean
     if(!othis.isClass(Text.Boolean))
     {
-        ErrInfo errinfo;
-
-        ret.putVundefined();
-        return Dobject.RuntimeError(&errinfo, Err.FunctionWantsBool,
-                                    Text.valueOf,
-                                    othis.classname);
+        ret.putVundefined;
+        return FunctionWantsBoolError(Text.valueOf, othis.classname);
     }
     else
     {

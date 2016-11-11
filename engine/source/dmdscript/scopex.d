@@ -40,7 +40,10 @@ struct Scope
     Statement          breakTarget;
     SwitchStatement    switchTarget;
 
-    ErrInfo            errinfo; // semantic() puts error messages here
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// remove ErrInfo
+    // ErrInfo            errinfo; // semantic() puts error messages here
+    ScriptException exception;
 
     void               zero()
     {
@@ -110,8 +113,8 @@ struct Scope
 
     void pop()
     {
-        if(enclosing && !enclosing.errinfo.message)
-            enclosing.errinfo = errinfo;
+        if(enclosing !is null && enclosing.exception is null)
+            enclosing.exception = exception;
         zero();                 // aid GC
     }
 

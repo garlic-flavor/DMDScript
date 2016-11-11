@@ -65,7 +65,7 @@ class Parser : Lexer
      */
 
     static int parseFunctionDefinition(out FunctionDefinition pfd,
-                                       immutable(char)[] params, immutable(char)[] bdy, out ErrInfo perrinfo)
+                                       immutable(char)[] params, immutable(char)[] bdy, out ScriptException pexception)
     {
         Parser p;
         Identifier*[] parameters;
@@ -95,7 +95,7 @@ class Parser : Lexer
                 goto Lreturn;
             }
         }
-        if(p.errinfo.message)
+        if(p.exception !is null)
             goto Lreturn;
 
         delete p;
@@ -117,9 +117,8 @@ class Parser : Lexer
 
         Lreturn:
         pfd = fd;
-        perrinfo = p.errinfo;
-        result = (p.errinfo.message != null);
-        delete p;
+        pexception = p.exception;
+        result = (p.exception !is null);
         p = null;
         return result;
     }
@@ -128,14 +127,15 @@ class Parser : Lexer
      * Return !=0 on error, and fill in *perrinfo.
      */
 
-    int parseProgram(out TopStatement[] topstatements, ErrInfo *perrinfo)
+    int parseProgram(out TopStatement[] topstatements,
+                     out ScriptException pexception)
     {
         topstatements = parseTopStatements();
         check(Tok.Eof);
         //writef("parseProgram done\n");
-        *perrinfo = errinfo;
+        pexception = exception;
         //clearstack();
-        return errinfo.message != null;
+        return exception !is null;
     }
 
     TopStatement[] parseTopStatements()

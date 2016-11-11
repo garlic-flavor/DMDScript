@@ -126,7 +126,7 @@ class FunctionDefinition : TopStatement
                 if(!ts.done)
                 {
                     ts = ts.semantic(sc);
-                    if(sc.errinfo.message)
+                    if(sc.exception !is null)
                         break;
 
                     if(iseval)

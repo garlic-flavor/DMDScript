@@ -17,12 +17,6 @@
 
 module dmdscript.value;
 
-// import std.math;
-// import std.string;
-// import std.stdio;
-// import std.conv;
-// import core.stdc.string;
-
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.iterator;
@@ -85,7 +79,7 @@ struct Value
             throwRefError();
     }
     void throwRefError() const{
-        throw new ErrorValue(Dobject.ReferenceError(Err.UndefinedVar, text));
+        throw UndefinedVarError.toThrow(text);
     }
 
     void putSignalingUndefined(d_string id){
@@ -234,13 +228,11 @@ struct Value
             assert(object);
             a = object.DefaultValue(v, PreferredType);
             if(a)
-                throw new ErrorValue(a);
+                throw a.toScriptException;
             if(!v.isPrimitive)
             {
-                ErrInfo errinfo;
-
                 v.putVundefined;
-                throw new ErrorValue(Dobject.RuntimeError(&errinfo, Err.ObjectCannotBePrimitive));
+                throw ObjectCannotBePrimitiveError.toThrow;
             }
         }
         else
@@ -1034,12 +1026,8 @@ struct Value
             return object.Put(PropertyName, value, 0);
         else
         {
-            ErrInfo errinfo;
-
-            return Dobject.RuntimeError(&errinfo,
-                                        Err.CannotPutToPrimitive,
-                                        PropertyName, value.toString(),
-                                        getType());
+            return CannotPutToPrimitiveError(
+                PropertyName, value.toString, getType);
         }
     }
 
@@ -1049,12 +1037,8 @@ struct Value
             return object.Put(index, vindex, value, 0);
         else
         {
-            ErrInfo errinfo;
-
-            return Dobject.RuntimeError(&errinfo,
-                                        Err.CannotPutIndexToPrimitive,
-                                        index,
-                                        value.toString, getType);
+            return CannotPutIndexToPrimitiveError(
+                index, value.toString, getType);
         }
     }
 
@@ -1142,10 +1126,8 @@ struct Value
         }
         else
         {
-            ErrInfo errinfo;
             ret.putVundefined();
-            return Dobject.RuntimeError(&errinfo,
-                                        Err.PrimitiveNoConstruct, getType);
+            return PrimitiveNoConstructError(getType);
         }
     }
 
@@ -1165,11 +1147,9 @@ struct Value
         }
         else
         {
-            ErrInfo errinfo;
             //PRINTF("Call method not implemented for primitive %p (%s)\n", this, d_string_ptr(toString()));
             ret.putVundefined();
-            return Dobject.RuntimeError(&errinfo,
-                                        Err.PrimitiveNoCall, getType);
+            return PrimitiveNoCallError(getType);
         }
     }
 
@@ -1179,27 +1159,18 @@ struct Value
             return object.putIterator(v);
         else
         {
-            ErrInfo errinfo;
             v.putVundefined();
-            return Dobject.RuntimeError(&errinfo, Err.ForInMustBeObject);
+            return ForInMustBeObjectError;
         }
     }
 
-
-    void getErrInfo(ErrInfo* perrinfo, int linnum)
+    ScriptException getException(Loc linnum)
     {
-        if(vtype == V_OBJECT)
-            object.getErrInfo(perrinfo, linnum);
+        if (vtype == V_OBJECT)
+            return object.getException(linnum);
         else
-        {
-            ErrInfo errinfo;
-
-            if(linnum && errinfo.linnum == 0)
-                errinfo.linnum = linnum;
-            errinfo.message = "Unhandled exception: " ~ toString();
-            if(perrinfo)
-                *perrinfo = errinfo;
-        }
+            return new ScriptException("Unhandled exception: " ~ toString,
+                                       null, null, linnum);
     }
 
     void dump()
@@ -1255,4 +1226,27 @@ struct Status
     {
         *to = *from;
     }
+
+    ScriptException toScriptException()
+    {
+        import dmdscript.protoerror;
+
+        if (auto d0 = cast(D0base)entity.toObject) return d0.exception;
+        assert(0);
+    }
 }
+
+package Status* toStatus(alias Proto = typeerror)(Throwable t)
+{
+    assert(t !is null);
+    ScriptException exception;
+
+    if (auto se = cast(ScriptException)t) exception = se;
+    else exception = new ScriptException(t.toString, t.file, t.line);
+    assert(exception !is null);
+
+    auto v = new Status;
+    v.putVobject(new Proto.D0(exception));
+    return v;
+}
+

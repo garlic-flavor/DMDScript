@@ -54,13 +54,8 @@ Status* Dstring_fromCharCode(Dobject pthis, CallContext* cc, Dobject othis, Valu
         //writef("string.fromCharCode(%x)", u);
         if(!isValidDchar(u))
         {
-            ErrInfo errinfo;
-
             ret.putVundefined();
-            return pthis.RuntimeError(&errinfo,
-                                      Err.NotValidUTF,
-                                      "String", "fromCharCode()",
-                                      u);
+            return NotValidUTFError("String", "fromCharCode()", u);
         }
         encode(s, u);
         //writefln("s[0] = %x, s = '%s'", s[0], s);
@@ -118,13 +113,8 @@ Status* Dstring_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
     // othis must be a String
     if(!othis.isClass(Text.String))
     {
-        ErrInfo errinfo;
-
         ret.putVundefined();
-        return pthis.RuntimeError(&errinfo,
-                                  Err.FunctionWantsString,
-                                  Text.toString,
-                                  othis.classname);
+        return FunctionWantsStringError(Text.toString, othis.classname);
     }
     else
     {
@@ -146,13 +136,8 @@ Status* Dstring_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
     // othis must be a String
     if(!othis.isClass(Text.String))
     {
-        ErrInfo errinfo;
-
         ret.putVundefined();
-        return pthis.RuntimeError(&errinfo,
-                                  Err.FunctionWantsString,
-                                  Text.valueOf,
-                                  othis.classname);
+        return FunctionWantsStringError(Text.valueOf, othis.classname);
     }
     else
     {

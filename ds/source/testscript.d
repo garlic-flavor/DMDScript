@@ -85,7 +85,7 @@ int main(string[] args)
     SrcFile[] srcfiles;
     int result;
     bool verbose;
-    ErrInfo errinfo;
+
     //GC.disable();
     if(args.length == 1)
 		stderr.writefln(dmdscript.script.banner());

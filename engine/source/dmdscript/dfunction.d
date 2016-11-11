@@ -51,7 +51,7 @@ class DfunctionConstructor : Dfunction
         immutable(char)[] bdy;
         immutable(char)[] P;
         FunctionDefinition fd;
-        ErrInfo errinfo;
+        ScriptException exception;
 
         //writef("Dfunction_constructor::Construct()\n");
 
@@ -70,7 +70,7 @@ class DfunctionConstructor : Dfunction
             }
         }
 
-        if(Parser.parseFunctionDefinition(fd, P, bdy, errinfo))
+        if(Parser.parseFunctionDefinition(fd, P, bdy, exception))
             goto Lsyntaxerror;
 
         if(fd)
@@ -79,8 +79,8 @@ class DfunctionConstructor : Dfunction
 
             sc.ctor(fd);
             fd.semantic(&sc);
-            errinfo = sc.errinfo;
-            if(errinfo.message)
+            exception = sc.exception;
+            if(exception !is null)
                 goto Lsyntaxerror;
             fd.toIR(null);
             Dfunction fobj = new DdeclaredFunction(fd);
@@ -97,7 +97,7 @@ class DfunctionConstructor : Dfunction
         Dobject o;
 
         ret.putVundefined();
-        o = new syntaxerror.D0(&errinfo);
+        o = new syntaxerror.D0(exception);
         auto v = new Status;
         v.putVobject(o);
         return v;
@@ -122,9 +122,8 @@ Status* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject oth
     // othis must be a Function
     if(!othis.isClass(Text.Function))
     {
-        ErrInfo errinfo;
         ret.putVundefined();
-        return Dobject.RuntimeError(&errinfo, Err.TsNotTransferrable);
+        return TsNotTransferrableError;
     }
     else
     {
@@ -184,8 +183,7 @@ Status* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
         {
             Ltypeerror:
             ret.putVundefined();
-            ErrInfo errinfo;
-            return Dobject.RuntimeError(&errinfo, Err.ArrayArgs);
+            return ArrayArgsError;
         }
         Dobject a;
 
@@ -337,8 +335,7 @@ class Dfunction : Dobject
       w = Get(Text.prototype);
       if(w.isPrimitive())
       {
-          ErrInfo errinfo;
-          return RuntimeError(&errinfo, Err.MustBeObject, w.getType());
+          return MustBeObjectError(w.getType);
       }
       o = w.toObject();
       for(;; )

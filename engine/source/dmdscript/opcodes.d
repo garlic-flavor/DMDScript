@@ -31,6 +31,7 @@ import dmdscript.errmsgs;
 import dmdscript.property;
 import dmdscript.ddeclaredfunction;
 import dmdscript.dfunction;
+import dmdscript.protoerror;
 
 //debug=VERIFY;	// verify integrity of code
 
@@ -311,19 +312,15 @@ void PutValue(CallContext* cc, Identifier* id, Value* a)
 
 Status* cannotConvert(Value* b, int linnum)
 {
-    ErrInfo errinfo;
     Status* sta;
 
-    errinfo.linnum = linnum;
     if(b.isUndefinedOrNull())
     {
-        sta = Dobject.RuntimeError(&errinfo, Err.CannotConvertToObject4,
-                                 b.getType);
+        sta = CannotConvertToObject4Error(b.getType, linnum);
     }
     else
     {
-        sta = Dobject.RuntimeError(&errinfo, Err.CannotConvertToObject2,
-                                 b.getType, b.toString);
+        sta = CannotConvertToObject2Error(b.getType, b.toString, linnum);
     }
     return sta;
 }
@@ -619,12 +616,8 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        //writef("%s %s.%s cannot convert to Object", b.getType(), b.toString(), s);
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.CannotConvertToObject3,
-                                                   b.getType(), b.toString(),
-                                                   s);
+                        sta = CannotConvertToObject3Error(
+                            b.getType, b.toString, s);
                         goto Lthrow;
                     }
                     v = o.Get(s);
@@ -640,7 +633,7 @@ struct IR
                     id = (code+1).id;
                     s = id.value.text;
                     if(!scope_get(scopex, id))
-                        throw new ErrorValue(Dobject.ReferenceError(Err.UndefinedVar,s));
+                        throw UndefinedVarError.toThrow(s);
                     code += IRTypes[Opcode.CheckRef].size;
                     break;
                 case Opcode.GetScope:            // a = s
@@ -718,7 +711,7 @@ struct IR
                     a = locals + (code + 1).index;
                     if(!v)
                     {
-                        throw new ErrorValue(Dobject.ReferenceError(Err.UndefinedVar,s));
+                        throw UndefinedVarError.toThrow(s);
                         //a.putVundefined();
                         /+
                                             if (b)
@@ -795,10 +788,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.CannotAssign, a.getType,
-                                                   b.getType());
+                        sta = CannotAssignError(a.getType, b.getType);
                         goto Lthrow;
                     }
                     sta = o.PutDefault(a);
@@ -925,10 +915,7 @@ struct IR
                     c = locals + (code + 3).index;
                     if(c.isPrimitive())
                     {
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.RhsMustBeObject,
-                                                   "instanceof", c.getType());
+                        sta = RhsMustBeObjectError("instanceof", c.getType);
                         goto Lthrow;
                     }
                     co = c.toObject();
@@ -1068,10 +1055,9 @@ struct IR
                     c = locals + (code + 3).index;
                     s = b.toString();
                     o = c.toObject();
-                    if(!o){
-                        ErrInfo errinfo;
-                        throw new ErrorValue(Dobject.RuntimeError(&errinfo,Err.RhsMustBeObject,"in",c.toString));
-                    }
+                    if(!o)
+                        throw RhsMustBeObjectError.toThrow("in", c.toString);
+
                     a.putVboolean(o.HasProperty(s));
                     code += IRTypes[Opcode.In].size;
                     break;
@@ -1132,7 +1118,7 @@ struct IR
                             else
                             {
                                 //FIXED: as per ECMA v5 should throw ReferenceError
-                                sta = Dobject.ReferenceError(Err.UndefinedVar, s);
+                                sta = UndefinedVarError(s);
                                 //a.putVundefined();
                                 goto Lthrow;
                             }
@@ -1148,7 +1134,9 @@ struct IR
                             Value.copy(a, v);
                         }
                         else
-                            throw new ErrorValue(Dobject.ReferenceError(Err.UndefinedVar, s));
+                        {
+                            throw UndefinedVarError.toThrow(s);
+                        }
                     }
                     static assert(IRTypes[Opcode.PreIncScope].size
                                   == IRTypes[Opcode.PreDecScope].size);
@@ -1207,7 +1195,7 @@ struct IR
                     {
                         //GETa(code).putVundefined();
                         //FIXED: as per ECMA v5 should throw ReferenceError
-                        throw new ErrorValue(Dobject.ReferenceError(id.value.text));
+                        throw ReferenceError.toThrow(id.value.text);
                         //v = signalingUndefined(id.value.string);
                     }
                     code += IRTypes[Opcode.PostIncScope].size;
@@ -1249,7 +1237,7 @@ struct IR
                     {
                         //GETa(code).putVundefined();
                         //FIXED: as per ECMA v5 should throw ReferenceError
-                        throw new ErrorValue(Dobject.ReferenceError(id.value.text));
+                        throw ReferenceError.toThrow(id.value.text);
                         //v = signalingUndefined(id.value.string);
                     }
                     code += IRTypes[Opcode.PostDecScope].size;
@@ -1760,11 +1748,7 @@ struct IR
                     Lcallerror:
                     {
                         //writef("%s %s.%s is undefined and has no Call method\n", b.getType(), b.toString(), s);
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.UndefinedNoCall3,
-                                                   b.getType(), b.toString(),
-                                                   s);
+                        sta = UndefinedNoCall3Error(b.getType, b.toString, s);
                         goto Lthrow;
                     }
 
@@ -1776,9 +1760,8 @@ struct IR
                     //writefln("v.toString() = '%s'", v.toString());
                     if(!v)
                     {
-                        ErrInfo errinfo;
-                        sta = Dobject.ReferenceError(Err.UndefinedVar,s);
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
+                        sta = UndefinedVarError(s);
                         goto Lthrow;
                     }
                     // Should we pass othis or o? I think othis.
@@ -1800,10 +1783,7 @@ struct IR
                     if(!o)
                     {
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.UndefinedNoCall2,
-                                                   b.getType, b.toString);
+                        sta = UndefinedNoCall2Error(b.getType, b.toString);
                         goto Lthrow;
                     }
                     cc.callerothis = othis;        // pass othis to eval()
@@ -1836,10 +1816,7 @@ struct IR
                     o = v.toObject();
                     if(!o)
                     {
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.CannotAssignTo2,
-                                                   b.getType, s);
+                        sta = CannotAssignTo2Error(b.getType, s);
                         goto Lthrow;
                     }
                     sta = o.put_Value(a, (locals + (code + 5).index)[0 .. (code + 4).argc]);
@@ -1857,19 +1834,13 @@ struct IR
                     v = scope_get_lambda(scopex, id, &o);
                     if(!v)
                     {
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.UndefinedNoCall2,
-                                                   "property", s);
+                        sta = UndefinedNoCall2Error("property", s);
                         goto Lthrow;
                     }
                     o = v.toObject();
                     if(!o)
                     {
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.CannotAssignTo,
-                                                   s);
+                        sta = CannotAssignToError(s);
                         goto Lthrow;
                     }
                     sta = o.put_Value(locals + (code + 1).index, (locals + (code + 4).index)[0 .. (code + 3).index]);
@@ -1884,10 +1855,7 @@ struct IR
                     if(!o)
                     {
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
-                        ErrInfo errinfo;
-                        sta = Dobject.RuntimeError(&errinfo,
-                                                   Err.UndefinedNoCall2,
-                                                 b.getType(), b.toString());
+                        sta = UndefinedNoCall2Error(b.getType, b.toString);
                         goto Lthrow;
                     }
                     sta = o.put_Value(locals + (code + 1).index, (locals + (code + 4).index)[0 .. (code + 3).index]);
@@ -1996,11 +1964,10 @@ struct IR
 
                 case Opcode.Assert:
                 {
-                    ErrInfo errinfo;
-                    errinfo.linnum = (code + 1).index;
                     version(all)  // Not supported under some com servers
                     {
-                        sta = Dobject.RuntimeError(&errinfo, Err.Assert, (code + 1).index);
+                        auto linnum = (code + 1).index;
+                        sta = AssertError(linnum, linnum);
                         goto Lthrow;
                     }
                     else
@@ -2014,13 +1981,20 @@ struct IR
                     code += IRTypes[Opcode.End].size;
                     goto Linterrupt;
                 }
-             }
-            catch(ErrorValue err)
-            {
-                sta = unwindStack(&err.value);
-                if(sta)//sta is exception that was not caught
-                    return sta;
             }
+            catch(Throwable t)
+            {
+                sta = unwindStack(t.toStatus!typeerror);
+                if (sta)
+                    return sta;
+
+            }
+            // catch(ErrorValue err)
+            // {
+            //     sta = unwindStack(&err.value);
+            //     if(sta)//sta is exception that was not caught
+            //         return sta;
+            // }
         }
 
         Linterrupt:

@@ -151,9 +151,7 @@ class DregexpConstructor : Dfunction
             }
             else
             {
-                ErrInfo errinfo;
-                return RuntimeError(&errinfo, Err.TypeError,
-                                    "RegExp.prototype.constructor");
+                return TypeError("RegExp.prototype.constructor");
             }
         }
         else
@@ -164,20 +162,7 @@ class DregexpConstructor : Dfunction
         r = new Dregexp(P, F);
         if(r.re.errors)
         {
-            Dobject o;
-            ErrInfo errinfo;
-
-            version(none)
-            {
-                writef("P = '%s'\nF = '%s'\n", d_string_ptr(P), d_string_ptr(F));
-                for(int i = 0; i < d_string_len(P); i++)
-                    writef("x%02x\n", d_string_ptr(P)[i]);
-            }
-            errinfo.message = Err.RegexpCompile;
-            o = new syntaxerror.D0(&errinfo);
-            auto v = new Status;
-            v.putVobject(o);
-            return v;
+            return RegexpCompileError;
         }
         else
         {
@@ -287,9 +272,7 @@ Status* Dregexp_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
     if(!othis.isDregexp())
     {
         ret.putVundefined();
-        ErrInfo errinfo;
-        return Dobject.RuntimeError(&errinfo, Err.NotTransferrable,
-                                    "RegExp.prototype.toString()");
+        return NotTransferrableError("RegExp.prototype.toString()");
     }
     else
     {
@@ -331,10 +314,8 @@ Status* Dregexp_prototype_compile(Dobject pthis, CallContext* cc, Dobject othis,
     // othis must be a RegExp
     if(!othis.isClass(Text.RegExp))
     {
-        ErrInfo errinfo;
         ret.putVundefined();
-        return Dobject.RuntimeError(&errinfo, Err.NotTransferrable,
-                                    "RegExp.prototype.compile()");
+        return NotTransferrableError("RegExp.prototype.compile()");
     }
     else
     {
@@ -511,9 +492,7 @@ class Dregexp : Dobject
         if(!othis.isClass(Text.RegExp))
         {
             ret.putVundefined();
-            ErrInfo errinfo;
-            return RuntimeError(&errinfo, Err.NotTransferrable,
-                                "RegExp.prototype.exec()");
+            return NotTransferrableError("RegExp.prototype.exec()");
         }
         else
         {

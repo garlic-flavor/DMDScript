@@ -305,9 +305,7 @@ class DdateConstructor : Dfunction
 Status* checkdate(Value* ret, d_string name, Dobject othis)
 {
     ret.putVundefined();
-    ErrInfo errinfo;
-    return Dobject.RuntimeError(&errinfo, Err.FunctionWantsDate,
-                                name, othis.classname);
+    return FunctionWantsDateError(name, othis.classname);
 }
 
 int getThisTime(Value* ret, Dobject othis, out d_time n)

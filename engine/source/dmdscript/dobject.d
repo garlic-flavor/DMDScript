@@ -40,19 +40,6 @@ import dmdscript.dnative;
 
 import dmdscript.protoerror;
 
-class ErrorValue: Exception {
-    Status value;
-    this(Value* vptr){
-        super("DMDScript exception");
-        value = Status(*vptr);
-    }
-
-    this(Status* s)
-    {
-        super("DMDScript exception");
-        value = *s;
-    }
-}
 //debug = LOG;
 
 /************************** Dobject_constructor *************************/
@@ -417,16 +404,14 @@ class Dobject
     {
         // Not ECMA, Microsoft extension
         //writef("Dobject.PutDefault(this = %p)\n", this);
-        ErrInfo errinfo;
-        return RuntimeError(&errinfo, Err.NoDefaultPut);
+        return NoDefaultPutError;
     }
 
     Status* put_Value(Value* ret, Value[] arglist)
     {
         // Not ECMA, Microsoft extension
         //writef("Dobject.put_Value(this = %p)\n", this);
-        ErrInfo errinfo;
-        return RuntimeError(&errinfo, Err.FunctionNotLvalue);
+        return FunctionNotLvalueError;
     }
 
     int CanPut(d_string PropertyName)
@@ -514,28 +499,24 @@ class Dobject
             }
             i ^= 1;
         }
-        ErrInfo errinfo;
-        return Dobject.RuntimeError(&errinfo, "No [[DefaultValue]]");
+        return NoDefaultValueError;
         //ErrInfo errinfo;
         //return RuntimeError(&errinfo, DTEXT("no Default Value for object"));
     }
 
     Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
-        ErrInfo errinfo;
-        return RuntimeError(&errinfo, Err.SNoConstruct, classname);
+        return SNoConstructError(classname);
     }
 
     Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
-        ErrInfo errinfo;
-        return RuntimeError(&errinfo, Err.SNoCall, classname);
+        return SNoCallError(classname);
     }
 
     Status* HasInstance(Value* ret, Value* v)
     {   // ECMA v3 8.6.2
-        ErrInfo errinfo;
-        return RuntimeError(&errinfo, Err.SNoInstance, classname);
+        return SNoInstanceError(classname);
     }
 
     d_string getTypeof()
@@ -575,77 +556,11 @@ class Dobject
         return false;
     }
 
-    void getErrInfo(ErrInfo* perrinfo, int linnum)
+    ScriptException getException(Loc linnum)
     {
-        ErrInfo errinfo;
         Value v;
         v.putVobject(this);
-
-        errinfo.message = v.toString();
-        if(perrinfo)
-            *perrinfo = errinfo;
-    }
-
-    static Status* RuntimeError(ARGS...)(ErrInfo* perrinfo, string fmt,
-                                         ARGS args)
-    {
-        import std.format : format;
-        import std.conv : to;
-        Dobject o;
-
-        perrinfo.message = format(fmt, args).to!d_string;
-        o = new typeerror.D0(perrinfo);
-        auto v = new Status;
-        v.putVobject(o);
-        return v;
-    }
-
-    static Status* ReferenceError(ARGS...)(ErrInfo* perrinfo, string fmt,
-                                           ARGS args)
-    {
-        import std.format : format;
-        import std.conv : to;
-
-        Dobject o;
-
-        perrinfo.message = format(fmt, args).to!d_string;
-
-        o = new referenceerror.D0(perrinfo);
-        auto v = new Status;
-        v.putVobject(o);
-        return v;
-    }
-
-    static Status* ReferenceError(ARGS...)(string fmt, ARGS args)
-    {
-        import std.format : format;
-        import std.conv : to;
-
-        Dobject o;
-        ErrInfo errinfo;
-
-
-        errinfo.message = format(fmt, args).to!d_string;
-
-        o = new referenceerror.D0(&errinfo);
-        auto v = new Status;
-        v.putVobject(o);
-        return v;
-    }
-
-    static Status* RangeError(ARGS...)(ErrInfo* perrinfo, string fmt,
-                                       ARGS args)
-    {
-        import std.conv : to;
-        import std.format : format;
-        Dobject o;
-
-        perrinfo.message = format(fmt, args).to!d_string;
-
-        o = new rangeerror.D0(perrinfo);
-        auto v = new Status;
-        v.putVobject(o);
-        return v;
+        return new ScriptException(v.toString, null, null, linnum);
     }
 
     Status* putIterator(Value* v)

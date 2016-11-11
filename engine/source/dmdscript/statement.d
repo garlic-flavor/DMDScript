@@ -104,13 +104,13 @@ class TopStatement
                 sourcename ~= sc.funcdef.name.toString;
         }
 
-        if(!sc.errinfo.message)
+        if (sc.exception is null)
         {
-            sc.errinfo.message = format(fmt, args);
-            sc.errinfo.sourcename = sourcename.to!string;
-            sc.errinfo.source = sc.getSource;
-            sc.errinfo.linnum = loc;
+            sc.exception = new ScriptException(
+                format(fmt, args), sourcename.to!string, sc.getSource, loc);
         }
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Should I throw the exception?
     }
 
     TopStatement ImpliedReturn()

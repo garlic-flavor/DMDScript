@@ -16,7 +16,7 @@
  */
 
 module dmdscript.script;
-
+debug import std.stdio;
 /* =================== Configuration ======================= */
 
 const uint MAJOR_VERSION = 5;       // ScriptEngineMajorVersion
@@ -38,34 +38,56 @@ alias double real_t;
 
 alias uint Loc;                 // file location (line number)
 
-struct ErrInfo
+class ScriptException : Exception
 {
-    string message;      // error message (null if no error)
-    string sourcename;
-    string source;
-    immutable(char)* pos;
-    string srcline;      // string of source line (null if not known)
-    Loc   linnum;       // source line number (1 based, 0 if not available)
-    int    charpos;      // character position (1 based, 0 if not available)
-    int    code;         // error code (0 if not known)
+    d_string message;      // error message
+    d_string sourcename;
+    d_string source;
+    immutable(tchar)* pos;
+    Loc linnum;       // source line number (1 based, 0 if not available)
+    int code; // for what?
 
-    string toString()
+    @nogc @safe pure nothrow
+    this(d_string msg, d_string file = __FILE__, size_t line = __LINE__)
     {
-        if (message.length == 0) return "No Error";
+        this.message = msg;
+        super("", file, line);
+    }
 
+    @nogc @safe pure nothrow
+    this(d_string message, d_string sourcename, d_string source,
+         immutable(char)* pos, string file = __FILE__, size_t line = __LINE__)
+    {
+        this.message = message;
+        this.sourcename = sourcename;
+        this.source = source;
+        this.pos = pos;
+        super("", file, line);
+    }
+
+    @nogc @safe pure nothrow
+    this(d_string message, d_string sourcename, d_string source,
+         Loc loc, string file = __FILE__, size_t line = __LINE__)
+    {
+        this.message = message;
+        this.sourcename = sourcename;
+        this.source = source;
+        this.linnum = loc;
+        super("", file, line);
+    }
+
+    override void toString(scope void delegate(in char[]) sink) const
+    {
         import std.conv : text;
         import std.array : replace;
         import std.range : repeat, take;
 
-        string buf;
+        string srcline;
+        int charpos = -1;
+        Loc linnum = this.linnum;
         enum Tab = "    ";
 
-        if (0 < sourcename.length && 0 < srcline.length)
-            buf = text(sourcename, "(", linnum, "): Error: ", message);
-        else
-            buf = "Error: " ~ message;
-
-        if (0 == srcline.length && 0 < source.length)
+        if (0 < source.length)
         {
             if      (pos !is null)
                 srcline = source.getLineAt(pos, linnum, charpos);
@@ -73,37 +95,29 @@ struct ErrInfo
                 srcline = source.getLineAt(linnum);
         }
 
+        if (0 < sourcename.length && 0 < linnum)
+            sink(text(sourcename, "(", linnum, "): Error: ", message));
+        else
+            sink("Error: " ~ message);
+
         if (0 < srcline.length)
         {
-            size_t col;
+            size_t col = 0;
             for (size_t i = 0; i < srcline.length && i < charpos; ++i)
             {
                 if (srcline[i] == '\t') col += Tab.length;
                 else ++col;
             }
 
-            buf ~= text("\n", srcline.replace("\t", Tab));
+            sink(text("\n", srcline.replace("\t", Tab)));
 
-            if (0 < charpos)
-                buf ~= text("\n", ' '.repeat.take(col), "^");
+            if (0 <= charpos)
+                sink(text("\n", ' '.repeat.take(col), "^"));
         }
-        return buf;
+
+        debug { sink("\n"); super.toString(sink); }
     }
-}
-
-class ScriptException : Exception
-{
-    ErrInfo ei;
-
-    this(d_string msg)
-    { ei.message = msg;
-      super(msg); }
-
-    this(ErrInfo * pei)
-    {
-        ei = *pei;
-        super(ei.message);
-    }
+    alias toString = super.toString;
 }
 
 int logflag;    // used for debugging

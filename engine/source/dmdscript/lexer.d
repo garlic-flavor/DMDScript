@@ -20,13 +20,6 @@
 
 module dmdscript.lexer;
 
-import std.ascii :
-    isoctal = isOctalDigit,
-    isasciidigit = isDigit,
-    isasciilower = isLower,
-    isasciiupper = isUpper,
-    ishex = isHexDigit;
-
 import dmdscript.script;
 import dmdscript.text;
 import dmdscript.identifier;
@@ -124,7 +117,7 @@ enum Tok : int
 
 struct Token
 {
-    private Token* next;
+    Token* next;
     // pointer to first character of this token within buffer
     immutable(tchar)* ptr;
     uint   linnum;
@@ -190,38 +183,9 @@ struct Token
 
 class Lexer
 {
-    import std.outbuffer : OutBuffer;
-
-    private Identifier[d_string] stringtable;
-    private Token* freelist;
-
-    private d_string sourcename;        // for error message strings
-
-    private d_string base;              // pointer to start of buffer
-    private immutable(char)* end;      // past end of buffer
-    private immutable(char)* p;        // current character
     uint currentline;
     Token token;
-    private OutBuffer stringbuffer;
-    private int useStringtable;         // use for Identifiers
-
-    ErrInfo errinfo;            // syntax error information
-
-
-    private Token* allocToken()
-    {
-        Token* t;
-
-        if(freelist)
-        {
-            t = freelist;
-            freelist = t.next;
-            return t;
-        }
-
-        return new Token();
-    }
-
+    ScriptException exception;            // syntax error information
 
     this(d_string sourcename, d_string base, int useStringtable)
     {
@@ -238,33 +202,14 @@ class Lexer
         freelist = null;
     }
 
-    dchar get(immutable(tchar)* p)
-    {
-        import std.utf : decode;
-        assert(base.ptr <= p && p < base.ptr + base.length);
-        size_t idx = p - base.ptr;
-        return decode(base, idx);
-    }
-
-    immutable(tchar)* inc(immutable(tchar) * p)
-    {
-        import std.utf : stride;
-        assert(base.ptr <= p && p < base.ptr + base.length);
-        size_t idx = p - base.ptr;
-        return base.ptr + idx + stride(base, idx);
-    }
-
+    //
     void error(ARGS...)(string fmt, ARGS args)
     {
         import std.format : format;
 
-        if(!errinfo.message)
-        {
-            errinfo.message = format(fmt, args);
-            errinfo.sourcename = sourcename;
-            errinfo.source = base;
-            errinfo.pos = p;
-        }
+        if (exception is null)
+            exception = new ScriptException(format(fmt, args),
+                                            sourcename, base, p);
 
         // Consume input until the end
         assert(base.ptr < end);
@@ -272,9 +217,10 @@ class Lexer
 
         token.next = null;              // dump any lookahead
 
-        debug throw new Exception(errinfo.toString);
+        debug throw exception;
     }
 
+    //
     Tok nextToken()
     {
         Token* t;
@@ -293,6 +239,7 @@ class Lexer
         return token.value;
     }
 
+    //
     Token* peek(Token* ct)
     {
         Token* t;
@@ -309,6 +256,7 @@ class Lexer
         return t;
     }
 
+    //
     void insertSemicolon(immutable(tchar)* loc)
     {
         // Push current token back into the input, and
@@ -328,7 +276,6 @@ class Lexer
      * The idea is, if we are looking for a TOKdivide, and find instead
      * a TOKregexp, we back up and rescan.
      */
-
     void rescan()
     {
         token.next = null;      // no lookahead
@@ -336,6 +283,49 @@ class Lexer
         p = token.ptr + 1;
     }
 
+private:
+    import std.array : Appender;
+
+    Identifier[d_string] stringtable;
+    Token* freelist;
+
+    d_string sourcename;       // for error message strings
+    d_string base;             // pointer to start of buffer
+    immutable(char)* end;      // past end of buffer
+    immutable(char)* p;        // current character
+
+    Appender!(tchar[]) stringbuffer;
+    int useStringtable;        // use for Identifiers
+
+    Token* allocToken()
+    {
+        Token* t;
+
+        if(freelist)
+        {
+            t = freelist;
+            freelist = t.next;
+            return t;
+        }
+
+        return new Token();
+    }
+
+    dchar get(immutable(tchar)* p)
+    {
+        import std.utf : decode;
+        assert(base.ptr <= p && p < base.ptr + base.length);
+        size_t idx = p - base.ptr;
+        return decode(base, idx);
+    }
+
+    immutable(tchar)* inc(immutable(tchar) * p)
+    {
+        import std.utf : stride;
+        assert(base.ptr <= p && p < base.ptr + base.length);
+        size_t idx = p - base.ptr;
+        return base.ptr + idx + stride(base, idx);
+    }
 
     /****************************
      * Turn next token in buffer into a token.
@@ -346,14 +336,13 @@ class Lexer
         import std.ascii : isAlphaNum, isDigit, isPrintable;
         import std.algorithm : startsWith;
         import std.range : popFront;
-        import std.traits : Unqual, ForeachType;
         import std.uni : isAlpha;
         import std.utf : encode;
 
         tchar c;
         dchar d;
         d_string id;
-        Unqual!(ForeachType!d_string)[] buf;
+        tchar[] buf;
 
         //writefln("Lexer.scan()");
         t.sawLineTerminator = null;
@@ -921,7 +910,7 @@ class Lexer
 
     dchar escapeSequence()
     {
-        import std.ascii : isDigit, isLower;
+        import std.ascii : isDigit, isLower, isHexDigit, isOctalDigit;
 
         uint c;
         int n;
@@ -967,7 +956,7 @@ class Lexer
         case 'x':
             c = *p;
             p++;
-            if(ishex(c))
+            if(isHexDigit(c))
             {
                 uint v;
 
@@ -983,7 +972,7 @@ class Lexer
                         c -= 'A' - 10;
                     v = v * 16 + c;
                     c = *p;
-                    if(++n >= 2 || !ishex(c))
+                    if(++n >= 2 || !isHexDigit(c))
                         break;
                     p++;
                 }
@@ -1002,7 +991,7 @@ class Lexer
                 c = get(p);
                 p = inc(p);
             }
-            if(isoctal(c))
+            if(isOctalDigit(c))
             {
                 uint v;
 
@@ -1012,7 +1001,7 @@ class Lexer
                 {
                     v = v * 8 + (c - '0');
                     c = *p;
-                    if(++n >= 3 || !isoctal(c))
+                    if(++n >= 3 || !isOctalDigit(c))
                         break;
                     p++;
                 }
@@ -1030,17 +1019,18 @@ class Lexer
 
     d_string chompString(tchar quote)
     {
-        import std.traits : Unqual, ForeachType;
-        import std.exception : assumeUnique;
-        import std.utf : encode;
+        import std.utf : encode, stride;
 
         tchar c;
         dchar d;
-        Unqual!(ForeachType!d_string)[] stringbuffer = null;
+        uint len;
+        tchar[dchar.sizeof / tchar.sizeof] unibuf;
 
-        //printf("Lexer.string('%c')\n", quote);
+        assert(*p == quote);
+
+        stringbuffer.shrinkTo(0);
         p++;
-        for(;; )
+        for(;;)
         {
             c = *p;
             switch(c)
@@ -1049,7 +1039,7 @@ class Lexer
             case '\'':
                 p++;
                 if(c == quote)
-                    return stringbuffer.assumeUnique;
+                    return stringbuffer.data.idup;
                 break;
 
             case '\\':
@@ -1058,7 +1048,10 @@ class Lexer
                     d = unicode();
                 else
                     d = escapeSequence();
-                encode(stringbuffer, d);
+                encode(unibuf, d);
+                len = stride(unibuf, 0);
+                assert(0 < len && len <= unibuf.length);
+                stringbuffer.put(unibuf[0..len]);
                 continue;
 
             case '\n':
@@ -1076,7 +1069,7 @@ class Lexer
                 p++;
                 break;
             }
-            stringbuffer ~= c;
+            stringbuffer.put(c);
         }
         assert(0);
     }
@@ -1181,10 +1174,9 @@ class Lexer
 
     /***************************************
      */
-
     dchar unicode()
     {
-        import std.ascii : isDigit;
+        import std.ascii : isDigit, isHexDigit, isLower;
         dchar value;
         uint n;
         dchar c;
@@ -1194,15 +1186,16 @@ class Lexer
         for(n = 0; n < 4; n++)
         {
             c = *p;
-            if(!ishex(c))
+            if(!isHexDigit(c))
             {
                 error(Err.BadUSequence);
+                value = '\0';
                 break;
             }
             p++;
             if(isDigit(c))
                 c -= '0';
-            else if(isasciilower(c))
+            else if(isLower(c))
                 c -= 'a' - 10;
             else    // 'A' <= c && c <= 'Z'
                 c -= 'A' - 10;
@@ -1218,7 +1211,7 @@ class Lexer
 
     Tok number(Token *t)
     {
-        import std.ascii : isDigit;
+        import std.ascii : isDigit, isHexDigit;
         import std.string : toStringz;
         import core.sys.posix.stdlib : strtod;
 
@@ -1294,11 +1287,11 @@ class Lexer
 
             case 'x':
             case 'X':
-                if(p - start != 2 || !ishex(*p))
+                if(p - start != 2 || !isHexDigit(*p))
                     goto Lerr;
                 do
                     p++;
-                while(ishex(*p));
+                while(isHexDigit(*p));
                 start += 2;
                 base = 16;
                 goto Lnumber;

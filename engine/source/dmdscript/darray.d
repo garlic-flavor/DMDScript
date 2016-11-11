@@ -31,6 +31,7 @@ import dmdscript.dfunction;
 import dmdscript.text;
 import dmdscript.property;
 import dmdscript.errmsgs;
+import dmdscript.protoerror;
 import dmdscript.dnative;
 import dmdscript.program;
 
@@ -66,11 +67,8 @@ class DarrayConstructor : Dfunction
                 len = v.toUint32();
                 if(cast(double)len != v.number)
                 {
-                    ErrInfo errinfo;
-
-                    ret.putVundefined();
-                    return RangeError(&errinfo, Err.ArrayLenOutOfBounds,
-                                      v.number);
+                    ret.putVundefined;
+                    return ArrayLenOutOfBoundsError(v.number);
                 }
                 else
                 {
@@ -150,8 +148,7 @@ Status* Darray_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject 
     if(!othis.isClass(Text.Array))
     {
         ret.putVundefined();
-        ErrInfo errinfo;
-        return Dobject.RuntimeError(&errinfo, Err.TlsNotTransferrable);
+        return TlsNotTransferrableError;
     }
 
     v = othis.Get(Text.length);
@@ -1037,9 +1034,7 @@ class Darray : Dobject
                 i = v.toUint32();
                 if(i != v.toInteger())
                 {
-                    ErrInfo errinfo;
-
-                    return Dobject.RangeError(&errinfo, Err.LengthInt);
+                    return LengthIntError;
                 }
                 if(i < ulength)
                 {

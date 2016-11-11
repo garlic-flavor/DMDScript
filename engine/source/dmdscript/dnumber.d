@@ -81,11 +81,7 @@ Status* Dnumber_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
     if(!othis.isClass(Text.Number))
     {
         ret.putVundefined();
-        ErrInfo errinfo;
-        return Dobject.RuntimeError(&errinfo,
-                                    Err.FunctionWantsNumber,
-                                    Text.toString,
-                                    othis.classname);
+        return FunctionWantsNumberError(Text.toString, othis.classname);
     }
     else
     {
@@ -130,11 +126,7 @@ Status* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject
     if(!othis.isClass(Text.Number))
     {
         ret.putVundefined();
-        ErrInfo errinfo;
-        return Dobject.RuntimeError(&errinfo,
-                                    Err.FunctionWantsNumber,
-                                    Text.toLocaleString,
-                                    othis.classname);
+        return FunctionWantsNumberError(Text.toLocaleString, othis.classname);
     }
     else
     {
@@ -156,11 +148,7 @@ Status* Dnumber_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
     if(!othis.isClass(Text.Number))
     {
         ret.putVundefined();
-        ErrInfo errinfo;
-        return Dobject.RuntimeError(&errinfo,
-                                    Err.FunctionWantsNumber,
-                                    Text.valueOf,
-                                    othis.classname);
+        return FunctionWantsNumberError(Text.valueOf, othis.classname);
     }
     else
     {
@@ -237,11 +225,8 @@ Status* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis,
         fractionDigits = 0;
     if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
     {
-        ErrInfo errinfo;
-
         ret.putVundefined();
-        return Dobject.RangeError(&errinfo, Err.ValueOutOfRange,
-                                  Text.toFixed, "fractionDigits");
+        return ValueOutOfRangeError(Text.toFixed, "fractonDigits");
     }
     v = &othis.value;
     x = v.toNumber();
@@ -389,11 +374,9 @@ Status* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject 
 
             if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
             {
-                ErrInfo errinfo;
-
                 ret.putVundefined();
-                return Dobject.RangeError(&errinfo, Err.ValueOutOfRange,
-                                          Text.toExponential, "fractionDigits");
+                return ValueOutOfRangeError(Text.toExponential,
+                                            "fractionDigits");
             }
 
             f = cast(int)fractionDigits;
@@ -532,11 +515,8 @@ Status* Dnumber_prototype_toPrecision(Dobject pthis, CallContext* cc, Dobject ot
             precision = varg.toInteger();
             if(precision < 1 || precision > 21)
             {
-                ErrInfo errinfo;
-
                 ret.putVundefined();
-                return Dobject.RangeError(&errinfo, Err.ValueOutOfRange,
-                                          Text.toPrecision, "precision");
+                return ValueOutOfRangeError(Text.toPrecision, "precision");
             }
 
             p = cast(int)precision;

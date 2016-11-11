@@ -54,7 +54,7 @@ Status* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
     Value* v;
     immutable(char)[] s;
     FunctionDefinition fd;
-    ErrInfo errinfo;
+    ScriptException exception;
     Status* result;
 
     //FuncLog funclog(L"Global.eval()");
@@ -71,7 +71,7 @@ Status* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
     // Parse program
     TopStatement[] topstatements;
     Parser p = new Parser("eval", s, 0);
-    if(p.parseProgram(topstatements, &errinfo))
+    if(p.parseProgram(topstatements, exception))
         goto Lsyntaxerror;
 
     // Analyze, generate code
@@ -82,10 +82,10 @@ Status* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
         sc.ctor(fd);
         sc.src = s;
         fd.semantic(&sc);
-        errinfo = sc.errinfo;
+        exception = sc.exception;
         sc.dtor();
     }
-    if(errinfo.message)
+    if(exception !is null)
         goto Lsyntaxerror;
     fd.toIR(null);
 
@@ -158,11 +158,14 @@ Status* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
 Lsyntaxerror:
     Dobject o;
 
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// solve this.
     // For eval()'s, use location of caller, not the string
-    errinfo.linnum = 0;
+    // errinfo.linnum = 0;
 
     ret.putVundefined();
-    o = new syntaxerror.D0(&errinfo);
+    o = new syntaxerror.D0(exception);
     auto v2 = new Status;
     v2.putVobject(o);
     return v2;

@@ -91,13 +91,14 @@ class Expression
                 sourcename = sc.funcdef.name.toString;
         }
 
-        if(!sc.errinfo.message)
+        if (sc.exception is null)
         {
-            sc.errinfo.message = format(Err.CannotAssignTo, toString);
-            sc.errinfo.sourcename = sourcename;
-            sc.errinfo.source = sc.getSource;
-            sc.errinfo.linnum = loc;
+            sc.exception = new ScriptException(
+                format(Err.CannotAssignTo, toString),
+                sourcename, sc.getSource, loc);
         }
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Should I throw the exception?
     }
 
     // Do we match for purposes of optimization?
@@ -1199,10 +1200,14 @@ class DeleteExp : UnaExp
     override Expression semantic(Scope* sc)
     {
         e1.checkLvalue(sc);
-        lval = sc.errinfo.message == null;
+        lval = sc.exception is null;
         //delete don't have to operate on Lvalue, while slightly stupid but perfectly by the standard
+
+// Should I?
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
         if(!lval)
-               sc.errinfo.message = null;
+               sc.exception = null;
         return this;
     }
 
