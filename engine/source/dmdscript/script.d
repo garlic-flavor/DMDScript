@@ -16,18 +16,25 @@
  */
 
 module dmdscript.script;
+
+import dmdscript.value;
+import dmdscript.dobject;
+import dmdscript.program;
+import dmdscript.text;
+import dmdscript.functiondefinition;
+
 debug import std.stdio;
 /* =================== Configuration ======================= */
 
-const uint MAJOR_VERSION = 5;       // ScriptEngineMajorVersion
-const uint MINOR_VERSION = 5;       // ScriptEngineMinorVersion
+enum uint MAJOR_VERSION = 5;       // ScriptEngineMajorVersion
+enum uint MINOR_VERSION = 5;       // ScriptEngineMinorVersion
 
-const uint BUILD_VERSION = 1;       // ScriptEngineBuildVersion
+enum uint BUILD_VERSION = 1;       // ScriptEngineBuildVersion
 
-const uint JSCRIPT_CATCH_BUG = 1;   // emulate Jscript's bug in scoping of
-                                    // catch objects in violation of ECMA
-const uint JSCRIPT_ESCAPEV_BUG = 0; // emulate Jscript's bug where \v is
-                                    // not recognized as vertical tab
+enum uint JSCRIPT_CATCH_BUG = 1;   // emulate Jscript's bug in scoping of
+                                   // catch objects in violation of ECMA
+enum uint JSCRIPT_ESCAPEV_BUG = 0; // emulate Jscript's bug where \v is
+                                   // not recognized as vertical tab
 
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
@@ -38,13 +45,22 @@ alias double real_t;
 
 alias uint Loc;                 // file location (line number)
 
+// Aliases for script primitive types
+alias uint d_boolean;
+alias double d_number;
+alias int d_int32;
+alias uint d_uint32;
+alias ushort d_uint16;
+alias immutable(tchar)[] d_string;
+alias d_time = long;
+enum d_time_nan = long.min;
+
+int logflag;    // used for debugging
+
+//
 class ScriptException : Exception
 {
     d_string message;      // error message
-    d_string sourcename;
-    d_string source;
-    immutable(tchar)* pos;
-    Loc linnum;       // source line number (1 based, 0 if not available)
     int code; // for what?
 
     @nogc @safe pure nothrow
@@ -56,7 +72,7 @@ class ScriptException : Exception
 
     @nogc @safe pure nothrow
     this(d_string message, d_string sourcename, d_string source,
-         immutable(char)* pos, string file = __FILE__, size_t line = __LINE__)
+         immutable(tchar)* pos, string file = __FILE__, size_t line = __LINE__)
     {
         this.message = message;
         this.sourcename = sourcename;
@@ -74,6 +90,32 @@ class ScriptException : Exception
         this.source = source;
         this.linnum = loc;
         super("", file, line);
+    }
+
+    @nogc @safe pure nothrow
+    this(d_string message, Loc loc,
+         string file = __FILE__, size_t line = __LINE__)
+    {
+        this.message = message;
+        this.linnum = loc;
+        super("", file, line);
+    }
+
+    @nogc @safe pure nothrow
+    void addSource(d_string sourcename, d_string source, Loc loc)
+    {
+        this.sourcename = sourcename;
+        this.source = source;
+        this.linnum = loc;
+    }
+
+    @nogc @safe pure nothrow
+    void addSource(d_string sourcename, d_string source,
+                   immutable(tchar)* pos)
+    {
+        this.sourcename = sourcename;
+        this.source = source;
+        this.pos = pos;
     }
 
     override void toString(scope void delegate(in char[]) sink) const
@@ -96,9 +138,9 @@ class ScriptException : Exception
         }
 
         if (0 < sourcename.length && 0 < linnum)
-            sink(text(sourcename, "(", linnum, "): Error: ", message));
+            sink(text(sourcename, "(", linnum, "): ", message));
         else
-            sink("Error: " ~ message);
+            sink(message);
 
         if (0 < srcline.length)
         {
@@ -118,27 +160,15 @@ class ScriptException : Exception
         debug { sink("\n"); super.toString(sink); }
     }
     alias toString = super.toString;
+
+private:
+    d_string sourcename;
+    d_string source;
+    immutable(tchar)* pos;
+    Loc linnum;       // source line number (1 based, 0 if not available)
 }
 
-int logflag;    // used for debugging
-
-
-// Aliases for script primitive types
-alias uint d_boolean;
-alias double d_number;
-alias int d_int32;
-alias uint d_uint32;
-alias ushort d_uint16;
-alias immutable(char)[] d_string;
-alias d_time = long;
-enum d_time_nan = long.min;
-
-import dmdscript.value;
-import dmdscript.dobject;
-import dmdscript.program;
-import dmdscript.text;
-import dmdscript.functiondefinition;
-
+//
 struct CallContext
 {
     Dobject[] scopex; // current scope chain

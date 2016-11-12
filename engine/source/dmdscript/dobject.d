@@ -560,7 +560,7 @@ class Dobject
     {
         Value v;
         v.putVobject(this);
-        return new ScriptException(v.toString, null, null, linnum);
+        return new ScriptException(v.toString, linnum);
     }
 
     Status* putIterator(Value* v)

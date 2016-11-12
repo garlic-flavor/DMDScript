@@ -149,8 +149,8 @@ class FunctionDefinition : TopStatement
                 {
                     LabelSymbol ls = cast(LabelSymbol)s;
                     if(!ls.statement)
-                        error(sc, Err.UndefinedLabel,
-                              ls.toString(), toString());
+                        error(sc, UndefinedLabelError
+                              .toThrow(ls.toString, toString));
                 }
             }
         }

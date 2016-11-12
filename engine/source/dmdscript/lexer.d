@@ -203,6 +203,7 @@ class Lexer
     }
 
     //
+    deprecated
     void error(ARGS...)(string fmt, ARGS args)
     {
         import std.format : format;
@@ -218,6 +219,19 @@ class Lexer
         token.next = null;              // dump any lookahead
 
         debug throw exception;
+    }
+
+    void error(ScriptException se)
+    {
+        assert(se !is null);
+
+        se.addSource(sourcename, base, p);
+
+        assert(base.ptr < end);
+        p = end - 1;
+        token.next = null;
+
+        debug throw se;
     }
 
     //
@@ -520,7 +534,7 @@ private:
 
                         case 0:
                         case 0x1A:
-                            error(Err.BadCComment);
+                            error(BadCCommentError);
                             t.value = Tok.Eof;
                             return;
 
@@ -738,7 +752,7 @@ private:
 
                         case 0:
                         case 0x1A:                              // end of file
-                            error(Err.BadHTMLComment);
+                            error(BadHTMLCommentError);
                             t.value = Tok.Eof;
                             return;
 
@@ -895,9 +909,9 @@ private:
                 else
                 {
                     if(isPrintable(d))
-                        error(Err.BadCharC, d);
+                        error(BadCharCError(d));
                     else
-                        error(Err.BadCharX, d);
+                        error(BadCharXError(d));
                 }
                 continue;
             }
@@ -977,11 +991,11 @@ private:
                     p++;
                 }
                 if(n == 1)
-                    error(Err.BadHexSequence);
+                    error(BadHexSequenceError);
                 c = v;
             }
             else
-                error(Err.UndefinedEscSequence, c);
+                error(UndefinedEscSequenceError(c));
             break;
 
         default:
@@ -1057,12 +1071,12 @@ private:
             case '\n':
             case '\r':
                 p++;
-                error(Err.StringNoEndQuote, quote);
+                error(StringNoEndQuoteError(quote));
                 return null;
 
             case 0:
             case 0x1A:
-                error(Err.UnterminatedString);
+                error(UnterminatedStringError);
                 return null;
 
             default:
@@ -1188,7 +1202,7 @@ private:
             c = *p;
             if(!isHexDigit(c))
             {
-                error(Err.BadUSequence);
+                error(BadUSequenceError);
                 value = '\0';
                 break;
             }
@@ -1327,7 +1341,7 @@ private:
         }
 
         Lerr:
-        error(Err.UnrecognizedNLiteral);
+        error(UnrecognizedNLiteralError);
         return Tok.Eof;
     }
 

@@ -106,7 +106,7 @@ int main(string[] args)
 		    break;
 
 		default:
-		    writefln(Err.BadSwitch,p);
+		    writefln(BadSwitchError(p).toString);
 		    errors++;
 		    break;
 	    }

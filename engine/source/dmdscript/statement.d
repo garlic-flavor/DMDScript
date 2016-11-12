@@ -89,7 +89,8 @@ class TopStatement
         debug writefln("TopStatement.toIR(%p)", this);
     }
 
-    void error(ARGS...)(Scope *sc, string fmt, ARGS args)
+    deprecated
+    void error(ARGS...)(Scope* sc, string fmt, ARGS args)
     {
         import std.format : format;
         import std.conv : to;
@@ -111,6 +112,27 @@ class TopStatement
         }
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Should I throw the exception?
+    }
+
+    void error(Scope* sc, ScriptException se)
+    {
+        assert(sc !is null);
+        assert(se !is null);
+
+        if (sc.exception is null)
+        {
+            d_string sourcename;
+            if (sc.funcdef !is null)
+            {
+                if      (sc.funcdef.isAnonymous)
+                    sourcename = "anonymous";
+                else if (sc.funcdef.name)
+                    sourcename = sc.funcdef.name.toString;
+            }
+
+            se.addSource(sourcename, sc.getSource, loc);
+            sc.exception = se;
+        }
     }
 
     TopStatement ImpliedReturn()
@@ -746,7 +768,7 @@ class CaseStatement : Statement
 
                 if(exp == cs.exp)
                 {
-                    error(sc, Err.SwitchRedundantCase, exp.toString);
+                    error(sc, SwitchRedundantCaseError(exp.toString));
                     return null;
                 }
             }
@@ -754,7 +776,7 @@ class CaseStatement : Statement
         }
         else
         {
-            error(sc, Err.MisplacedSwitchCase, exp.toString);
+            error(sc, MisplacedSwitchCaseError(exp.toString));
             return null;
         }
         return this;
@@ -786,14 +808,14 @@ class DefaultStatement : Statement
 
             if(sw.swdefault)
             {
-                error(sc, Err.SwitchRedundantDefault);
+                error(sc, SwitchRedundantDefaultError);
                 return null;
             }
             sw.swdefault = this;
         }
         else
         {
-            error(sc, Err.MisplacedSwitchDefault);
+            error(sc, MisplacedSwitchDefaultError);
             return null;
         }
         return this;
@@ -1189,7 +1211,7 @@ class ForInStatement : Statement
         }
         else
         {
-            error(sc, Err.InitNotExpression);
+            error(sc, InitNotExpressionError);
             return null;
         }
 
@@ -1408,7 +1430,7 @@ class ContinueStatement : Statement
             target = sc.continueTarget;
             if(!target)
             {
-                error(sc, Err.MisplacedContinue);
+                error(sc, MisplacedContinueError);
                 return null;
             }
         }
@@ -1419,7 +1441,7 @@ class ContinueStatement : Statement
             ls = sc.searchLabel(ident);
             if(!ls || !ls.statement)
             {
-                error(sc, Err.UndefinedStatementLabel, ident.toString);
+                error(sc, UndefinedStatementLabelError(ident.toString));
                 return null;
             }
             else
@@ -1472,7 +1494,7 @@ class BreakStatement : Statement
             target = sc.breakTarget;
             if(!target)
             {
-                error(sc, Err.MisplacedBreak);
+                error(sc, MisplacedBreakError);
                 return null;
             }
         }
@@ -1483,18 +1505,18 @@ class BreakStatement : Statement
             ls = sc.searchLabel(ident);
             if(!ls || !ls.statement)
             {
-                error(sc, Err.UndefinedStatementLabel, ident.toString);
+                error(sc, UndefinedStatementLabelError(ident.toString));
                 return null;
             }
             else if(!sc.breakTarget)
             {
-                error(sc, Err.MisplacedBreak);
+                error(sc, MisplacedBreakError);
             }
             else{
                 //Scope* s;
                 //for(s = sc; s && s != ls.statement.whichScope; s = s.enclosing){ }
                 if(ls.statement.whichScope == *sc)
-                    error(sc, Err.CantBreakInternal, ls.ident.value.text);
+                    error(sc, CantBreakInternalError(ls.ident.value.text));
                 target = ls.statement;
             }
         }
@@ -1603,7 +1625,7 @@ class ReturnStatement : Statement
 
         // Don't allow return from eval functions or global function
         if(sc.funcdef.iseval || sc.funcdef.isglobal)
-            error(sc, Err.MisplacedReturn);
+            error(sc, MisplacedReturnError);
 
         return this;
     }
@@ -1719,7 +1741,7 @@ class ThrowStatement : Statement
             exp = exp.semantic(sc);
         else
         {
-            error(sc, Err.NoThrowExpression);
+            error(sc, NoThrowExpressionError);
             return new EmptyStatement(loc);
         }
         return this;

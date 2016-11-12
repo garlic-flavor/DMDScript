@@ -19,8 +19,8 @@ private struct err(alias Proto, ARGS...)
                    size_t line = __LINE__)
     {
         import std.format : format;
-        return new ScriptException(
-            fmt.format(args), null, null, linnum, file, line).toStatus!Proto;
+        return new ScriptException(fmt.format(args), linnum, file, line)
+            .toStatus!Proto;
     }
 
     alias opCall this;
@@ -29,9 +29,35 @@ private struct err(alias Proto, ARGS...)
                             string file = __FILE__, size_t line = __LINE__)
     {
         import std.format : format;
-        return new ScriptException(fmt.format(args), null, null, linnum, file,
-                                   line);
+        return new ScriptException(fmt.format(args), linnum, file, line);
     }
+
+    ScriptException toThrow(ARGS args, d_string sourcename, d_string source,
+                            Loc loc, string f = __FILE__, size_t l = __LINE__)
+    {
+        import std.format : format;
+        return new ScriptException(fmt.format(args), sourcename, source,
+                                   loc, f, l);
+    }
+}
+
+private struct syntaxerr(ARGS...)
+{
+    import dmdscript.value : Status, toStatus;
+
+    d_string fmt;
+
+    @safe @nogc pure nothrow
+    this(d_string fmt) { this.fmt = fmt; }
+
+    ScriptException opCall(ARGS args, Loc linnum = 0, string file = __FILE__,
+                           size_t line = __LINE__)
+    {
+        import std.format : format;
+        return new ScriptException(fmt.format(args), linnum, file, line);
+    }
+
+    alias opCall this;
 }
 
 enum RuntimePrefixError =
@@ -48,82 +74,82 @@ enum ComFunctionErrororError =
     err!typeerror("%s Invoke() fails with COM error %x");
 enum ComObjectErrororError =
     err!typeerror("Dcomobject: %s.%s fails with COM error %x");
-enum BadSwitchError =
-    err!typeerror("unrecognized switch '%s'");
-enum UndefinedLabelError =
-    err!typeerror("undefined label '%s' in function '%s'");
-enum BadCCommentError =
-    err!typeerror("unterminated /* */ comment");
-enum BadHTMLCommentError =
-    err!typeerror("<!-- comment does not end in newline");
-enum BadCharCError =
-    err!typeerror("unsupported char '%s'");
-enum BadCharXError =
-    err!typeerror("unsupported char 0x%04x");
-enum BadHexSequenceError =
-    err!typeerror("escape hex sequence requires 2 hex digits");
-enum UndefinedEscSequenceError =
-    err!typeerror("undefined escape sequence \\%c");
-enum StringNoEndQuoteError =
-    err!typeerror("string is missing an end quote %s");
-enum UnterminatedStringError =
-    err!typeerror("end of file before end of string");
-enum BadUSequenceError =
-    err!typeerror("\\u sequence must be followed by 4 hex characters");
-enum UnrecognizedNLiteralError =
-    err!typeerror("unrecognized numeric literal");
-enum FplExpectedIdentifierError =
-    err!typeerror("Identifier expected in FormalParameterList, not %s");
-enum FplExpectedCommaError =
-    err!typeerror("comma expected in FormalParameterList, not %s");
-enum ExpectedIdentifierError =
-    err!typeerror("identifier expected");
-enum ExpectedGenericError =
-    err!typeerror("found '%s' when expecting '%s'");
-enum ExpectedIdentifierParamError =
-    err!typeerror("identifier expected instead of '%s'");
-enum ExpectedIdentifier2paramError =
-    err!typeerror("identifier expected following '%s', not '%s'");
+enum BadSwitchError = syntaxerr!(d_string)
+    ("unrecognized switch '%s'");
+enum UndefinedLabelError = err!(typeerror, d_string, d_string)
+    ("undefined label '%s' in function '%s'");
+enum BadCCommentError = syntaxerr!()
+    ("unterminated /* */ comment");
+enum BadHTMLCommentError = syntaxerr!()
+    ("<!-- comment does not end in newline");
+enum BadCharCError = syntaxerr!(dchar)
+    ("unsupported char '%s'");
+enum BadCharXError = syntaxerr!(uint)
+    ("unsupported char 0x%04x");
+enum BadHexSequenceError = syntaxerr!()
+    ("escape hex sequence requires 2 hex digits");
+enum UndefinedEscSequenceError = syntaxerr!(uint)
+    ("undefined escape sequence \\%c");
+enum StringNoEndQuoteError = syntaxerr!(tchar)
+    ("string is missing an end quote %s");
+enum UnterminatedStringError = syntaxerr!()
+    ("end of file before end of string");
+enum BadUSequenceError = syntaxerr!()
+    ("\\u sequence must be followed by 4 hex characters");
+enum UnrecognizedNLiteralError = syntaxerr!()
+    ("unrecognized numeric literal");
+enum FplExpectedIdentifierError = syntaxerr!(d_string)
+    ("Identifier expected in FormalParameterList, not %s");
+enum FplExpectedCommaError = syntaxerr!(d_string)
+    ("comma expected in FormalParameterList, not %s");
+enum ExpectedIdentifierError = syntaxerr!()
+    ("identifier expected");
+enum ExpectedGenericError = syntaxerr!(d_string, d_string)
+    ("found '%s' when expecting '%s'");
+enum ExpectedIdentifierParamError = syntaxerr!(d_string)
+    ("identifier expected instead of '%s'");
+enum ExpectedIdentifier2paramError = syntaxerr!(d_string, d_string)
+    ("identifier expected following '%s', not '%s'");
 enum UnterminatedBlockError =
     err!typeerror("EOF found before closing ']' of block statement");
-enum TooManyInVarsError =
-    err!typeerror("only one variable can be declared for 'in', not %d");
-enum InExpectedError =
-    err!typeerror("';' or 'in' expected, not '%s'");
-enum GotoLabelExpectedError =
-    err!typeerror("label expected after goto, not '%s'");
-enum TryCatchExpectedError =
-    err!typeerror("catch or finally expected following try");
-enum StatementExpectedError =
-    err!typeerror("found '%s' instead of statement");
-enum ExpectedExpressionError =
-    err!typeerror("expression expected, not '%s'");
+enum TooManyInVarsError = syntaxerr!(size_t)
+    ("only one variable can be declared for 'in', not %d");
+enum InExpectedError = syntaxerr!(d_string)
+    ("';' or 'in' expected, not '%s'");
+enum GotoLabelExpectedError = syntaxerr!(d_string)
+    ("label expected after goto, not '%s'");
+enum TryCatchExpectedError = syntaxerr!()
+    ("catch or finally expected following try");
+enum StatementExpectedError = syntaxerr!(d_string)
+    ("found '%s' instead of statement");
+enum ExpectedExpressionError = syntaxerr!(d_string)
+    ("expression expected, not '%s'");
 enum ObjLiteralInInitializerError =
     err!typeerror("Object literal in initializer");
 enum LabelAlreadyDefinedError =
     err!typeerror("label '%s' is already defined");
-enum SwitchRedundantCaseError =
-    err!typeerror("redundant case %s");
-enum MisplacedSwitchCaseError =
-    err!typeerror("case %s: is not in a switch statement");
-enum SwitchRedundantDefaultError =
-    err!typeerror("redundant default in switch statement");
-enum MisplacedSwitchDefaultError =
-    err!typeerror("default is not in a switch statement");
-enum InitNotExpressionError =
-    err!typeerror("init statement must be expression or var");
-enum MisplacedBreakError =
-    err!typeerror("can only break from within loop or switch");
-enum MisplacedContinueError =
-    err!typeerror("continue is not in a loop");
-enum UndefinedStatementLabelError =
-    err!typeerror("Statement label '%s' is undefined");
+enum SwitchRedundantCaseError = syntaxerr!(d_string)
+    ("redundant case %s");
+enum MisplacedSwitchCaseError = syntaxerr!(d_string)
+    ("case %s: is not in a switch statement");
+enum SwitchRedundantDefaultError = syntaxerr!()
+    ("redundant default in switch statement");
+enum MisplacedSwitchDefaultError = syntaxerr!()
+    ("default is not in a switch statement");
+enum InitNotExpressionError = syntaxerr!()
+    ("init statement must be expression or var");
+enum MisplacedBreakError = syntaxerr!()
+    ("can only break from within loop or switch");
+enum MisplacedContinueError = syntaxerr!()
+    ("continue is not in a loop");
+enum UndefinedStatementLabelError = syntaxerr!(d_string)
+    ("Statement label '%s' is undefined");
 enum GotoIntoWithError =
     err!typeerror("cannot goto into with statement");
-enum MisplacedReturnError =
-    err!typeerror("can only return from within function");
-enum NoThrowExpressionError =
-    err!typeerror("no expression for throw");
+enum MisplacedReturnError = syntaxerr!()
+    ("can only return from within function");
+enum NoThrowExpressionError = syntaxerr!()
+    ("no expression for throw");
 enum UndefinedObjectSymbolError =
     err!typeerror("%s.%s is undefined");
 enum FunctionWantsNumberError = err!(typeerror, d_string, d_string)
@@ -171,10 +197,11 @@ enum CannotPutIndexToPrimitiveError =
     ("can't Put(%u, %s) to a primitive %s");
 enum ObjectCannotBePrimitiveError = err!typeerror
     ("object cannot be converted to a primitive type");
-enum CannotGetFromPrimitiveError =
-    err!typeerror("can't Get(%s) from primitive %s(%s)");
+enum CannotGetFromPrimitiveError = err!(typeerror, d_string, d_string, d_string)
+    ("can't Get(%s) from primitive %s(%s)");
 enum CannotGetIndexFromPrimitiveError =
-    err!typeerror("can't Get(%d) from primitive %s(%s)");
+    err!(typeerror, size_t, d_string, d_string)
+    ("can't Get(%d) from primitive %s(%s)");
 enum PrimitiveNoConstructError = err!(typeerror, d_string)
     ("primitive %s has no Construct method");
 enum PrimitiveNoCallError = err!(typeerror, d_string)
@@ -223,8 +250,8 @@ enum NotValidUTFError = err!(typeerror, d_string, d_string, uint)
     ("%s.%s expects a valid UTF codepoint not \\u%x");
 enum UndefinedVarError = err!(referenceerror, d_string)
     ("Variable '%s' is not defined");
-enum CantBreakInternalError =
-    err!typeerror("Can't break to internal loop label %s");
+enum CantBreakInternalError = syntaxerr!(d_string)
+    ("Can't break to internal loop label %s");
 enum EUnexpectedError =
     err!typeerror("Unexpected");
 
@@ -233,106 +260,3 @@ enum NoDefaultValueError =
 
 enum ReferenceError = err!(referenceerror, d_string)
     ("%s");
-
-enum Err
-{
-    RuntimePrefix = "DMDScript fatal runtime error: ",
-    ComNoDefaultValue = "No default value for COM object",
-    ComNoConstructProperty = "%s does not have a [[Construct]] property",
-    DispETypemismatch = "argument type mismatch for %s",
-    DispEBadparamcount = "wrong number of arguments for %s",
-    ComFunctionError = "%s Invoke() fails with COM error %x",
-    ComObjectError = "Dcomobject: %s.%s fails with COM error %x",
-    BadSwitch = "unrecognized switch '%s'",
-    UndefinedLabel = "undefined label '%s' in function '%s'",
-    BadCComment = "unterminated /* */ comment",
-    BadHTMLComment = "<!-- comment does not end in newline",
-    BadCharC = "unsupported char '%s'",
-    BadCharX = "unsupported char 0x%04x",
-    BadHexSequence = "escape hex sequence requires 2 hex digits",
-    UndefinedEscSequence = "undefined escape sequence \\%c",
-    StringNoEndQuote = "string is missing an end quote %s",
-    UnterminatedString = "end of file before end of string",
-    BadUSequence = "\\u sequence must be followed by 4 hex characters",
-    UnrecognizedNLiteral = "unrecognized numeric literal",
-    FplExpectedIdentifier =
-    "Identifier expected in FormalParameterList, not %s",
-    FplExpectedComma = "comma expected in FormalParameterList, not %s",
-    ExpectedIdentifier = "identifier expected",
-    ExpectedGeneric = "found '%s' when expecting '%s'",
-    ExpectedIdentifierParam = "identifier expected instead of '%s'",
-    ExpectedIdentifier2param = "identifier expected following '%s', not '%s'",
-    UnterminatedBlock = "EOF found before closing ']' of block statement",
-    TooManyInVars = "only one variable can be declared for 'in', not %d",
-    InExpected = "';' or 'in' expected, not '%s'",
-    GotoLabelExpected = "label expected after goto, not '%s'",
-    TryCatchExpected = "catch or finally expected following try",
-    StatementExpected = "found '%s' instead of statement",
-    ExpectedExpression = "expression expected, not '%s'",
-    ObjLiteralInInitializer = "Object literal in initializer",
-    LabelAlreadyDefined = "label '%s' is already defined",
-    SwitchRedundantCase = "redundant case %s",
-    MisplacedSwitchCase = "case %s: is not in a switch statement",
-    SwitchRedundantDefault = "redundant default in switch statement",
-    MisplacedSwitchDefault = "default is not in a switch statement",
-    InitNotExpression = "init statement must be expression or var",
-    MisplacedBreak = "can only break from within loop or switch",
-    MisplacedContinue = "continue is not in a loop",
-    UndefinedStatementLabel = "Statement label '%s' is undefined",
-    GotoIntoWith = "cannot goto into with statement",
-    MisplacedReturn = "can only return from within function",
-    NoThrowExpression = "no expression for throw",
-    UndefinedObjectSymbol = "%s.%s is undefined",
-    FunctionWantsNumber = "Number.prototype.%s() expects a Number not a %s",
-    FunctionWantsString = "String.prototype.%s() expects a String not a %s",
-    FunctionWantsDate = "Date.prototype.%s() expects a Date not a %s",
-    UndefinedNoCall2 = "%s %s is undefined and has no Call method",
-    UndefinedNoCall3 = "%s %s.%s is undefined and has no Call method",
-    FunctionWantsBool = "Boolean.prototype.%s() expects a Boolean not a %s",
-    ArrayLenOutOfBounds = "arg to Array(len) must be 0 .. 2**32-1, not %.16g",
-    ValueOutOfRange = "Number.prototype.%s() %s out of range",
-    TypeError = "TypeError in %s",
-    RegexpCompile = "Error compiling regular expression",
-    NotTransferrable = "%s not transferrable",
-    CannotConvertToObject2 = "%s %s cannot convert to Object",
-    CannotConvertToObject3 = "%s %s.%s cannot convert to Object",
-    CannotConvertToObject4 = "cannot convert %s to Object",
-    CannotAssignTo = "cannot assign to %s",
-    CannotAssign = "cannot assign %s to %s",
-    CannotAssignTo2 = "cannot assign to %s.%s",
-    FunctionNotLvalue = "cannot assign to function",
-    RhsMustBeObject = "RHS of %s must be an Object, not a %s",
-    CannotPutToPrimitive = "can't Put('%s', %s) to a primitive %s",
-    CannotPutIndexToPrimitive = "can't Put(%u, %s) to a primitive %s",
-    ObjectCannotBePrimitive = "object cannot be converted to a primitive type",
-    CannotGetFromPrimitive = "can't Get(%s) from primitive %s(%s)",
-    CannotGetIndexFromPrimitive = "can't Get(%d) from primitive %s(%s)",
-    PrimitiveNoConstruct = "primitive %s has no Construct method",
-    PrimitiveNoCall = "primitive %s has no Call method",
-    ForInMustBeObject = "for-in must be on an object, not a primitive",
-    Assert = "assert() line %d",
-    ObjectNoCall = "object does not have a [[Call]] property",
-    SS = "%s: %s",
-    NoDefaultPut = "no Default Put for object",
-    SNoConstruct = "%s does not have a [[Construct]] property",
-    SNoCall = "%s does not have a [[Call]] property",
-    SNoInstance = "%s does not have a [[HasInstance]] property",
-    LengthInt = "length property must be an integer",
-    TlsNotTransferrable = "Array.prototype.toLocaleString() not transferrable",
-    TsNotTransferrable = "Function.prototype.toString() not transferrable",
-    ArrayArgs =
-    "Function.prototype.apply(): argArray must be array or arguments object",
-    MustBeObject = ".prototype must be an Object, not a %s",
-    VbarrayExpected = "VBArray expected, not a %s",
-    VbarraySubscript = "VBArray subscript out of range",
-    Activex = "Type mismatch",
-    NoProperty = "no property %s",
-    PutFailed = "Put of %s failed",
-    GetFailed = "Get of %s failed",
-    NotCollection = "argument not a collection",
-    NotValidUTF = "%s.%s expects a valid UTF codepoint not \\u%x",
-    UndefinedVar = "Variable '%s' is not defined",
-    CantBreakInternal = "Can't break to internal loop label %s",
-    EUnexpected = "Unexpected",
-}
-

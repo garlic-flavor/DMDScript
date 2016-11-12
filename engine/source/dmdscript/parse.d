@@ -80,7 +80,7 @@ class Parser : Lexer
         {
             if(p.token.value != Tok.Identifier)
             {
-                p.error(Err.FplExpectedIdentifier, p.token.toString);
+                p.error(FplExpectedIdentifierError(p.token.toString));
                 goto Lreturn;
             }
             parameters ~= p.token.ident;
@@ -91,7 +91,7 @@ class Parser : Lexer
                 break;
             else
             {
-                p.error(Err.FplExpectedComma, p.token.toString);
+                p.error(FplExpectedCommaError(p.token.toString));
                 goto Lreturn;
             }
         }
@@ -213,7 +213,8 @@ class Parser : Lexer
                     }
                     else
                     {
-                        error(Err.ExpectedIdentifier2param, ".", token.toString);
+                        error(ExpectedIdentifier2paramError(
+                                  ".", token.toString));
                         break;
                     }
                 }
@@ -240,7 +241,7 @@ class Parser : Lexer
                         break;
                 }
                 else
-                    error(Err.ExpectedIdentifier);
+                    error(ExpectedIdentifierError);
                 break;
             }
         }
@@ -356,7 +357,7 @@ class Parser : Lexer
 
                 if(token.value != Tok.Identifier)
                 {
-                    error(Err.ExpectedIdentifierParam, token.toString);
+                    error(ExpectedIdentifierParamError(token.toString));
                     break;
                 }
                 ident = token.ident;
@@ -528,7 +529,7 @@ class Parser : Lexer
                 {
                     vs = cast(VarStatement)init;
                     if(vs.vardecls.length != 1)
-                        error(Err.TooManyInVars, vs.vardecls.length);
+                        error(TooManyInVarsError(vs.vardecls.length));
                 }
 
                 nextToken();
@@ -540,7 +541,7 @@ class Parser : Lexer
             }
             else
             {
-                error(Err.InExpected, token.toString);
+                error(InExpectedError(token.toString));
                 s = null;
             }
             break;
@@ -606,7 +607,7 @@ class Parser : Lexer
           nextToken();
           if(token.value != Tok.Identifier)
           {
-              error(Err.GotoLabelExpected, token.toString);
+              error(GotoLabelExpectedError(token.toString));
               s = null;
               break;
           }
@@ -676,7 +677,7 @@ class Parser : Lexer
 
           if(!catchbody && !finalbody)
           {
-              error(Err.TryCatchExpected);
+              error(TryCatchExpectedError);
               s = null;
           }
           else
@@ -686,7 +687,7 @@ class Parser : Lexer
           break; }
 
         default:
-            error(Err.StatementExpected, token.toString);
+            error(StatementExpectedError(token.toString));
             nextToken();
             s = null;
             break;
@@ -723,7 +724,7 @@ class Parser : Lexer
     {
         if(token.value != value)
         {
-            error(Err.ExpectedGeneric, token.toString, Token.toString(value));
+            error(ExpectedGenericError(token.toString, Token.toString(value)));
             return 0;
         }
         nextToken();
@@ -829,7 +830,7 @@ class Parser : Lexer
 
         default:
             //	Lerror:
-            error(Err.ExpectedExpression, token.toString);
+            error(ExpectedExpressionError(token.toString));
             nextToken();
             return null;
         }
@@ -926,7 +927,7 @@ class Parser : Lexer
                         ident = Identifier.build(token.toString);
                     break;
                     default:
-                        error(Err.ExpectedIdentifier);
+                        error(ExpectedIdentifierError);
                     break;
                 }
                 nextToken();
@@ -973,7 +974,7 @@ class Parser : Lexer
                 }
                 else
                 {
-                    error(Err.ExpectedIdentifier2param, ".", token.toString);
+                    error(ExpectedIdentifier2paramError(".", token.toString));
                     return e;
                 }
                 break;

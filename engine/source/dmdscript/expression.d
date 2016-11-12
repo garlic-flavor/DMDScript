@@ -93,9 +93,8 @@ class Expression
 
         if (sc.exception is null)
         {
-            sc.exception = new ScriptException(
-                format(Err.CannotAssignTo, toString),
-                sourcename, sc.getSource, loc);
+            sc.exception = CannotAssignToError.toThrow(
+                toString, sourcename, sc.getSource, loc);
         }
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Should I throw the exception?

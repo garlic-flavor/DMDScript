@@ -1051,11 +1051,8 @@ struct Value
         else
         {
             // Should we generate the error, or just return undefined?
-            d_string msg;
-
-            msg = format(Err.CannotGetFromPrimitive,
-                                    PropertyName, getType, toString);
-            throw new ScriptException(msg);
+            throw CannotGetFromPrimitiveError
+                .toThrow(PropertyName, getType, toString);
             //return &vundefined;
         }
     }
@@ -1069,11 +1066,8 @@ struct Value
         else
         {
             // Should we generate the error, or just return undefined?
-            d_string msg;
-
-            msg = format(Err.CannotGetIndexFromPrimitive,
-                                    index, getType, toString);
-            throw new ScriptException(msg);
+            throw CannotGetIndexFromPrimitiveError
+                .toThrow(index, getType, toString);
             //return &vundefined;
         }
     }
@@ -1091,11 +1085,8 @@ struct Value
         else
         {
             // Should we generate the error, or just return undefined?
-            d_string msg;
-
-            msg = format(Err.CannotGetFromPrimitive,
-                                    id.toString, getType, toString);
-            throw new ScriptException(msg);
+            throw CannotGetFromPrimitiveError
+                .toThrow(id.toString, getType, toString);
             //return &vundefined;
         }
     }
@@ -1169,8 +1160,8 @@ struct Value
         if (vtype == V_OBJECT)
             return object.getException(linnum);
         else
-            return new ScriptException("Unhandled exception: " ~ toString,
-                                       null, null, linnum);
+            return new ScriptException(
+                "Unhandled exception: " ~ toString, linnum);
     }
 
     void dump()
