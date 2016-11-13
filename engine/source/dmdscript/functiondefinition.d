@@ -81,9 +81,10 @@ class FunctionDefinition : TopStatement
         this.parameters = parameters;
         this.topstatements = topstatements;
     }
-    
-    int isAnonymous() { return name is null; }
-        
+
+    final @safe @nogc pure nothrow
+    int isAnonymous() const { return name is null; }
+
     override Statement semantic(Scope* sc)
     {
         uint i;
@@ -162,37 +163,37 @@ class FunctionDefinition : TopStatement
         return cast(Statement)cast(void*)fdx;
     }
 
-    override void toBuffer(ref tchar[] buf)
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
     {
         uint i;
 
         //writef("FunctionDefinition::toBuffer()\n");
         if(!isglobal)
         {
-            buf ~= "function ";
+            sink("function ");
             if(isAnonymous)
-                buf ~= "anonymous";
+                sink("anonymous");
             else if(name)
-                buf ~= name.toString();
-            buf ~= '(';
+                sink(name.toString);
+            sink("(");
             for(i = 0; i < parameters.length; i++)
             {
                 if(i)
-                    buf ~= ',';
-                buf ~= parameters[i].toString();
+                    sink(",");
+                sink(parameters[i].toString);
             }
-            buf ~= ")\n{ \n";
+            sink(")\n{ \n");
         }
         if(topstatements)
         {
             for(i = 0; i < topstatements.length; i++)
             {
-                topstatements[i].toBuffer(buf);
+                topstatements[i].toBuffer(sink);
             }
         }
         if(!isglobal)
         {
-            buf ~= "}\n";
+            sink("}\n");
         }
     }
 
@@ -225,8 +226,8 @@ class FunctionDefinition : TopStatement
             topstatements = null;
             labtab = null;                      // maybe delete it?
         }
-        irs.gen_!(Opcode.Ret)(0);
-        irs.gen_!(Opcode.End)(0);
+        irs.gen!(Opcode.Ret)(0);
+        irs.gen!(Opcode.End)(0);
 
         //irs.validate();
 

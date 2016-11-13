@@ -208,14 +208,14 @@ class DdeclaredFunction : Dfunction
         return result;
     }
 
-    override string toString()
+    override d_string toString()
     {
-        import std.exception : assumeUnique;
-        char[] s;
+        import std.array : Appender;
+        Appender!d_string buf;
 
         //writef("DdeclaredFunction.toString()\n");
-        fd.toBuffer(s);
-        return assumeUnique(s);
+        fd.toBuffer(b=>buf.put(b));
+        return buf.data;
     }
 }
 

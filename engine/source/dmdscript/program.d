@@ -231,10 +231,10 @@ class Program
         delete p1;
     }
 
-    void toBuffer(ref tchar[] buf)
+    void toBuffer(scope void delegate(in tchar[]) sink)
     {
         if(globalfunction)
-            globalfunction.toBuffer(buf);
+            globalfunction.toBuffer(sink);
     }
 
     /***********************************************

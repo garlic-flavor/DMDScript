@@ -29,16 +29,19 @@ struct Identifier
 {
     Value value;
 
-    d_string toString()
+    @trusted @nogc pure nothrow
+    d_string toString() const
     {
         return value.text;
     }
 
-    const bool opEquals(ref const(Identifier) id)
+    @trusted @nogc pure nothrow
+    bool opEquals(ref const(Identifier) id) const
     {
         return this is id || value.text == id.value.text;
     }
 
+    @trusted
     static Identifier* build(d_string s)
     {
         Identifier* id = new Identifier;
@@ -47,7 +50,8 @@ struct Identifier
         return id;
     }
 
-    uint toHash()
+    @safe @nogc pure nothrow
+    uint toHash() const
     {
         return value.hash;
     }

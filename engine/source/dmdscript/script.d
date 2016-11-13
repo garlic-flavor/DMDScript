@@ -83,15 +83,21 @@ class ScriptException : Exception
 
     @safe pure
     void addSource(d_string sourcename, d_string source, Loc loc)
-    { trance ~= SourceDescriptor(sourcename, source, loc); }
+    { trace ~= SourceDescriptor(sourcename, source, loc); }
 
     @safe pure
     void addSource(d_string sourcename, d_string source,
                    immutable(tchar)* pos)
-    { trance ~= SourceDescriptor(sourcename, source, pos); }
+    { trace ~= SourceDescriptor(sourcename, source, pos); }
 
+    @safe pure
+    void addSource(Loc loc)
+    { trace ~= SourceDescriptor(loc); }
+
+    @safe @nogc pure nothrow
     void addSource(d_string sourcename, d_string source)
-    { foreach (ref one; trance) one.addSource(sourcename, source); }
+    { foreach (ref one; trace) one.addSource(sourcename, source); }
+
 
     override void toString(scope void delegate(in char[]) sink) const
     {
@@ -114,7 +120,7 @@ class ScriptException : Exception
 
         try
         {
-            foreach (one; trance)
+            foreach (one; trace)
                 one.toString(sink);
         }
         catch (Throwable){}
@@ -233,7 +239,7 @@ private:
         }
 
     }
-    SourceDescriptor[] trance;
+    SourceDescriptor[] trace;
 }
 
 //
@@ -253,7 +259,7 @@ struct CallContext
     FunctionDefinition callerf;
 
     Status value;                // place to store exception; must be same size as Value
-    uint               linnum;     // source line number of exception (1 based, 0 if not available)
+    Loc               linnum;     // source line number of exception (1 based, 0 if not available)
 
     int                Interrupt;  // !=0 if cancelled due to interrupt
 }
@@ -266,6 +272,7 @@ struct Global
 
 Global global;
 
+@trusted
 string banner()
 {
     import std.conv : text;
@@ -279,6 +286,7 @@ string banner()
                );
 }
 
+@safe @nogc pure nothrow
 int isStrWhiteSpaceChar(dchar c)
 {
     switch(c)
@@ -348,7 +356,7 @@ int StringToIndex(d_string name, out d_uint32 index)
  *	parsefloat	0: convert per ECMA 9.3.1
  *			1: convert per ECMA 15.1.2.3 (global.parseFloat())
  */
-
+@trusted
 d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
 {
     import std.string : toStringz;
@@ -458,6 +466,7 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
     return number;
 }
 
+@safe @nogc pure nothrow
 int localeCompare(CallContext *cc, d_string s1, d_string s2)
 {   // no locale support here
     import std.string : cmp;

@@ -37,44 +37,24 @@ struct IRstate
     Statement      breakTarget;    // current statement that 'break' applies to
     Statement      continueTarget; // current statement that 'continue' applies to
     ScopeStatement scopeContext;   // current ScopeStatement we're inside
-    size_t[]         fixups;
+    private size_t[]         fixups;
 
     //void next();	// close out current Block, and start a new one
 
-    idx_t locali = 1;            // leave location 0 as our "null"
+    private idx_t locali = 1;            // leave location 0 as our "null"
     size_t nlocals = 1;
 
+    @safe pure nothrow
     void ctor()
     {
         codebuf = new OutBuffer();
-    }
-
-    void validate()
-    {
-        import core.memory : GC;
-        assert(codebuf.offset <= codebuf.data.length);
-        debug
-        {
-            if(codebuf.data.length > codebuf.data.capacity)
-            {
-                writeln("ptr %p, length %d, capacity %d", codebuf.data.ptr,
-                        codebuf.data.length, GC.sizeOf(codebuf.data.ptr));
-                assert(0);
-            }
-        }
-        for(size_t u = 0; u < codebuf.offset; )
-        {
-            IR* code = cast(IR*)(codebuf.data.ptr + u);
-            assert(code.opcode <= Opcode.max);
-            u += IR.size(code.opcode) * IR.sizeof;
-        }
     }
 
     /**********************************
      * Allocate a block of local variables, and return an
      * index to them.
      */
-
+    @safe @nogc pure nothrow
     idx_t alloc(size_t nlocals)
     {
         size_t n;
@@ -90,7 +70,7 @@ struct IRstate
     /****************************************
      * Release this block of n locals starting at local.
      */
-
+    @safe @nogc pure nothrow
     void release(idx_t local, size_t n)
     {
         /*
@@ -101,11 +81,12 @@ struct IRstate
         //*/
     }
 
+    @safe @nogc pure nothrow
     size_t mark()
     {
         return locali;
     }
-
+    @safe @nogc pure nothrow
     void release(idx_t i)
     {
         /*
@@ -118,7 +99,8 @@ struct IRstate
      * Generate code.
      */
     //
-    void gen_(Opcode OP, A...)(A args)
+    @trusted
+    void gen(Opcode OP, A...)(A args)
     {
         alias T = IRTypes[OP];
         codebuf.reserve(T.sizeof);
@@ -128,7 +110,8 @@ struct IRstate
     }
 
     //
-    void gen_(T, A...)(A args)
+    @trusted
+    void gen(T, A...)(A args)
     {
         codebuf.reserve(T.sizeof);
         auto data = cast(T*)(codebuf.data.ptr + codebuf.offset);
@@ -136,17 +119,17 @@ struct IRstate
         *data = T(args);
     }
 
-
+    @safe
     void pops(uint npops)
     {
         while(npops--)
-            gen_!(Opcode.Pop)(0);
+            gen!(Opcode.Pop)(0);
     }
 
     /******************************
      * Get the current "instruction pointer"
      */
-
+    @safe @nogc pure nothrow
     size_t getIP()
     {
         if(!codebuf)
@@ -158,6 +141,7 @@ struct IRstate
      * Patch a value into the existing codebuf.
      */
 
+    @trusted @nogc pure nothrow
     void patchJmp(size_t index, size_t value)
     {
         assert((index + 1) * IR.sizeof < codebuf.offset);
@@ -167,7 +151,7 @@ struct IRstate
     /*******************************
      * Add this IP to list of jump instructions to patch.
      */
-
+    @safe pure nothrow
     void addFixup(size_t index)
     {
         fixups ~= index;
@@ -176,7 +160,7 @@ struct IRstate
     /*******************************
      * Go through the list of fixups and patch them.
      */
-
+    @trusted
     void doFixups()
     {
         size_t i;
@@ -430,6 +414,25 @@ struct IRstate
             }
             else
                 c += IR.size(c.opcode);
+        }
+    }
+
+    debug
+    void validate()
+    {
+        import core.memory : GC;
+        assert(codebuf.offset <= codebuf.data.length);
+        if(codebuf.data.length > codebuf.data.capacity)
+        {
+            writeln("ptr %p, length %d, capacity %d", codebuf.data.ptr,
+                    codebuf.data.length, GC.sizeOf(codebuf.data.ptr));
+            assert(0);
+        }
+        for(size_t u = 0; u < codebuf.offset; )
+        {
+            IR* code = cast(IR*)(codebuf.data.ptr + u);
+            assert(code.opcode <= Opcode.max);
+            u += IR.size(code.opcode) * IR.sizeof;
         }
     }
 }

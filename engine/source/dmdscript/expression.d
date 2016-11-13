@@ -64,27 +64,12 @@ class Expression
         return this;
     }
 
-    override d_string toString()
-    {
-        import std.exception : assumeUnique;
-        char[] buf;
-
-        toBuffer(buf);
-        return buf.assumeUnique;
-    }
-
-    void toBuffer(ref char[] buf)
-    {
-        buf ~= toString();
-    }
-
     void checkLvalue(Scope* sc)
     {
         import std.format : format;
         d_string sourcename;
 
         assert(sc !is null);
-        //writefln("checkLvalue(), op = %d", op);
         if(sc.funcdef)
         {
             if(sc.funcdef.isAnonymous)
@@ -104,22 +89,22 @@ class Expression
 
     // Do we match for purposes of optimization?
 
-    bool match(Expression e)
+    @safe @nogc pure nothrow
+    bool match(Expression e) const
     {
         return false;
     }
 
     // Is the result of the expression guaranteed to be a boolean?
 
-    bool isBooleanResult()
+    @safe @nogc pure nothrow
+    bool isBooleanResult() const
     {
         return false;
     }
 
     void toIR(IRstate* irs, idx_t ret)
-    {
-        debug writef("Expression::toIR('%s')\n", toString());
-    }
+    { assert(0, "Expression::toIR('" ~ toString() ~ "')", ); }
 
     void toLvalue(IRstate* irs, out idx_t base, IR* property,
                   out OpOffset opoff)
@@ -129,161 +114,170 @@ class Expression
         property.index = 0;
         opoff = OpOffset.V;
     }
+
+    final override
+    d_string toString()
+    {
+        import std.array : Appender;
+
+        Appender!d_string buf;
+        toBuffer(b=>buf.put(b));
+        return buf.data;
+    }
+
+    void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        assert(0);
+    }
 }
 
 /******************************** RealExpression **************************/
 
-class RealExpression : Expression
+final class RealExpression : Expression
 {
     real_t value;
 
+    @safe @nogc pure nothrow
     this(Loc loc, real_t value)
     {
         super(loc, Tok.Real);
         this.value = value;
     }
 
-    override d_string toString()
+    override @safe
+    void toIR(IRstate* irs, idx_t ret) const
     {
-        import std.format : format;
-
-        d_string buf;
-        long i;
-
-        i = cast(long)value;
-        if(i == value)
-            buf = format("%d", i);
-        else
-            buf = format("%g", value);
-        return buf;
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        import std.format : format;
-
-        buf ~= format("%g", value);
-    }
-
-    override void toIR(IRstate* irs, idx_t ret)
-    {
-        //writef("RealExpression::toIR(%g)\n", value);
-
         if(ret)
-            irs.gen_!(Opcode.Number)(loc, ret, value);
+            irs.gen!(Opcode.Number)(loc, ret, value);
+    }
+
+    override @trusted
+    void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        import std.conv : to;
+        sink(value.to!string);
     }
 }
 
 /******************************** IdentifierExpression **************************/
 
-class IdentifierExpression : Expression
+final class IdentifierExpression : Expression
 {
     Identifier* ident;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Identifier*  ident)
     {
         super(loc, Tok.Identifier);
         this.ident = ident;
     }
 
-    override Expression semantic(Scope* sc)
+    override @safe @nogc pure nothrow
+    Expression semantic(Scope* sc)
     {
         return this;
     }
 
-    override d_string toString()
-    {
-        return ident.toString();
-    }
-
-    override void checkLvalue(Scope* sc)
+    override @safe @nogc pure nothrow
+    void checkLvalue(Scope* sc) const
     {
     }
 
-    override bool match(Expression e)
+    override bool match(Expression e) const
     {
         if(e.op != Tok.Identifier)
             return 0;
 
-        IdentifierExpression ie = cast(IdentifierExpression)(e);
+        auto ie = cast(IdentifierExpression)(e);
 
         return ident == ie.ident;
     }
 
-    override void toIR(IRstate* irs, idx_t ret)
+    override @safe
+    void toIR(IRstate* irs, idx_t ret)
     {
         // Identifier* id = ident;
 
         // assert(id.sizeof == uint.sizeof);
         if(ret)
-            irs.gen_!(Opcode.GetScope)(loc, ret, ident);
+            irs.gen!(Opcode.GetScope)(loc, ret, ident);
         else
-            irs.gen_!(Opcode.CheckRef)(loc, ident);
+            irs.gen!(Opcode.CheckRef)(loc, ident);
     }
 
-    override void toLvalue(IRstate* irs, out idx_t base, IR* property,
-                           out OpOffset opoff)
+    override @trusted @nogc pure nothrow
+    void toLvalue(IRstate* irs, out idx_t base, IR* property,
+                  out OpOffset opoff)
     {
         //irs.gen1(loc, IRthis, base);
         property.id = ident;
         opoff = OpOffset.Scope;
         base = ~0u;
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    { sink(ident.toString); }
 }
 
 /******************************** ThisExpression **************************/
 
-class ThisExpression : Expression
+final class ThisExpression : Expression
 {
+    @safe @nogc pure nothrow
     this(Loc loc)
     {
         super(loc, Tok.This);
     }
 
-    override d_string toString()
-    {
-        return Text._this;
-    }
-
-    override Expression semantic(Scope* sc)
+    override @safe @nogc pure nothrow
+    Expression semantic(Scope* sc)
     {
         return this;
     }
 
-    override void toIR(IRstate* irs, idx_t ret)
+    override @safe
+    void toIR(IRstate* irs, idx_t ret) const
     {
         if(ret)
-            irs.gen_!(Opcode.This)(loc, ret);
+            irs.gen!(Opcode.This)(loc, ret);
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        sink(Text._this);
     }
 }
 
 /******************************** NullExpression **************************/
 
-class NullExpression : Expression
+final class NullExpression : Expression
 {
+    @safe @nogc pure nothrow
     this(Loc loc)
     {
         super(loc, Tok.Null);
     }
 
-    override d_string toString()
-    {
-        return Text._null;
-    }
-
-    override void toIR(IRstate* irs, idx_t ret)
+    override @safe
+    void toIR(IRstate* irs, idx_t ret) const
     {
         if(ret)
-            irs.gen_!(Opcode.Null)(loc, ret);
+            irs.gen!(Opcode.Null)(loc, ret);
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        sink(Text._null);
     }
 }
 
 /******************************** StringExpression **************************/
 
-class StringExpression : Expression
+final class StringExpression : Expression
 {
     private d_string str;
 
+    @safe @nogc pure nothrow
     this(Loc loc, d_string str)
     {
         //writefln("StringExpression('%s')", string);
@@ -291,47 +285,49 @@ class StringExpression : Expression
         this.str = str;
     }
 
-    override void toBuffer(ref tchar[] buf)
+    override @safe
+    void toIR(IRstate* irs, idx_t ret) const
+    {
+        if(ret)
+            irs.gen!(Opcode.String)(loc, ret, Identifier.build(str));
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
     {
         import std.format : format;
         import std.ascii : isPrintable;
 
-        buf ~= '"';
+        sink("\"");
         foreach(dchar c; str)
         {
             switch(c)
             {
             case '"':
-                buf ~= '\\';
+                sink("\\");
                 goto Ldefault;
 
             default:
                 Ldefault:
                 if(c & ~0xFF)
-                    buf ~= format("\\u%04x", c);
+                    sink(format("\\u%04x", c));
                 else if(isPrintable(c))
-                    buf ~= cast(tchar)c;
+                    sink([cast(tchar)c]);
                 else
-                    buf ~= format("\\x%02x", c);
+                    sink(format("\\x%02x", c));
                 break;
             }
         }
-        buf ~= '"';
-    }
-
-    override void toIR(IRstate* irs, idx_t ret)
-    {
-        if(ret)
-            irs.gen_!(Opcode.String)(loc, ret, Identifier.build(str));
+        sink("\"");
     }
 }
 
 /******************************** RegExpLiteral **************************/
 
-class RegExpLiteral : Expression
+final class RegExpLiteral : Expression
 {
     private d_string str;
 
+    @safe @nogc pure nothrow
     this(Loc loc, d_string str)
     {
         //writefln("RegExpLiteral('%s')", string);
@@ -339,12 +335,7 @@ class RegExpLiteral : Expression
         this.str = str;
     }
 
-    override void toBuffer(ref tchar[] buf)
-    {
-        buf ~= str;
-    }
-
-    override void toIR(IRstate* irs, idx_t ret)
+    override void toIR(IRstate* irs, idx_t ret) const
     {
         import std.string : lastIndexOf;
         d_string pattern;
@@ -373,58 +364,61 @@ class RegExpLiteral : Expression
         // Generate new Regexp(pattern [, attribute])
 
         b = irs.alloc(1);
-        Identifier* re = Identifier.build(Text.RegExp);
-        irs.gen_!(Opcode.GetScope)(loc, b, re);
+        auto re = Identifier.build(Text.RegExp);
+        irs.gen!(Opcode.GetScope)(loc, b, re);
         argv = irs.alloc(argc);
-        irs.gen_!(Opcode.String)(loc, argv, Identifier.build(pattern));
+        irs.gen!(Opcode.String)(loc, argv, Identifier.build(pattern));
         if(argc == 2)
-            irs.gen_!(Opcode.String)(loc, argv + 1,
+            irs.gen!(Opcode.String)(loc, argv + 1,
                                      Identifier.build(attribute));
-        irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
+        irs.gen!(Opcode.New)(loc, ret, b, argc, argv);
         irs.release(b, argc + 1);
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        sink(str);
     }
 }
 
 /******************************** BooleanExpression **************************/
 
-class BooleanExpression : Expression
+final class BooleanExpression : Expression
 {
-    int boolean;
+    private int boolean;
 
+    @safe @nogc pure nothrow
     this(Loc loc, int boolean)
     {
         super(loc, Tok.Boolean);
         this.boolean = boolean;
     }
 
-    override d_string toString()
-    {
-        return boolean ? "true" : "false";
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        buf ~= toString();
-    }
-
-    override bool isBooleanResult()
+    override bool isBooleanResult() const
     {
         return true;
     }
 
-    override void toIR(IRstate* irs, idx_t ret)
+    override @safe
+    void toIR(IRstate* irs, idx_t ret) const
     {
         if(ret)
-            irs.gen_!(Opcode.Boolean)(loc, ret, boolean);
+            irs.gen!(Opcode.Boolean)(loc, ret, boolean);
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        sink(boolean ? "true" : "false");
     }
 }
 
 /******************************** ArrayLiteral **************************/
 
-class ArrayLiteral : Expression
+final class ArrayLiteral : Expression
 {
-    Expression[] elements;
+    private Expression[] elements;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Expression[] elements)
     {
         super(loc, Tok.Arraylit);
@@ -441,22 +435,6 @@ class ArrayLiteral : Expression
         return this;
     }
 
-    override void toBuffer(ref tchar[] buf)
-    {
-        uint i;
-
-        buf ~= '[';
-        foreach(Expression e; elements)
-        {
-            if(i)
-                buf ~= ',';
-            i = 1;
-            if(e)
-                e.toBuffer(buf);
-        }
-        buf ~= ']';
-    }
-
     override void toIR(IRstate* irs, idx_t ret)
     {
         size_t argc;
@@ -468,7 +446,7 @@ class ArrayLiteral : Expression
         static Identifier* ar;
         if(!ar)
             ar = Identifier.build(Text.Array);
-        irs.gen_!(Opcode.GetScope)(loc, b, ar);
+        irs.gen!(Opcode.GetScope)(loc, b, ar);
         if(elements.length)
         {
             Expression e;
@@ -489,25 +467,25 @@ class ArrayLiteral : Expression
                         e.toIR(irs, argv + i);
                     }
                     else
-                        irs.gen_!(Opcode.Undefined)(loc, argv + i);
+                        irs.gen!(Opcode.Undefined)(loc, argv + i);
                 }
-                irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
+                irs.gen!(Opcode.New)(loc, ret, b, argc, argv);
             }
             else
             {   //	[a] translates to:
                 //	ret = new Array(1);
                 //  ret[0] = a
 
-                irs.gen_!(Opcode.Number)(loc, argv, 1.0);
-                irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
+                irs.gen!(Opcode.Number)(loc, argv, 1.0);
+                irs.gen!(Opcode.New)(loc, ret, b, argc, argv);
 
                 e = elements[0];
                 v = irs.alloc(1);
                 if(e)
                     e.toIR(irs, v);
                 else
-                    irs.gen_!(Opcode.Undefined)(loc, v);
-                irs.gen_!(Opcode.PutS)(loc, v, ret, Identifier.build(Text._0));
+                    irs.gen!(Opcode.Undefined)(loc, v);
+                irs.gen!(Opcode.PutS)(loc, v, ret, Identifier.build(Text._0));
                 irs.release(v, 1);
             }
             irs.release(argv, argc);
@@ -515,20 +493,37 @@ class ArrayLiteral : Expression
         else
         {
             // Generate new Array()
-            irs.gen_!(Opcode.New)(loc, ret, b, 0, 0);
+            irs.gen!(Opcode.New)(loc, ret, b, 0, 0);
         }
         irs.release(b, 1);
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        uint i;
+
+        sink("[");
+        foreach(e; elements)
+        {
+            if(i)
+                sink(",");
+            i = 1;
+            if(e)
+                e.toBuffer(sink);
+        }
+        sink("]");
     }
 }
 
 /******************************** FieldLiteral **************************/
 
-class Field
+final class Field
 {
-    Identifier* ident;
-    Expression exp;
+    private Identifier* ident;
+    private Expression exp;
 
-    this(Identifier*  ident, Expression exp)
+    @safe @nogc pure nothrow
+    this(Identifier* ident, Expression exp)
     {
         this.ident = ident;
         this.exp = exp;
@@ -537,10 +532,11 @@ class Field
 
 /******************************** ObjectLiteral **************************/
 
-class ObjectLiteral : Expression
+final class ObjectLiteral : Expression
 {
-    Field[] fields;
+    private Field[] fields;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Field[] fields)
     {
         super(loc, Tok.Objectlit);
@@ -556,32 +552,15 @@ class ObjectLiteral : Expression
         return this;
     }
 
-    override void toBuffer(ref tchar[] buf)
-    {
-        uint i;
-
-        buf ~= '{';
-        foreach(Field f; fields)
-        {
-            if(i)
-                buf ~= ',';
-            i = 1;
-            buf ~= f.ident.toString();
-            buf ~= ':';
-            f.exp.toBuffer(buf);
-        }
-        buf ~= '}';
-    }
-
     override void toIR(IRstate* irs, idx_t ret)
     {
         idx_t b;
 
         b = irs.alloc(1);
         //irs.gen2(loc, IRstring, b, Text.Object);
-        irs.gen_!(Opcode.GetScope)(loc, b, Identifier.build(Text.Object));
+        irs.gen!(Opcode.GetScope)(loc, b, Identifier.build(Text.Object));
         // Generate new Object()
-        irs.gen_!(Opcode.New)(loc, ret, b, 0, 0);
+        irs.gen!(Opcode.New)(loc, ret, b, 0, 0);
         if(fields.length)
         {
             uint x;
@@ -590,18 +569,36 @@ class ObjectLiteral : Expression
             foreach(Field f; fields)
             {
                 f.exp.toIR(irs, x);
-                irs.gen_!(Opcode.PutS)(loc, x, ret, f.ident);
+                irs.gen!(Opcode.PutS)(loc, x, ret, f.ident);
             }
         }
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        uint i;
+
+        sink("{");
+        foreach(f; fields)
+        {
+            if(i)
+                sink(",");
+            i = 1;
+            sink(f.ident.toString);
+            sink(":");
+            f.exp.toBuffer(sink);
+        }
+        sink("}");
     }
 }
 
 /******************************** FunctionLiteral **************************/
 
-class FunctionLiteral : Expression
+final class FunctionLiteral : Expression
 {
-    FunctionDefinition func;
+    private FunctionDefinition func;
 
+    @safe @nogc pure nothrow
     this(Loc loc, FunctionDefinition func)
     {
         super(loc, Tok.Objectlit);
@@ -614,15 +611,15 @@ class FunctionLiteral : Expression
         return this;
     }
 
-    override void toBuffer(ref tchar[] buf)
-    {
-        func.toBuffer(buf);
-    }
-
     override void toIR(IRstate* irs, idx_t ret)
     {
         func.toIR(null);
-        irs.gen_!(Opcode.Object)(loc, ret, func);
+        irs.gen!(Opcode.Object)(loc, ret, func);
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        func.toBuffer(sink);
     }
 }
 
@@ -630,8 +627,9 @@ class FunctionLiteral : Expression
 
 class UnaExp : Expression
 {
-    Expression e1;
+    protected Expression e1;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Tok op, Expression e1)
     {
         super(loc, op);
@@ -644,11 +642,11 @@ class UnaExp : Expression
         return this;
     }
 
-    override void toBuffer(ref tchar[] buf)
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
     {
-        buf ~= Token.toString(op);
-        buf ~= ' ';
-        e1.toBuffer(buf);
+        sink(Token.toString(op));
+        sink(" ");
+        e1.toBuffer(sink);
     }
 }
 
@@ -659,6 +657,7 @@ class BinExp : Expression
     Expression e1;
     Expression e2;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Tok op, Expression e1, Expression e2)
     {
         super(loc, op);
@@ -673,15 +672,6 @@ class BinExp : Expression
         return this;
     }
 
-    override void toBuffer(ref tchar[] buf)
-    {
-        e1.toBuffer(buf);
-        buf ~= ' ';
-        buf ~= Token.toString(op);
-        buf ~= ' ';
-        e2.toBuffer(buf);
-    }
-
     void binIR(IRstate* irs, idx_t ret, Opcode ircode)
     {
         idx_t b;
@@ -693,13 +683,13 @@ class BinExp : Expression
             e1.toIR(irs, b);
             if(e1.match(e2))
             {
-                irs.gen_!GenIR3(loc, ircode, ret, b, b);
+                irs.gen!GenIR3(loc, ircode, ret, b, b);
             }
             else
             {
                 c = irs.alloc(1);
                 e2.toIR(irs, c);
-                irs.gen_!GenIR3(loc, ircode, ret, b, c);
+                irs.gen!GenIR3(loc, ircode, ret, b, c);
                 irs.release(c, 1);
             }
             irs.release(b, 1);
@@ -710,6 +700,15 @@ class BinExp : Expression
             e2.toIR(irs, 0);
         }
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        e1.toBuffer(sink);
+        sink(" ");
+        sink(Token.toString(op));
+        sink(" ");
+        e2.toBuffer(sink);
+    }
 }
 
 /************************************************************/
@@ -717,10 +716,11 @@ class BinExp : Expression
 /* Handle ++e and --e
  */
 
-class PreExp : UnaExp
+final class PreExp : UnaExp
 {
-    Opcode ircode;
+    private Opcode ircode;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Opcode ircode, Expression e)
     {
         super(loc, Tok.Plusplus, e);
@@ -734,12 +734,6 @@ class PreExp : UnaExp
         return this;
     }
 
-    override void toBuffer(ref tchar[] buf)
-    {
-        e1.toBuffer(buf);
-        buf ~= Token.toString(op);
-    }
-
     override void toIR(IRstate* irs, idx_t ret)
     {
         idx_t base;
@@ -751,26 +745,33 @@ class PreExp : UnaExp
         final switch(opoff)
         {
         case OpOffset.None:
-            irs.gen_!GenIR3(loc, ircode, ret, base, property.index);
+            irs.gen!GenIR3(loc, ircode, ret, base, property.index);
             break;
         case OpOffset.S:
-            irs.gen_!GenIR3S(loc, cast(Opcode)(ircode + opoff),
+            irs.gen!GenIR3S(loc, cast(Opcode)(ircode + opoff),
                              ret, base, property.id);
             break;
         case OpOffset.Scope:
-            irs.gen_!GenIRScope3(loc, cast(Opcode)(ircode + opoff),
+            irs.gen!GenIRScope3(loc, cast(Opcode)(ircode + opoff),
                                  ret, property.id, property.id.toHash);
             break;
         case OpOffset.V:
             assert(0);
         }
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        e1.toBuffer(sink);
+        sink(Token.toString(op));
+    }
 }
 
 /************************************************************/
 
-class PostIncExp : UnaExp
+final class PostIncExp : UnaExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e)
     {
         super(loc, Tok.Plusplus, e);
@@ -781,12 +782,6 @@ class PostIncExp : UnaExp
         super.semantic(sc);
         e1.checkLvalue(sc);
         return this;
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        e1.toBuffer(buf);
-        buf ~= Token.toString(op);
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -801,33 +796,40 @@ class PostIncExp : UnaExp
         {
         case OpOffset.None:
             if (ret)
-                irs.gen_!(Opcode.PostInc)(loc, ret, base, property.index);
+                irs.gen!(Opcode.PostInc)(loc, ret, base, property.index);
             else
-                irs.gen_!(Opcode.PreInc)(loc, ret, base, property.index);
+                irs.gen!(Opcode.PreInc)(loc, ret, base, property.index);
             break;
         case OpOffset.S:
             if (ret)
-                irs.gen_!(Opcode.PostIncS)(loc, ret, base, property.id);
+                irs.gen!(Opcode.PostIncS)(loc, ret, base, property.id);
             else
-                irs.gen_!(Opcode.PreIncS)(loc, ret, base, property.id);
+                irs.gen!(Opcode.PreIncS)(loc, ret, base, property.id);
             break;
         case OpOffset.Scope:
             if (ret)
-                irs.gen_!(Opcode.PostIncScope)(loc, ret, property.id);
+                irs.gen!(Opcode.PostIncScope)(loc, ret, property.id);
             else
-                irs.gen_!(Opcode.PreIncScope)(loc, ret, property.id,
+                irs.gen!(Opcode.PreIncScope)(loc, ret, property.id,
                                               property.id.toHash);
             break;
         case OpOffset.V:
             assert(0);
         }
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        e1.toBuffer(sink);
+        sink(Token.toString(op));
+    }
 }
 
 /****************************************************************/
 
-class PostDecExp : UnaExp
+final class PostDecExp : UnaExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e)
     {
         super(loc, Tok.Plusplus, e);
@@ -838,12 +840,6 @@ class PostDecExp : UnaExp
         super.semantic(sc);
         e1.checkLvalue(sc);
         return this;
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        e1.toBuffer(buf);
-        buf ~= Token.toString(op);
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -858,51 +854,50 @@ class PostDecExp : UnaExp
         {
         case OpOffset.None:
             if (ret)
-                irs.gen_!(Opcode.PostDec)(loc, ret, base, property.index);
+                irs.gen!(Opcode.PostDec)(loc, ret, base, property.index);
             else
-                irs.gen_!(Opcode.PreDec)(loc, ret, base, property.index);
+                irs.gen!(Opcode.PreDec)(loc, ret, base, property.index);
             break;
         case OpOffset.S:
             if (ret)
-                irs.gen_!(Opcode.PostDecS)(loc, ret, base, property.id);
+                irs.gen!(Opcode.PostDecS)(loc, ret, base, property.id);
             else
-                irs.gen_!(Opcode.PreDecS)(loc, ret, base, property.id);
+                irs.gen!(Opcode.PreDecS)(loc, ret, base, property.id);
             break;
         case OpOffset.Scope:
             if (ret)
-                irs.gen_!(Opcode.PostDecScope)(loc, ret, property.id);
+                irs.gen!(Opcode.PostDecScope)(loc, ret, property.id);
             else
-                irs.gen_!(Opcode.PreDecScope)(loc, ret, property.id,
+                irs.gen!(Opcode.PreDecScope)(loc, ret, property.id,
                                               property.id.toHash);
             break;
         case OpOffset.V:
             assert(0);
         }
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        e1.toBuffer(sink);
+        sink(Token.toString(op));
+    }
 }
 
 /************************************************************/
 
-class DotExp : UnaExp
+final class DotExp : UnaExp
 {
-    Identifier* ident;
+    private Identifier* ident;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e, Identifier*  ident)
     {
         super(loc, Tok.Dot, e);
         this.ident = ident;
     }
 
-    override void checkLvalue(Scope* sc)
-    {
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        e1.toBuffer(buf);
-        buf ~= '.';
-        buf ~= ident.toString();
-    }
+    override @safe @nogc pure nothrow
+    void checkLvalue(Scope* sc) {}
 
     override void toIR(IRstate* irs, idx_t ret)
     {
@@ -916,7 +911,7 @@ class DotExp : UnaExp
             // generating a property get even if the result is thrown away.
             base = irs.alloc(1);
             e1.toIR(irs, base);
-            irs.gen_!(Opcode.GetS)(loc, ret, base, ident);
+            irs.gen!(Opcode.GetS)(loc, ret, base, ident);
         }
         else
         {
@@ -924,7 +919,7 @@ class DotExp : UnaExp
             {
                 base = irs.alloc(1);
                 e1.toIR(irs, base);
-                irs.gen_!(Opcode.GetS)(loc, ret, base, ident);
+                irs.gen!(Opcode.GetS)(loc, ret, base, ident);
             }
             else
                 e1.toIR(irs, 0);
@@ -939,14 +934,22 @@ class DotExp : UnaExp
         property.id = ident;
         opoff = OpOffset.S;
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        e1.toBuffer(sink);
+        sink(".");
+        sink(ident.toString);
+    }
 }
 
 /************************************************************/
 
-class CallExp : UnaExp
+final class CallExp : UnaExp
 {
-    Expression[] arguments;
+    private Expression[] arguments;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e, Expression[] arguments)
     {
         //writef("CallExp(e1 = %x)\n", e);
@@ -980,19 +983,6 @@ class CallExp : UnaExp
             }
         }
         return this;
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        e1.toBuffer(buf);
-        buf ~= '(';
-        for(size_t u = 0; u < arguments.length; u++)
-        {
-            if(u)
-                buf ~= ", ";
-            arguments[u].toBuffer(buf);
-        }
-        buf ~= ')';
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -1033,35 +1023,42 @@ class CallExp : UnaExp
         final switch (opoff)
         {
         case OpOffset.None:
-            irs.gen_!(Opcode.Call)(loc, ret, base, property.index, argc, argv);
+            irs.gen!(Opcode.Call)(loc, ret, base, property.index, argc, argv);
             break;
         case OpOffset.S:
-            irs.gen_!(Opcode.CallS)(loc, ret, base, property.id, argc, argv);
+            irs.gen!(Opcode.CallS)(loc, ret, base, property.id, argc, argv);
             break;
         case OpOffset.Scope:
-            irs.gen_!(Opcode.CallScope)(loc, ret, property.id, argc, argv);
+            irs.gen!(Opcode.CallScope)(loc, ret, property.id, argc, argv);
             break;
         case OpOffset.V:
-            irs.gen_!(Opcode.CallV)(loc, ret, base, argc, argv);
+            irs.gen!(Opcode.CallV)(loc, ret, base, argc, argv);
             break;
         }
         irs.release(argv, argc);
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        e1.toBuffer(sink);
+        sink("(");
+        for(size_t u = 0; u < arguments.length; u++)
+        {
+            if(u)
+                sink(", ");
+            arguments[u].toBuffer(sink);
+        }
+        sink(")");
+    }
 }
 /************************************************************/
 
-class AssertExp : UnaExp
+final class AssertExp : UnaExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e)
     {
         super(loc, Tok.Assert, e);
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        buf ~= "assert(";
-        e1.toBuffer(buf);
-        buf ~= ')';
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -1074,22 +1071,30 @@ class AssertExp : UnaExp
 
         e1.toIR(irs, b);
         u = irs.getIP();
-        irs.gen_!(Opcode.JT)(loc, 0, b);
+        irs.gen!(Opcode.JT)(loc, 0, b);
         linnum = cast(Loc)loc;
-        irs.gen_!(Opcode.Assert)(loc, linnum);
+        irs.gen!(Opcode.Assert)(loc, linnum);
         irs.patchJmp(u, irs.getIP());
 
         if(!ret)
             irs.release(b, 1);
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        sink("assert(");
+        e1.toBuffer(sink);
+        sink(")");
+    }
 }
 
 /************************* NewExp ***********************************/
 
-class NewExp : UnaExp
+final class NewExp : UnaExp
 {
-    Expression[] arguments;
+    private Expression[] arguments;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e, Expression[] arguments)
     {
         super(loc, Tok.New, e);
@@ -1104,20 +1109,6 @@ class NewExp : UnaExp
             arguments[a] = arguments[a].semantic(sc);
         }
         return this;
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        buf ~= Token.toString(op);
-        buf ~= ' ';
-
-        e1.toBuffer(buf);
-        buf ~= '(';
-        for(size_t a = 0; a < arguments.length; a++)
-        {
-            arguments[a].toBuffer(buf);
-        }
-        buf ~= ')';
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -1151,9 +1142,23 @@ class NewExp : UnaExp
             argv = 0;
         }
 
-        irs.gen_!(Opcode.New)(loc, ret, b, argc, argv);
+        irs.gen!(Opcode.New)(loc, ret, b, argc, argv);
         irs.release(argv, argc);
         irs.release(b, 1);
+    }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        sink(Token.toString(op));
+        sink(" ");
+
+        e1.toBuffer(sink);
+        sink("(");
+        for(size_t a = 0; a < arguments.length; a++)
+        {
+            arguments[a].toBuffer(sink);
+        }
+        sink(")");
     }
 }
 
@@ -1161,8 +1166,9 @@ class NewExp : UnaExp
 
 class XUnaExp : UnaExp
 {
-    Opcode ircode;
+    protected Opcode ircode;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Tok op, Opcode ircode, Expression e)
     {
         super(loc, op, e);
@@ -1173,26 +1179,29 @@ class XUnaExp : UnaExp
     {
         e1.toIR(irs, ret);
         if(ret)
-            irs.gen_!GenIR1(loc, ircode, ret);
+            irs.gen!GenIR1(loc, ircode, ret);
     }
 }
 
-class NotExp : XUnaExp
+final class NotExp : XUnaExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e)
     {
         super(loc, Tok.Not, Opcode.Not, e);
     }
 
-    override bool isBooleanResult()
+    override bool isBooleanResult() const
     {
         return true;
     }
 }
 
-class DeleteExp : UnaExp
+final class DeleteExp : UnaExp
 {
-    bool lval;
+    private bool lval;
+
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e)
     {
         super(loc, Tok.Delete, e);
@@ -1225,13 +1234,13 @@ class DeleteExp : UnaExp
             final switch(opoff)
             {
             case OpOffset.None:
-                irs.gen_!(Opcode.Del)(loc, ret, base, property.index);
+                irs.gen!(Opcode.Del)(loc, ret, base, property.index);
                 break;
             case OpOffset.S:
-                irs.gen_!(Opcode.DelS)(loc, ret, base, property.id);
+                irs.gen!(Opcode.DelS)(loc, ret, base, property.id);
                 break;
             case OpOffset.Scope:
-                irs.gen_!(Opcode.DelScope)(loc, ret, property.id);
+                irs.gen!(Opcode.DelScope)(loc, ret, property.id);
                 break;
             case OpOffset.V:
                 assert(0);
@@ -1240,15 +1249,16 @@ class DeleteExp : UnaExp
         else
         {
             //e1.toIR(irs,ret);
-            irs.gen_!(Opcode.Boolean)(loc, ret, true);
+            irs.gen!(Opcode.Boolean)(loc, ret, true);
         }
     }
 }
 
 /************************* CommaExp ***********************************/
 
-class CommaExp : BinExp
+final class CommaExp : BinExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Comma, e1, e2);
@@ -1268,8 +1278,9 @@ class CommaExp : BinExp
 
 /************************* ArrayExp ***********************************/
 
-class ArrayExp : BinExp
+final class ArrayExp : BinExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Array, e1, e2);
@@ -1281,17 +1292,8 @@ class ArrayExp : BinExp
         return this;
     }
 
-    override void checkLvalue(Scope* sc)
-    {
-    }
-
-    override void toBuffer(ref tchar[] buf)
-    {
-        e1.toBuffer(buf);
-        buf ~= '[';
-        e2.toBuffer(buf);
-        buf ~= ']';
-    }
+    override @safe @nogc pure nothrow
+    void checkLvalue(Scope* sc) const {}
 
     override void toIR(IRstate* irs, idx_t ret)
     {
@@ -1305,13 +1307,13 @@ class ArrayExp : BinExp
             final switch(opoff)
             {
             case OpOffset.None:
-                irs.gen_!(Opcode.Get)(loc, ret, base, property.index);
+                irs.gen!(Opcode.Get)(loc, ret, base, property.index);
                 break;
             case OpOffset.S:
-                irs.gen_!(Opcode.GetS)(loc, ret, base, property.id);
+                irs.gen!(Opcode.GetS)(loc, ret, base, property.id);
                 break;
             case OpOffset.Scope:
-                irs.gen_!(Opcode.GetScope)(loc, ret, property.id);
+                irs.gen!(Opcode.GetScope)(loc, ret, property.id);
                 break;
             case OpOffset.V:
                 assert(0);
@@ -1336,12 +1338,21 @@ class ArrayExp : BinExp
         property.index = index;
         opoff = OpOffset.None;
     }
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        e1.toBuffer(sink);
+        sink("[");
+        e2.toBuffer(sink);
+        sink("]");
+    }
 }
 
 /************************* AssignExp ***********************************/
 
-class AssignExp : BinExp
+final class AssignExp : BinExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Assign, e1, e2);
@@ -1409,19 +1420,19 @@ class AssignExp : BinExp
             final switch (opoff)
             {
             case OpOffset.None:
-                irs.gen_!(Opcode.PutCall)(loc, ret, base, property.index,
+                irs.gen!(Opcode.PutCall)(loc, ret, base, property.index,
                                           argc, argv);
                 break;
             case OpOffset.S:
-                irs.gen_!(Opcode.PutCallS)(loc, ret, base, property.id,
+                irs.gen!(Opcode.PutCallS)(loc, ret, base, property.id,
                                            argc, argv);
                 break;
             case OpOffset.Scope:
-                irs.gen_!(Opcode.PutCallScope)(loc, ret, property.id,
+                irs.gen!(Opcode.PutCallScope)(loc, ret, property.id,
                                                argc, argv);
                 break;
             case OpOffset.V:
-                irs.gen_!(Opcode.PutCallV)(loc, ret, base, argc, argv);
+                irs.gen!(Opcode.PutCallV)(loc, ret, base, argc, argv);
                 break;
             }
             irs.release(argv, argc);
@@ -1439,13 +1450,13 @@ class AssignExp : BinExp
             final switch (opoff)
             {
             case OpOffset.None:
-                irs.gen_!(Opcode.Put)(loc, b, base, property.index);
+                irs.gen!(Opcode.Put)(loc, b, base, property.index);
                 break;
             case OpOffset.S:
-                irs.gen_!(Opcode.PutS)(loc, b, base, property.id);
+                irs.gen!(Opcode.PutS)(loc, b, base, property.id);
                 break;
             case OpOffset.Scope:
-                irs.gen_!(Opcode.PutScope)(loc, b, property.id);
+                irs.gen!(Opcode.PutScope)(loc, b, property.id);
                 break;
             case OpOffset.V:
                 assert(0);
@@ -1458,8 +1469,9 @@ class AssignExp : BinExp
 
 /************************* AddAssignExp ***********************************/
 
-class AddAssignExp : BinExp
+final class AddAssignExp : BinExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Plusass, e1, e2);
@@ -1503,13 +1515,13 @@ class AddAssignExp : BinExp
             final switch (opoff)
             {
             case OpOffset.None:
-                irs.gen_!(Opcode.AddAsS)(loc, r, base, property.index);
+                irs.gen!(Opcode.AddAsS)(loc, r, base, property.index);
                 break;
             case OpOffset.S:
-                irs.gen_!(Opcode.AddAsSS)(loc, r, base, property.id);
+                irs.gen!(Opcode.AddAsSS)(loc, r, base, property.id);
                 break;
             case OpOffset.Scope:
-                irs.gen_!(Opcode.AddAsSScope)(loc, r, property.id,
+                irs.gen!(Opcode.AddAsSScope)(loc, r, property.id,
                                               property.id.toHash);
                 break;
             case OpOffset.V:
@@ -1526,8 +1538,9 @@ class AddAssignExp : BinExp
 
 class BinAssignExp : BinExp
 {
-    Opcode ircode = Opcode.Error;
+    protected Opcode ircode = Opcode.Error;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Tok op, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, op, e1, e2);
@@ -1556,13 +1569,13 @@ class BinAssignExp : BinExp
         final switch (opoff)
         {
         case OpOffset.None:
-            irs.gen_!(Opcode.Get)(loc, b, base, property.index);
+            irs.gen!(Opcode.Get)(loc, b, base, property.index);
             break;
         case OpOffset.S:
-            irs.gen_!(Opcode.GetS)(loc, b, base, property.id);
+            irs.gen!(Opcode.GetS)(loc, b, base, property.id);
             break;
         case OpOffset.Scope:
-            irs.gen_!(Opcode.GetScope)(loc, b, property.id);
+            irs.gen!(Opcode.GetScope)(loc, b, property.id);
             break;
         case OpOffset.V:
             assert(0);
@@ -1570,17 +1583,17 @@ class BinAssignExp : BinExp
         c = irs.alloc(1);
         e2.toIR(irs, c);
         r = ret ? ret : irs.alloc(1);
-        irs.gen_!GenIR3(loc, ircode, r, b, c);
+        irs.gen!GenIR3(loc, ircode, r, b, c);
         final switch (opoff)
         {
         case OpOffset.None:
-            irs.gen_!(Opcode.Put)(loc, r, base, property.index);
+            irs.gen!(Opcode.Put)(loc, r, base, property.index);
             break;
         case OpOffset.S:
-            irs.gen_!(Opcode.PutS)(loc, r, base, property.id);
+            irs.gen!(Opcode.PutS)(loc, r, base, property.id);
             break;
         case OpOffset.Scope:
-            irs.gen_!(Opcode.PutScope)(loc, r, property.id);
+            irs.gen!(Opcode.PutScope)(loc, r, property.id);
             break;
         case OpOffset.V:
             assert(0);
@@ -1592,14 +1605,16 @@ class BinAssignExp : BinExp
 
 /************************* AddExp *****************************/
 
-class AddExp : BinExp
+final class AddExp : BinExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Plus, e1, e2);
     }
 
-    override Expression semantic(Scope* sc)
+    override @safe @nogc pure nothrow
+    Expression semantic(Scope* sc)
     {
         return this;
     }
@@ -1614,8 +1629,9 @@ class AddExp : BinExp
 
 class XBinExp : BinExp
 {
-    Opcode ircode = Opcode.Error;
+    protected Opcode ircode = Opcode.Error;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Tok op, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, op, e1, e2);
@@ -1630,8 +1646,9 @@ class XBinExp : BinExp
 
 /************************* OrOrExp ***********************************/
 
-class OrOrExp : BinExp
+final class OrOrExp : BinExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Oror, e1, e2);
@@ -1649,7 +1666,7 @@ class OrOrExp : BinExp
 
         e1.toIR(irs, b);
         u = irs.getIP();
-        irs.gen_!(Opcode.JT)(loc, 0, b);
+        irs.gen!(Opcode.JT)(loc, 0, b);
         e2.toIR(irs, ret);
         irs.patchJmp(u, irs.getIP());
 
@@ -1660,8 +1677,9 @@ class OrOrExp : BinExp
 
 /************************* AndAndExp ***********************************/
 
-class AndAndExp : BinExp
+final class AndAndExp : BinExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Andand, e1, e2);
@@ -1679,7 +1697,7 @@ class AndAndExp : BinExp
 
         e1.toIR(irs, b);
         u = irs.getIP();
-        irs.gen_!(Opcode.JF)(loc, 0, b);
+        irs.gen!(Opcode.JF)(loc, 0, b);
         e2.toIR(irs, ret);
         irs.patchJmp(u, irs.getIP());
 
@@ -1690,17 +1708,18 @@ class AndAndExp : BinExp
 
 /************************* CmpExp ***********************************/
 
-class CmpExp : BinExp
+final class CmpExp : BinExp
 {
-    Opcode ircode = Opcode.Error;
+    private Opcode ircode = Opcode.Error;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Tok tok, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, tok, e1, e2);
         this.ircode = ircode;
     }
 
-    override bool isBooleanResult()
+    override bool isBooleanResult() const
     {
         return true;
     }
@@ -1713,8 +1732,9 @@ class CmpExp : BinExp
 
 /*************************** InExp **************************/
 
-class InExp : BinExp
+final class InExp : BinExp
 {
+    @safe @nogc pure nothrow
     this(Loc loc, Expression e1, Expression e2)
     {
         super(loc, Tok.In, e1, e2);
@@ -1727,10 +1747,11 @@ class InExp : BinExp
 
 /****************************************************************/
 
-class CondExp : BinExp
+final class CondExp : BinExp
 {
-    Expression econd;
+    private Expression econd;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Expression econd, Expression e1, Expression e2)
     {
         super(loc, Tok.Question, e1, e2);
@@ -1750,10 +1771,10 @@ class CondExp : BinExp
 
         econd.toIR(irs, b);
         u1 = irs.getIP();
-        irs.gen_!(Opcode.JF)(loc, 0, b);
+        irs.gen!(Opcode.JF)(loc, 0, b);
         e1.toIR(irs, ret);
         u2 = irs.getIP();
-        irs.gen_!(Opcode.Jmp)(loc, 0);
+        irs.gen!(Opcode.Jmp)(loc, 0);
         irs.patchJmp(u1, irs.getIP());
         e2.toIR(irs, ret);
         irs.patchJmp(u2, irs.getIP());
