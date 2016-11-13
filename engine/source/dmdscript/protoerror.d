@@ -92,7 +92,7 @@ package class D0base : Dobject
         this(prototype);
         assert(exception !is null);
         this.exception = exception;
-        Put(Text.message, exception.message, 0);
+        Put(Text.message, exception.msg, 0);
         Put(Text.description, exception.toString, 0);
         Put(Text.number, cast(d_number)exception.code, 0);
     }

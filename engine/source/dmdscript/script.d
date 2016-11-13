@@ -60,112 +60,180 @@ int logflag;    // used for debugging
 //
 class ScriptException : Exception
 {
-    d_string message;      // error message
     int code; // for what?
 
     @nogc @safe pure nothrow
     this(d_string msg, d_string file = __FILE__, size_t line = __LINE__)
-    {
-        this.message = msg;
-        super("", file, line);
-    }
+    { super(msg, file, line); }
 
-    @nogc @safe pure nothrow
+    @safe pure
     this(d_string message, d_string sourcename, d_string source,
          immutable(tchar)* pos, string file = __FILE__, size_t line = __LINE__)
-    {
-        this.message = message;
-        this.sourcename = sourcename;
-        this.source = source;
-        this.pos = pos;
-        super("", file, line);
-    }
+    { super(message, file, line); addSource(sourcename, source, pos); }
 
-    @nogc @safe pure nothrow
+    @safe pure
     this(d_string message, d_string sourcename, d_string source,
          Loc loc, string file = __FILE__, size_t line = __LINE__)
-    {
-        this.message = message;
-        this.sourcename = sourcename;
-        this.source = source;
-        this.linnum = loc;
-        super("", file, line);
-    }
+    { super(message, file, line); addSource(sourcename, source, loc); }
 
-    @nogc @safe pure nothrow
-    this(d_string message, Loc loc,
-         string file = __FILE__, size_t line = __LINE__)
-    {
-        this.message = message;
-        this.linnum = loc;
-        super("", file, line);
-    }
+    @safe pure
+    this(d_string msg, Loc loc, string file = __FILE__, size_t line = __LINE__)
+    { super(msg, file, line); addSource(loc); }
 
-    @nogc @safe pure nothrow
+
+    @safe pure
     void addSource(d_string sourcename, d_string source, Loc loc)
-    {
-        this.sourcename = sourcename;
-        this.source = source;
-        this.linnum = loc;
-    }
+    { trance ~= SourceDescriptor(sourcename, source, loc); }
 
-    @nogc @safe pure nothrow
+    @safe pure
     void addSource(d_string sourcename, d_string source,
                    immutable(tchar)* pos)
-    {
-        this.sourcename = sourcename;
-        this.source = source;
-        this.pos = pos;
-    }
+    { trance ~= SourceDescriptor(sourcename, source, pos); }
+
+    void addSource(d_string sourcename, d_string source)
+    { foreach (ref one; trance) one.addSource(sourcename, source); }
 
     override void toString(scope void delegate(in char[]) sink) const
     {
-        import std.conv : text;
-        import std.array : replace;
-        import std.range : repeat, take;
-
-        string srcline;
-        int charpos = -1;
-        Loc linnum = this.linnum;
-        enum Tab = "    ";
-
-        if (0 < source.length)
+        debug
         {
-            if      (pos !is null)
-                srcline = source.getLineAt(pos, linnum, charpos);
-            else if (0 < linnum)
-                srcline = source.getLineAt(linnum);
+            char[20] tmpBuff = void;
+
+            sink(typeid(this).name);
+            sink("@"); sink(file);
+            sink("("); sink(sizeToTempString(line, tmpBuff, 10)); sink(")");
+
+            if (0 < msg.length)
+                sink(": ");
+            else
+                sink("\n");
         }
 
-        if (0 < sourcename.length && 0 < linnum)
-            sink(text(sourcename, "(", linnum, "): ", message));
-        else
-            sink(message);
+        if (0 < msg.length)
+        { sink(msg); sink("\n"); }
 
-        if (0 < srcline.length)
+        try
         {
-            size_t col = 0;
-            for (size_t i = 0; i < srcline.length && i < charpos; ++i)
+            foreach (one; trance)
+                one.toString(sink);
+        }
+        catch (Throwable){}
+
+        debug
+        {
+            if (info)
             {
-                if (srcline[i] == '\t') col += Tab.length;
-                else ++col;
+                try
+                {
+                    sink("\n--------------------");
+                    foreach (t; info)
+                    { sink("\n"); sink(t); }
+                }
+                catch (Throwable){}
             }
-
-            sink(text("\n", srcline.replace("\t", Tab)));
-
-            if (0 <= charpos)
-                sink(text("\n", ' '.repeat.take(col), "^"));
         }
-
-        debug { sink("\n"); super.toString(sink); }
     }
     alias toString = super.toString;
 
 private:
-    d_string sourcename;
-    d_string source;
-    immutable(tchar)* pos;
-    Loc linnum;       // source line number (1 based, 0 if not available)
+    import core.internal.traits : externDFunc;
+    alias sizeToTempString = externDFunc!(
+        "core.internal.string.unsignedToTempString",
+        char[] function(ulong, char[], uint) @safe pure nothrow @nogc);
+
+    struct SourceDescriptor
+    {
+        d_string name;
+        d_string buf;
+        immutable(tchar)* pos; // pos is in buf.
+        Loc linnum; // source line number (1 based, 0 if not available)
+
+        @trusted @nogc pure nothrow
+        this(d_string name, d_string buf, immutable(tchar)* pos)
+        {
+            this.name = name;
+            this.buf = buf;
+            this.pos = pos;
+
+            assert (buf.length == 0 || pos is null ||
+                    (buf.ptr <= pos && pos < buf.ptr + buf.length));
+        }
+
+        @safe @nogc pure nothrow
+        this(d_string name, d_string buf, Loc linnum)
+        {
+            this.name = name;
+            this.buf = buf;
+            this.linnum = linnum;
+        }
+
+        @safe @nogc pure nothrow
+        this(Loc linnum)
+        { this.linnum = linnum; }
+
+        @trusted @nogc pure nothrow
+        void addSource(d_string name, d_string buf)
+        {
+            if (this.name.length == 0 && this.buf.length == 0)
+            {
+                this.name = name;
+                this.buf = buf;
+            }
+
+            assert (buf.length == 0 || pos is null ||
+                    (buf.ptr <= pos && pos < buf.ptr + buf.length));
+        }
+
+        void toString(scope void delegate(in char[]) sink) const
+        {
+             import std.conv : to;
+             import std.array : replace;
+             import std.range : repeat, take;
+
+             char[2] tmpBuff = void;
+             string srcline;
+             int charpos = -1;
+             Loc linnum = this.linnum;
+             enum Tab = "    ";
+
+             if (0 < buf.length)
+             {
+                 if      (pos !is null)
+                     srcline = buf.getLineAt(pos, linnum, charpos);
+                 else if (0 < linnum)
+                     srcline = buf.getLineAt(linnum);
+             }
+
+             if (0 < name.length && 0 < linnum)
+             {
+                 sink(name);
+                 sink("(");
+                 sink(sizeToTempString(linnum, tmpBuff, 10));
+                 sink(")");
+             }
+
+             if (0 < srcline.length)
+             {
+                 size_t col = 0;
+                 for (size_t i = 0; i < srcline.length && i < charpos; ++i)
+                 {
+                     if (srcline[i] == '\t') col += Tab.length;
+                     else ++col;
+                 }
+
+                 sink("\n"); sink(srcline.replace("\t", Tab).to!string);
+
+                 if (0 <= charpos)
+                 {
+                     sink("\n");
+                     sink(' '.repeat.take(col).to!string);
+                     sink("^");
+                 }
+             }
+        }
+
+    }
+    SourceDescriptor[] trance;
 }
 
 //
@@ -241,7 +309,7 @@ int isStrWhiteSpaceChar(dchar c)
  *	true	it's an index, and *index is set
  *	false	it's not an index
  */
-
+@safe @nogc pure nothrow
 int StringToIndex(d_string name, out d_uint32 index)
 {
     if(name.length)
@@ -254,16 +322,7 @@ int StringToIndex(d_string name, out d_uint32 index)
 
             switch(c)
             {
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
+            case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
                 if((i == 0 && j) ||             // if leading zeros
                    i >= 0xFFFFFFFF / 10)        // or overflow
                     goto Lnotindex;
@@ -399,23 +458,20 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
     return number;
 }
 
-
-
-
 int localeCompare(CallContext *cc, d_string s1, d_string s2)
 {   // no locale support here
     import std.string : cmp;
     return cmp(s1, s2);
 }
 
-
-package @trusted @nogc nothrow pure
-string getLineAt(string base, const(char)* p, out Loc linnum, out int charpos)
+package @trusted @nogc pure nothrow
+d_string getLineAt(d_string base, const(tchar)* p,
+                   out Loc linnum, out int charpos)
 {
     assert(base.ptr <= p && p <= base.ptr + base.length);
 
-    immutable(tchar)* s;
-    immutable(tchar)* slinestart;
+    immutable(char)* s;
+    immutable(char)* slinestart;
 
     linnum = 1;
     if (0 == base.length || p is null) return null;
@@ -450,10 +506,10 @@ string getLineAt(string base, const(char)* p, out Loc linnum, out int charpos)
 }
 
 package @trusted @nogc pure nothrow
-string getLineAt(string src, Loc loc)
+d_string getLineAt(d_string src, Loc loc)
 {
-    immutable(char)* slinestart;
-    immutable(char)* s;
+    immutable(tchar)* slinestart;
+    immutable(tchar)* s;
     uint linnum = 1;
 
     if(!src)

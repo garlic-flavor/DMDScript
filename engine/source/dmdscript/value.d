@@ -74,18 +74,27 @@ struct Value
 
         Iterator* iter;         // V_ITER
     }
-    void checkReference(){
+
+    @trusted
+    void checkReference() const
+    {
         if(vtype == V_REF_ERROR)
             throwRefError();
     }
-    void throwRefError() const{
+
+    @trusted
+    void throwRefError() const
+    {
         throw UndefinedVarError.toThrow(text);
     }
 
-    void putSignalingUndefined(d_string id){
+    @trusted @nogc pure nothrow
+    void putSignalingUndefined(d_string id)
+    {
         vtype = V_REF_ERROR;
         text = id;
     }
+    @trusted @nogc pure nothrow
     void putVundefined()
     {
         vtype = V_UNDEFINED;
@@ -93,32 +102,39 @@ struct Value
         text = null;
     }
 
+    @safe @nogc pure nothrow
     void putVnull()
     {
         vtype = V_NULL;
     }
 
+    @trusted @nogc pure nothrow
     void putVboolean(d_boolean b)
     in
     {
         assert(b == 1 || b == 0);
     }
     body
-    { vtype = V_BOOLEAN;
-      dbool = b; }
+    {
+        vtype = V_BOOLEAN;
+        dbool = b;
+    }
 
+    @trusted @nogc pure nothrow
     void putVnumber(d_number n)
     {
         vtype = V_NUMBER;
         number = n;
     }
 
+    @trusted @nogc pure nothrow
     void putVtime(d_time n)
     {
         vtype = V_NUMBER;
         number = (n == d_time_nan) ? d_number.nan : n;
     }
 
+    @trusted @nogc pure nothrow
     void putVstring(d_string s)
     {
         vtype = V_STRING;
@@ -126,6 +142,7 @@ struct Value
         text = s;
     }
 
+    @trusted @nogc pure nothrow
     void putVstring(d_string s, uint hash)
     {
         vtype = V_STRING;
@@ -133,12 +150,14 @@ struct Value
         this.text = s;
     }
 
+    @trusted @nogc pure nothrow
     void putVobject(Dobject o)
     {
         vtype = V_OBJECT;
         object = o;
     }
 
+    @trusted @nogc pure nothrow
     void putViterator(Iterator* i)
     {
         vtype = V_ITER;
@@ -171,42 +190,9 @@ struct Value
  +/
     }
 
-    static void copy(Value* to, Value* from)
-    in { }
-    out
-    {
-        import core.stdc.string : memcmp;
-        assert(memcmp(to, from, Value.sizeof) == 0);
-    }
-    body
-
-    {
-        /+version(all /*UseAsm*/)
-        {
-            asm
-            { naked;
-              push ESI;
-              mov ECX, [EAX];
-              mov ESI, 8[ESP];
-              mov     [ESI], ECX;
-              mov EDX, 4[EAX];
-              mov ECX, 8[EAX];
-              mov EAX, 12[EAX];
-              mov     4[ESI], EDX;
-              mov     8[ESI], ECX;
-              mov     12[ESI], EAX;
-              pop ESI;
-              ret     4; }
-        }
-        else+/
-        {
-            *to = *from;
-            //(cast(uint *)to)[0] = (cast(uint *)from)[0];
-            //(cast(uint *)to)[1] = (cast(uint *)from)[1];
-            //(cast(uint *)to)[2] = (cast(uint *)from)[2];
-            //(cast(uint *)to)[3] = (cast(uint *)from)[3];
-        }
-    }
+    static @safe @nogc pure nothrow
+    void copy(Value* to, in Value* from)
+    { *to = *from; }
 
     void toPrimitive(Value* v, d_string PreferredType)
     {
@@ -242,7 +228,8 @@ struct Value
     }
 
 
-    d_boolean toBoolean()
+    @trusted
+    d_boolean toBoolean() const
     {
         import std.math : isNaN;
 
@@ -268,7 +255,7 @@ struct Value
         assert(0);
     }
 
-
+    @trusted
     d_number toNumber()
     {
         switch(vtype)
@@ -328,13 +315,13 @@ struct Value
         assert(0);
     }
 
-
+    @safe
     d_time toDtime()
     {
         return cast(d_time)toNumber();
     }
 
-
+    @safe
     d_number toInteger()
     {
         import std.math : floor, isInfinity, isNaN;
@@ -370,7 +357,7 @@ struct Value
         assert(0);
     }
 
-
+    @safe
     d_int32 toInt32()
     {
         import std.math : floor, isInfinity, isNaN;
@@ -413,7 +400,7 @@ struct Value
         assert(0);
     }
 
-
+    @safe
     d_uint32 toUint32()
     {
         import std.math : floor, isInfinity, isNaN;
@@ -456,6 +443,7 @@ struct Value
         assert(0);
     }
 
+    @safe
     d_uint16 toUint16()
     {
         import std.math : floor, isInfinity, isNaN;
@@ -680,6 +668,7 @@ struct Value
         assert(0);
     }
 
+    @trusted
     Dobject toObject()
     {
         switch(vtype)
@@ -707,7 +696,8 @@ struct Value
         assert(0);
     }
 
-    const bool opEquals(ref const (Value)v)
+    @safe
+    bool opEquals(ref const (Value)v) const
     {
         return(opCmp(v) == 0);
     }
@@ -718,7 +708,8 @@ struct Value
      * This is faster.
      */
 
-    static int stringcmp(d_string s1, d_string s2)
+    static @trusted @nogc pure nothrow
+    int stringcmp(d_string s1, d_string s2)
     {
         import core.stdc.string : memcmp;
 
@@ -732,6 +723,7 @@ struct Value
         return c;
     }
 
+    @trusted
     int opCmp(const (Value)v) const
     {
         import std.math : isNaN;
@@ -798,12 +790,13 @@ struct Value
         return -1;
     }
 
-    void copyTo(Value* v)
+    void copyTo(in Value* v)
     {   // Copy everything, including vptr
         copy(&this, v);
     }
 
-    d_string getType()
+    @safe @nogc nothrow
+    d_string getType() const
     {
         d_string s;
 
@@ -818,12 +811,12 @@ struct Value
         case V_OBJECT:      s = TypeObject;    break;
         case V_ITER:        s = TypeIterator;  break;
         default:
-            debug writefln("vtype = %d", vtype);
             assert(0);
         }
         return s;
     }
 
+    @trusted
     d_string getTypeof()
     {
         d_string s;
@@ -838,50 +831,59 @@ struct Value
         case V_STRING:      s = Text.string;        break;
         case V_OBJECT:      s = object.getTypeof(); break;
         default:
-            debug writefln("vtype = %d", vtype);
             assert(0);
         }
         return s;
     }
 
-    int isUndefined()
+    @safe @nogc pure nothrow
+    int isUndefined() const
     {
         return vtype == V_UNDEFINED;
     }
-    int isNull()
+    @safe @nogc pure nothrow
+    int isNull() const
     {
         return vtype == V_NULL;
     }
-    int isBoolean()
+    @safe @nogc pure nothrow
+    int isBoolean() const
     {
         return vtype == V_BOOLEAN;
     }
-    int isNumber()
+    @safe @nogc pure nothrow
+    int isNumber() const
     {
         return vtype == V_NUMBER;
     }
-    int isString()
+    @safe @nogc pure nothrow
+    int isString() const
     {
         return vtype == V_STRING;
     }
-    int isObject()
+    @safe @nogc pure nothrow
+    int isObject() const
     {
         return vtype == V_OBJECT;
     }
-    int isIterator()
+    @safe @nogc pure nothrow
+    int isIterator() const
     {
         return vtype == V_ITER;
     }
 
-    int isUndefinedOrNull()
+    @safe @nogc pure nothrow
+    int isUndefinedOrNull() const
     {
         return vtype == V_UNDEFINED || vtype == V_NULL;
     }
-    int isPrimitive()
+    @safe @nogc pure nothrow
+    int isPrimitive() const
     {
         return vtype != V_OBJECT;
     }
 
+    @trusted
     int isArrayIndex(out d_uint32 index)
     {
         switch(vtype)
@@ -898,17 +900,20 @@ struct Value
         assert(0);
     }
 
-    static uint calcHash(uint u)
+    static @safe @nogc pure nothrow
+    uint calcHash(uint u)
     {
         return u ^ 0x55555555;
     }
 
-    static uint calcHash(double d)
+    static @safe @nogc pure nothrow
+    uint calcHash(double d)
     {
         return calcHash(cast(uint)d);
     }
 
-    static uint calcHash(d_string s)
+    static @trusted @nogc pure nothrow
+    uint calcHash(d_string s)
     {
         uint hash;
 
@@ -936,49 +941,52 @@ struct Value
                 break;
 
             default:
-            { uint len = s.length;
-              ubyte *str = cast(ubyte*)s.ptr;
+            {
+                uint len = s.length;
+                ubyte* str = cast(ubyte*)s.ptr;
 
-              hash = 0;
-              while(1)
-              {
-                  switch(len)
-                  {
-                  case 0:
-                      break;
+                hash = 0;
+                while(1)
+                {
+                    switch(len)
+                    {
+                    case 0:
+                        break;
 
-                  case 1:
-                      hash *= 9;
-                      hash += *cast(ubyte *)str;
-                      break;
+                    case 1:
+                        hash *= 9;
+                        hash += *cast(ubyte*)str;
+                        break;
 
-                  case 2:
-                      hash *= 9;
-                      hash += *cast(ushort *)str;
-                      break;
+                    case 2:
+                        hash *= 9;
+                        hash += *cast(ushort*)str;
+                        break;
 
-                  case 3:
-                      hash *= 9;
-                      hash += (*cast(ushort *)str << 8) +
-                              (cast(ubyte *)str)[2];
-                      break;
+                    case 3:
+                        hash *= 9;
+                        hash += (*cast(ushort*)str << 8) +
+                            (cast(ubyte *)str)[2];
+                        break;
 
-                  default:
-                      hash *= 9;
-                      hash += *cast(uint *)str;
-                      str += 4;
-                      len -= 4;
-                      continue;
-                  }
-                  break;
-              }
-              break; }
-                // return s.hash;
+                    default:
+                        hash *= 9;
+                        hash += *cast(uint*)str;
+                        str += 4;
+                        len -= 4;
+                        continue;
+                    }
+                    break;
+                }
+                break;
+            }
+            // return s.hash;
             }
         }
         return calcHash(hash);
     }
 
+    @trusted
     uint toHash()
     {
         uint h;
@@ -1164,7 +1172,7 @@ struct Value
                 "Unhandled exception: " ~ toString, linnum);
     }
 
-    void dump()
+    debug void dump()
     {
         import std.stdio : writef;
 
@@ -1191,8 +1199,9 @@ string TypeObject = "Object";
 
 string TypeIterator = "Iterator";
 
-
-Value* signalingUndefined(d_string id){
+@safe pure nothrow
+Value* signalingUndefined(d_string id)
+{
     Value* p;
     p = new Value;
     p.putSignalingUndefined(id);
@@ -1207,17 +1216,11 @@ struct Status
     Value entity;
     alias entity this;
 
-    static void copy(Status* to, Status* from)
-    out
-    {
-        import core.stdc.string : memcmp;
-        assert(memcmp(to, from, Status.sizeof) == 0);
-    }
-    body
-    {
-        *to = *from;
-    }
+    static @trusted @nogc pure nothrow
+    void copy(Status* to, Status* from)
+    { *to = *from; }
 
+    @safe
     ScriptException toScriptException()
     {
         import dmdscript.protoerror;
@@ -1227,7 +1230,8 @@ struct Status
     }
 }
 
-package Status* toStatus(alias Proto = typeerror)(Throwable t)
+package @trusted
+Status* toStatus(alias Proto = typeerror)(Throwable t)
 {
     assert(t !is null);
     ScriptException exception;

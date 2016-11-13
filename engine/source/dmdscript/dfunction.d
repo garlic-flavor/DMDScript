@@ -48,8 +48,8 @@ class DfunctionConstructor : Dfunction
     override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.3.2.1
-        immutable(char)[] bdy;
-        immutable(char)[] P;
+        d_string bdy;
+        d_string P;
         FunctionDefinition fd;
         ScriptException exception;
 
@@ -70,7 +70,7 @@ class DfunctionConstructor : Dfunction
             }
         }
 
-        if(Parser.parseFunctionDefinition(fd, P, bdy, exception))
+        if((exception = Parser.parseFunctionDefinition(fd, P, bdy)) !is null)
             goto Lsyntaxerror;
 
         if(fd)
@@ -372,12 +372,14 @@ class Dfunction : Dobject
   }
 
 
-  static Dfunction getConstructor()
+  static @safe @nogc nothrow
+  Dfunction getConstructor()
   {
       return Dfunction_constructor;
   }
 
-  static Dobject getPrototype()
+  static @safe @nogc nothrow
+  Dobject getPrototype()
   {
       return Dfunction_prototype;
   }

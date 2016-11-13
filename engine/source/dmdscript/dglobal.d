@@ -70,8 +70,8 @@ Status* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
 
     // Parse program
     TopStatement[] topstatements;
-    Parser p = new Parser("eval", s, 0);
-    if(p.parseProgram(topstatements, exception))
+    Parser p = new Parser("eval", s, Parser.UseStringtable.No);
+    if((exception = p.parseProgram(topstatements)) !is null)
         goto Lsyntaxerror;
 
     // Analyze, generate code

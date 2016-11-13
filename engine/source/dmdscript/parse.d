@@ -29,9 +29,82 @@ import dmdscript.errmsgs;
 
 class Parser : Lexer
 {
-    uint flags;
+    FunctionDefinition lastnamedfunc;
 
-    enum
+    this(d_string sourcename, d_string base, UseStringtable useStringtable)
+    {
+        //writefln("Parser.this(base = '%s')", base);
+        super(sourcename, base, useStringtable);
+        nextToken();            // start up the scanner
+    }
+
+
+    /**********************************************
+     */
+    static ScriptException parseFunctionDefinition(
+        out FunctionDefinition pfd, d_string params, d_string bdy)
+    {
+        import std.array : Appender;
+        Parser p;
+        Appender!(Identifier*[]) parameters;
+        Appender!(TopStatement[]) topstatements;
+        FunctionDefinition fd = null;
+
+        p = new Parser("anonymous", params, UseStringtable.No);
+
+        // Parse FormalParameterList
+        while(p.token != Tok.Eof)
+        {
+            if(p.token != Tok.Identifier)
+            {
+                p.error(FplExpectedIdentifierError(p.token.toString));
+                goto Lreturn;
+            }
+            parameters.put(p.token.ident);
+            p.nextToken();
+            if(p.token == Tok.Comma)
+                p.nextToken();
+            else if(p.token == Tok.Eof)
+                break;
+            else
+            {
+                p.error(FplExpectedCommaError(p.token.toString));
+                goto Lreturn;
+            }
+        }
+        if(p.exception !is null)
+            goto Lreturn;
+
+        // Parse StatementList
+        p = new Parser("anonymous", bdy, UseStringtable.No);
+        for(;; )
+        {
+            if(p.token == Tok.Eof)
+                break;
+            topstatements.put(p.parseStatement());
+        }
+
+        fd = new FunctionDefinition(0, 0, null, parameters.data,
+                                    topstatements.data);
+
+        Lreturn:
+        pfd = fd;
+        return p.exception;
+    }
+
+    /**********************************************
+     */
+    ScriptException parseProgram(out TopStatement[] topstatements)
+    {
+        topstatements = parseTopStatements();
+        check(Tok.Eof);
+        //writef("parseProgram done\n");
+        //clearstack();
+        return exception;
+    }
+
+private:
+    enum Flag : uint
     {
         normal          = 0,
         initial         = 1,
@@ -43,105 +116,12 @@ class Parser : Lexer
         // automatic semicolon insertion is suppressed inside it.
         inForHeader     = 4,
     }
-
-    FunctionDefinition lastnamedfunc;
-
-
-    this(d_string sourcename, d_string base, int useStringtable)
-    {
-        //writefln("Parser.this(base = '%s')", base);
-        super(sourcename, base, useStringtable);
-        nextToken();            // start up the scanner
-    }
-
-    ~this()
-    {
-        lastnamedfunc = null;
-    }
-
-
-    /**********************************************
-     * Return !=0 on error, and fill in *perrinfo.
-     */
-
-    static int parseFunctionDefinition(out FunctionDefinition pfd,
-                                       immutable(char)[] params, immutable(char)[] bdy, out ScriptException pexception)
-    {
-        Parser p;
-        Identifier*[] parameters;
-        TopStatement[] topstatements;
-        FunctionDefinition fd = null;
-        int result;
-
-        p = new Parser("anonymous", params, 0);
-
-        // Parse FormalParameterList
-        while(p.token.value != Tok.Eof)
-        {
-            if(p.token.value != Tok.Identifier)
-            {
-                p.error(FplExpectedIdentifierError(p.token.toString));
-                goto Lreturn;
-            }
-            parameters ~= p.token.ident;
-            p.nextToken();
-            if(p.token.value == Tok.Comma)
-                p.nextToken();
-            else if(p.token.value == Tok.Eof)
-                break;
-            else
-            {
-                p.error(FplExpectedCommaError(p.token.toString));
-                goto Lreturn;
-            }
-        }
-        if(p.exception !is null)
-            goto Lreturn;
-
-        delete p;
-
-        // Parse StatementList
-        p = new Parser("anonymous", bdy, 0);
-        for(;; )
-        {
-            TopStatement ts;
-
-            if(p.token.value == Tok.Eof)
-                break;
-            ts = p.parseStatement();
-            topstatements ~= ts;
-        }
-
-        fd = new FunctionDefinition(0, 0, null, parameters, topstatements);
-
-
-        Lreturn:
-        pfd = fd;
-        pexception = p.exception;
-        result = (p.exception !is null);
-        p = null;
-        return result;
-    }
-
-    /**********************************************
-     * Return !=0 on error, and fill in *perrinfo.
-     */
-
-    int parseProgram(out TopStatement[] topstatements,
-                     out ScriptException pexception)
-    {
-        topstatements = parseTopStatements();
-        check(Tok.Eof);
-        //writef("parseProgram done\n");
-        pexception = exception;
-        //clearstack();
-        return exception !is null;
-    }
+    Flag flags;
 
     TopStatement[] parseTopStatements()
     {
-        TopStatement[] topstatements;
-        TopStatement ts;
+        import std.array : Appender;
+        Appender!(TopStatement[]) topstatements;
 
         //writefln("parseTopStatements()");
         for(;; )
@@ -149,19 +129,17 @@ class Parser : Lexer
             switch(token.value)
             {
             case Tok.Function:
-                ts = parseFunction(0);
-                topstatements ~= ts;
+                topstatements.put(parseFunction(ParseFlag.statement));
                 break;
 
             case Tok.Eof:
-                return topstatements;
+                return topstatements.data;
 
             case Tok.Rbrace:
-                return topstatements;
+                return topstatements.data;
 
             default:
-                ts = parseStatement();
-                topstatements ~= ts;
+                topstatements.put(parseStatement());
                 break;
             }
         }
@@ -174,10 +152,17 @@ class Parser : Lexer
      *	1	Function literal
      */
 
-    TopStatement parseFunction(int flag)
+    enum ParseFlag
     {
+        statement = 0,
+        literal   = 1,
+    }
+
+    TopStatement parseFunction(ParseFlag flag)
+    {
+        import std.array : Appender;
         Identifier* name;
-        Identifier*[] parameters;
+        Appender!(Identifier*[]) parameters;
         TopStatement[] topstatements;
         FunctionDefinition f;
         Expression e = null;
@@ -187,12 +172,12 @@ class Parser : Lexer
         loc = currentline;
         nextToken();
         name = null;
-        if(token.value == Tok.Identifier)
+        if(token == Tok.Identifier)
         {
             name = token.ident;
             nextToken();
 
-            if(!flag && token.value == Tok.Dot)
+            if(flag == ParseFlag.statement && token == Tok.Dot)
             {
                 // Regard:
                 //	function A.B() { }
@@ -203,10 +188,10 @@ class Parser : Lexer
                 e = new IdentifierExpression(loc, name);
                 name = null;
 
-                while(token.value == Tok.Dot)
+                while(token == Tok.Dot)
                 {
                     nextToken();
-                    if(token.value == Tok.Identifier)
+                    if(token == Tok.Identifier)
                     {
                         e = new DotExp(loc, e, token.ident);
                         nextToken();
@@ -222,17 +207,17 @@ class Parser : Lexer
         }
 
         check(Tok.Lparen);
-        if(token.value == Tok.Rparen)
+        if(token == Tok.Rparen)
             nextToken();
         else
         {
             for(;; )
             {
-                if(token.value == Tok.Identifier)
+                if(token == Tok.Identifier)
                 {
-                    parameters ~= token.ident;
+                    parameters.put(token.ident);
                     nextToken();
-                    if(token.value == Tok.Comma)
+                    if(token == Tok.Comma)
                     {
                         nextToken();
                         continue;
@@ -250,7 +235,8 @@ class Parser : Lexer
         topstatements = parseTopStatements();
         check(Tok.Rbrace);
 
-        f = new FunctionDefinition(loc, 0, name, parameters, topstatements);
+        f = new FunctionDefinition(loc, 0, name, parameters.data,
+                                   topstatements);
         f.isliteral = flag;
         lastnamedfunc = f;
 
@@ -287,11 +273,9 @@ class Parser : Lexer
         case Tok.This:
             // Need to look ahead to see if it is a declaration, label, or expression
             t = peek(&token);
-            if(t.value == Tok.Colon && token.value == Tok.Identifier)
+            if(t.value == Tok.Colon && token == Tok.Identifier)
             {       // It's a label
-                Identifier *ident;
-
-                ident = token.ident;
+                auto ident = token.ident;
                 nextToken();
                 nextToken();
                 s = parseStatement();
@@ -301,17 +285,13 @@ class Parser : Lexer
                     t.value == Tok.Dot ||
                     t.value == Tok.Lbracket)
             {
-                Expression exp;
-
-                exp = parseExpression();
+                auto exp = parseExpression();
                 parseOptionalSemi();
                 s = new ExpStatement(loc, exp);
             }
             else
             {
-                Expression exp;
-
-                exp = parseExpression(initial);
+                auto exp = parseExpression(Flag.initial);
                 parseOptionalSemi();
                 s = new ExpStatement(loc, exp);
             }
@@ -333,13 +313,12 @@ class Parser : Lexer
         case Tok.True:
         case Tok.False:
         case Tok.Void:
-        { Expression exp;
-
-          exp = parseExpression(initial);
+        {
+          auto exp = parseExpression(Flag.initial);
           parseOptionalSemi();
           s = new ExpStatement(loc, exp);
-          break; }
-
+          break;
+        }
         case Tok.Var:
         {
             Identifier *ident;
@@ -355,7 +334,7 @@ class Parser : Lexer
             {
                 loc = currentline;
 
-                if(token.value != Tok.Identifier)
+                if(token != Tok.Identifier)
                 {
                     error(ExpectedIdentifierParamError(token.toString));
                     break;
@@ -363,32 +342,31 @@ class Parser : Lexer
                 ident = token.ident;
                 init = null;
                 nextToken();
-                if(token.value == Tok.Assign)
+                if(token == Tok.Assign)
                 {
-                    uint flags_save;
+                    Flag flags_save;
 
                     nextToken();
                     flags_save = flags;
-                    flags &= ~initial;
+                    flags &= ~Flag.initial;
                     init = parseAssignExp();
                     flags = flags_save;
                 }
                 v = new VarDeclaration(loc, ident, init);
                 vs.vardecls ~= v;
-                if(token.value != Tok.Comma)
+                if(token != Tok.Comma)
                     break;
                 nextToken();
             }
-            if(!(flags & inForHeader))
+            if(!(flags & Flag.inForHeader))
                 parseOptionalSemi();
             break;
         }
 
         case Tok.Lbrace:
-        { BlockStatement bs;
-
+        {
           nextToken();
-          bs = new BlockStatement(loc);
+          auto bs = new BlockStatement(loc);
           /*while(token.value != Tok.Rbrace)
           {
               if(token.value == Tok.Eof)
@@ -407,45 +385,43 @@ class Parser : Lexer
           /*if(token.value == Tok.Semicolon)
               nextToken();*/
 
-          break; }
-
+          break;
+        }
         case Tok.If:
-        { Expression condition;
-          Statement ifbody;
-          Statement elsebody;
+        {
+            Expression condition;
+            Statement ifbody;
+            Statement elsebody;
 
-          nextToken();
-          condition = parseParenExp();
-          ifbody = parseStatement();
-          if(token.value == Tok.Else)
-          {
-              nextToken();
-              elsebody = parseStatement();
-          }
-          else
-              elsebody = null;
-          s = new IfStatement(loc, condition, ifbody, elsebody);
-          break; }
-
+            nextToken();
+            condition = parseParenExp();
+            ifbody = parseStatement();
+            if(token == Tok.Else)
+            {
+                nextToken();
+                elsebody = parseStatement();
+            }
+            else
+                elsebody = null;
+            s = new IfStatement(loc, condition, ifbody, elsebody);
+            break;
+        }
         case Tok.Switch:
-        { Expression condition;
-          Statement bdy;
-
-          nextToken();
-          condition = parseParenExp();
-          bdy = parseStatement();
-          s = new SwitchStatement(loc, condition, bdy);
-          break; }
-
+        {
+            nextToken();
+            auto condition = parseParenExp();
+            auto bdy = parseStatement();
+            s = new SwitchStatement(loc, condition, bdy);
+            break;
+        }
         case Tok.Case:
-        { Expression exp;
-
-          nextToken();
-          exp = parseExpression();
-          check(Tok.Colon);
-          s = new CaseStatement(loc, exp);
-          break; }
-
+        {
+            nextToken();
+            auto exp = parseExpression();
+            check(Tok.Colon);
+            s = new CaseStatement(loc, exp);
+            break;
+        }
         case Tok.Default:
             nextToken();
             check(Tok.Colon);
@@ -453,72 +429,63 @@ class Parser : Lexer
             break;
 
         case Tok.While:
-        { Expression condition;
-          Statement bdy;
-
+        {
           nextToken();
-          condition = parseParenExp();
-          bdy = parseStatement();
+          auto condition = parseParenExp();
+          auto bdy = parseStatement();
           s = new WhileStatement(loc, condition, bdy);
-          break; }
-
+          break;
+        }
         case Tok.Semicolon:
             nextToken();
             s = new EmptyStatement(loc);
             break;
 
         case Tok.Do:
-        { Statement bdy;
-          Expression condition;
-
-          nextToken();
-          bdy = parseStatement();
-          check(Tok.While);
-          condition = parseParenExp();
-          //We do what most browsers now do, ie allow missing ';' 
-          //like " do{ statement; }while(e) statement; " and that even w/o linebreak
-          if(token.value == Tok.Semicolon)
-              nextToken();
-          //parseOptionalSemi();
-          s = new DoStatement(loc, bdy, condition);
-          break; }
-
+        {
+            nextToken();
+            auto bdy = parseStatement();
+            check(Tok.While);
+            auto condition = parseParenExp();
+            //We do what most browsers now do, ie allow missing ';' 
+            //like " do{ statement; }while(e) statement; " and that even w/o linebreak
+            if(token == Tok.Semicolon)
+                nextToken();
+            //parseOptionalSemi();
+            s = new DoStatement(loc, bdy, condition);
+            break;
+        }
         case Tok.For:
         {
             Statement init;
             Statement bdy;
 
             nextToken();
-            flags |= inForHeader;
+            flags |= Flag.inForHeader;
             check(Tok.Lparen);
-            if(token.value == Tok.Var)
+            if(token == Tok.Var)
             {
                 init = parseStatement();
             }
             else
             {
-                Expression e;
-
-                e = parseOptionalExpression(noIn);
+                auto e = parseOptionalExpression(Flag.noIn);
                 init = e ? new ExpStatement(loc, e) : null;
             }
 
-            if(token.value == Tok.Semicolon)
+            if(token == Tok.Semicolon)
             {
-                Expression condition;
-                Expression increment;
-
                 nextToken();
-                condition = parseOptionalExpression();
+                auto condition = parseOptionalExpression();
                 check(Tok.Semicolon);
-                increment = parseOptionalExpression();
+                auto increment = parseOptionalExpression();
                 check(Tok.Rparen);
-                flags &= ~inForHeader;
+                flags &= ~Flag.inForHeader;
 
                 bdy = parseStatement();
                 s = new ForStatement(loc, init, condition, increment, bdy);
             }
-            else if(token.value == Tok.In)
+            else if(token == Tok.In)
             {
                 Expression inexp;
                 VarStatement vs;
@@ -535,7 +502,7 @@ class Parser : Lexer
                 nextToken();
                 inexp = parseExpression();
                 check(Tok.Rparen);
-                flags &= ~inForHeader;
+                flags &= ~Flag.inForHeader;
                 bdy = parseStatement();
                 s = new ForInStatement(loc, init, inexp, bdy);
             }
@@ -548,144 +515,145 @@ class Parser : Lexer
         }
 
         case Tok.With:
-        { Expression exp;
-          Statement bdy;
-
-          nextToken();
-          exp = parseParenExp();
-          bdy = parseStatement();
-          s = new WithStatement(loc, exp, bdy);
-          break; }
-
+        {
+            nextToken();
+            auto exp = parseParenExp();
+            auto bdy = parseStatement();
+            s = new WithStatement(loc, exp, bdy);
+            break;
+        }
         case Tok.Break:
-        { Identifier* ident;
+        {
+            Identifier* ident;
 
-          nextToken();
-          if(token.sawLineTerminator && token.value != Tok.Semicolon)
-          {         // Assume we saw a semicolon
-              ident = null;
-          }
-          else
-          {
-              if(token.value == Tok.Identifier)
-              {
-                  ident = token.ident;
-                  nextToken();
-              }
-              else
-                  ident = null;
-              parseOptionalSemi();
-          }
-          s = new BreakStatement(loc, ident);
-          break; }
-
+            nextToken();
+            if(token.sawLineTerminator && token != Tok.Semicolon)
+            {         // Assume we saw a semicolon
+                ident = null;
+            }
+            else
+            {
+                if(token == Tok.Identifier)
+                {
+                    ident = token.ident;
+                    nextToken();
+                }
+                else
+                    ident = null;
+                parseOptionalSemi();
+            }
+            s = new BreakStatement(loc, ident);
+            break;
+        }
         case Tok.Continue:
-        { Identifier* ident;
+        {
+            Identifier* ident;
 
-          nextToken();
-          if(token.sawLineTerminator && token.value != Tok.Semicolon)
-          {         // Assume we saw a semicolon
-              ident = null;
-          }
-          else
-          {
-              if(token.value == Tok.Identifier)
-              {
-                  ident = token.ident;
-                  nextToken();
-              }
-              else
-                  ident = null;
-              parseOptionalSemi();
-          }
-          s = new ContinueStatement(loc, ident);
-          break; }
-
+            nextToken();
+            if(token.sawLineTerminator && token != Tok.Semicolon)
+            {         // Assume we saw a semicolon
+                ident = null;
+            }
+            else
+            {
+                if(token == Tok.Identifier)
+                {
+                    ident = token.ident;
+                    nextToken();
+                }
+                else
+                    ident = null;
+                parseOptionalSemi();
+            }
+            s = new ContinueStatement(loc, ident);
+            break;
+        }
         case Tok.Goto:
-        { Identifier* ident;
+        {
+            Identifier* ident;
 
-          nextToken();
-          if(token.value != Tok.Identifier)
-          {
-              error(GotoLabelExpectedError(token.toString));
-              s = null;
-              break;
-          }
-          ident = token.ident;
-          nextToken();
-          parseOptionalSemi();
-          s = new GotoStatement(loc, ident);
-          break; }
-
+            nextToken();
+            if(token != Tok.Identifier)
+            {
+                error(GotoLabelExpectedError(token.toString));
+                s = null;
+                break;
+            }
+            ident = token.ident;
+            nextToken();
+            parseOptionalSemi();
+            s = new GotoStatement(loc, ident);
+            break;
+        }
         case Tok.Return:
-        { Expression exp;
-
-          nextToken();
-          if(token.sawLineTerminator && token.value != Tok.Semicolon)
-          {         // Assume we saw a semicolon
-              s = new ReturnStatement(loc, null);
-          }
-          else
-          {
-              exp = parseOptionalExpression();
-              parseOptionalSemi();
-              s = new ReturnStatement(loc, exp);
-          }
-          break; }
-
+        {
+            nextToken();
+            if(token.sawLineTerminator && token != Tok.Semicolon)
+            {         // Assume we saw a semicolon
+                s = new ReturnStatement(loc, null);
+            }
+            else
+            {
+                auto exp = parseOptionalExpression();
+                parseOptionalSemi();
+                s = new ReturnStatement(loc, exp);
+            }
+            break;
+        }
         case Tok.Throw:
-        { Expression exp;
-
-          nextToken();
-          exp = parseExpression();
-          parseOptionalSemi();
-          s = new ThrowStatement(loc, exp);
-          break; }
-
+        {
+            nextToken();
+            auto exp = parseExpression();
+            parseOptionalSemi();
+            s = new ThrowStatement(loc, exp);
+            break;
+        }
         case Tok.Try:
-        { Statement bdy;
-          Identifier* catchident;
-          Statement catchbody;
-          Statement finalbody;
+        {
+            Statement bdy;
+            Identifier* catchident;
+            Statement catchbody;
+            Statement finalbody;
 
-          nextToken();
-          bdy = parseStatement();
-          if(token.value == Tok.Catch)
-          {
-              nextToken();
-              check(Tok.Lparen);
-              catchident = null;
-              if(token.value == Tok.Identifier)
-                  catchident = token.ident;
-              check(Tok.Identifier);
-              check(Tok.Rparen);
-              catchbody = parseStatement();
-          }
-          else
-          {
-              catchident = null;
-              catchbody = null;
-          }
+            nextToken();
+            bdy = parseStatement();
+            if(token == Tok.Catch)
+            {
+                nextToken();
+                check(Tok.Lparen);
+                catchident = null;
+                if(token.value == Tok.Identifier)
+                    catchident = token.ident;
+                check(Tok.Identifier);
+                check(Tok.Rparen);
+                catchbody = parseStatement();
+            }
+            else
+            {
+                catchident = null;
+                catchbody = null;
+            }
 
-          if(token.value == Tok.Finally)
-          {
-              nextToken();
-              finalbody = parseStatement();
-          }
-          else
-              finalbody = null;
+            if(token == Tok.Finally)
+            {
+                nextToken();
+                finalbody = parseStatement();
+            }
+            else
+                finalbody = null;
 
-          if(!catchbody && !finalbody)
-          {
-              error(TryCatchExpectedError);
-              s = null;
-          }
-          else
-          {
-              s = new TryStatement(loc, bdy, catchident, catchbody, finalbody);
-          }
-          break; }
-
+            if(!catchbody && !finalbody)
+            {
+                error(TryCatchExpectedError);
+                s = null;
+            }
+            else
+            {
+                s = new TryStatement(loc, bdy, catchident, catchbody,
+                                     finalbody);
+            }
+            break;
+        }
         default:
             error(StatementExpectedError(token.toString));
             nextToken();
@@ -699,11 +667,11 @@ class Parser : Lexer
 
 
 
-    Expression parseOptionalExpression(uint flags = 0)
+    Expression parseOptionalExpression(Flag flags = Flag.normal)
     {
         Expression e;
 
-        if(token.value == Tok.Semicolon || token.value == Tok.Rparen)
+        if(token == Tok.Semicolon || token == Tok.Rparen)
             e = null;
         else
             e = parseExpression(flags);
@@ -713,16 +681,14 @@ class Parser : Lexer
     // Follow ECMA 7.8.1 rules for inserting semicolons
     void parseOptionalSemi()
     {
-        if(token.value != Tok.Eof &&
-           token.value != Tok.Rbrace &&
-           !(token.sawLineTerminator && (flags & inForHeader) == 0)
-           )
+        if(token != Tok.Eof && token != Tok.Rbrace &&
+           !(token.sawLineTerminator && (flags & Flag.inForHeader) == 0))
             check(Tok.Semicolon);
     }
 
     int check(Tok value)
     {
-        if(token.value != value)
+        if(token != value)
         {
             error(ExpectedGenericError(token.toString, Token.toString(value)));
             return 0;
@@ -731,9 +697,8 @@ class Parser : Lexer
         return 1;
     }
 
-    /********************************* Expression Parser ***************************/
-
-
+    //--------------------------------------------------------------------
+    // Expression Parser
     Expression parseParenExp()
     {
         Expression e;
@@ -819,15 +784,16 @@ class Parser : Lexer
             break;
 
         case Tok.New:
-        { Expression newarg;
-          Expression[] arguments;
+        {
+            Expression newarg;
+            Expression[] arguments;
 
-          nextToken();
-          newarg = parsePrimaryExp(1);
-          arguments = parseArguments();
-          e = new NewExp(loc, newarg, arguments);
-          break; }
-
+            nextToken();
+            newarg = parsePrimaryExp(1);
+            arguments = parseArguments();
+            e = new NewExp(loc, newarg, arguments);
+            break;
+        }
         default:
             //	Lerror:
             error(ExpectedExpressionError(token.toString));
@@ -839,20 +805,18 @@ class Parser : Lexer
 
     Expression[] parseArguments()
     {
-        Expression[] arguments = null;
+        import std.array : Appender;
+        Appender!(Expression[]) arguments;
 
-        if(token.value == Tok.Lparen)
+        if(token == Tok.Lparen)
         {
             nextToken();
-            if(token.value != Tok.Rparen)
+            if(token != Tok.Rparen)
             {
                 for(;; )
                 {
-                    Expression arg;
-
-                    arg = parseAssignExp();
-                    arguments ~= arg;
-                    if(token.value == Tok.Rparen)
+                    arguments.put(parseAssignExp);
+                    if(token == Tok.Rparen)
                         break;
                     if(!check(Tok.Comma))
                         break;
@@ -860,29 +824,30 @@ class Parser : Lexer
             }
             nextToken();
         }
-        return arguments;
+        return arguments.data;
     }
 
     Expression parseArrayLiteral()
     {
+        import std.array : Appender;
         Expression e;
-        Expression[] elements;
+        Appender!(Expression[]) elements;
         Loc loc;
 
         //writef("parseArrayLiteral()\n");
         loc = currentline;
         check(Tok.Lbracket);
-        if(token.value != Tok.Rbracket)
+        if(token != Tok.Rbracket)
         {
             for(;; )
             {
-                if(token.value == Tok.Comma)
+                if(token == Tok.Comma)
                     // Allow things like [1,2,,,3,]
                     // Like Explorer 4, and unlike Netscape, the
                     // trailing , indicates another null element.
                     //Netscape was right - FIXED
-                    elements ~= cast(Expression)null;
-                else if(token.value == Tok.Rbracket)
+                    elements.put(cast(Expression)null);
+                else if(token == Tok.Rbracket)
                 {
                     //elements ~= cast(Expression)null;
                     break;
@@ -890,22 +855,23 @@ class Parser : Lexer
                 else
                 {
                     e = parseAssignExp();
-                    elements ~= e;
-                    if(token.value != Tok.Comma)
+                    elements.put(e);
+                    if(token != Tok.Comma)
                         break;
                 }
                 nextToken();
             }
         }
         check(Tok.Rbracket);
-        e = new ArrayLiteral(loc, elements);
+        e = new ArrayLiteral(loc, elements.data);
         return e;
     }
 
     Expression parseObjectLiteral()
     {
+        import std.array : Appender;
         Expression e;
-        Field[] fields;
+        Appender!(Field[]) fields;
         Loc loc;
 
         //writef("parseObjectLiteral()\n");
@@ -917,32 +883,31 @@ class Parser : Lexer
         {
             for(;; )
             {
-                Field f;
                 Identifier* ident;
-                switch(token.value){
-                    case Tok.Identifier:
-                        ident = token.ident;
-                        break;
-                    case Tok.String,Tok.Number,Tok.Real:
-                        ident = Identifier.build(token.toString);
+                switch(token.value)
+                {
+                case Tok.Identifier:
+                    ident = token.ident;
                     break;
-                    default:
-                        error(ExpectedIdentifierError);
+                case Tok.String, Tok.Number, Tok.Real:
+                    ident = Identifier.build(token.toString);
+                    break;
+                default:
+                    error(ExpectedIdentifierError);
                     break;
                 }
                 nextToken();
                 check(Tok.Colon);
-                f = new Field(ident, parseAssignExp());
-                fields ~= f;
-                if(token.value != Tok.Comma)
+                fields.put(new Field(ident, parseAssignExp()));
+                if(token != Tok.Comma)
                     break;
                 nextToken();
-                if(token.value == Tok.Rbrace)//allow trailing comma
+                if(token == Tok.Rbrace)//allow trailing comma
                     break;
             }
             check(Tok.Rbrace);
         }
-        e = new ObjectLiteral(loc, fields);
+        e = new ObjectLiteral(loc, fields.data);
         return e;
     }
 
@@ -952,7 +917,7 @@ class Parser : Lexer
         Loc loc;
 
         loc = currentline;
-        f = cast(FunctionDefinition)parseFunction(1);
+        f = cast(FunctionDefinition)parseFunction(ParseFlag.literal);
         return new FunctionLiteral(loc, f);
     }
 
@@ -968,7 +933,7 @@ class Parser : Lexer
             {
             case Tok.Dot:
                 nextToken();
-                if(token.value == Tok.Identifier)
+                if(token == Tok.Identifier)
                 {
                     e = new DotExp(loc, e, token.ident);
                 }
@@ -980,13 +945,13 @@ class Parser : Lexer
                 break;
 
             case Tok.Plusplus:
-                if(token.sawLineTerminator && !(flags & inForHeader))
+                if(token.sawLineTerminator && !(flags & Flag.inForHeader))
                     goto Linsert;
                 e = new PostIncExp(loc, e);
                 break;
 
             case Tok.Minusminus:
-                if(token.sawLineTerminator && !(flags & inForHeader))
+                if(token.sawLineTerminator && !(flags & Flag.inForHeader))
                 {
                     Linsert:
                     // insert automatic semicolon
@@ -1188,7 +1153,8 @@ class Parser : Lexer
             case Tok.Shiftright:     ircode = Opcode.ShR;         goto L1;
             case Tok.Ushiftright:    ircode = Opcode.UShR;        goto L1;
 
-                L1: nextToken();
+            L1:
+                nextToken();
                 e2 = parseAddExp();
                 e = new XBinExp(loc, op, ircode, e, e2);
                 continue;
@@ -1234,7 +1200,7 @@ class Parser : Lexer
                 continue;
 
             case Tok.In:
-                if(flags & noIn)
+                if(flags & Flag.noIn)
                     break;              // disallow
                 nextToken();
                 e2 = parseShiftExp();
@@ -1291,7 +1257,7 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseEqualExp();
-        while(token.value == Tok.And)
+        while(token == Tok.And)
         {
             nextToken();
             e2 = parseEqualExp();
@@ -1308,7 +1274,7 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseAndExp();
-        while(token.value == Tok.Xor)
+        while(token == Tok.Xor)
         {
             nextToken();
             e2 = parseAndExp();
@@ -1325,7 +1291,7 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseXorExp();
-        while(token.value == Tok.Or)
+        while(token == Tok.Or)
         {
             nextToken();
             e2 = parseXorExp();
@@ -1342,7 +1308,7 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseOrExp();
-        while(token.value == Tok.Andand)
+        while(token == Tok.Andand)
         {
             nextToken();
             e2 = parseOrExp();
@@ -1359,7 +1325,7 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseAndAndExp();
-        while(token.value == Tok.Oror)
+        while(token == Tok.Oror)
         {
             nextToken();
             e2 = parseAndAndExp();
@@ -1377,7 +1343,7 @@ class Parser : Lexer
 
         loc = currentline;
         e = parseOrOrExp();
-        if(token.value == Tok.Question)
+        if(token == Tok.Question)
         {
             nextToken();
             e1 = parseAssignExp();
@@ -1439,19 +1405,19 @@ class Parser : Lexer
         return e;
     }
 
-    Expression parseExpression(uint flags = 0)
+    Expression parseExpression(Flag flags = Flag.normal)
     {
         Expression e;
         Expression e2;
         Loc loc;
-        uint flags_save;
+        Flag flags_save;
 
         //writefln("Parser.parseExpression()");
         flags_save = this.flags;
         this.flags = flags;
         loc = currentline;
         e = parseAssignExp();
-        while(token.value == Tok.Comma)
+        while(token == Tok.Comma)
         {
             nextToken();
             e2 = parseAssignExp();

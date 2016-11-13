@@ -40,6 +40,7 @@ class Expression
     Loc loc;                    // file location
     Tok op;
 
+    @safe @nogc pure nothrow
     this(Loc loc, Tok op)
     {
         this.loc = loc;
@@ -50,7 +51,7 @@ class Expression
     invariant()
     {
         assert(signature == EXPRESSION_SIGNATURE);
-        assert(op != Tok.reserved && op < Tok.max);
+        assert(op != Tok.reserved && op <= Tok.max);
     }
 
     /**************************
@@ -69,7 +70,7 @@ class Expression
         char[] buf;
 
         toBuffer(buf);
-        return assumeUnique(buf);
+        return buf.assumeUnique;
     }
 
     void toBuffer(ref char[] buf)
@@ -82,6 +83,7 @@ class Expression
         import std.format : format;
         d_string sourcename;
 
+        assert(sc !is null);
         //writefln("checkLvalue(), op = %d", op);
         if(sc.funcdef)
         {
@@ -96,8 +98,8 @@ class Expression
             sc.exception = CannotAssignToError.toThrow(
                 toString, sourcename, sc.getSource, loc);
         }
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Should I throw the exception?
+        assert(sc.exception !is null);
+        debug throw sc.exception;
     }
 
     // Do we match for purposes of optimization?

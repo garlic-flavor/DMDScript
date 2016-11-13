@@ -16,24 +16,26 @@ private struct err(alias Proto, ARGS...)
     this(d_string fmt) { this.fmt = fmt; }
 
     Status* opCall(ARGS args, Loc linnum = 0, string file = __FILE__,
-                   size_t line = __LINE__)
+                   size_t line = __LINE__) const
     {
         import std.format : format;
         return new ScriptException(fmt.format(args), linnum, file, line)
             .toStatus!Proto;
     }
-
     alias opCall this;
 
-    ScriptException toThrow(ARGS args, Loc linnum = 0,
-                            string file = __FILE__, size_t line = __LINE__)
+    @safe
+    ScriptException toThrow(ARGS args, Loc linnum = 0, string file = __FILE__,
+                            size_t line = __LINE__) const
     {
         import std.format : format;
         return new ScriptException(fmt.format(args), linnum, file, line);
     }
 
+    @safe
     ScriptException toThrow(ARGS args, d_string sourcename, d_string source,
-                            Loc loc, string f = __FILE__, size_t l = __LINE__)
+                            Loc loc, string f = __FILE__,
+                            size_t l = __LINE__) const
     {
         import std.format : format;
         return new ScriptException(fmt.format(args), sourcename, source,
@@ -50,8 +52,9 @@ private struct syntaxerr(ARGS...)
     @safe @nogc pure nothrow
     this(d_string fmt) { this.fmt = fmt; }
 
+    @safe
     ScriptException opCall(ARGS args, Loc linnum = 0, string file = __FILE__,
-                           size_t line = __LINE__)
+                           size_t line = __LINE__) const
     {
         import std.format : format;
         return new ScriptException(fmt.format(args), linnum, file, line);

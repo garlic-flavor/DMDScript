@@ -117,11 +117,13 @@ enum Tok : int
 
 struct Token
 {
+    Tok    value;
+    alias value this;
+
     Token* next;
     // pointer to first character of this token within buffer
     immutable(tchar)* ptr;
     uint   linnum;
-    Tok    value;
     // where we saw the last line terminator
     immutable(tchar)* sawLineTerminator;
     union
@@ -134,11 +136,6 @@ struct Token
 
     // static d_string[Tok.max+1] tochars;
     // alias tochars = ._tochars;
-
-    debug void print()
-    {
-        writefln(toString());
-    }
 
     d_string toString()
     {
@@ -183,11 +180,15 @@ struct Token
 
 class Lexer
 {
-    uint currentline;
+    enum UseStringtable { No, Yes}
+
+protected:
     Token token;
+    uint currentline;
     ScriptException exception;            // syntax error information
 
-    this(d_string sourcename, d_string base, int useStringtable)
+    @trusted pure nothrow
+    this(d_string sourcename, d_string base, UseStringtable useStringtable)
     {
         //writefln("Lexer::Lexer(base = '%s')\n",base);
 
@@ -203,24 +204,7 @@ class Lexer
     }
 
     //
-    deprecated
-    void error(ARGS...)(string fmt, ARGS args)
-    {
-        import std.format : format;
-
-        if (exception is null)
-            exception = new ScriptException(format(fmt, args),
-                                            sourcename, base, p);
-
-        // Consume input until the end
-        assert(base.ptr < end);
-        p = end - 1;
-
-        token.next = null;              // dump any lookahead
-
-        debug throw exception;
-    }
-
+    pure
     void error(ScriptException se)
     {
         assert(se !is null);
@@ -230,6 +214,8 @@ class Lexer
         assert(base.ptr < end);
         p = end - 1;
         token.next = null;
+
+        exception = se;
 
         debug throw se;
     }
@@ -298,19 +284,18 @@ class Lexer
     }
 
 private:
-    import std.array : Appender;
-
-    Identifier[d_string] stringtable;
     Token* freelist;
+
+    UseStringtable useStringtable;        // use for Identifiers
+    Identifier[d_string] stringtable;
 
     d_string sourcename;       // for error message strings
     d_string base;             // pointer to start of buffer
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
 
-    Appender!(tchar[]) stringbuffer;
-    int useStringtable;        // use for Identifiers
 
+    @safe pure nothrow
     Token* allocToken()
     {
         Token* t;
@@ -325,6 +310,7 @@ private:
         return new Token();
     }
 
+    @trusted pure
     dchar get(immutable(tchar)* p)
     {
         import std.utf : decode;
@@ -333,6 +319,7 @@ private:
         return decode(base, idx);
     }
 
+    @trusted pure
     immutable(tchar)* inc(immutable(tchar) * p)
     {
         import std.utf : stride;
@@ -344,10 +331,9 @@ private:
     /****************************
      * Turn next token in buffer into a token.
      */
-
     void scan(Token* t)
     {
-        import std.ascii : isAlphaNum, isDigit, isPrintable;
+        import std.ascii : isDigit, isPrintable;
         import std.algorithm : startsWith;
         import std.range : popFront;
         import std.uni : isAlpha;
@@ -368,16 +354,11 @@ private:
             //writefln("p = %x, *p = x%02x, '%s'",cast(uint)p,*p,*p);
             switch(*p)
             {
-            case 0:
-            case 0x1A:
+            case 0, 0x1A:
                 t.value = Tok.Eof;               // end of file
                 return;
 
-            case ' ':
-            case '\t':
-            case '\v':
-            case '\f':
-            case 0xA0:                          // no-break space
+            case ' ', '\t', '\v', '\f', 0xA0:   // no-break space
                 p++;
                 continue;                       // skip white space
 
@@ -389,114 +370,108 @@ private:
                 p++;
                 continue;
 
-            case '"':
-            case '\'':
+            case '"', '\'':
                 t.str = chompString(*p);
                 t.value = Tok.String;
                 return;
 
-            case '0':       case '1':   case '2':   case '3':   case '4':
-            case '5':       case '6':   case '7':   case '8':   case '9':
+            case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
                 t.value = number(t);
                 return;
 
-            case 'a':       case 'b':   case 'c':   case 'd':   case 'e':
-            case 'f':       case 'g':   case 'h':   case 'i':   case 'j':
-            case 'k':       case 'l':   case 'm':   case 'n':   case 'o':
-            case 'p':       case 'q':   case 'r':   case 's':   case 't':
-            case 'u':       case 'v':   case 'w':   case 'x':   case 'y':
-            case 'z':
-            case 'A':       case 'B':   case 'C':   case 'D':   case 'E':
-            case 'F':       case 'G':   case 'H':   case 'I':   case 'J':
-            case 'K':       case 'L':   case 'M':   case 'N':   case 'O':
-            case 'P':       case 'Q':   case 'R':   case 'S':   case 'T':
-            case 'U':       case 'V':   case 'W':   case 'X':   case 'Y':
-            case 'Z':
-            case '_':
-            case '$':
-                Lidentifier:
+            case 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+                 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
+                 'y', 'z',
+                 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
+                 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                 'Y', 'Z',
+                 '_', '$':
+            Lidentifier:
+            {
+                id = null;
+
+                static @safe @nogc pure nothrow
+                bool isidletter(dchar d)
                 {
-                  id = null;
+                    import std.ascii : isAlphaNum;
+                    return isAlphaNum(d) || d == '_' || d == '$'
+                        || (d >= 0x80 && isAlpha(d));
+                }
 
-                  static bool isidletter(dchar d)
-                  {
-                      return isAlphaNum(d) || d == '_' || d == '$' || (d >= 0x80 && isAlpha(d));
-                  }
-
-                  do
-                  {
-                      p = inc(p);
-                      d = get(p);
-                      if(d == '\\' && p[1] == 'u')
-                      {
-                          Lidentifier2:
-                          id = t.ptr[0 .. p - t.ptr].idup;
-                          auto ps = p;
-                          p++;
-                          d = unicode();
-                          if(!isidletter(d))
-                          {
-                              p = ps;
-                              break;
-                          }
-                          buf = null;
-                          encode(buf, d);
-                          id ~= buf;
-                          for(;; )
-                          {
-                              d = get(p);
-                              if(d == '\\' && p[1] == 'u')
-                              {
-                                  auto pstart = p;
-                                  p++;
-                                  d = unicode();
-                                  if(isidletter(d))
-                                  {
-                                      buf = null;
-                                      encode(buf, d);
-                                      id ~= buf;
-                                  }
-                                  else
-                                  {
-                                      p = pstart;
-                                      goto Lidentifier3;
-                                  }
-                              }
-                              else if(isidletter(d))
-                              {
-                                  buf = null;
-                                  encode(buf, d);
-                                  id ~= buf;
-                                  p = inc(p);
-                              }
-                              else
-                                  goto Lidentifier3;
-                          }
-                      }
-                  } while(isidletter(d));
-                  id = t.ptr[0 .. p - t.ptr];
-                  Lidentifier3:
-                  //printf("id = '%.*s'\n", id);
-                  t.value = isKeyword(id);
-                  if(t.value)
-                      return;
-                  if(useStringtable)
-                  {     //Identifier* i = &stringtable[id];
-                      Identifier* i = id in stringtable;
-                      if(!i)
-                      {
-                          stringtable[id] = Identifier.init;
-                          i = id in stringtable;
-                      }
-                      i.value.putVstring(id);
-                      i.value.toHash();
-                      t.ident = i;
-                  }
-                  else
-                      t.ident = Identifier.build(id);
-                  t.value = Tok.Identifier;
-                  return; }
-
+                do
+                {
+                    p = inc(p);
+                    d = get(p);
+                    if(d == '\\' && p[1] == 'u')
+                    {
+                    Lidentifier2:
+                        id = t.ptr[0 .. p - t.ptr].idup;
+                        auto ps = p;
+                        p++;
+                        d = unicode();
+                        if(!isidletter(d))
+                        {
+                            p = ps;
+                            break;
+                        }
+                        buf = null;
+                        encode(buf, d);
+                        id ~= buf;
+                        for(;; )
+                        {
+                            d = get(p);
+                            if(d == '\\' && p[1] == 'u')
+                            {
+                                auto pstart = p;
+                                p++;
+                                d = unicode();
+                                if(isidletter(d))
+                                {
+                                    buf = null;
+                                    encode(buf, d);
+                                    id ~= buf;
+                                }
+                                else
+                                {
+                                    p = pstart;
+                                    goto Lidentifier3;
+                                }
+                            }
+                            else if(isidletter(d))
+                            {
+                                buf = null;
+                                encode(buf, d);
+                                id ~= buf;
+                                p = inc(p);
+                            }
+                            else
+                                goto Lidentifier3;
+                        }
+                    }
+                } while(isidletter(d));
+                id = t.ptr[0 .. p - t.ptr];
+            Lidentifier3:
+                //printf("id = '%.*s'\n", id);
+                t.value = isKeyword(id);
+                if(t.value)
+                    return;
+                if(useStringtable == UseStringtable.Yes)
+                {     //Identifier* i = &stringtable[id];
+                    Identifier* i = id in stringtable;
+                    if(!i)
+                    {
+                        stringtable[id] = Identifier.init;
+                        i = id in stringtable;
+                    }
+                    i.value.putVstring(id);
+                    i.value.toHash();
+                    t.ident = i;
+                }
+                else
+                    t.ident = Identifier.build(id);
+                t.value = Tok.Identifier;
+                return;
+            }
             case '/':
                 p++;
                 c = *p;
@@ -593,14 +568,14 @@ private:
                     p++;
                     continue;*/
                 }
-                else if((t.str = regexp()) != null)
+                else if((t.str = regexp()) !is null)
                     t.value = Tok.Regexp;
                 else
                     t.value = Tok.Divide;
                 return;
 
             case '.':
-                immutable(tchar) * q;
+                immutable(tchar)* q;
                 q = p + 1;
                 c = *q;
                 if(isDigit(c))
@@ -672,19 +647,12 @@ private:
                         {
                             switch(*++q)
                             {
-                            case 0:
-                            case 0x1A:
+                            case 0, 0x1A:
                                 t.value = Tok.Eof;
                                 p = q;
                                 return;
 
-                            case ' ':
-                            case '\t':
-                            case '\v':
-                            case '\f':
-                            case '\n':
-                            case '\r':
-                            case 0xA0:                  // no-break space
+                            case ' ', '\t', '\v', '\f', '\n', '\r', 0xA0:
                                 continue;
 
                             default:
@@ -750,8 +718,7 @@ private:
                             t.sawLineTerminator = p;
                             break;
 
-                        case 0:
-                        case 0x1A:                              // end of file
+                        case 0, 0x1A:  // end of file
                             error(BadHTMLCommentError);
                             t.value = Tok.Eof;
                             return;
@@ -921,7 +888,7 @@ private:
     /*******************************************
      * Parse escape sequence.
      */
-
+    @trusted pure
     dchar escapeSequence()
     {
         import std.ascii : isDigit, isLower, isHexDigit, isOctalDigit;
@@ -933,10 +900,7 @@ private:
         p++;
         switch(c)
         {
-        case '\'':
-        case '"':
-        case '?':
-        case '\\':
+        case '\'', '"', '?', '\\':
             break;
         case 'a':
             c = 7;
@@ -1030,15 +994,17 @@ private:
 
     /**************************************
      */
-
+    @trusted
     d_string chompString(tchar quote)
     {
+        import std.array : Appender;
         import std.utf : encode, stride;
 
         tchar c;
         dchar d;
         uint len;
         tchar[dchar.sizeof / tchar.sizeof] unibuf;
+        static Appender!(tchar[]) stringbuffer;
 
         assert(*p == quote);
 
@@ -1049,8 +1015,7 @@ private:
             c = *p;
             switch(c)
             {
-            case '"':
-            case '\'':
+            case '"', '\'':
                 p++;
                 if(c == quote)
                     return stringbuffer.data.idup;
@@ -1068,14 +1033,12 @@ private:
                 stringbuffer.put(unibuf[0..len]);
                 continue;
 
-            case '\n':
-            case '\r':
+            case '\n', '\r':
                 p++;
                 error(StringNoEndQuoteError(quote));
                 return null;
 
-            case 0:
-            case 0x1A:
+            case 0, 0x1A:
                 error(UnterminatedStringError);
                 return null;
 
@@ -1092,14 +1055,14 @@ private:
      * Scan regular expression. Return null with buffer
      * pointer intact if it is not a regexp.
      */
-
+    @trusted pure nothrow
     d_string regexp()
     {
         import std.ascii : isAlphaNum;
 
         tchar c;
-        immutable(tchar) * s;
-        immutable(tchar) * start;
+        immutable(tchar)* s;
+        immutable(tchar)* start;
 
         /*
             RegExpLiteral:  RegExpBody RegExpFlags
@@ -1222,7 +1185,6 @@ private:
     /********************************************
      * Read a number.
      */
-
     Tok number(Token *t)
     {
         import std.ascii : isDigit, isHexDigit;
@@ -1248,13 +1210,12 @@ private:
                 if(p - start == 1)              // if leading 0
                     base = 8;
                 goto case;
-            case '1': case '2': case '3': case '4': case '5':
-            case '6': case '7':
+            case '1', '2', '3', '4', '5', '6', '7':
                 break;
 
-            case '8': case '9':                         // decimal digits
-                if(base == 8)                           // and octal base
-                    base = 10;                          // means back to decimal base
+            case '8', '9':                         // decimal digits
+                if(base == 8)                      // and octal base
+                    base = 10;                     // means back to decimal base
                 break;
 
             default:
@@ -1299,8 +1260,7 @@ private:
                 t.realvalue = cast(double)intvalue;
                 return Tok.Real;
 
-            case 'x':
-            case 'X':
+            case 'x', 'X':
                 if(p - start != 2 || !isHexDigit(*p))
                     goto Lerr;
                 do
@@ -1320,8 +1280,7 @@ private:
                 }
                 goto Ldouble;
 
-            case 'e':
-            case 'E':
+            case 'e', 'E':
                 Lexponent:
                 if(*p == '+' || *p == '-')
                     p++;
@@ -1345,7 +1304,8 @@ private:
         return Tok.Eof;
     }
 
-    static Tok isKeyword(const (tchar)[] s)
+    static @safe @nogc pure nothrow
+    Tok isKeyword(const (tchar)[] s)
     {
         if(s[0] >= 'a' && s[0] <= 'w')
             switch(s.length)
@@ -1541,7 +1501,8 @@ private:
  */
 // This function seems that only be called at error handling,
 // and for debugging.
-private d_string tochars(Tok tok)
+private @safe pure
+d_string tochars(Tok tok)
 {
     import std.conv : to;
     import std.string : toLower;

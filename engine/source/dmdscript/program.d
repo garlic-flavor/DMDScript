@@ -91,10 +91,10 @@ class Program
         d_string msg;
 
         //writef("parse_common()\n");
-        Parser p = new Parser(progIdentifier, srctext, 1);
+        Parser p = new Parser(progIdentifier, srctext,
+                              Parser.UseStringtable.Yes);
 
-        ScriptException exception;
-        if(p.parseProgram(topstatements, exception))
+        if(auto exception = p.parseProgram(topstatements))
         {
             topstatements[] = null;
             throw exception;
@@ -133,7 +133,7 @@ class Program
         globalfunction.semantic(&sc);
 
         if (sc.exception !is null)
-            msg = sc.exception.message;
+            msg = sc.exception.msg;
         if(msg)                         // if semantic() failed
         {
             globalfunction.topstatements[] = null;

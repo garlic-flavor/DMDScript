@@ -277,6 +277,7 @@ class Dobject
         assert(signature == DOBJECT_SIGNATURE);
     }
 
+    @safe pure nothrow
     this(Dobject prototype)
     {
         //writef("new Dobject = %x, prototype = %x, line = %d, file = '%s'\n", this, prototype, GC.line, ascii2unicode(GC.file));
@@ -291,6 +292,7 @@ class Dobject
         signature = DOBJECT_SIGNATURE;
     }
 
+    final @safe @nogc pure nothrow
     Dobject Prototype()
     {
         return internal_prototype;
@@ -431,7 +433,6 @@ class Dobject
      *	TRUE	not found or successful delete
      *	FALSE	property is marked with DontDelete attribute
      */
-
     int Delete(d_string PropertyName)
     {
         // ECMA 8.6.2.5
@@ -453,11 +454,12 @@ class Dobject
         return true;
     }
 
+    final @trusted
     Status* DefaultValue(Value* ret, d_string Hint)
     {
         Dobject o;
         Value* v;
-        static enum d_string[2] table = [ Text.toString, Text.valueOf ];
+        static enum d_string[2] table = [Text.toString, Text.valueOf];
         int i = 0;                      // initializer necessary for /W4
 
         // ECMA 8.6.2.6
@@ -525,19 +527,23 @@ class Dobject
     }
 
 
+    final @safe @nogc pure nothrow
     int isClass(d_string classname) const
     {
         return this.classname == classname;
     }
 
+    final @safe @nogc pure nothrow
     int isDarray() const
     {
         return isClass(Text.Array);
     }
+    final @safe @nogc pure nothrow
     int isDdate() const
     {
         return isClass(Text.Date);
     }
+    final @safe @nogc pure nothrow
     int isDregexp() const
     {
         return isClass(Text.RegExp);
@@ -556,6 +562,7 @@ class Dobject
         return false;
     }
 
+    final @trusted
     ScriptException getException(Loc linnum)
     {
         Value v;
@@ -563,6 +570,7 @@ class Dobject
         return new ScriptException(v.toString, linnum);
     }
 
+    final @trusted
     Status* putIterator(Value* v)
     {
         Iterator* i = new Iterator;
@@ -572,12 +580,14 @@ class Dobject
         return null;
     }
 
-    static Dfunction getConstructor()
+    static @safe @nogc nothrow
+    Dfunction getConstructor()
     {
         return Dobject_constructor;
     }
 
-    static Dobject getPrototype()
+    static @safe @nogc nothrow
+    Dobject getPrototype()
     {
         return Dobject_prototype;
     }
