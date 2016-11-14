@@ -109,7 +109,7 @@ class Expression
     void toLvalue(IRstate* irs, out idx_t base, IR* property,
                   out OpOffset opoff)
     {
-        base = irs.alloc(1);
+        base = irs.alloc(1)[0];
         toIR(irs, base);
         property.index = 0;
         opoff = OpOffset.V;
@@ -340,11 +340,11 @@ final class RegExpLiteral : Expression
         import std.string : lastIndexOf;
         d_string pattern;
         d_string attribute = null;
-        int e;
+        sizediff_t e;
 
-        uint argc;
-        uint argv;
-        uint b;
+        size_t argc;
+        LocalVariables argv;
+        LocalVariables b;
 
         // Regular expression is of the form:
         //	/pattern/attribute
@@ -365,14 +365,15 @@ final class RegExpLiteral : Expression
 
         b = irs.alloc(1);
         auto re = Identifier.build(Text.RegExp);
-        irs.gen!(Opcode.GetScope)(loc, b, re);
+        irs.gen!(Opcode.GetScope)(loc, b[0], re);
         argv = irs.alloc(argc);
-        irs.gen!(Opcode.String)(loc, argv, Identifier.build(pattern));
-        if(argc == 2)
-            irs.gen!(Opcode.String)(loc, argv + 1,
-                                     Identifier.build(attribute));
-        irs.gen!(Opcode.New)(loc, ret, b, argc, argv);
-        irs.release(b, argc + 1);
+        irs.gen!(Opcode.String)(loc, argv[0], Identifier.build(pattern));
+        if(argv.length == 2)
+            irs.gen!(Opcode.String)(loc, argv[1], Identifier.build(attribute));
+        irs.gen!(Opcode.New)(loc, ret, b[0], argv.length, argv[0]);
+
+        irs.release(argv);
+        irs.release(b);
     }
 
     override void toBuffer(scope void delegate(in tchar[]) sink) const
@@ -437,65 +438,61 @@ final class ArrayLiteral : Expression
 
     override void toIR(IRstate* irs, idx_t ret)
     {
-        size_t argc;
-        idx_t argv;
-        idx_t b;
-        idx_t v;
+        LocalVariables argv;
+        LocalVariables b;
 
         b = irs.alloc(1);
         static Identifier* ar;
         if(!ar)
             ar = Identifier.build(Text.Array);
-        irs.gen!(Opcode.GetScope)(loc, b, ar);
+        irs.gen!(Opcode.GetScope)(loc, b[0], ar);
         if(elements.length)
         {
             Expression e;
 
-            argc = elements.length;
-            argv = irs.alloc(argc);
-            if(argc > 1)
+            argv = irs.alloc(elements.length);
+            if(1 < argv.length)
             {
-                uint i;
-
                 // array literal [a, b, c] is equivalent to:
                 //	new Array(a,b,c)
-                for(i = 0; i < argc; i++)
+                for(size_t i = 0; i < argv.length; i++)
                 {
                     e = elements[i];
                     if(e)
                     {
-                        e.toIR(irs, argv + i);
+                        e.toIR(irs, argv[i]);
                     }
                     else
-                        irs.gen!(Opcode.Undefined)(loc, argv + i);
+                        irs.gen!(Opcode.Undefined)(loc, argv[i]);
                 }
-                irs.gen!(Opcode.New)(loc, ret, b, argc, argv);
+                irs.gen!(Opcode.New)(loc, ret, b[0], argv.length, argv[0]);
             }
             else
             {   //	[a] translates to:
                 //	ret = new Array(1);
                 //  ret[0] = a
 
-                irs.gen!(Opcode.Number)(loc, argv, 1.0);
-                irs.gen!(Opcode.New)(loc, ret, b, argc, argv);
+                irs.gen!(Opcode.Number)(loc, argv[0], 1.0);
+                irs.gen!(Opcode.New)(loc, ret, b[0], argv.length, argv[0]);
 
                 e = elements[0];
-                v = irs.alloc(1);
+                auto v = irs.alloc(1);
                 if(e)
-                    e.toIR(irs, v);
+                    e.toIR(irs, v[0]);
                 else
-                    irs.gen!(Opcode.Undefined)(loc, v);
-                irs.gen!(Opcode.PutS)(loc, v, ret, Identifier.build(Text._0));
-                irs.release(v, 1);
+                    irs.gen!(Opcode.Undefined)(loc, v[0]);
+                irs.gen!(Opcode.PutS)(loc, v[0], ret,
+                                      Identifier.build(Text._0));
+                irs.release(v);
             }
-            irs.release(argv, argc);
+            irs.release(argv);
         }
         else
         {
             // Generate new Array()
-            irs.gen!(Opcode.New)(loc, ret, b, 0, 0);
+            irs.gen!(Opcode.New)(loc, ret, b[0], 0, 0);
         }
-        irs.release(b, 1);
+        irs.release(b);
     }
 
     override void toBuffer(scope void delegate(in tchar[]) sink) const
@@ -554,22 +551,20 @@ final class ObjectLiteral : Expression
 
     override void toIR(IRstate* irs, idx_t ret)
     {
-        idx_t b;
+        LocalVariables b;
 
         b = irs.alloc(1);
         //irs.gen2(loc, IRstring, b, Text.Object);
-        irs.gen!(Opcode.GetScope)(loc, b, Identifier.build(Text.Object));
+        irs.gen!(Opcode.GetScope)(loc, b[0], Identifier.build(Text.Object));
         // Generate new Object()
-        irs.gen!(Opcode.New)(loc, ret, b, 0, 0);
+        irs.gen!(Opcode.New)(loc, ret, b[0], 0, 0);
         if(fields.length)
         {
-            uint x;
-
-            x = irs.alloc(1);
+            auto x = irs.alloc(1);
             foreach(Field f; fields)
             {
-                f.exp.toIR(irs, x);
-                irs.gen!(Opcode.PutS)(loc, x, ret, f.ident);
+                f.exp.toIR(irs, x[0]);
+                irs.gen!(Opcode.PutS)(loc, x[0], ret, f.ident);
             }
         }
     }
@@ -674,25 +669,22 @@ class BinExp : Expression
 
     void binIR(IRstate* irs, idx_t ret, Opcode ircode)
     {
-        idx_t b;
-        idx_t c;
-
         if(ret)
         {
-            b = irs.alloc(1);
-            e1.toIR(irs, b);
+            auto b = irs.alloc(1);
+            e1.toIR(irs, b[0]);
             if(e1.match(e2))
             {
-                irs.gen!GenIR3(loc, ircode, ret, b, b);
+                irs.gen!GenIR3(loc, ircode, ret, b[0], b[0]);
             }
             else
             {
-                c = irs.alloc(1);
-                e2.toIR(irs, c);
-                irs.gen!GenIR3(loc, ircode, ret, b, c);
-                irs.release(c, 1);
+                auto c = irs.alloc(1);
+                e2.toIR(irs, c[0]);
+                irs.gen!GenIR3(loc, ircode, ret, b[0], c[0]);
+                irs.release(c);
             }
-            irs.release(b, 1);
+            irs.release(b);
         }
         else
         {
@@ -901,7 +893,7 @@ final class DotExp : UnaExp
 
     override void toIR(IRstate* irs, idx_t ret)
     {
-        idx_t base;
+        LocalVariables base;
 
         //writef("DotExp::toIR('%s')\n", toChars());
         version(all)
@@ -910,8 +902,8 @@ final class DotExp : UnaExp
             //		foo.bar;
             // generating a property get even if the result is thrown away.
             base = irs.alloc(1);
-            e1.toIR(irs, base);
-            irs.gen!(Opcode.GetS)(loc, ret, base, ident);
+            e1.toIR(irs, base[0]);
+            irs.gen!(Opcode.GetS)(loc, ret, base[0], ident);
         }
         else
         {
@@ -929,7 +921,7 @@ final class DotExp : UnaExp
     override void toLvalue(IRstate* irs, out idx_t base, IR* property,
                            out OpOffset opoff)
     {
-        base = irs.alloc(1);
+        base = irs.alloc(1)[0];
         e1.toIR(irs, base);
         property.id = ident;
         opoff = OpOffset.S;
@@ -990,8 +982,7 @@ final class CallExp : UnaExp
         // ret = base.property(argc, argv)
         // CALL ret,base,property,argc,argv
         idx_t base;
-        size_t argc;
-        idx_t argv;
+        LocalVariables argv;
         IR property;
         OpOffset opoff;
 
@@ -1000,42 +991,35 @@ final class CallExp : UnaExp
 
         if(arguments.length)
         {
-            uint u;
-
-            argc = arguments.length;
-            argv = irs.alloc(argc);
-            for(u = 0; u < argc; u++)
+            argv = irs.alloc(arguments.length);
+            for(size_t u = 0; u < argv.length; u++)
             {
-                Expression e;
-
-                e = arguments[u];
-                e.toIR(irs, argv + u);
+                auto e = arguments[u];
+                e.toIR(irs, argv[u]);
             }
             arguments[] = null;         // release to GC
             arguments = null;
-        }
-        else
-        {
-            argc = 0;
-            argv = 0;
         }
 
         final switch (opoff)
         {
         case OpOffset.None:
-            irs.gen!(Opcode.Call)(loc, ret, base, property.index, argc, argv);
+            irs.gen!(Opcode.Call)(loc, ret, base, property.index,
+                                  argv.length, argv[0]);
             break;
         case OpOffset.S:
-            irs.gen!(Opcode.CallS)(loc, ret, base, property.id, argc, argv);
+            irs.gen!(Opcode.CallS)(loc, ret, base, property.id,
+                                   argv.length, argv[0]);
             break;
         case OpOffset.Scope:
-            irs.gen!(Opcode.CallScope)(loc, ret, property.id, argc, argv);
+            irs.gen!(Opcode.CallScope)(loc, ret, property.id,
+                                       argv.length, argv[0]);
             break;
         case OpOffset.V:
-            irs.gen!(Opcode.CallV)(loc, ret, base, argc, argv);
+            irs.gen!(Opcode.CallV)(loc, ret, base, argv.length, argv[0]);
             break;
         }
-        irs.release(argv, argc);
+        irs.release(argv);
     }
 
     override void toBuffer(scope void delegate(in tchar[]) sink) const
@@ -1066,18 +1050,24 @@ final class AssertExp : UnaExp
         Loc linnum;
         size_t u;
         idx_t b;
+        LocalVariables tmp;
 
-        b = ret ? ret : irs.alloc(1);
+        if (0 < ret)
+            b = ret;
+        else
+        {
+            tmp = irs.alloc(1);
+            b = tmp[0];
+        }
 
         e1.toIR(irs, b);
         u = irs.getIP();
         irs.gen!(Opcode.JT)(loc, 0, b);
         linnum = cast(Loc)loc;
         irs.gen!(Opcode.Assert)(loc, linnum);
-        irs.patchJmp(u, irs.getIP());
+        irs.patchJmp(u, irs.getIP);
 
-        if(!ret)
-            irs.release(b, 1);
+        irs.release(tmp);
     }
 
     override void toBuffer(scope void delegate(in tchar[]) sink) const
@@ -1115,36 +1105,25 @@ final class NewExp : UnaExp
     {
         // ret = new b(argc, argv)
         // CALL ret,b,argc,argv
-        idx_t b;
-        size_t argc;
-        idx_t argv;
+        LocalVariables b;
+        LocalVariables argv;
 
         //writef("NewExp::toIR('%s')\n", toChars());
         b = irs.alloc(1);
-        e1.toIR(irs, b);
+        e1.toIR(irs, b[0]);
         if(arguments.length)
         {
-            uint u;
-
-            argc = arguments.length;
-            argv = irs.alloc(argc);
-            for(u = 0; u < argc; u++)
+            argv = irs.alloc(arguments.length);
+            for(size_t u = 0; u < argv.length; u++)
             {
-                Expression e;
-
-                e = arguments[u];
-                e.toIR(irs, argv + u);
+                auto e = arguments[u];
+                e.toIR(irs, argv[u]);
             }
         }
-        else
-        {
-            argc = 0;
-            argv = 0;
-        }
 
-        irs.gen!(Opcode.New)(loc, ret, b, argc, argv);
-        irs.release(argv, argc);
-        irs.release(b, 1);
+        irs.gen!(Opcode.New)(loc, ret, b[0], argv.length, argv[0]);
+        irs.release(argv);
+        irs.release(b);
     }
 
     override void toBuffer(scope void delegate(in tchar[]) sink) const
@@ -1329,11 +1308,11 @@ final class ArrayExp : BinExp
     override void toLvalue(IRstate* irs, out idx_t base, IR* property,
                            out OpOffset opoff)
     {
-        uint index;
+        idx_t index;
 
-        base = irs.alloc(1);
+        base = irs.alloc(1)[0];
         e1.toIR(irs, base);
-        index = irs.alloc(1);
+        index = irs.alloc(1)[0];
         e2.toIR(irs, index);
         property.index = index;
         opoff = OpOffset.None;
@@ -1386,7 +1365,7 @@ final class AssignExp : BinExp
 
             idx_t base;
             size_t argc;
-            idx_t argv;
+            LocalVariables argv;
             IR property;
             OpOffset opoff;
             CallExp ec = cast(CallExp)e1;
@@ -1398,20 +1377,16 @@ final class AssignExp : BinExp
 
             argv = irs.alloc(argc);
 
-            e2.toIR(irs, argv + (argc - 1));
+            e2.toIR(irs, argv[$ - 1]);
 
             ec.e1.toLvalue(irs, base, &property, opoff);
 
             if(ec.arguments.length)
             {
-                uint u;
-
-                for(u = 0; u < ec.arguments.length; u++)
+                for(size_t u = 0; u < ec.arguments.length; u++)
                 {
-                    Expression e;
-
-                    e = ec.arguments[u];
-                    e.toIR(irs, argv + (u + 0));
+                    auto e = ec.arguments[u];
+                    e.toIR(irs, argv[u]);
                 }
                 ec.arguments[] = null;          // release to GC
                 ec.arguments = null;
@@ -1421,30 +1396,37 @@ final class AssignExp : BinExp
             {
             case OpOffset.None:
                 irs.gen!(Opcode.PutCall)(loc, ret, base, property.index,
-                                          argc, argv);
+                                          argv.length, argv[0]);
                 break;
             case OpOffset.S:
                 irs.gen!(Opcode.PutCallS)(loc, ret, base, property.id,
-                                           argc, argv);
+                                           argv.length, argv[0]);
                 break;
             case OpOffset.Scope:
                 irs.gen!(Opcode.PutCallScope)(loc, ret, property.id,
-                                               argc, argv);
+                                               argv.length, argv[0]);
                 break;
             case OpOffset.V:
-                irs.gen!(Opcode.PutCallV)(loc, ret, base, argc, argv);
+                irs.gen!(Opcode.PutCallV)(loc, ret, base,
+                                          argv.length, argv[0]);
                 break;
             }
-            irs.release(argv, argc);
+            irs.release(argv);
         }
         else
         {
-            size_t base;
+            idx_t base;
+            LocalVariables tmp;
             IR property;
             OpOffset opoff;
 
-            b = ret ? ret : irs.alloc(1);
-            e2.toIR(irs, b);
+            if (0 < ret)
+                b = ret;
+            else
+            {
+                tmp = irs.alloc(1);
+                b = tmp[0];
+            }
 
             e1.toLvalue(irs, base, &property, opoff);
             final switch (opoff)
@@ -1461,8 +1443,7 @@ final class AssignExp : BinExp
             case OpOffset.V:
                 assert(0);
             }
-            if(!ret)
-                irs.release(b, 1);
+            irs.release(tmp);
         }
     }
 }
@@ -1503,6 +1484,7 @@ final class AddAssignExp : BinExp
         }
         else*/
         {
+            LocalVariables tmp;
             idx_t r;
             idx_t base;
             IR property;
@@ -1510,7 +1492,13 @@ final class AddAssignExp : BinExp
 
             //writef("AddAssignExp::toIR('%s')\n", toChars());
             e1.toLvalue(irs, base, &property, opoff);
-            r = ret ? ret : irs.alloc(1);
+            if (0 < ret)
+                r = ret;
+            else
+            {
+                tmp = irs.alloc(1);
+                r = tmp[0];
+            }
             e2.toIR(irs, r);
             final switch (opoff)
             {
@@ -1528,8 +1516,7 @@ final class AddAssignExp : BinExp
                 assert(0);
             }
 
-            if(!ret)
-                irs.release(r, 1);
+            irs.release(tmp);
         }
     }
 }
@@ -1556,10 +1543,11 @@ class BinAssignExp : BinExp
 
     override void toIR(IRstate* irs, idx_t ret)
     {
-        idx_t b;
-        idx_t c;
+        LocalVariables b;
+        LocalVariables c;
         idx_t r;
         idx_t base;
+        LocalVariables tmp;
         IR property;
         OpOffset opoff;
 
@@ -1569,21 +1557,27 @@ class BinAssignExp : BinExp
         final switch (opoff)
         {
         case OpOffset.None:
-            irs.gen!(Opcode.Get)(loc, b, base, property.index);
+            irs.gen!(Opcode.Get)(loc, b[0], base, property.index);
             break;
         case OpOffset.S:
-            irs.gen!(Opcode.GetS)(loc, b, base, property.id);
+            irs.gen!(Opcode.GetS)(loc, b[0], base, property.id);
             break;
         case OpOffset.Scope:
-            irs.gen!(Opcode.GetScope)(loc, b, property.id);
+            irs.gen!(Opcode.GetScope)(loc, b[0], property.id);
             break;
         case OpOffset.V:
             assert(0);
         }
         c = irs.alloc(1);
-        e2.toIR(irs, c);
-        r = ret ? ret : irs.alloc(1);
-        irs.gen!GenIR3(loc, ircode, r, b, c);
+        e2.toIR(irs, c[0]);
+        if (0 < ret)
+            r = ret;
+        else
+        {
+            tmp = irs.alloc(1);
+            r = tmp[0];
+        }
+        irs.gen!GenIR3(loc, ircode, r, b[0], c[0]);
         final switch (opoff)
         {
         case OpOffset.None:
@@ -1598,8 +1592,7 @@ class BinAssignExp : BinExp
         case OpOffset.V:
             assert(0);
         }
-        if(!ret)
-            irs.release(r, 1);
+        irs.release(tmp);
     }
 }
 
@@ -1658,20 +1651,23 @@ final class OrOrExp : BinExp
     {
         idx_t u;
         idx_t b;
+        LocalVariables tmp;
 
-        if(ret)
+        if(0 < ret)
             b = ret;
         else
-            b = irs.alloc(1);
+        {
+            tmp = irs.alloc(1);
+            b = tmp[0];
+        }
 
         e1.toIR(irs, b);
-        u = irs.getIP();
+        u = irs.getIP;
         irs.gen!(Opcode.JT)(loc, 0, b);
         e2.toIR(irs, ret);
-        irs.patchJmp(u, irs.getIP());
+        irs.patchJmp(u, irs.getIP);
 
-        if(!ret)
-            irs.release(b, 1);
+        irs.release(tmp);
     }
 }
 
@@ -1689,11 +1685,15 @@ final class AndAndExp : BinExp
     {
         idx_t u;
         idx_t b;
+        LocalVariables tmp;
 
         if(ret)
             b = ret;
         else
-            b = irs.alloc(1);
+        {
+            tmp = irs.alloc(1);
+            b = tmp[0];
+        }
 
         e1.toIR(irs, b);
         u = irs.getIP();
@@ -1701,8 +1701,7 @@ final class AndAndExp : BinExp
         e2.toIR(irs, ret);
         irs.patchJmp(u, irs.getIP());
 
-        if(!ret)
-            irs.release(b, 1);
+        irs.release(tmp);
     }
 }
 
@@ -1763,24 +1762,26 @@ final class CondExp : BinExp
         idx_t u1;
         idx_t u2;
         idx_t b;
+        LocalVariables tmp;
 
         if(ret)
             b = ret;
         else
-            b = irs.alloc(1);
-
+        {
+            tmp = irs.alloc(1);
+            b = tmp[0];
+        }
         econd.toIR(irs, b);
-        u1 = irs.getIP();
+        u1 = irs.getIP;
         irs.gen!(Opcode.JF)(loc, 0, b);
         e1.toIR(irs, ret);
         u2 = irs.getIP();
         irs.gen!(Opcode.Jmp)(loc, 0);
-        irs.patchJmp(u1, irs.getIP());
+        irs.patchJmp(u1, irs.getIP);
         e2.toIR(irs, ret);
-        irs.patchJmp(u2, irs.getIP());
+        irs.patchJmp(u2, irs.getIP);
 
-        if(!ret)
-            irs.release(b, 1);
+        irs.release(tmp);
     }
 }
 

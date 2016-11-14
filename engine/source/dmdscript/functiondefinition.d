@@ -63,7 +63,7 @@ class FunctionDefinition : TopStatement
     this(TopStatement[] topstatements)
     {
         super(0);
-        st = FUNCTIONDEFINITION;
+        st = StatementType.FunctionDefinition;
         this.isglobal = 1;
         this.topstatements = topstatements;
     }
@@ -75,7 +75,7 @@ class FunctionDefinition : TopStatement
         super(loc);
 
         //writef("FunctionDefinition('%ls')\n", name ? name.string : L"");
-        st = FUNCTIONDEFINITION;
+        st = StatementType.FunctionDefinition;
         this.isglobal = isglobal;
         this.name = name;
         this.parameters = parameters;
@@ -139,7 +139,7 @@ class FunctionDefinition : TopStatement
                         }
                     }
                     topstatements[i] = ts;
-                    ts.done = 1;
+                    ts.done = Progress.Semantic;
                 }
             }
 
@@ -203,7 +203,7 @@ class FunctionDefinition : TopStatement
         uint i;
 
         //writefln("FunctionDefinition.toIR() done = %d", done);
-        irs.ctor();
+        irs.ctor;
         if(topstatements.length)
         {
             for(i = 0; i < topstatements.length; i++)
@@ -212,7 +212,7 @@ class FunctionDefinition : TopStatement
                 FunctionDefinition fd;
 
                 ts = topstatements[i];
-                if(ts.st == FUNCTIONDEFINITION)
+                if(ts.st == StatementType.FunctionDefinition)
                 {
                     fd = cast(FunctionDefinition)ts;
                     if(fd.code)
@@ -236,7 +236,7 @@ class FunctionDefinition : TopStatement
 
         code = cast(IR* )irs.codebuf.data;
         irs.codebuf.data = null;
-        nlocals = irs.nlocals;
+        nlocals = irs.lvm.max;
     }
 
     void instantiate(Dobject[] scopex, Dobject actobj, uint attributes)

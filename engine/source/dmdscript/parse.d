@@ -492,7 +492,7 @@ private:
 
                 // Check that there's only one VarDeclaration
                 // in init.
-                if(init.st == VARSTATEMENT)
+                if(init.st == StatementType.VarStatement)
                 {
                     vs = cast(VarStatement)init;
                     if(vs.vardecls.length != 1)

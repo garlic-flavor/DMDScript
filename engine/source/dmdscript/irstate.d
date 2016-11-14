@@ -41,58 +41,38 @@ struct IRstate
 
     //void next();	// close out current Block, and start a new one
 
-    private idx_t locali = 1;            // leave location 0 as our "null"
-    size_t nlocals = 1;
+    LocalVariablesManager lvm;            // leave location 0 as our "null"
+
 
     @safe pure nothrow
     void ctor()
     {
-        codebuf = new OutBuffer();
+        codebuf = new OutBuffer;
     }
 
     /**********************************
      * Allocate a block of local variables, and return an
      * index to them.
      */
-    @safe @nogc pure nothrow
-    idx_t alloc(size_t nlocals)
+    @safe pure nothrow
+    auto alloc(size_t nlocals)
     {
-        size_t n;
-
-        n = locali;
-        locali += nlocals;
-        if(locali > this.nlocals)
-            this.nlocals = locali;
-        assert(n);
-        return n;
+        return lvm.alloc(nlocals);
     }
 
     /****************************************
      * Release this block of n locals starting at local.
      */
     @safe @nogc pure nothrow
-    void release(idx_t local, size_t n)
+    void release(LocalVariables lv)
     {
-        /*
-            local /= INDEX_FACTOR;
-            //assert(local + n == locali);
-            if (local + n == locali)
-                locali = local;
-        //*/
+        lvm.release(lv);
     }
 
-    @safe @nogc pure nothrow
-    size_t mark()
+    @safe pure nothrow
+    auto mark()
     {
-        return locali;
-    }
-    @safe @nogc pure nothrow
-    void release(idx_t i)
-    {
-        /*
-        assert(i);
-        locali = i;
-        //*/
+        return lvm.mark;
     }
 
     /***************************************
@@ -234,17 +214,17 @@ struct IRstate
 
         // Allocate on stack for smaller arrays
         IR** plocals;
-        if(nlocals < 128)
-            plocals = cast(IR**)alloca(nlocals * local[0].sizeof);
+        if(lvm.max < 128)
+            plocals = cast(IR**)alloca(lvm.max * local[0].sizeof);
 
         if(plocals)
         {
-            local = plocals[0 .. nlocals];
+            local = plocals[0 .. lvm.max];
             local[] = null;
         }
         else
         {
-            p1 = new IR *[nlocals];
+            p1 = new IR*[lvm.max];
             local = p1;
         }
 
@@ -288,7 +268,7 @@ struct IRstate
             {
                 Identifier* cs = (c + 2).id;
                 IR* cimax = null;
-                for(i = nlocals; i--; )
+                for(i = lvm.max; i--; )
                 {
                     IR* ci = local[i];
                     if(ci &&
@@ -437,3 +417,202 @@ struct IRstate
     }
 }
 
+//
+struct LocalVariables
+{
+    @safe @nogc pure nothrow
+    idx_t opIndex(size_t i) const
+    {
+        if (r !is null)
+        {
+            assert(i < r.num);
+            return r.head + i;
+        }
+        else
+            return 0;
+    }
+
+    @property @safe @nogc pure nothrow
+    bool empty() const
+    {
+        return r is null;
+    }
+
+    @property @safe @nogc pure nothrow
+    size_t opDollar(size_t dim : 0)() const
+    {
+        return r ? r.num : 0;
+    }
+    alias length = opDollar!0;
+
+private:
+    LocalVariablesManager._range* r;
+}
+
+//
+private struct LocalVariablesManager
+{
+    @safe pure nothrow
+    LocalVariables alloc(size_t nlocals)
+    {
+        _range* r;
+        if (0 < nlocals)
+        {
+            r = allocLV;
+
+            r.head = top;
+            r.num = nlocals;
+            top += nlocals;
+            if (maxTop < top)
+                maxTop = top;
+            assert(0 < r.head);
+        }
+        return LocalVariables(r);
+    }
+
+    @safe @nogc pure nothrow
+    void release(ref LocalVariables lv)
+    {
+        auto r = lv.r;
+        if (r is null) return;
+        assert(0 < r.head);
+
+        if      (r.num == 0 || r.head + r.num == top)
+        {
+            top = r.head;
+            freeLV(r);
+
+            loop:for(;;)
+            {
+                for (auto it = &toRelease; (*it) !is null; it = &(*it).next)
+                {
+                    if ((*it).head + (*it).num == top || top <= (*it).head)
+                    {
+                        auto tmp = (*it);
+                        top = tmp.head;
+                        (*it) = tmp.next;
+                        freeLV(tmp);
+                        continue loop;
+                    }
+                }
+                break;
+            }
+        }
+        else if (top <= r.head)
+        {
+            freeLV(r);
+        }
+        else
+        {
+            r.next = toRelease;
+            toRelease = r;
+        }
+
+        lv.r = null;
+        assert(0 < top);
+    }
+
+    @property @safe @nogc pure nothrow
+    idx_t max() const
+    {
+        return maxTop;
+    }
+
+    @property @safe pure nothrow
+    auto mark()
+    {
+        auto r = allocLV;
+        r.head = top;
+        r.num = 0;
+        return LocalVariables(r);
+    }
+
+    debug string toString() const
+    {
+        import std.conv : text;
+
+        size_t flc;
+        for (auto it = cast(_range*)freelist; it !is null; it = it.next)
+            ++flc;
+        string tor;
+        if (toRelease !is null)
+            tor = toRelease.toString;
+        else
+            tor = "[]";
+
+        return text("[", top, "/", maxTop, ", ", flc, ", ", tor, "]");
+    }
+
+private:
+    struct _range
+    {
+        idx_t head;
+        size_t num;
+
+        _range* next;
+
+        debug string toString() const
+        {
+            import std.conv : text;
+            return text("[", head, ":", num, "]") ~
+                (next is null ? "" : next.toString);
+        }
+    }
+
+    idx_t top = 1;    // 0 means null.
+    idx_t maxTop = 1;
+    _range* freelist;
+    _range* toRelease;
+
+    @safe @nogc pure nothrow
+    void freeLV(_range* r)
+    {
+        assert(r !is null);
+        r.next = freelist;
+        freelist = r;
+    }
+
+    @safe pure nothrow
+    _range* allocLV()
+    {
+        _range* r;
+        if (freelist !is null)
+        {
+            r = freelist;
+            freelist = freelist.next;
+        }
+        else
+            r = new _range();
+        assert (r !is null);
+        return r;
+    }
+
+}
+
+unittest
+{
+    auto lm = LocalVariablesManager();
+
+    auto l1 = lm.alloc(5);
+
+    assert(l1[0] == 1);
+    // l1[5].writeln; // causes assertion failure.
+
+    auto l2 = lm.alloc(3);
+    assert(l2[0] == 6);
+
+    lm.release(l2);
+
+    l2 = lm.alloc(10);
+    assert(l2[0] == 6);
+
+    lm.release(l1);
+    l1 = lm.alloc(4);
+    assert(l1[0] == 16);
+
+    lm.release(l2);
+    lm.release(l1);
+
+    l1 = lm.alloc(2);
+    assert(l1[0] == 1);
+}
