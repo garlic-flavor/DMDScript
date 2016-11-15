@@ -104,7 +104,9 @@ class Expression
     }
 
     void toIR(IRstate* irs, idx_t ret)
-    { assert(0, "Expression::toIR('" ~ toString() ~ "')", ); }
+    {
+        assert(0, "Expression::toIR('" ~ toString() ~ "')", );
+    }
 
     void toLvalue(IRstate* irs, out idx_t base, IR* property,
                   out OpOffset opoff)
@@ -566,7 +568,9 @@ final class ObjectLiteral : Expression
                 f.exp.toIR(irs, x[0]);
                 irs.gen!(Opcode.PutS)(loc, x[0], ret, f.ident);
             }
+            irs.lvm.collect(x);
         }
+        irs.lvm.collect(b);
     }
 
     override void toBuffer(scope void delegate(in tchar[]) sink) const
@@ -904,6 +908,8 @@ final class DotExp : UnaExp
             base = irs.alloc(1);
             e1.toIR(irs, base[0]);
             irs.gen!(Opcode.GetS)(loc, ret, base[0], ident);
+
+            irs.lvm.collect(base);
         }
         else
         {
@@ -912,6 +918,8 @@ final class DotExp : UnaExp
                 base = irs.alloc(1);
                 e1.toIR(irs, base);
                 irs.gen!(Opcode.GetS)(loc, ret, base, ident);
+
+                irs.lvm.collect(base);
             }
             else
                 e1.toIR(irs, 0);
@@ -921,10 +929,12 @@ final class DotExp : UnaExp
     override void toLvalue(IRstate* irs, out idx_t base, IR* property,
                            out OpOffset opoff)
     {
-        base = irs.alloc(1)[0];
+        auto tmp = irs.alloc(1);
+        base = tmp[0];
         e1.toIR(irs, base);
         property.id = ident;
         opoff = OpOffset.S;
+        irs.lvm.collect(tmp);
     }
 
     override void toBuffer(scope void delegate(in tchar[]) sink) const
@@ -1308,11 +1318,16 @@ final class ArrayExp : BinExp
     override void toLvalue(IRstate* irs, out idx_t base, IR* property,
                            out OpOffset opoff)
     {
+        LocalVariables tmp;
         idx_t index;
 
-        base = irs.alloc(1)[0];
+        tmp = irs.alloc(1);
+        base = tmp[0];
+        irs.lvm.collect(tmp);
         e1.toIR(irs, base);
-        index = irs.alloc(1)[0];
+        tmp = irs.alloc(1);
+        index = tmp[0];
+        irs.lvm.collect(tmp);
         e2.toIR(irs, index);
         property.index = index;
         opoff = OpOffset.None;
@@ -1593,6 +1608,8 @@ class BinAssignExp : BinExp
             assert(0);
         }
         irs.release(tmp);
+        irs.lvm.collect(b);
+        irs.lvm.collect(c);
     }
 }
 

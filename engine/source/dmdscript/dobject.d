@@ -50,7 +50,10 @@ class DobjectConstructor : Dfunction
     {
         super(1, Dfunction_prototype);
         if(Dobject_prototype)
-            Put(Text.prototype, Dobject_prototype, DontEnum | DontDelete | ReadOnly);
+        {
+            Put(Text.prototype, Dobject_prototype,
+                DontEnum | DontDelete | ReadOnly);
+        }
     }
 
     override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
@@ -60,7 +63,7 @@ class DobjectConstructor : Dfunction
 
         // ECMA 15.2.2
         if(arglist.length == 0)
-        {
+         {
             o = new Dobject(Dobject.getPrototype());
         }
         else
@@ -95,14 +98,12 @@ class DobjectConstructor : Dfunction
         }
         else
         {
-            Value* v;
-
-            v = &arglist[0];
-            if(v.isUndefinedOrNull())
+            auto v = arglist.ptr;
+            if(v.isUndefinedOrNull)
                 result = Construct(cc, ret, arglist);
             else
             {
-                o = v.toObject();
+                o = v.toObject;
                 ret.putVobject(o);
                 result = null;
             }
@@ -305,26 +306,12 @@ class Dobject
 
     Value* Get(Identifier* id)
     {
-        Value* v;
-
-        //writefln("Dobject.Get(this = %x, '%s', hash = %x)", cast(uint)cast(void*)this, PropertyName, hash);
-        //writef("\tinternal_prototype = %p\n", this.internal_prototype);
-        //writef("\tDfunction.getPrototype() = %p\n", Dfunction.getPrototype());
-        v = proptable.get(&id.value, id.value.hash);
-        //if (v) writef("found it %p\n", v.object);
-        return v;
+        return proptable.get(&id.value, id.value.hash);
     }
 
     Value* Get(d_string PropertyName, uint hash)
     {
-        Value* v;
-
-        //writefln("Dobject.Get(this = %x, '%s', hash = %x)", cast(uint)cast(void*)this, PropertyName, hash);
-        //writef("\tinternal_prototype = %p\n", this.internal_prototype);
-        //writef("\tDfunction.getPrototype() = %p\n", Dfunction.getPrototype());
-        v = proptable.get(PropertyName, hash);
-        //if (v) writef("found it %p\n", v.object);
-        return v;
+        return proptable.get(PropertyName, hash);
     }
 
     Value* Get(d_uint32 index)
@@ -549,14 +536,17 @@ class Dobject
         return isClass(Text.RegExp);
     }
 
+    @safe @nogc pure nothrow
     int isDarguments() const
     {
         return false;
     }
+    @safe @nogc pure nothrow
     int isCatch() const
     {
         return false;
     }
+    @safe @nogc pure nothrow
     int isFinally() const
     {
         return false;

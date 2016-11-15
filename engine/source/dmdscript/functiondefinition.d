@@ -68,8 +68,7 @@ class FunctionDefinition : TopStatement
         this.topstatements = topstatements;
     }
 
-    this(Loc loc, int isglobal,
-         Identifier*  name, Identifier* [] parameters,
+    this(Loc loc, int isglobal, Identifier*  name, Identifier*[] parameters,
          TopStatement[] topstatements)
     {
         super(loc);

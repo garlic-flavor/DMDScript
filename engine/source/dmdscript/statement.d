@@ -631,7 +631,8 @@ final class SwitchStatement : Statement
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Is a next line needed?
             auto x = irs.alloc(1);
-//
+            irs.lvm.collect(x);
+//!!
             for(uint i = 0; i < cases.length; i++)
             {
                 CaseStatement cs;
@@ -642,6 +643,8 @@ final class SwitchStatement : Statement
                 irs.gen!(Opcode.CID)(loc, x[0], c[0], x[0]);
                 cs.patchIP = irs.getIP;
                 irs.gen!(Opcode.JT)(loc, 0, x[0]);
+
+                irs.lvm.collect(x);
             }
         }
         udefault = irs.getIP;
@@ -1082,6 +1085,8 @@ final class ForStatement : Statement
                     else
                         irs.gen!(Opcode.JLE)(loc, 0, b[0], c[0]);
                 }
+                irs.lvm.collect(c);
+                irs.lvm.collect(b);
             }
             else
             {
@@ -1094,6 +1099,8 @@ final class ForStatement : Statement
                     irs.gen!(Opcode.JFB)(loc, 0, c[0]);
                 else
                     irs.gen!(Opcode.JF)(loc, 0, c[0]);
+
+                irs.lvm.collect(c);
             }
         }
         bdy.toIR(irs);
@@ -1268,6 +1275,8 @@ final class ForInStatement : Statement
 
         irs.continueTarget = continueSave;
         irs.breakTarget = breakSave;
+        irs.lvm.collect(e);
+        irs.lvm.collect(iter);
         irs.release(marksave);
 
         // Help GC

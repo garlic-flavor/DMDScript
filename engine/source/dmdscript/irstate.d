@@ -159,11 +159,11 @@ struct IRstate
         }
     }
 
-
     void optimize()
     {
         import core.sys.posix.stdlib : alloca;
         import core.stdc.string : memmove;
+        import std.bitmanip : BitArray;
 
         // Determine the length of the code array
         IR* c;
@@ -173,13 +173,14 @@ struct IRstate
         size_t i;
 
         code = cast(IR*)codebuf.data;
-        for(c = code; c.opcode != Opcode.End; c += IR.size(c.opcode))
-        {
-        }
+        for(c = code; c.opcode != Opcode.End; c += IR.size(c.opcode)) {}
         length = c - code + 1;
 
         // Allocate a bit vector for the array
-        byte[] b = new byte[length]; //TODO: that was a bit array, maybe should use std.container
+        // byte[] b = new byte[length]; //TODO: that was a bit array, maybe should use std.container
+
+        BitArray b;
+        b.length = length;
 
         // Set bit for each target of a jump
         for(c = code; c.opcode != Opcode.End; c += IR.size(c.opcode))
@@ -417,7 +418,7 @@ struct IRstate
     }
 }
 
-//
+// sliced range of LocalVariablesManager.
 struct LocalVariables
 {
     @safe @nogc pure nothrow
@@ -433,12 +434,6 @@ struct LocalVariables
     }
 
     @property @safe @nogc pure nothrow
-    bool empty() const
-    {
-        return r is null;
-    }
-
-    @property @safe @nogc pure nothrow
     size_t opDollar(size_t dim : 0)() const
     {
         return r ? r.num : 0;
@@ -449,7 +444,7 @@ private:
     LocalVariablesManager._range* r;
 }
 
-//
+// count local variables.
 private struct LocalVariablesManager
 {
     @safe pure nothrow
@@ -458,7 +453,7 @@ private struct LocalVariablesManager
         _range* r;
         if (0 < nlocals)
         {
-            r = allocLV;
+            r = alloc;
 
             r.head = top;
             r.num = nlocals;
@@ -480,7 +475,7 @@ private struct LocalVariablesManager
         if      (r.num == 0 || r.head + r.num == top)
         {
             top = r.head;
-            freeLV(r);
+            free(r);
 
             loop:for(;;)
             {
@@ -491,7 +486,7 @@ private struct LocalVariablesManager
                         auto tmp = (*it);
                         top = tmp.head;
                         (*it) = tmp.next;
-                        freeLV(tmp);
+                        free(tmp);
                         continue loop;
                     }
                 }
@@ -500,7 +495,7 @@ private struct LocalVariablesManager
         }
         else if (top <= r.head)
         {
-            freeLV(r);
+            free(r);
         }
         else
         {
@@ -512,6 +507,14 @@ private struct LocalVariablesManager
         assert(0 < top);
     }
 
+    @safe @nogc pure nothrow
+    void collect(LocalVariables lv)
+    {
+        if (auto r = lv.r)
+            free(r);
+        lv.r = null;
+    }
+
     @property @safe @nogc pure nothrow
     idx_t max() const
     {
@@ -521,7 +524,7 @@ private struct LocalVariablesManager
     @property @safe pure nothrow
     auto mark()
     {
-        auto r = allocLV;
+        auto r = alloc;
         r.head = top;
         r.num = 0;
         return LocalVariables(r);
@@ -564,16 +567,8 @@ private:
     _range* freelist;
     _range* toRelease;
 
-    @safe @nogc pure nothrow
-    void freeLV(_range* r)
-    {
-        assert(r !is null);
-        r.next = freelist;
-        freelist = r;
-    }
-
     @safe pure nothrow
-    _range* allocLV()
+    _range* alloc()
     {
         _range* r;
         if (freelist !is null)
@@ -587,6 +582,13 @@ private:
         return r;
     }
 
+    @safe @nogc pure nothrow
+    void free(_range* r)
+    {
+        assert(r !is null);
+        r.next = freelist;
+        freelist = r;
+    }
 }
 
 unittest

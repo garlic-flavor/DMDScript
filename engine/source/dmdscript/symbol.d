@@ -34,30 +34,15 @@ class Symbol
 {
     Identifier* ident;
 
-    this()
+    @safe @nogc pure nothrow
+    this() const
     {
     }
 
-    this(Identifier * ident)
+    @safe @nogc pure nothrow
+    this(Identifier* ident)
     {
         this.ident = ident;
-    }
-
-    override bool opEquals(Object o)
-    {
-        Symbol s;
-
-        if(this == o)
-            return true;
-        s = cast(Symbol)o;
-        if(s && ident == s.ident)
-            return true;
-        return false;
-    }
-
-    override string toString()
-    {
-        return ident ? "__ident" : "__anonymous";
     }
 
     void semantic(Scope* sc)
@@ -71,75 +56,54 @@ class Symbol
         //error(DTEXT("%s.%s is undefined"),toString(), ident.toString());
     }
 
-    void toBuffer(ref tchar[] buf)
+    final override @safe @nogc pure nothrow
+    bool opEquals(Object o) const
     {
-        buf ~= toString();
+        if(this is o)
+            return true;
+        auto s = cast(Symbol)o;
+        if(s && ident == s.ident)
+            return true;
+        return false;
+    }
+
+    final override @safe @nogc pure nothrow
+    string toString() const
+    {
+        return ident ? "__ident" : "__anonymous";
+    }
+
+    final
+    void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        sink(toString);
     }
 }
 
 
-/********************************* ScopeSymbol ****************************/
-
-// Symbol that generates a scope
-
-class ScopeSymbol : Symbol
-{
-    Symbol[] members;           // all Symbol's in this scope
-    SymbolTable* symtab;        // member[] sorted into table
-
-    this()
-    {
-        super();
-    }
-
-    this(Identifier* id)
-    {
-        super(id);
-    }
-
-    override Symbol search(Identifier* ident)
-    {
-        Symbol s;
-
-        //writef("ScopeSymbol::search(%s, '%s')\n", toString(), ident.toString());
-        // Look in symbols declared in this module
-        s = symtab ? symtab.lookup(ident) : null;
-        debug
-        {
-            if(s)
-                writef("\ts = '%s.%s'\n", toString(), s.toString());
-        }
-        return s;
-    }
-}
 
 
 /****************************** SymbolTable ******************************/
 
 // Table of Symbol's
-
 struct SymbolTable
 {
-           Symbol[Identifier*] members;
+    Symbol[Identifier*] members;
 
     // Look up Identifier. Return Symbol if found, NULL if not.
+    @safe @nogc pure nothrow
     Symbol lookup(Identifier* ident)
     {
-        Symbol* ps;
-
-        ps = ident in members;
-        if(ps)
+        if (auto ps = ident in members)
             return *ps;
         return null;
     }
 
     // Insert Symbol in table. Return NULL if already there.
+    @safe pure nothrow
     Symbol insert(Symbol s)
     {
-        Symbol* ps;
-
-        ps = s.ident in members;
-        if(ps)
+        if (s.ident in members)
             return null;        // already in table
         members[s.ident] = s;
         return s;
@@ -147,6 +111,7 @@ struct SymbolTable
 
     // Look for Symbol in table. If there, return it.
     // If not, insert s and return that.
+    @safe pure nothrow
     Symbol update(Symbol s)
     {
         members[s.ident] = s;
@@ -154,47 +119,80 @@ struct SymbolTable
     }
 }
 
-
-/****************************** FunctionSymbol ******************************/
-
-class FunctionSymbol : ScopeSymbol
+/****************************** LabelSymbol ******************************/
+class LabelSymbol : Symbol
 {
     Loc loc;
+    LabelStatement statement;
 
-    Identifier*[] parameters;     // array of Identifier's
-    TopStatement[] topstatements; // array of TopStatement's
-
-    SymbolTable labtab;           // symbol table for LabelSymbol's
-
-    IR *code;
-    uint nlocals;
-
-    this(Loc loc, Identifier* ident, Identifier*[] parameters,
-         TopStatement[] topstatements)
+    @safe @nogc pure nothrow
+    this(Loc loc, Identifier* ident, LabelStatement statement)
     {
         super(ident);
         this.loc = loc;
-        this.parameters = parameters;
-        this.topstatements = topstatements;
-    }
-
-    override void semantic(Scope* sc)
-    {
+        this.statement = statement;
     }
 }
 
 
-/****************************** LabelSymbol ******************************/
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// belows are not used.
 
-class LabelSymbol : Symbol
-{ Loc loc;
-  LabelStatement statement;
+/********************************* ScopeSymbol ****************************/
+// Symbol that generates a scope
 
-  this(Loc loc, Identifier* ident, LabelStatement statement)
-  {
-      super(ident);
-      this.loc = loc;
-      this.statement = statement;
-  } }
+// deprecated
+// class ScopeSymbol : Symbol
+// {
+//     Symbol[] members;           // all Symbol's in this scope
+//     SymbolTable* symtab;        // member[] sorted into table
 
+//     @safe @nogc pure nothrow
+//     this() const
+//     {
+//         super();
+//     }
 
+//     @safe @nogc pure nothrow
+//     this(Identifier* id)
+//     {
+//         super(id);
+//     }
+
+//     override final @safe @nogc pure nothrow
+//     Symbol search(Identifier* ident)
+//     {
+//         // Look in symbols declared in this module
+//         return symtab ? symtab.lookup(ident) : null;
+//     }
+// }
+/****************************** FunctionSymbol ******************************/
+
+// deprecated
+// class FunctionSymbol : ScopeSymbol
+// {
+//     Loc loc;
+
+//     Identifier*[] parameters;     // array of Identifier's
+//     TopStatement[] topstatements; // array of TopStatement's
+
+//     SymbolTable labtab;           // symbol table for LabelSymbol's
+
+//     IR *code;
+//     uint nlocals;
+
+//     @safe @nogc pure nothrow
+//     this(Loc loc, Identifier* ident, Identifier*[] parameters,
+//          TopStatement[] topstatements)
+//     {
+//         super(ident);
+//         this.loc = loc;
+//         this.parameters = parameters;
+//         this.topstatements = topstatements;
+//     }
+
+//     override final @safe @nogc pure nothrow
+//     void semantic(Scope* sc)
+//     {
+//     }
+// }

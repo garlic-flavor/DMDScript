@@ -30,7 +30,7 @@ struct Scope
 
     d_string           src;          // source text
     Program            program;      // Root module
-    ScopeSymbol*       scopesym;     // current symbol
+    // deprecated ScopeSymbol*       scopesym;     // current symbol
     FunctionDefinition funcdef;      // what function we're in
     SymbolTable**      plabtab;      // pointer to label symbol table
     uint               nestDepth;    // static nesting level
@@ -40,18 +40,18 @@ struct Scope
     Statement          breakTarget;
     SwitchStatement    switchTarget;
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// remove ErrInfo
-    // ErrInfo            errinfo; // semantic() puts error messages here
-    ScriptException exception;
+    ScriptException exception; // semantic() puts error messages here
 
-    void               zero()
+    @safe @nogc pure nothrow
+    void zero()
     {
+        destroy(this);
+/*
         enclosing = null;
 
         src = null;
         program = null;
-        scopesym = null;
+        // scopesym = null;
         funcdef = null;
         plabtab = null;
         nestDepth = 0;
@@ -60,8 +60,10 @@ struct Scope
         continueTarget = null;
         breakTarget = null;
         switchTarget = null;
+*/
     }
 
+    @safe @nogc pure nothrow
     void ctor(Scope* enclosing)
     {
         zero();
@@ -72,6 +74,7 @@ struct Scope
         this.enclosing = enclosing;
     }
 
+    @safe @nogc pure nothrow
     void ctor(Program program, FunctionDefinition fd)
     {   // Create root scope
         zero();
@@ -80,6 +83,7 @@ struct Scope
         this.plabtab = &fd.labtab;
     }
 
+    @safe @nogc pure nothrow
     void ctor(FunctionDefinition fd)
     {   // Create scope for anonymous function fd
         zero();
@@ -87,12 +91,14 @@ struct Scope
         this.plabtab = &fd.labtab;
     }
 
+    @safe @nogc pure nothrow
     void dtor()
     {
         // Help garbage collector
         zero();
     }
 
+    @safe pure nothrow
     Scope* push()
     {
         Scope* s;
@@ -101,6 +107,7 @@ struct Scope
         s.ctor(&this);
         return s;
     }
+    @safe pure nothrow
     Scope* push(FunctionDefinition fd)
     {
         Scope* s;
@@ -111,6 +118,7 @@ struct Scope
         return s;
     }
 
+    @safe @nogc pure nothrow
     void pop()
     {
         if(enclosing !is null && enclosing.exception is null)
@@ -118,31 +126,27 @@ struct Scope
         zero();                 // aid GC
     }
 
+    // deprecated
+    // @safe @nogc pure nothrow
+    // Symbol search(Identifier* ident)
+    // {
+    //     for(auto sc = &this; sc; sc = sc.enclosing)
+    //     {
+    //         if (auto s = sc.scopesym.search(ident))
+    //             return s;
+    //     }
+    //     assert(0);
+    // }
 
-    Symbol search(Identifier* ident)
-    {
-        Symbol s;
-        Scope* sc;
+    // deprecated
+    // Symbol insert(Symbol s)
+    // {
+    //     if(!scopesym.symtab)
+    //         scopesym.symtab = new SymbolTable();
+    //     return scopesym.symtab.insert(s);
+    // }
 
-        //writef("Scope.search(%p, '%s')\n", this, ident.toString());
-        for(sc = &this; sc; sc = sc.enclosing)
-        {
-            s = sc.scopesym.search(ident);
-            if(s)
-                return s;
-        }
-
-        assert(0);
-        //error("Symbol '%s' is not defined", ident.toString());
-    }
-
-    Symbol insert(Symbol s)
-    {
-        if(!scopesym.symtab)
-            scopesym.symtab = new SymbolTable();
-        return scopesym.symtab.insert(s);
-    }
-
+    @safe pure nothrow
     LabelSymbol searchLabel(Identifier* ident)
     {
         SymbolTable* st;
@@ -156,10 +160,11 @@ struct Scope
             st = new SymbolTable();
             *plabtab = st;
         }
-        ls = cast(LabelSymbol )st.lookup(ident);
+        ls = cast(LabelSymbol)st.lookup(ident);
         return ls;
     }
 
+    @safe pure nothrow
     LabelSymbol insertLabel(LabelSymbol ls)
     {
         SymbolTable *st;
@@ -172,15 +177,14 @@ struct Scope
             st = new SymbolTable();
             *plabtab = st;
         }
-        ls = cast(LabelSymbol )st.insert(ls);
+        ls = cast(LabelSymbol)st.insert(ls);
         return ls;
     }
 
+    @property @safe @nogc pure nothrow
     d_string getSource()
     {
-        Scope* sc;
-
-        for(sc = &this; sc; sc = sc.enclosing)
+        for(auto sc = &this; sc !is null; sc = sc.enclosing)
         {
             if(sc.src)
                 return sc.src;
