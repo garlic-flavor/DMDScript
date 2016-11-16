@@ -45,7 +45,7 @@ class DarrayConstructor : Dfunction
         name = "Array";
     }
 
-    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.4.2
         Darray a;
@@ -90,7 +90,7 @@ class DarrayConstructor : Dfunction
             {
                 a.ulength = 1;
                 a.length.number = 1;
-                a.Put(cast(d_uint32)0, v, 0);
+                a.Put(cast(d_uint32)0, v, Property.Attribute.None);
             }
         }
         else
@@ -107,7 +107,7 @@ class DarrayConstructor : Dfunction
             a.length.number = arglist.length;
             for(uint k = 0; k < arglist.length; k++)
             {
-                a.Put(k, &arglist[k], 0);
+                a.Put(k, &arglist[k], Property.Attribute.None);
             }
         }
         Value.copy(ret, &a.value);
@@ -115,7 +115,7 @@ class DarrayConstructor : Dfunction
         return null;
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.4.1
         return Construct(cc, ret, arglist);
@@ -125,7 +125,7 @@ class DarrayConstructor : Dfunction
 
 /* ===================== Darray_prototype_toString ================= */
 
-Status* Darray_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     //writef("Darray_prototype_toString()\n");
     array_join(othis, ret, null);
@@ -134,7 +134,7 @@ Status* Darray_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis,
 
 /* ===================== Darray_prototype_toLocaleString ================= */
 
-Status* Darray_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.3
     d_string separator;
@@ -176,7 +176,7 @@ Status* Darray_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject 
             v = ot.Get(Text.toLocaleString);
             if(v && !v.isPrimitive())   // if it's an Object
             {
-                Status* a;
+                DError* a;
                 Dobject o;
                 Value rt;
 
@@ -196,7 +196,7 @@ Status* Darray_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject 
 
 /* ===================== Darray_prototype_concat ================= */
 
-Status* Darray_prototype_concat(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_concat(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.4
     Darray A;
@@ -221,13 +221,13 @@ Status* Darray_prototype_concat(Dobject pthis, CallContext* cc, Dobject othis, V
             {
                 v = E.Get(k);
                 if(v)
-                    A.Put(n, v, 0);
+                    A.Put(n, v, Property.Attribute.None);
                 n++;
             }
         }
         else
         {
-            A.Put(n, v, 0);
+            A.Put(n, v, Property.Attribute.None);
             n++;
         }
         if(a == arglist.length)
@@ -235,14 +235,14 @@ Status* Darray_prototype_concat(Dobject pthis, CallContext* cc, Dobject othis, V
         v = &arglist[a];
     }
 
-    A.Put(Text.length, n,  DontEnum);
+    A.Put(Text.length, n, Property.Attribute.DontEnum);
     Value.copy(ret, &A.value);
     return null;
 }
 
 /* ===================== Darray_prototype_join ================= */
 
-Status* Darray_prototype_join(Dobject pthis, CallContext* cc, Dobject othis, Value *ret, Value[] arglist)
+DError* Darray_prototype_join(Dobject pthis, CallContext* cc, Dobject othis, Value *ret, Value[] arglist)
 {
     array_join(othis, ret, arglist);
     return null;
@@ -279,7 +279,7 @@ void array_join(Dobject othis, Value* ret, Value[] arglist)
 
 /* ===================== Darray_prototype_toSource ================= */
 
-Status* Darray_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     d_string separator;
     d_string r;
@@ -309,7 +309,7 @@ Status* Darray_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis,
 
 /* ===================== Darray_prototype_pop ================= */
 
-Status* Darray_prototype_pop(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_pop(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.6
     Value* v;
@@ -322,7 +322,7 @@ Status* Darray_prototype_pop(Dobject pthis, CallContext* cc, Dobject othis, Valu
     u = v.toUint32();
     if(u == 0)
     {
-        othis.Put(Text.length, 0.0,  DontEnum);
+        othis.Put(Text.length, 0.0, Property.Attribute.DontEnum);
         ret.putVundefined();
     }
     else
@@ -332,14 +332,14 @@ Status* Darray_prototype_pop(Dobject pthis, CallContext* cc, Dobject othis, Valu
             v = &vundefined;
         Value.copy(ret, v);
         othis.Delete(u - 1);
-        othis.Put(Text.length, u - 1,  DontEnum);
+        othis.Put(Text.length, u - 1, Property.Attribute.DontEnum);
     }
     return null;
 }
 
 /* ===================== Darray_prototype_push ================= */
 
-Status* Darray_prototype_push(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_push(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.7
     Value* v;
@@ -353,16 +353,16 @@ Status* Darray_prototype_push(Dobject pthis, CallContext* cc, Dobject othis, Val
     u = v.toUint32();
     for(a = 0; a < arglist.length; a++)
     {
-        othis.Put(u + a, &arglist[a], 0);
+        othis.Put(u + a, &arglist[a], Property.Attribute.None);
     }
-    othis.Put(Text.length, u + a,  DontEnum);
+    othis.Put(Text.length, u + a,  Property.Attribute.DontEnum);
     ret.putVnumber(u + a);
     return null;
 }
 
 /* ===================== Darray_prototype_reverse ================= */
 
-Status* Darray_prototype_reverse(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_reverse(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.4.4.4
     d_uint32 a;
@@ -386,12 +386,12 @@ Status* Darray_prototype_reverse(Dobject pthis, CallContext* cc, Dobject othis, 
             Value.copy(&tmp, va);
         vb = othis.Get(b);
         if(vb)
-            othis.Put(a, vb, 0);
+            othis.Put(a, vb, Property.Attribute.None);
         else
             othis.Delete(a);
 
         if(va)
-            othis.Put(b, &tmp, 0);
+            othis.Put(b, &tmp, Property.Attribute.None);
         else
             othis.Delete(b);
     }
@@ -401,7 +401,7 @@ Status* Darray_prototype_reverse(Dobject pthis, CallContext* cc, Dobject othis, 
 
 /* ===================== Darray_prototype_shift ================= */
 
-Status* Darray_prototype_shift(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_shift(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.9
     Value* v;
@@ -425,7 +425,7 @@ Status* Darray_prototype_shift(Dobject pthis, CallContext* cc, Dobject othis, Va
             v = othis.Get(k);
             if(v)
             {
-                othis.Put(k - 1, v, 0);
+                othis.Put(k - 1, v, Property.Attribute.None);
             }
             else
             {
@@ -438,14 +438,14 @@ Status* Darray_prototype_shift(Dobject pthis, CallContext* cc, Dobject othis, Va
     else
         Value.copy(ret, &vundefined);
 
-    othis.Put(Text.length, len, DontEnum);
+    othis.Put(Text.length, len, Property.Attribute.DontEnum);
     return null;
 }
 
 
 /* ===================== Darray_prototype_slice ================= */
 
-Status* Darray_prototype_slice(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_slice(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.10
     d_uint32 len;
@@ -582,12 +582,12 @@ else
         v = othis.Get(k);
         if(v)
         {
-            A.Put(n, v, 0);
+            A.Put(n, v, Property.Attribute.None);
         }
         n++;
     }
 
-    A.Put(Text.length, n, DontEnum);
+    A.Put(Text.length, n, Property.Attribute.DontEnum);
     Value.copy(ret, &A.value);
     return null;
 }
@@ -649,7 +649,7 @@ extern (C) int compare_value(const void* x, const void* y)
     return cmp;
 }
 
-Status* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     import core.sys.posix.stdlib : qsort;
 
@@ -756,7 +756,7 @@ Status* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Val
     {
         d_uint32 index;
 
-        othis.Put(u, &pvalues[u], 0);
+        othis.Put(u, &pvalues[u], Property.Attribute.None);
         index = pindices[u];
         if(index >= nprops)
         {
@@ -773,7 +773,7 @@ Status* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Val
 
 /* ===================== Darray_prototype_splice ================= */
 
-Status* Darray_prototype_splice(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_splice(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.12
     d_uint32 len;
@@ -880,10 +880,10 @@ else
     {
         v = othis.Get(startidx + k);
         if(v)
-            A.Put(k, v, 0);
+            A.Put(k, v, Property.Attribute.None);
     }
 
-    A.Put(Text.length, delcnt, DontEnum);
+    A.Put(Text.length, delcnt, Property.Attribute.DontEnum);
     inscnt = (arglist.length > 2) ? cast(uint)arglist.length - 2 : 0;
     if(inscnt != delcnt)
     {
@@ -893,7 +893,7 @@ else
             {
                 v = othis.Get(k + delcnt);
                 if(v)
-                    othis.Put(k + inscnt, v, 0);
+                    othis.Put(k + inscnt, v, Property.Attribute.None);
                 else
                     othis.Delete(k + inscnt);
             }
@@ -907,7 +907,7 @@ else
             {
                 v = othis.Get(k + delcnt - 1);
                 if(v)
-                    othis.Put(k + inscnt - 1, v, 0);
+                    othis.Put(k + inscnt - 1, v, Property.Attribute.None);
                 else
                     othis.Delete(k + inscnt - 1);
             }
@@ -917,18 +917,18 @@ else
     for(a = 2; a < arglist.length; a++)
     {
         v = &arglist[a];
-        othis.Put(k, v, 0);
+        othis.Put(k, v, Property.Attribute.None);
         k++;
     }
 
-    othis.Put(Text.length, len - delcnt + inscnt,  DontEnum);
+    othis.Put(Text.length, len - delcnt + inscnt,  Property.Attribute.DontEnum);
     Value.copy(ret, &A.value);
     return null;
 }
 
 /* ===================== Darray_prototype_unshift ================= */
 
-Status* Darray_prototype_unshift(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Darray_prototype_unshift(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.4.4.13
     Value* v;
@@ -944,16 +944,17 @@ Status* Darray_prototype_unshift(Dobject pthis, CallContext* cc, Dobject othis, 
     {
         v = othis.Get(k - 1);
         if(v)
-            othis.Put(cast(uint)(k + arglist.length - 1), v, 0);
+            othis.Put(cast(uint)(k + arglist.length - 1), v,
+                      Property.Attribute.None);
         else
             othis.Delete(cast(uint)(k + arglist.length - 1));
     }
 
     for(k = 0; k < arglist.length; k++)
     {
-        othis.Put(k, &arglist[k], 0);
+        othis.Put(k, &arglist[k], Property.Attribute.None);
     }
-    othis.Put(Text.length, len + arglist.length,  DontEnum);
+    othis.Put(Text.length, len + arglist.length, Property.Attribute.DontEnum);
     ret.putVnumber(len + arglist.length);
     return null;
 }
@@ -967,7 +968,7 @@ class DarrayPrototype : Darray
         super(Dobject_prototype);
         Dobject f = Dfunction_prototype;
 
-        Put(Text.constructor, Darray_constructor, DontEnum);
+        Put(Text.constructor, Darray_constructor, Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -986,7 +987,7 @@ class DarrayPrototype : Darray
             { Text.unshift, &Darray_prototype_unshift, 1 },
         ];
 
-        DnativeFunction.initialize(this, nfd, DontEnum);
+        DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
     }
 }
 
@@ -1011,7 +1012,8 @@ class Darray : Dobject
         classname = Text.Array;
     }
 
-    override Status* Put(Identifier* key, Value* value, uint attributes)
+    override DError* Put(Identifier* key, Value* value,
+                         Property.Attribute attributes)
     {
         auto result = proptable.put(&key.value, key.value.hash, value, attributes);
         if(!result)
@@ -1019,7 +1021,8 @@ class Darray : Dobject
         return null;
     }
 
-    override Status* Put(d_string name, Value* v, uint attributes)
+    override DError* Put(d_string name, Value* v,
+                         Property.Attribute attributes)
     {
         d_uint32 i;
         uint c;
@@ -1056,7 +1059,8 @@ class Darray : Dobject
                 }
                 ulength = i;
                 length.number = i;
-                proptable.put(name, v, attributes | DontEnum);
+                proptable.put(name, v,
+                              attributes | Property.Attribute.DontEnum);
             }
 
             // if (name is an array index i)
@@ -1091,12 +1095,14 @@ class Darray : Dobject
         return null;
     }
 
-    override Status* Put(d_string name, Dobject o, uint attributes)
+    override DError* Put(d_string name, Dobject o,
+                         Property.Attribute attributes)
     {
         return Put(name, &o.value, attributes);
     }
 
-    override Status* Put(d_string PropertyName, d_number n, uint attributes)
+    override DError* Put(d_string PropertyName, d_number n,
+                         Property.Attribute attributes)
     {
         Value v;
 
@@ -1104,7 +1110,8 @@ class Darray : Dobject
         return Put(PropertyName, &v, attributes);
     }
 
-    override Status* Put(d_string PropertyName, d_string str, uint attributes)
+    override DError* Put(d_string PropertyName, d_string str,
+                         Property.Attribute attributes)
     {
         Value v;
 
@@ -1112,7 +1119,8 @@ class Darray : Dobject
         return Put(PropertyName, &v, attributes);
     }
 
-    override Status* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
+    override DError* Put(d_uint32 index, Value* vindex, Value* value,
+                         Property.Attribute attributes)
     {
         if(index >= ulength)
             ulength = index + 1;
@@ -1121,7 +1129,8 @@ class Darray : Dobject
         return null;
     }
 
-    override Status* Put(d_uint32 index, Value* value, uint attributes)
+    override DError* Put(d_uint32 index, Value* value,
+                         Property.Attribute attributes)
     {
         if(index >= ulength)
         {
@@ -1133,7 +1142,8 @@ class Darray : Dobject
         return null;
     }
 
-    final Status* Put(d_uint32 index, d_string str, uint attributes)
+    final DError* Put(d_uint32 index, d_string str,
+                      Property.Attribute attributes)
     {
         if(index >= ulength)
         {
@@ -1219,7 +1229,9 @@ class Darray : Dobject
         Darray_constructor = new DarrayConstructor();
         Darray_prototype = new DarrayPrototype();
 
-        Darray_constructor.Put(Text.prototype, Darray_prototype, DontEnum |  ReadOnly);
+        Darray_constructor.Put(Text.prototype, Darray_prototype,
+                               Property.Attribute.DontEnum |
+                               Property.Attribute.ReadOnly);
     }
 }
 

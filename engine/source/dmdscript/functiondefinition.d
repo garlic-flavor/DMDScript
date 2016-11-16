@@ -40,18 +40,21 @@ import dmdscript.property;
 class FunctionDefinition : TopStatement
 {
     // Maybe the following two should be done with derived classes instead
-    int isglobal;                 // !=0 if the global anonymous function
-    int isliteral;                // !=0 if function literal
-    int iseval;                   // !=0 if eval function
+    import std.bitmanip : bitfields;
+    mixin(bitfields!(
+        bool, "isglobal", 1,         // !=0 if the global anonymous function
+        bool, "isliteral", 1,        // !=0 if function literal
+        bool, "iseval", 1,           // !=0 if eval function
+        int, "_padding", 5));
 
     Identifier* name;             // null for anonymous function
     Identifier*[] parameters;     // array of Identifier's
     TopStatement[] topstatements; // array of TopStatement's
 
     Identifier*[] varnames;       // array of Identifier's
-    FunctionDefinition[] functiondefinitions;
-    FunctionDefinition enclosingFunction;
-    int nestDepth;
+    private FunctionDefinition[] functiondefinitions;
+    private FunctionDefinition enclosingFunction;
+    private int nestDepth;
     int withdepth;              // max nesting of ScopeStatement's
 
     SymbolTable* labtab;        // symbol table for LabelSymbol's
@@ -59,7 +62,9 @@ class FunctionDefinition : TopStatement
     IR* code;
     uint nlocals;
 
+    d_string srctext;
 
+    @safe @nogc pure nothrow
     this(TopStatement[] topstatements)
     {
         super(0);
@@ -68,13 +73,15 @@ class FunctionDefinition : TopStatement
         this.topstatements = topstatements;
     }
 
-    this(Loc loc, int isglobal, Identifier*  name, Identifier*[] parameters,
-         TopStatement[] topstatements)
+    @safe @nogc pure nothrow
+    this(d_string srctext, Loc loc, bool isglobal, Identifier*  name,
+         Identifier*[] parameters, TopStatement[] topstatements)
     {
         super(loc);
 
         //writef("FunctionDefinition('%ls')\n", name ? name.string : L"");
         st = StatementType.FunctionDefinition;
+        this.srctext = srctext;
         this.isglobal = isglobal;
         this.name = name;
         this.parameters = parameters;
@@ -82,9 +89,12 @@ class FunctionDefinition : TopStatement
     }
 
     final @safe @nogc pure nothrow
-    int isAnonymous() const { return name is null; }
+    int isAnonymous() const
+    {
+        return name is null;
+    }
 
-    override Statement semantic(Scope* sc)
+    override FunctionDefinition semantic(Scope* sc)
     {
         uint i;
         TopStatement ts;
@@ -123,7 +133,7 @@ class FunctionDefinition : TopStatement
             {
                 ts = topstatements[i];
                 //writefln("calling semantic routine %d which is %x\n",i, cast(uint)cast(void*)ts);
-                if(!ts.done)
+                if(ts.done < Progress.Semantic)
                 {
                     ts = ts.semantic(sc);
                     if(sc.exception !is null)
@@ -143,14 +153,14 @@ class FunctionDefinition : TopStatement
             }
 
             // Make sure all the LabelSymbol's are defined
-            if(labtab)
+            if(labtab !is null)
             {
-                foreach(Symbol s; labtab.members)
+                foreach(s; labtab.members)
                 {
-                    LabelSymbol ls = cast(LabelSymbol)s;
-                    if(!ls.statement)
-                        error(sc, UndefinedLabelError
-                              .toThrow(ls.toString, toString));
+                    auto ls = cast(LabelSymbol)s;
+                    assert(ls !is null);
+                    if (ls.statement is null)
+                        error(sc, UndefinedLabelError(ls.toString, toString));
                 }
             }
         }
@@ -158,45 +168,10 @@ class FunctionDefinition : TopStatement
         if(!isglobal)
             sc.pop();
 
-        FunctionDefinition fdx = this;
-        return cast(Statement)cast(void*)fdx;
+        return this;
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
-    {
-        uint i;
-
-        //writef("FunctionDefinition::toBuffer()\n");
-        if(!isglobal)
-        {
-            sink("function ");
-            if(isAnonymous)
-                sink("anonymous");
-            else if(name)
-                sink(name.toString);
-            sink("(");
-            for(i = 0; i < parameters.length; i++)
-            {
-                if(i)
-                    sink(",");
-                sink(parameters[i].toString);
-            }
-            sink(")\n{ \n");
-        }
-        if(topstatements)
-        {
-            for(i = 0; i < topstatements.length; i++)
-            {
-                topstatements[i].toBuffer(sink);
-            }
-        }
-        if(!isglobal)
-        {
-            sink("}\n");
-        }
-    }
-
-    override void toIR(IRstate* ignore)
+    override void toIR(IRstate*)
     {
         IRstate irs;
         uint i;
@@ -233,21 +208,22 @@ class FunctionDefinition : TopStatement
         irs.doFixups();
         irs.optimize();
 
-        code = cast(IR* )irs.codebuf.data;
+        code = cast(IR*)irs.codebuf.data;
         irs.codebuf.data = null;
         nlocals = irs.lvm.max;
     }
 
-    void instantiate(Dobject[] scopex, Dobject actobj, uint attributes)
+    final
+    void instantiate(Dobject[] scopex, Dobject actobj,
+                     Property.Attribute attributes)
     {
-        //writefln("FunctionDefinition.instantiate() %s nestDepth = %d", name ? name.toString() : "", nestDepth);
-
         // Instantiate all the Var's per 10.1.3
         foreach(Identifier* name; varnames)
         {
             // If name is already declared, don't override it
-            //writefln("\tVar Put(%s)", name.toString());
-            actobj.Put(name.toString(), &vundefined, Instantiate | DontOverride | attributes);
+            actobj.Put(name.toString, &vundefined,
+                       Property.Attribute.Instantiate |
+                       Property.Attribute.DontOverride | attributes);
         }
 
         // Instantiate the Function's per 10.1.3
@@ -257,12 +233,41 @@ class FunctionDefinition : TopStatement
             Dfunction fobject = new DdeclaredFunction(fd);
             fobject.scopex = scopex;
 
-            if(fd.name !is null && !fd.isliteral)        // skip anonymous functions
+            if(fd.name !is null && !fd.isliteral) // skip anonymous functions
             {
-                //writefln("\tFunction Put(%s)", fd.name.toString());
-                actobj.Put(fd.name.toString(), fobject, Instantiate | attributes);
+                actobj.Put(fd.name.toString, fobject,
+                           Property.Attribute.Instantiate | attributes);
             }
         }
-        //writefln("-FunctionDefinition.instantiate()");
+    }
+
+
+    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    {
+        if(!isglobal)
+        {
+            sink("function ");
+            if(isAnonymous)
+                sink("anonymous");
+            else if(name)
+                sink(name.toString);
+            sink("(");
+            for(size_t i = 0; i < parameters.length; i++)
+            {
+                if(0 < i)
+                    sink(",");
+                sink(parameters[i].toString);
+            }
+            sink(")\n{ \n");
+        }
+        if(topstatements)
+        {
+            foreach (one; topstatements)
+                one.toBuffer(sink);
+        }
+        if(!isglobal)
+        {
+            sink("}\n");
+        }
     }
 }

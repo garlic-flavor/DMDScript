@@ -51,16 +51,16 @@ class Darguments : Dobject
         this.parameters = parameters;
 
         if(caller)
-            Put(Text.caller, caller, DontEnum);
+            Put(Text.caller, caller, Property.Attribute.DontEnum);
         else
-            Put(Text.caller, &vnull, DontEnum);
+            Put(Text.caller, &vnull, Property.Attribute.DontEnum);
 
-        Put(Text.callee, callee, DontEnum);
-        Put(Text.length, arglist.length, DontEnum);
+        Put(Text.callee, callee, Property.Attribute.DontEnum);
+        Put(Text.length, arglist.length, Property.Attribute.DontEnum);
 
         for(uint a = 0; a < arglist.length; a++)
         {
-            Put(a, &arglist[a], DontEnum);
+            Put(a, &arglist[a], Property.Attribute.DontEnum);
         }
     }
 
@@ -87,7 +87,8 @@ class Darguments : Dobject
                : Dobject.Get(index, vindex);
     }
 
-    override Status* Put(d_string PropertyName, Value* value, uint attributes)
+    override DError* Put(d_string PropertyName, Value* value,
+                         Property.Attribute attributes)
     {
         d_uint32 index;
 
@@ -97,7 +98,8 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, value, attributes);
     }
 
-    override Status* Put(Identifier* key, Value* value, uint attributes)
+    override DError* Put(Identifier* key, Value* value,
+                         Property.Attribute attributes)
     {
         d_uint32 index;
 
@@ -107,7 +109,8 @@ class Darguments : Dobject
             return Dobject.Put(key, value, attributes);
     }
 
-    override Status* Put(d_string PropertyName, Dobject o, uint attributes)
+    override DError* Put(d_string PropertyName, Dobject o,
+                         Property.Attribute attributes)
     {
         d_uint32 index;
 
@@ -117,7 +120,8 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, o, attributes);
     }
 
-    override Status* Put(d_string PropertyName, d_number n, uint attributes)
+    override DError* Put(d_string PropertyName, d_number n,
+                         Property.Attribute attributes)
     {
         d_uint32 index;
 
@@ -127,7 +131,8 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, n, attributes);
     }
 
-    override Status* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
+    override DError* Put(d_uint32 index, Value* vindex, Value* value,
+                         Property.Attribute attributes)
     {
         if(index < parameters.length)
             return actobj.Put(index, vindex, value, attributes);
@@ -135,7 +140,8 @@ class Darguments : Dobject
             return Dobject.Put(index, vindex, value, attributes);
     }
 
-    override Status* Put(d_uint32 index, Value* value, uint attributes)
+    override DError* Put(d_uint32 index, Value* value,
+                         Property.Attribute attributes)
     {
         if(index < parameters.length)
             return actobj.Put(index, value, attributes);

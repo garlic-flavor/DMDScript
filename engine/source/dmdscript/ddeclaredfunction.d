@@ -39,20 +39,19 @@ class DdeclaredFunction : Dfunction
 
     this(FunctionDefinition fd)
     {
-        super(cast(uint)fd.parameters.length, Dfunction.getPrototype());
-        assert(Dfunction.getPrototype());
+        super(cast(d_uint32)fd.parameters.length, Dfunction.getPrototype);
+        assert(Dfunction.getPrototype);
         assert(internal_prototype);
         this.fd = fd;
 
-        Dobject o;
-
         // ECMA 3 13.2
-        o = new Dobject(Dobject.getPrototype());        // step 9
-        Put(Text.prototype, o, DontEnum);               // step 11
-        o.Put(Text.constructor, this, DontEnum);        // step 10
+        auto o = new Dobject(Dobject.getPrototype);        // step 9
+        Put(Text.prototype, o, Property.Attribute.DontEnum);  // step 11
+        o.Put(Text.constructor, this, Property.Attribute.DontEnum); // step 10
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret,
+                          Value[] arglist)
     {
         // 1. Create activation object per ECMA 10.1.6
         // 2. Instantiate function variables as properties of
@@ -65,7 +64,7 @@ class DdeclaredFunction : Dfunction
         Darguments args;
         Value[] locals;
         uint i;
-        Status* result;
+        DError* result;
 
         //writefln("DdeclaredFunction.Call() '%s'", toString());
         //writefln("this.scopex.length = %d", this.scopex.length);
@@ -85,7 +84,7 @@ class DdeclaredFunction : Dfunction
         if(fd.name)
         {
            vtmp.putVobject(this);
-           actobj.Put(fd.name,&vtmp,DontDelete);
+           actobj.Put(fd.name, &vtmp, Property.Attribute.DontDelete);
         }
         // Instantiate the parameters
         {
@@ -93,7 +92,7 @@ class DdeclaredFunction : Dfunction
             foreach(Identifier* p; fd.parameters)
             {
                 Value* v = (a < arglist.length) ? &arglist[a++] : &vundefined;
-                actobj.Put(p.toString(), v, DontDelete);
+                actobj.Put(p.toString(), v, Property.Attribute.DontDelete);
             }
         }
 
@@ -101,7 +100,7 @@ class DdeclaredFunction : Dfunction
         // ECMA v3 10.1.8
         args = new Darguments(cc.caller, this, actobj, fd.parameters, arglist);
 
-        actobj.Put(Text.arguments, args, DontDelete);
+        actobj.Put(Text.arguments, args, Property.Attribute.DontDelete);
 
         // The following is not specified by ECMA, but seems to be supported
         // by jscript. The url www.grannymail.com has the following code
@@ -113,7 +112,8 @@ class DdeclaredFunction : Dfunction
         //		  this[i+1] = arguments[i]
         //	    }
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
-        Put(Text.arguments, args, DontDelete);          // make grannymail bug work
+        Put(Text.arguments, args, Property.Attribute.DontDelete);
+        // make grannymail bug work
 
 
 
@@ -123,7 +123,7 @@ class DdeclaredFunction : Dfunction
         assert(newScopex.length != 0);
         newScopex ~= actobj;//and put activation object on top of it
 
-        fd.instantiate(newScopex, actobj, DontDelete);
+        fd.instantiate(newScopex, actobj, Property.Attribute.DontDelete);
 
         Dobject[] scopesave = cc.scopex;
         cc.scopex = newScopex;
@@ -149,6 +149,11 @@ class DdeclaredFunction : Dfunction
         }
 
         result = IR.call(cc, othis, fd.code, ret, locals.ptr);
+        if (result !is null)
+        {
+            result.addSource(fd.name !is null ? fd.name.toString : "anonymous",
+                             fd.srctext);
+        }
 
         delete p1;
 
@@ -162,36 +167,19 @@ class DdeclaredFunction : Dfunction
         //Value* v;
         //v=Get(TEXT_arguments);
         //writef("1v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
-        Put(Text.arguments, &vundefined, 0);
+        Put(Text.arguments, &vundefined, Property.Attribute.None);
         //actobj.Put(TEXT_arguments, &vundefined, 0);
-
-        version(none)
-        {
-            writef("args = %x, actobj = %x\n", args, actobj);
-            v = Get(Text.arguments);
-            writef("2v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
-            v.object = null;
-
-            {
-                uint *p = cast(uint *)0x40a49a80;
-                uint i;
-                for(i = 0; i < 16; i++)
-                {
-                    writef("p[%x] = %x\n", &p[i], p[i]);
-                }
-            }
-        }
 
         return result;
     }
 
-    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 3 13.2.2
         Dobject othis;
         Dobject proto;
         Value* v;
-        Status* result;
+        DError* result;
 
         v = Get(Text.prototype);
         if(v.isPrimitive())

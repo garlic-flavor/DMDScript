@@ -68,24 +68,39 @@ class DregexpConstructor : Dfunction
         name = "RegExp";
 
         // Static properties
-        Put(Text.input, &v, DontDelete);
-        Put(Text.multiline, &vb, DontDelete);
-        Put(Text.lastMatch, &v, ReadOnly | DontDelete);
-        Put(Text.lastParen, &v, ReadOnly | DontDelete);
-        Put(Text.leftContext, &v, ReadOnly | DontDelete);
-        Put(Text.rightContext, &v, ReadOnly | DontDelete);
-        Put(Text.dollar1, &v, ReadOnly | DontDelete);
-        Put(Text.dollar2, &v, ReadOnly | DontDelete);
-        Put(Text.dollar3, &v, ReadOnly | DontDelete);
-        Put(Text.dollar4, &v, ReadOnly | DontDelete);
-        Put(Text.dollar5, &v, ReadOnly | DontDelete);
-        Put(Text.dollar6, &v, ReadOnly | DontDelete);
-        Put(Text.dollar7, &v, ReadOnly | DontDelete);
-        Put(Text.dollar8, &v, ReadOnly | DontDelete);
-        Put(Text.dollar9, &v, ReadOnly | DontDelete);
+        Put(Text.input, &v, Property.Attribute.DontDelete);
+        Put(Text.multiline, &vb, Property.Attribute.DontDelete);
+        Put(Text.lastMatch, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.lastParen, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.leftContext, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.rightContext, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar1, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar2, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar3, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar4, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar5, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar6, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar7, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar8, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.dollar9, &v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
 
-        Put(Text.index, &vnm1, ReadOnly | DontDelete);
-        Put(Text.lastIndex, &vnm1, ReadOnly | DontDelete);
+        Put(Text.index, &vnm1,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        Put(Text.lastIndex, &vnm1,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
 
         input = Get(Text.input);
         multiline = Get(Text.multiline);
@@ -114,7 +129,7 @@ class DregexpConstructor : Dfunction
         // any difference.
     }
 
-    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 262 v3 15.10.4.1
 
@@ -171,7 +186,7 @@ class DregexpConstructor : Dfunction
         }
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 262 v3 15.10.3.1
         if(arglist.length >= 1)
@@ -201,17 +216,20 @@ class DregexpConstructor : Dfunction
         return Dfunction.Get(perlAlias(PropertyName));
     }
 
-    override Status* Put(d_string PropertyName, Value* value, uint attributes)
+    override DError* Put(d_string PropertyName, Value* value,
+                         Property.Attribute attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), value, attributes);
     }
 
-    override Status* Put(d_string PropertyName, Dobject o, uint attributes)
+    override DError* Put(d_string PropertyName, Dobject o,
+                         Property.Attribute attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), o, attributes);
     }
 
-    override Status* Put(d_string PropertyName, d_number n, uint attributes)
+    override DError* Put(d_string PropertyName, d_number n,
+                         Property.Attribute attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), n, attributes);
     }
@@ -264,7 +282,7 @@ class DregexpConstructor : Dfunction
 
 /* ===================== Dregexp_prototype_toString =============== */
 
-Status* Dregexp_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dregexp_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // othis must be a RegExp
     Dregexp r;
@@ -290,7 +308,7 @@ Status* Dregexp_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ===================== Dregexp_prototype_test =============== */
 
-Status* Dregexp_prototype_test(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dregexp_prototype_test(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.10.6.3 says this is equivalent to:
     //	RegExp.prototype.exec(string) != null
@@ -299,7 +317,7 @@ Status* Dregexp_prototype_test(Dobject pthis, CallContext* cc, Dobject othis, Va
 
 /* ===================== Dregexp_prototype_exec ============= */
 
-Status* Dregexp_prototype_exec(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dregexp_prototype_exec(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     return Dregexp.exec(othis, ret, arglist, EXEC_ARRAY);
 }
@@ -307,7 +325,7 @@ Status* Dregexp_prototype_exec(Dobject pthis, CallContext* cc, Dobject othis, Va
 
 /* ===================== Dregexp_prototype_compile ============= */
 
-Status* Dregexp_prototype_compile(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dregexp_prototype_compile(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // RegExp.prototype.compile(pattern, attributes)
 
@@ -366,7 +384,10 @@ class DregexpPrototype : Dregexp
     {
         super(Dobject_prototype);
         classname = Text.Object;
-        uint attributes = ReadOnly | DontDelete | DontEnum;
+        auto attributes =
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum;
         Dobject f = Dfunction_prototype;
 
         Put(Text.constructor, Dregexp_constructor, attributes);
@@ -410,11 +431,25 @@ class Dregexp : Dobject
         classname = Text.RegExp;
 
         //writef("Dregexp.Dregexp(pattern = '%ls', attributes = '%ls')\n", d_string_ptr(pattern), d_string_ptr(attributes));
-        Put(Text.source, &v, ReadOnly | DontDelete | DontEnum);
-        Put(Text.global, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(Text.ignoreCase, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(Text.multiline, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(Text.lastIndex, 0.0, DontDelete | DontEnum);
+        Put(Text.source, &v,
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
+        Put(Text.global, &vb,
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
+        Put(Text.ignoreCase, &vb,
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
+        Put(Text.multiline, &vb,
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
+        Put(Text.lastIndex, 0.0,
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
 
         source = Get(Text.source);
         global = Get(Text.global);
@@ -449,11 +484,25 @@ class Dregexp : Dobject
 
         classname = Text.RegExp;
 
-        Put(Text.source, &v, ReadOnly | DontDelete | DontEnum);
-        Put(Text.global, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(Text.ignoreCase, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(Text.multiline, &vb, ReadOnly | DontDelete | DontEnum);
-        Put(Text.lastIndex, 0.0, DontDelete | DontEnum);
+        Put(Text.source, &v,
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
+        Put(Text.global, &vb,
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
+        Put(Text.ignoreCase, &vb,
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
+        Put(Text.multiline, &vb,
+            Property.Attribute.ReadOnly |
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
+        Put(Text.lastIndex, 0.0,
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum);
 
         source = Get(Text.source);
         global = Get(Text.global);
@@ -464,7 +513,7 @@ class Dregexp : Dobject
         re = new RegExp(null, null);
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
@@ -484,7 +533,7 @@ class Dregexp : Dobject
         return r;
     }
 
-    static Status* exec(Dobject othis, Value* ret, Value[] arglist, int rettype)
+    static DError* exec(Dobject othis, Value* ret, Value[] arglist, int rettype)
     {
         //writef("Dregexp.exec(arglist.length = %d, rettype = %d)\n", arglist.length, rettype);
 
@@ -581,11 +630,12 @@ class Dregexp : Dobject
                 {
                     Darray a = new Darray();
 
-                    a.Put(Text.input, r.input, 0);
-                    a.Put(Text.index, r.index, 0);
-                    a.Put(Text.lastIndex, r.lastIndex, 0);
+                    a.Put(Text.input, r.input, Property.Attribute.None);
+                    a.Put(Text.index, r.index, Property.Attribute.None);
+                    a.Put(Text.lastIndex, r.lastIndex, Property.Attribute.None);
 
-                    a.Put(cast(d_uint32)0, dc.lastMatch, cast(uint)0);
+                    a.Put(cast(d_uint32)0, dc.lastMatch,
+                          Property.Attribute.None);
 
                     // [1]..[nparens]
                     if (nmatches < 9)
@@ -593,20 +643,21 @@ class Dregexp : Dobject
                     for(i = 1; i <= nmatches; i++)
                     {
                         if(i > r.nmatches)
-                            a.Put(i, Text.Empty, 0);
+                            a.Put(i, Text.Empty, Property.Attribute.None);
 
                         // Reuse values already put into dc.dollar[]
                         else if(r.nmatches <= 9)
-                            a.Put(i, dc.dollar[i], 0);
+                            a.Put(i, dc.dollar[i], Property.Attribute.None);
                         else if(i > r.nmatches - 9)
-                            a.Put(i, dc.dollar[i - (r.nmatches - 9)], 0);
+                            a.Put(i, dc.dollar[i - (r.nmatches - 9)],
+                                  Property.Attribute.None);
                         else if(r.captures(i) is null)
                         {
-                            a.Put(i, &vundefined, 0);
+                            a.Put(i, &vundefined, Property.Attribute.None);
                         }
                         else
                         {
-                            a.Put(i, r.captures(i), 0);
+                            a.Put(i, r.captures(i), Property.Attribute.None);
                         }
                     }
                     ret.putVobject(a);
@@ -687,7 +738,10 @@ class Dregexp : Dobject
                 writef("*p = %x, %x, %x, %x\n", p[0], p[1], p[2], p[3]);
         }
 
-        Dregexp_constructor.Put(Text.prototype, Dregexp_prototype, DontEnum | DontDelete | ReadOnly);
+        Dregexp_constructor.Put(Text.prototype, Dregexp_prototype,
+                                Property.Attribute.DontEnum |
+                                Property.Attribute.DontDelete |
+                                Property.Attribute.ReadOnly);
     }
 }
 

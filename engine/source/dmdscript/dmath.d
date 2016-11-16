@@ -36,7 +36,7 @@ d_number math_helper(Value[] arglist)
     return v.toNumber();
 }
 
-Status* Dmath_abs(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_abs(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.1
     d_number result;
@@ -46,7 +46,7 @@ Status* Dmath_abs(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Val
     return null;
 }
 
-Status* Dmath_acos(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_acos(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.2
     d_number result;
@@ -56,7 +56,7 @@ Status* Dmath_acos(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Va
     return null;
 }
 
-Status* Dmath_asin(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_asin(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.3
     d_number result;
@@ -66,7 +66,7 @@ Status* Dmath_asin(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Va
     return null;
 }
 
-Status* Dmath_atan(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_atan(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.4
     d_number result;
@@ -76,7 +76,7 @@ Status* Dmath_atan(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Va
     return null;
 }
 
-Status* Dmath_atan2(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_atan2(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.5
     d_number n1;
@@ -90,7 +90,7 @@ Status* Dmath_atan2(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, V
     return null;
 }
 
-Status* Dmath_ceil(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_ceil(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.6
     d_number result;
@@ -100,7 +100,7 @@ Status* Dmath_ceil(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Va
     return null;
 }
 
-Status* Dmath_cos(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_cos(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.7
     d_number result;
@@ -110,7 +110,7 @@ Status* Dmath_cos(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Val
     return null;
 }
 
-Status* Dmath_exp(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_exp(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.8
     d_number result;
@@ -120,7 +120,7 @@ Status* Dmath_exp(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Val
     return null;
 }
 
-Status* Dmath_floor(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_floor(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.9
     d_number result;
@@ -130,7 +130,7 @@ Status* Dmath_floor(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, V
     return null;
 }
 
-Status* Dmath_log(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_log(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.10
     d_number result;
@@ -140,7 +140,7 @@ Status* Dmath_log(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Val
     return null;
 }
 
-Status* Dmath_max(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_max(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.8.2.11
     d_number n;
@@ -169,7 +169,7 @@ Status* Dmath_max(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Val
     return null;
 }
 
-Status* Dmath_min(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_min(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.8.2.12
     d_number n;
@@ -198,7 +198,7 @@ Status* Dmath_min(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Val
     return null;
 }
 
-Status* Dmath_pow(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_pow(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.13
     d_number n1;
@@ -212,7 +212,7 @@ Status* Dmath_pow(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Val
     return null;
 }
 
-Status* Dmath_random(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_random(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.14
     // 0.0 <= result < 1.0
@@ -240,7 +240,7 @@ Status* Dmath_random(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
     return null;
 }
 
-Status* Dmath_round(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_round(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.15
     d_number result;
@@ -252,7 +252,7 @@ Status* Dmath_round(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, V
     return null;
 }
 
-Status* Dmath_sin(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_sin(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.16
     d_number result;
@@ -262,7 +262,7 @@ Status* Dmath_sin(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Val
     return null;
 }
 
-Status* Dmath_sqrt(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_sqrt(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.17
     d_number result;
@@ -272,7 +272,7 @@ Status* Dmath_sqrt(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Va
     return null;
 }
 
-Status* Dmath_tan(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dmath_tan(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA 15.8.2.18
     d_number result;
@@ -291,7 +291,10 @@ class Dmath : Dobject
         super(Dobject_prototype);
 
         //writef("Dmath::Dmath(%x)\n", this);
-        uint attributes = DontEnum | DontDelete | ReadOnly;
+        auto attributes =
+            Property.Attribute.DontEnum |
+            Property.Attribute.DontDelete |
+            Property.Attribute.ReadOnly;
 
         struct MathConst
         { d_string name;
@@ -311,7 +314,7 @@ class Dmath : Dobject
 
         for(size_t u = 0; u < table.length; u++)
         {
-            Status* v;
+            DError* v;
 
             v = Put(table[u].name, table[u].value, attributes);
             //writef("Put(%s,%.5g) = %x\n", *table[u].name, table[u].value, v);

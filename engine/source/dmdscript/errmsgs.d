@@ -8,19 +8,19 @@ import dmdscript.script;
 
 private struct err(alias Proto, ARGS...)
 {
-    import dmdscript.value : Status, toStatus;
+    import dmdscript.value : DError, toDError;
 
     d_string fmt;
 
     @safe @nogc pure nothrow
     this(d_string fmt) { this.fmt = fmt; }
 
-    Status* opCall(ARGS args, Loc linnum = 0, string file = __FILE__,
+    DError* opCall(ARGS args, Loc linnum = 0, string file = __FILE__,
                    size_t line = __LINE__) const
     {
         import std.format : format;
         return new ScriptException(fmt.format(args), linnum, file, line)
-            .toStatus!Proto;
+            .toDError!Proto;
     }
     alias opCall this;
 
@@ -45,8 +45,6 @@ private struct err(alias Proto, ARGS...)
 
 private struct syntaxerr(ARGS...)
 {
-    import dmdscript.value : Status, toStatus;
-
     d_string fmt;
 
     @safe @nogc pure nothrow
@@ -79,7 +77,7 @@ enum ComObjectErrororError =
     err!typeerror("Dcomobject: %s.%s fails with COM error %x");
 enum BadSwitchError = syntaxerr!(d_string)
     ("unrecognized switch '%s'");
-enum UndefinedLabelError = err!(typeerror, d_string, d_string)
+enum UndefinedLabelError = syntaxerr!(d_string, d_string)
     ("undefined label '%s' in function '%s'");
 enum BadCCommentError = syntaxerr!()
     ("unterminated /* */ comment");

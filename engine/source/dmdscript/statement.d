@@ -73,7 +73,7 @@ class TopStatement
         assert(signature == TOPSTATEMENT_SIGNATURE);
     }
 
-    Statement semantic(Scope *sc)
+    TopStatement semantic(Scope *sc)
     {
         assert(0, "TopStatement.semantic(" ~ toString ~ ")");
     }

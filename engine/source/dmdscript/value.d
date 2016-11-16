@@ -27,6 +27,7 @@ import dmdscript.program;
 import dmdscript.dstring;
 import dmdscript.dnumber;
 import dmdscript.dboolean;
+import dmdscript.property;
 
 debug import std.stdio;
 
@@ -192,7 +193,9 @@ struct Value
 
     static @safe @nogc pure nothrow
     void copy(Value* to, in Value* from)
-    { *to = *from; }
+    {
+        *to = *from;
+    }
 
     void toPrimitive(Value* v, d_string PreferredType)
     {
@@ -209,7 +212,7 @@ struct Value
                 If the return value is of type Object or Reference,
                 a runtime error is generated.
              */
-            Status* a;
+            DError* a;
 
             assert(object);
             a = object.DefaultValue(v, PreferredType);
@@ -642,7 +645,7 @@ struct Value
                 return v.toSource();
             else          // it's an Object
             {
-                Status* a;
+                DError* a;
                 CallContext *cc;
                 Dobject o;
                 Value* ret;
@@ -913,9 +916,9 @@ struct Value
     }
 
     static @trusted @nogc pure nothrow
-    uint calcHash(d_string s)
+    size_t calcHash(d_string s)
     {
-        uint hash;
+        size_t hash;
 
         /* If it looks like an array index, hash it to the
          * same value as if it was an array index.
@@ -987,9 +990,9 @@ struct Value
     }
 
     @trusted
-    uint toHash()
+    size_t toHash()
     {
-        uint h;
+        size_t h;
 
         switch(vtype)
         {
@@ -1028,10 +1031,10 @@ struct Value
         return h;
     }
 
-    Status* Put(d_string PropertyName, Value* value)
+    DError* Put(d_string PropertyName, Value* value)
     {
         if(vtype == V_OBJECT)
-            return object.Put(PropertyName, value, 0);
+            return object.Put(PropertyName, value, Property.Attribute.None);
         else
         {
             return CannotPutToPrimitiveError(
@@ -1039,10 +1042,10 @@ struct Value
         }
     }
 
-    Status* Put(d_uint32 index, Value* vindex, Value* value)
+    DError* Put(d_uint32 index, Value* vindex, Value* value)
     {
         if(vtype == V_OBJECT)
-            return object.Put(index, vindex, value, 0);
+            return object.Put(index, vindex, value, Property.Attribute.None);
         else
         {
             return CannotPutIndexToPrimitiveError(
@@ -1115,7 +1118,7 @@ struct Value
         }
     }
  +/
-    Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         if(vtype == V_OBJECT)
             return object.Construct(cc, ret, arglist);
@@ -1130,11 +1133,11 @@ struct Value
         }
     }
 
-    Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         if(vtype == V_OBJECT)
         {
-            Status* a;
+            DError* a;
 
             a = object.Call(cc, othis, ret, arglist);
             //if (a) writef("Vobject.Call() returned %x\n", a);
@@ -1152,7 +1155,7 @@ struct Value
         }
     }
 
-    Status* putIterator(Value* v)
+    DError* putIterator(Value* v)
     {
         if(vtype == V_OBJECT)
             return object.putIterator(v);
@@ -1163,14 +1166,19 @@ struct Value
         }
     }
 
-    ScriptException getException(Loc linnum)
-    {
-        if (vtype == V_OBJECT)
-            return object.getException(linnum);
-        else
-            return new ScriptException(
-                "Unhandled exception: " ~ toString, linnum);
-    }
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // to remove
+
+    // deprecated
+    // ScriptException getException(Loc linnum,
+    //                              string f = __FILE__, size_t l = __LINE__)
+    // {
+    //     // if (vtype == V_OBJECT)
+    //     //     return object.getException(linnum, f, l);
+    //     // else
+    //         return new ScriptException("Unhandled exception: " ~ toString,
+    //                                    linnum, f, l);
+    // }
 
     debug void dump()
     {
@@ -1211,13 +1219,13 @@ Value* signalingUndefined(d_string id)
 /* Status contains the ending status of a function.
  * Mostly, this contains an error status or a yielding status.
  */
-struct Status
+struct DError
 {
     Value entity;
     alias entity this;
 
     static @trusted @nogc pure nothrow
-    void copy(Status* to, Status* from)
+    void copy(DError* to, DError* from)
     { *to = *from; }
 
     @safe
@@ -1228,10 +1236,24 @@ struct Status
         if (auto d0 = cast(D0base)entity.toObject) return d0.exception;
         assert(0);
     }
+
+    @safe
+    void addSource(d_string name, d_string srctext)
+    {
+        import dmdscript.protoerror;
+
+        if (auto d0 = cast(D0base)entity.toObject)
+        {
+            assert(d0.exception);
+            d0.exception.addSource(name, srctext);
+        }
+        else
+            assert(0);
+    }
 }
 
 package @trusted
-Status* toStatus(alias Proto = typeerror)(Throwable t)
+DError* toDError(alias Proto = typeerror)(Throwable t)
 {
     assert(t !is null);
     ScriptException exception;
@@ -1240,7 +1262,7 @@ Status* toStatus(alias Proto = typeerror)(Throwable t)
     else exception = new ScriptException(t.toString, t.file, t.line);
     assert(exception !is null);
 
-    auto v = new Status;
+    auto v = new DError;
     v.putVobject(new Proto.D0(exception));
     return v;
 }

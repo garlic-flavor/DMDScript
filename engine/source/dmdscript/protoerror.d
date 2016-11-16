@@ -42,7 +42,7 @@ class D0_constructor : Dfunction
         this.newD0 = newD0;
     }
 
-    override Status* Construct(CallContext* cc, Value *ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value *ret, Value[] arglist)
     {
         // ECMA 15.11.7.2
         Value* m;
@@ -60,7 +60,7 @@ class D0_constructor : Dfunction
         return null;
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA v3 15.11.7.1
         return Construct(cc, ret, arglist);
@@ -81,9 +81,9 @@ package class D0base : Dobject
     protected this(Dobject prototype, d_string m)
     {
         this(prototype);
-        Put(Text.message, m, 0);
-        Put(Text.description, m, 0);
-        Put(Text.number, cast(d_number)0, 0);
+        Put(Text.message, m, Property.Attribute.None);
+        Put(Text.description, m, Property.Attribute.None);
+        Put(Text.number, cast(d_number)0, Property.Attribute.None);
         exception = new ScriptException(m);
     }
 
@@ -92,9 +92,9 @@ package class D0base : Dobject
         this(prototype);
         assert(exception !is null);
         this.exception = exception;
-        Put(Text.message, exception.msg, 0);
-        Put(Text.description, exception.toString, 0);
-        Put(Text.number, cast(d_number)exception.code, 0);
+        Put(Text.message, exception.msg, Property.Attribute.None);
+        Put(Text.description, exception.toString, Property.Attribute.None);
+        Put(Text.number, cast(d_number)exception.code, Property.Attribute.None);
     }
 }
 
@@ -110,12 +110,13 @@ template proto(alias TEXT_D1)
 
             d_string s;
 
-            Put(Text.constructor, ctorTable[TEXT_D1], DontEnum);
-            Put(Text.name, TEXT_D1, 0);
+            Put(Text.constructor, ctorTable[TEXT_D1],
+                Property.Attribute.DontEnum);
+            Put(Text.name, TEXT_D1, Property.Attribute.None);
             s = TEXT_D1 ~ ".prototype.message";
-            Put(Text.message, s, 0);
-            Put(Text.description, s, 0);
-            Put(Text.number, cast(d_number)0, 0);
+            Put(Text.message, s, Property.Attribute.None);
+            Put(Text.description, s, Property.Attribute.None);
+            Put(Text.number, cast(d_number)0, Property.Attribute.None);
         }
     }
 
@@ -155,7 +156,10 @@ template proto(alias TEXT_D1)
             Dobject prototype = new D0_prototype();
             protoTable[TEXT_D1] = prototype;
 
-            constructor.Put(Text.prototype, prototype, DontEnum | DontDelete | ReadOnly);
+            constructor.Put(Text.prototype, prototype,
+                            Property.Attribute.DontEnum |
+                            Property.Attribute.DontDelete |
+                            Property.Attribute.ReadOnly);
         }
     }
 }

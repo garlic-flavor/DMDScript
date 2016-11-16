@@ -26,26 +26,25 @@ import dmdscript.RandAA;
 
 debug import std.stdio;
 
-// attribute flags
-enum
-{
-    ReadOnly       = 0x001,
-    DontEnum       = 0x002,
-    DontDelete     = 0x004,
-    Internal       = 0x008,
-    Deleted        = 0x010,
-    Locked         = 0x020,
-    DontOverride   = 0x040,
-    KeyWord        = 0x080,
-    DebugFree      = 0x100,       // for debugging help
-    Instantiate    = 0x200,       // For COM named item namespace support
-}
-
 struct Property
 {
-    uint  attributes;
-
+    // attribute flags
+    enum Attribute : uint
+    {
+        None           = 0x000,
+        ReadOnly       = 0x001,
+        DontEnum       = 0x002,
+        DontDelete     = 0x004,
+        Internal       = 0x008,
+        Deleted        = 0x010,
+        Locked         = 0x020,
+        DontOverride   = 0x040,
+        KeyWord        = 0x080,
+        DebugFree      = 0x100,       // for debugging help
+        Instantiate    = 0x200,       // For COM named item namespace support
+    }
     Value value;
+    Attribute  attributes;
 }
 
 /*********************************** PropTable *********************/
@@ -53,6 +52,7 @@ struct PropTable
 {
     RandAA!(Value, Property) table;
     PropTable* previous;
+    alias PA = Property.Attribute;
 
     int        opApply(int delegate(ref Property) dg)
     {
@@ -85,7 +85,6 @@ struct PropTable
      * Look up name and get its corresponding Property.
      * Return null if not found.
      */
-
     Property* getProperty(d_string name)
     {
         Value* v;
@@ -96,7 +95,7 @@ struct PropTable
             return null;
 
         // Work backwards from &p->value to p
-        p = cast(Property *)(cast(char *)v - uint.sizeof /*Property.value.offsetof*/);
+        p = cast(Property*)(cast(void*)v - Property.value.offsetof);
 
         return p;
     }
@@ -173,7 +172,8 @@ struct PropTable
         Property* p;
 
         p = *key in table;
-        return p && (!enumerable || !(p.attributes & DontEnum));
+        return p && (!enumerable ||
+                     !(p.attributes & Property.Attribute.DontEnum));
     }
 
     int hasproperty(Value* key)
@@ -190,7 +190,7 @@ struct PropTable
         return hasproperty(&v);
     }
 
-    Value* put(Value* key, hash_t hash, Value* value, uint attributes)
+    Value* put(Value* key, hash_t hash, Value* value, PA attributes)
     {
         initialize();
         Property* p;
@@ -208,10 +208,11 @@ struct PropTable
         if(p)
         {
             Lx:
-            if(attributes & DontOverride && p.value.vtype != V_REF_ERROR ||
-               p.attributes & ReadOnly)
+            if(attributes & Property.Attribute.DontOverride &&
+               p.value.vtype != V_REF_ERROR ||
+               p.attributes & Property.Attribute.ReadOnly)
             {
-                if(p.attributes & KeyWord)
+                if(p.attributes & Property.Attribute.KeyWord)
                     return null;
                 return &vundefined;
             }
@@ -227,9 +228,9 @@ struct PropTable
                     q = t.table.findExistingAlt(*key,hash);
                     if(q)
                     {
-                        if(q.attributes & ReadOnly)
+                        if(q.attributes & Property.Attribute.ReadOnly)
                         {
-                            p.attributes |= ReadOnly;
+                            p.attributes |= Property.Attribute.ReadOnly;
                             return &vundefined;
                         }
                         break;
@@ -240,19 +241,20 @@ struct PropTable
 
             // Overwrite property with new value
             Value.copy(&p.value, value);
-            p.attributes = (attributes & ~DontOverride) | (p.attributes & (DontDelete | DontEnum));
+            p.attributes = (cast(PA)attributes & ~PA.DontOverride) |
+                cast(PA)(p.attributes & (PA.DontDelete | PA.DontEnum));
             return null;
         }
         else
         {
             //table[*key] = Property(attributes & ~DontOverride,*value);
-            auto v = Property(attributes & ~DontOverride,*value);
+            auto v = Property(*value, (cast(PA)attributes & ~PA.DontOverride));
             table.insertAlt(*key, v, hash);
             return null; // success
         }
     }
 
-    Value* put(d_string name, Value* value, uint attributes)
+    Value* put(d_string name, Value* value, Property.Attribute attributes)
     {
         Value key;
 
@@ -262,7 +264,7 @@ struct PropTable
         return put(&key, Value.calcHash(name), value, attributes);
     }
 
-    Value* put(d_uint32 index, Value* value, uint attributes)
+    Value* put(d_uint32 index, Value* value, Property.Attribute attributes)
     {
         Value key;
 
@@ -272,7 +274,7 @@ struct PropTable
         return put(&key, Value.calcHash(index), value, attributes);
     }
 
-    Value* put(d_uint32 index, d_string str, uint attributes)
+    Value* put(d_uint32 index, d_string str, Property.Attribute attributes)
     {
         Value key;
         Value value;
@@ -296,7 +298,7 @@ struct PropTable
              p = t.table.findExistingAlt(*key,hash);
             if(p)
             {
-                return (p.attributes & ReadOnly)
+                return (p.attributes & Property.Attribute.ReadOnly)
                        ? false : true;
             }
             t = t.previous;
@@ -322,7 +324,7 @@ struct PropTable
         p = *key in table;
         if(p)
         {
-            if(p.attributes & DontDelete)
+            if(p.attributes & Property.Attribute.DontDelete)
                 return false;
             table.remove(*key);
         }
@@ -350,7 +352,7 @@ struct PropTable
     }
     void initialize()
     {
-        if(!table)
+        if(table is null)
             table = new RandAA!(Value, Property);
     }
 }

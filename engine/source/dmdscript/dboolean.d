@@ -37,7 +37,7 @@ class DbooleanConstructor : Dfunction
         name = "Boolean";
     }
 
-    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.6.2
         d_boolean b;
@@ -49,7 +49,7 @@ class DbooleanConstructor : Dfunction
         return null;
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.6.1
         d_boolean b;
@@ -63,7 +63,7 @@ class DbooleanConstructor : Dfunction
 
 /* ===================== Dboolean_prototype_toString =============== */
 
-Status* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // othis must be a Boolean
     if(!othis.isClass(Text.Boolean))
@@ -83,7 +83,7 @@ Status* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othi
 
 /* ===================== Dboolean_prototype_valueOf =============== */
 
-Status* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     //FuncLog f("Boolean.prototype.valueOf()");
     //logflag = 1;
@@ -113,7 +113,8 @@ class DbooleanPrototype : Dboolean
         super(Dobject_prototype);
         //Dobject f = Dfunction_prototype;
 
-        Put(Text.constructor, Dboolean_constructor, DontEnum);
+        Put(Text.constructor, Dboolean_constructor,
+            Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -121,7 +122,7 @@ class DbooleanPrototype : Dboolean
             { Text.valueOf, &Dboolean_prototype_valueOf, 0 },
         ];
 
-        DnativeFunction.initialize(this, nfd, DontEnum);
+        DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
     }
 }
 
@@ -159,7 +160,10 @@ class Dboolean : Dobject
         Dboolean_constructor = new DbooleanConstructor();
         Dboolean_prototype = new DbooleanPrototype();
 
-        Dboolean_constructor.Put(Text.prototype, Dboolean_prototype, DontEnum | DontDelete | ReadOnly);
+        Dboolean_constructor.Put(Text.prototype, Dboolean_prototype,
+                                 Property.Attribute.DontEnum |
+                                 Property.Attribute.DontDelete |
+                                 Property.Attribute.ReadOnly);
     }
 }
 

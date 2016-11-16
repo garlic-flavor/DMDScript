@@ -22,10 +22,11 @@ import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.dfunction;
 import dmdscript.value;
+import dmdscript.property;
 
 /******************* DnativeFunction ****************************/
 
-alias Status* function(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist) PCall;
+alias DError* function(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist) PCall;
 
 struct NativeFunctionData
 {
@@ -52,7 +53,7 @@ class DnativeFunction : Dfunction
         pcall = func;
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         return (*pcall)(this, cc, othis, ret, arglist);
     }
@@ -62,7 +63,8 @@ class DnativeFunction : Dfunction
      * to go in as properties of o.
      */
 
-    static void initialize(Dobject o, NativeFunctionData[] nfd, uint attributes)
+    static void initialize(Dobject o, NativeFunctionData[] nfd,
+                           Property.Attribute attributes)
     {
         Dobject f = Dfunction.getPrototype();
 
@@ -70,8 +72,7 @@ class DnativeFunction : Dfunction
         {
             NativeFunctionData* n = &nfd[i];
 
-            o.Put(n.str,
-                  new DnativeFunction(n.pcall, n.str, n.length, f),
+            o.Put(n.str, new DnativeFunction(n.pcall, n.str, n.length, f),
                   attributes);
         }
     }

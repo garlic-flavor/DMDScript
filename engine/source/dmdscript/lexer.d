@@ -283,6 +283,9 @@ protected:
         p = token.ptr + 1;
     }
 
+protected:
+    d_string base;             // pointer to start of buffer
+
 private:
     Token* freelist;
 
@@ -290,7 +293,6 @@ private:
     Identifier[d_string] stringtable;
 
     d_string sourcename;       // for error message strings
-    d_string base;             // pointer to start of buffer
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
 

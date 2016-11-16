@@ -130,15 +130,20 @@ int main(string[] args)
     // Read files, parse them, execute them
     foreach (SrcFile m; srcfiles)
     {
-	if (verbose)
-	    writefln("read    %s:", m.srcfile);
-	m.read();
-	if (verbose)
-	    writefln("compile %s:", m.srcfile);
-	m.compile();
-	if (verbose)
-	    writefln("execute %s:", m.srcfile);
-	m.execute();
+        if (verbose)
+            writefln("read    %s:", m.srcfile);
+        m.read();
+        if (verbose)
+            writefln("compile %s:", m.srcfile);
+        m.compile();
+        if (verbose)
+            writefln("execute %s:", m.srcfile);
+        try m.execute();
+        catch(Throwable t)
+        {
+            stdout.flush;
+            throw t;
+        }
     }
     return EXIT_SUCCESS;
 }

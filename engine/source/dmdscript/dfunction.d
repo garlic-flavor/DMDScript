@@ -45,7 +45,7 @@ class DfunctionConstructor : Dfunction
         //Put(TEXT_prototype, Dfunction::getPrototype(), attributes);
     }
 
-    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.3.2.1
         d_string bdy;
@@ -98,12 +98,12 @@ class DfunctionConstructor : Dfunction
 
         ret.putVundefined();
         o = new syntaxerror.D0(exception);
-        auto v = new Status;
+        auto v = new DError;
         v.putVobject(o);
         return v;
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.3.1
         return Construct(cc, ret, arglist);
@@ -113,7 +113,7 @@ class DfunctionConstructor : Dfunction
 
 /* ===================== Dfunction_prototype_toString =============== */
 
-Status* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     immutable(char)[] s;
     Dfunction f;
@@ -143,7 +143,7 @@ Status* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject oth
 
 /* ===================== Dfunction_prototype_apply =============== */
 
-Status* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.3.4.3
 
@@ -152,7 +152,7 @@ Status* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
     Value* thisArg;
     Value* argArray;
     Dobject o;
-    Status* v;
+    DError* v;
 
     thisArg = &vundefined;
     argArray = &vundefined;
@@ -228,12 +228,12 @@ Status* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
 
 /* ===================== Dfunction_prototype_call =============== */
 
-Status* Dfunction_prototype_call(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dfunction_prototype_call(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.3.4.4
     Value* thisArg;
     Dobject o;
-    Status* v;
+    DError* v;
 
     if(arglist.length == 0)
     {
@@ -260,7 +260,7 @@ class DfunctionPrototype : Dfunction
     {
         super(0, Dobject_prototype);
 
-        uint attributes = DontEnum;
+        auto attributes = Property.Attribute.DontEnum;
 
         classname = Text.Function;
         name = "prototype";
@@ -276,7 +276,8 @@ class DfunctionPrototype : Dfunction
         DnativeFunction.initialize(this, nfd, attributes);
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret,
+                          Value[] arglist)
     {
         // ECMA v3 15.3.4
         // Accept any arguments and return "undefined"
@@ -302,8 +303,14 @@ class Dfunction : Dobject
       super(prototype);
       classname = Text.Function;
       name = Text.Function;
-      Put(Text.length, length, DontDelete | DontEnum | ReadOnly);
-      Put(Text.arity, length, DontDelete | DontEnum | ReadOnly);
+      Put(Text.length, length,
+          Property.Attribute.DontDelete |
+          Property.Attribute.DontEnum |
+          Property.Attribute.ReadOnly);
+      Put(Text.arity, length,
+          Property.Attribute.DontDelete |
+          Property.Attribute.DontEnum |
+          Property.Attribute.ReadOnly);
   }
 
   override immutable(char)[] getTypeof()
@@ -322,7 +329,7 @@ class Dfunction : Dobject
       return s;
   }
 
-  override Status* HasInstance(Value* ret, Value* v)
+  override DError* HasInstance(Value* ret, Value* v)
   {
       // ECMA v3 15.3.5.3
       Dobject V;
@@ -389,7 +396,10 @@ class Dfunction : Dobject
       Dfunction_constructor = new DfunctionConstructor();
       Dfunction_prototype = new DfunctionPrototype();
 
-      Dfunction_constructor.Put(Text.prototype, Dfunction_prototype, DontEnum | DontDelete | ReadOnly);
+      Dfunction_constructor.Put(Text.prototype, Dfunction_prototype,
+                                Property.Attribute.DontEnum |
+                                Property.Attribute.DontDelete |
+                                Property.Attribute.ReadOnly);
 
       Dfunction_constructor.internal_prototype = Dfunction_prototype;
       Dfunction_constructor.proptable.previous = Dfunction_prototype.proptable;

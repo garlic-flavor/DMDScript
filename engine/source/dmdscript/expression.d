@@ -606,7 +606,7 @@ final class FunctionLiteral : Expression
 
     override Expression semantic(Scope* sc)
     {
-        func = cast(FunctionDefinition)(func.semantic(sc));
+        func = func.semantic(sc);
         return this;
     }
 

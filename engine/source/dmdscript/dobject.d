@@ -52,11 +52,13 @@ class DobjectConstructor : Dfunction
         if(Dobject_prototype)
         {
             Put(Text.prototype, Dobject_prototype,
-                DontEnum | DontDelete | ReadOnly);
+                Property.Attribute.DontEnum |
+                Property.Attribute.DontDelete |
+                Property.Attribute.ReadOnly);
         }
     }
 
-    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         Dobject o;
         Value* v;
@@ -86,10 +88,10 @@ class DobjectConstructor : Dfunction
         return null;
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         Dobject o;
-        Status* result;
+        DError* result;
 
         // ECMA 15.2.1
         if(arglist.length == 0)
@@ -115,7 +117,7 @@ class DobjectConstructor : Dfunction
 
 /* ===================== Dobject_prototype_toString ================ */
 
-Status* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     import std.format : format;
 
@@ -138,7 +140,7 @@ Status* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ===================== Dobject_prototype_toLocaleString ================ */
 
-Status* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.2.4.3
     //	"This function returns the result of calling toString()."
@@ -149,7 +151,7 @@ Status* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject
     v = othis.Get(Text.toString);
     if(v && !v.isPrimitive())   // if it's an Object
     {
-        Status* a;
+        DError* a;
         Dobject o;
 
         o = v.object;
@@ -162,7 +164,7 @@ Status* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject
 
 /* ===================== Dobject_prototype_valueOf ================ */
 
-Status* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     ret.putVobject(othis);
     return null;
@@ -170,7 +172,7 @@ Status* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
 
 /* ===================== Dobject_prototype_toSource ================ */
 
-Status* Dobject_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     d_string buf;
     int any;
@@ -181,7 +183,8 @@ Status* Dobject_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis
     any = 0;
     foreach(Value key, Property p; *othis.proptable)
     {
-        if(!(p.attributes & (DontEnum | Deleted)))
+        if(!(p.attributes &
+             (Property.Attribute.DontEnum | Property.Attribute.Deleted)))
         {
             if(any)
                 buf ~= ',';
@@ -198,7 +201,7 @@ Status* Dobject_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ===================== Dobject_prototype_hasOwnProperty ================ */
 
-Status* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.2.4.5
     Value* v;
@@ -210,7 +213,7 @@ Status* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc, Dobject
 
 /* ===================== Dobject_prototype_isPrototypeOf ================ */
 
-Status* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.2.4.6
     d_boolean result = false;
@@ -240,7 +243,7 @@ Status* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc, Dobject 
 
 /* ===================== Dobject_prototype_propertyIsEnumerable ================ */
 
-Status* Dobject_prototype_propertyIsEnumerable(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_propertyIsEnumerable(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.2.4.7
     Value* v;
@@ -309,7 +312,7 @@ class Dobject
         return proptable.get(&id.value, id.value.hash);
     }
 
-    Value* Get(d_string PropertyName, uint hash)
+    Value* Get(d_string PropertyName, size_t hash)
     {
         return proptable.get(PropertyName, hash);
     }
@@ -329,7 +332,8 @@ class Dobject
         return proptable.get(vindex, Value.calcHash(index));
     }
 
-    Status* Put(d_string PropertyName, Value* value, uint attributes)
+    DError* Put(d_string PropertyName, Value* value,
+                Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         //writef("Dobject.Put(this = %p)\n", this);
@@ -337,7 +341,8 @@ class Dobject
         return null;
     }
 
-    Status* Put(Identifier* key, Value* value, uint attributes)
+    DError* Put(Identifier* key, Value* value,
+                Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         //writef("Dobject.Put(this = %p)\n", this);
@@ -345,7 +350,8 @@ class Dobject
         return null;
     }
 
-    Status* Put(d_string PropertyName, Dobject o, uint attributes)
+    DError* Put(d_string PropertyName, Dobject o,
+                Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         Value v;
@@ -355,7 +361,8 @@ class Dobject
         return null;
     }
 
-    Status* Put(d_string PropertyName, d_number n, uint attributes)
+    DError* Put(d_string PropertyName, d_number n,
+                Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         Value v;
@@ -365,7 +372,8 @@ class Dobject
         return null;
     }
 
-    Status* Put(d_string PropertyName, d_string s, uint attributes)
+    DError* Put(d_string PropertyName, d_string s,
+                Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         Value v;
@@ -375,28 +383,30 @@ class Dobject
         return null;
     }
 
-    Status* Put(d_uint32 index, Value* vindex, Value* value, uint attributes)
+    DError* Put(d_uint32 index, Value* vindex, Value* value,
+                Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         proptable.put(vindex, Value.calcHash(index), value, attributes);
         return null;
     }
 
-    Status* Put(d_uint32 index, Value* value, uint attributes)
+    DError* Put(d_uint32 index, Value* value,
+                Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         proptable.put(index, value, attributes);
         return null;
     }
 
-    Status* PutDefault(Value* value)
+    DError* PutDefault(Value* value)
     {
         // Not ECMA, Microsoft extension
         //writef("Dobject.PutDefault(this = %p)\n", this);
         return NoDefaultPutError;
     }
 
-    Status* put_Value(Value* ret, Value[] arglist)
+    DError* put_Value(Value* ret, Value[] arglist)
     {
         // Not ECMA, Microsoft extension
         //writef("Dobject.put_Value(this = %p)\n", this);
@@ -442,7 +452,7 @@ class Dobject
     }
 
     final @trusted
-    Status* DefaultValue(Value* ret, d_string Hint)
+    DError* DefaultValue(Value* ret, d_string Hint)
     {
         Dobject o;
         Value* v;
@@ -474,7 +484,7 @@ class Dobject
             //writefln("\tv = %x", cast(uint)v);
             if(v && !v.isPrimitive())   // if it's an Object
             {
-                Status* a;
+                DError* a;
                 CallContext *cc;
 
                 //writefln("\tfound default value");
@@ -493,17 +503,17 @@ class Dobject
         //return RuntimeError(&errinfo, DTEXT("no Default Value for object"));
     }
 
-    Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         return SNoConstructError(classname);
     }
 
-    Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         return SNoCallError(classname);
     }
 
-    Status* HasInstance(Value* ret, Value* v)
+    DError* HasInstance(Value* ret, Value* v)
     {   // ECMA v3 8.6.2
         return SNoInstanceError(classname);
     }
@@ -552,16 +562,21 @@ class Dobject
         return false;
     }
 
-    final @trusted
-    ScriptException getException(Loc linnum)
-    {
-        Value v;
-        v.putVobject(this);
-        return new ScriptException(v.toString, linnum);
-    }
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // to remove
+
+    // deprecated
+    // final @trusted
+    // ScriptException getException(Loc linnum,
+    //                              string f = __FILE__, size_t l = __LINE__)
+    // {
+    //     Value v;
+    //     v.putVobject(this);
+    //     return new ScriptException(v.toString, linnum, f, l);
+    // }
 
     final @trusted
-    Status* putIterator(Value* v)
+    DError* putIterator(Value* v)
     {
         Iterator* i = new Iterator;
 
@@ -591,7 +606,8 @@ class Dobject
         Dobject op = Dobject_prototype;
         Dobject f = Dfunction_prototype;
 
-        op.Put(Text.constructor, Dobject_constructor, DontEnum);
+        op.Put(Text.constructor, Dobject_constructor,
+               Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -604,7 +620,7 @@ class Dobject
             { Text.propertyIsEnumerable, &Dobject_prototype_propertyIsEnumerable, 0 },
         ];
 
-        DnativeFunction.initialize(op, nfd, DontEnum);
+        DnativeFunction.initialize(op, nfd, Property.Attribute.DontEnum);
     }
 }
 

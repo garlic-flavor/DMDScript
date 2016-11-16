@@ -31,6 +31,7 @@ import dmdscript.parse;
 import dmdscript.scopex;
 import dmdscript.text;
 import dmdscript.property;
+import dmdscript.identifier;
 
 debug import std.stdio;
 
@@ -85,7 +86,8 @@ class Program
      * 2. with text representing a function name & body (pfd != null)
      */
 
-    void compile(d_string progIdentifier, d_string srctext, FunctionDefinition *pfd)
+    void compile(d_string progIdentifier, d_string srctext,
+                 FunctionDefinition* pfd)
     {
         TopStatement[] topstatements;
         d_string msg;
@@ -96,7 +98,7 @@ class Program
 
         if(auto exception = p.parseProgram(topstatements))
         {
-            topstatements[] = null;
+            topstatements = null;
             throw exception;
         }
 
@@ -109,7 +111,8 @@ class Program
         // Build empty function definition array
         // Make globalfunction an anonymous one (by passing in null for name) so
         // it won't get instantiated as a property
-        globalfunction = new FunctionDefinition(0, 1, null, null, null);
+        globalfunction = new FunctionDefinition(
+            srctext, 0, 1, Identifier.build(progIdentifier), null, null);
 
         // Any functions parsed in topstatements wind up in the global
         // object (cc.global), where they are found by normal property lookups.
@@ -172,7 +175,7 @@ class Program
 
         Value[] locals;
         Value ret;
-        Status* result;
+        DError* result;
         CallContext* cc = callcontext;
         Darray arguments;
         Dobject dglobal = cc.global;
@@ -180,11 +183,13 @@ class Program
 
         // Set argv and argc for execute
         arguments = new Darray();
-        dglobal.Put(Text.arguments, arguments, DontDelete | DontEnum);
+        dglobal.Put(Text.arguments, arguments,
+                    Property.Attribute.DontDelete |
+                    Property.Attribute.DontEnum);
         arguments.length.putVnumber(args.length);
         for(int i = 0; i < args.length; i++)
         {
-            arguments.Put(i, args[i], DontEnum);
+            arguments.Put(i, args[i], Property.Attribute.DontEnum);
         }
 
         Value[] p1;
@@ -206,7 +211,8 @@ class Program
 
         // Instantiate global variables as properties of global
         // object with 0 attributes
-        globalfunction.instantiate(cc.scopex, cc.variable, DontDelete);
+        globalfunction.instantiate(cc.scopex, cc.variable,
+                                   Property.Attribute.DontDelete);
 
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
 
@@ -220,9 +226,13 @@ class Program
         result = IR.call(cc, cc.global, globalfunction.code, &ret, locals.ptr);
         if(result)
         {
-            auto exception = result.getException(cc.linnum);
+            auto exception = result.toScriptException;//(cc.linnum);
             cc.linnum = 0;
             p1 = null;
+            exception.addSource(
+                globalfunction.name !is null ? globalfunction.name.toString
+                : "anonymous",
+                globalfunction.srctext);
             throw exception;
         }
         //writef("-Program.execute()\n");

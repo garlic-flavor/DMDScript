@@ -33,6 +33,8 @@ import dmdscript.ddeclaredfunction;
 import dmdscript.dfunction;
 import dmdscript.protoerror;
 
+debug import std.stdio;
+
 //debug=VERIFY;	// verify integrity of code
 
 version = SCOPECACHING;         // turn scope caching on
@@ -242,7 +244,7 @@ void PutValue(CallContext* cc, d_string s, Value* a)
     if(d == cc.globalroot)
     {
         o = scope_tos(cc.scopex);
-        o.Put(s, a, 0);
+        o.Put(s, a, Property.Attribute.None);
         return;
     }
 
@@ -258,12 +260,12 @@ void PutValue(CallContext* cc, d_string s, Value* a)
         {
             // Overwrite existing property with new one
             v.checkReference();
-            o.Put(s, a, 0);
+            o.Put(s, a, Property.Attribute.None);
             break;
         }
         if(d == cc.globalroot)
         {
-            o.Put(s, a, 0);
+            o.Put(s, a, Property.Attribute.None);
             return;
         }
     }
@@ -302,7 +304,7 @@ void PutValue(CallContext* cc, Identifier* id, Value* a)
                 break;
         }
     }
-    o.Put(id, a, 0);
+    o.Put(id, a, Property.Attribute.None);
 }
 
 
@@ -310,9 +312,9 @@ void PutValue(CallContext* cc, Identifier* id, Value* a)
  * Helper function for Values that cannot be converted to Objects.
  */
 
-Status* cannotConvert(Value* b, int linnum)
+DError* cannotConvert(Value* b, int linnum)
 {
-    Status* sta;
+    DError* sta;
 
     if(b.isUndefinedOrNull())
     {
@@ -350,7 +352,7 @@ struct IR
      * This is the main interpreter loop.
      */
 
-    static Status* call(CallContext* cc, Dobject othis,
+    static DError* call(CallContext* cc, Dobject othis,
                         IR* code, Value* ret, Value* locals)
     {
         import std.conv : to;
@@ -361,7 +363,7 @@ struct IR
         Value* b;
         Value* c;
         Value* v;
-        Status* sta;
+        DError* sta;
         Iterator* iter;
         Identifier* id;
         d_string s;
@@ -389,7 +391,7 @@ struct IR
             finallyStack ~= code;
             code = f.finallyblock;
         }
-        Status* unwindStack(Status* err)
+        DError* unwindStack(DError* err)
         {
             assert(scopex.length && scopex[0] !is null,"Null in scopex, Line " ~ to!string(code.opcode.linnum));
             sta = err;
@@ -405,8 +407,8 @@ struct IR
                     // 'a' may be pointing into the stack, which means
                     // it gets scrambled on return. Therefore, we copy
                     // its contents into a safe area in CallContext.
-                    assert(cc.value.sizeof == Status.sizeof);
-                    Status.copy(&cc.value, sta);
+                    assert(cc.value.sizeof == DError.sizeof);
+                    DError.copy(&cc.value, sta);
                     return &cc.value;
                 }
                 o = scopex[$ - 1];
@@ -423,7 +425,7 @@ struct IR
                     }
                     else
                     {
-                        o.Put(ca.name, a, DontDelete);
+                        o.Put(ca.name, a, Property.Attribute.DontDelete);
                     }
                     scopex ~= o;
                     cc.scopex = scopex;
@@ -595,7 +597,8 @@ struct IR
                     {
                         //writef("IRput %d\n", i32);
                         if(b.vtype == V_OBJECT)
-                            sta = b.object.Put(cast(d_uint32)i32, c, a, 0);
+                            sta = b.object.Put(cast(d_uint32)i32, c, a,
+                                               Property.Attribute.None);
                         else
                             sta = b.Put(cast(d_uint32)i32, c, a);
                     }
@@ -769,7 +772,8 @@ struct IR
                         sta = cannotConvert(b, code.opcode.linnum);
                         goto Lthrow;
                     }
-                    sta = o.Put((code + 3).id.value.text, a, 0);
+                    sta = o.Put((code + 3).id.value.text, a,
+                                Property.Attribute.None);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutS].size;
@@ -802,9 +806,13 @@ struct IR
                     o = scope_tos(scopex);
                     assert(o);
                     if(o.HasProperty((code + 2).id.value.text))
-                        sta = o.Put((code+2).id.value.text,locals + (code + 1).index,DontDelete);
+                        sta = o.Put((code+2).id.value.text,
+                                    locals + (code + 1).index,
+                                    Property.Attribute.DontDelete);
                     else
-                        sta = cc.variable.Put((code + 2).id.value.text, locals + (code + 1).index, DontDelete);
+                        sta = cc.variable.Put((code + 2).id.value.text,
+                                              locals + (code + 1).index,
+                                              Property.Attribute.DontDelete);
                     if (sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutThis].size;
@@ -1703,7 +1711,7 @@ struct IR
                     else
                     {
                         o = scope_tos(scopex);
-                        o.Put(s, v, 0);
+                        o.Put(s, v, Property.Attribute.None);
                         code += IRTypes[Opcode.NextScope].size;
                     }
                     break;
@@ -1761,7 +1769,7 @@ struct IR
                     if(!v)
                     {
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
-                        sta = UndefinedVarError(s);
+                        sta = UndefinedVarError(s, code.opcode.linnum);
                         goto Lthrow;
                     }
                     // Should we pass othis or o? I think othis.
@@ -1936,7 +1944,7 @@ struct IR
 
                 case Opcode.Throw:
                     a = locals + (code + 1).index;
-                    sta = new Status(*a);
+                    sta = new DError(*a);
                     cc.linnum = code.opcode.linnum;
                     Lthrow:
                     assert(scopex[0] !is null);
@@ -1984,7 +1992,7 @@ struct IR
             }
             catch(Throwable t)
             {
-                sta = unwindStack(t.toStatus!typeerror);
+                sta = unwindStack(t.toDError!typeerror);
                 if (sta)
                     return sta;
 

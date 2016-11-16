@@ -39,7 +39,7 @@ class DerrorConstructor : Dfunction
         super(1, Dfunction_prototype);
     }
 
-    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.7.2
         Dobject o;
@@ -74,7 +74,7 @@ class DerrorConstructor : Dfunction
         return null;
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA v3 15.11.1
         return Construct(cc, ret, arglist);
@@ -84,7 +84,7 @@ class DerrorConstructor : Dfunction
 
 /* ===================== Derror_prototype_toString =============== */
 
-Status* Derror_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Derror_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.11.4.3
     // Return implementation defined string
@@ -108,19 +108,20 @@ class DerrorPrototype : Derror
         Dobject f = Dfunction_prototype;
         //d_string m = d_string_ctor(DTEXT("Error.prototype.message"));
 
-        Put(Text.constructor, Derror_constructor, DontEnum);
+        Put(Text.constructor, Derror_constructor, Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
             { Text.toString, &Derror_prototype_toString, 0 },
         ];
 
-        DnativeFunction.initialize(this, nfd, 0);
+        DnativeFunction.initialize(this, nfd, Property.Attribute.None);
 
-        Put(Text.name, Text.Error, 0);
-        Put(Text.message, Text.Empty, 0);
-        Put(Text.description, Text.Empty, 0);
-        Put(Text.number, cast(d_number)(/*FACILITY |*/ 0), 0);
+        Put(Text.name, Text.Error, Property.Attribute.None);
+        Put(Text.message, Text.Empty, Property.Attribute.None);
+        Put(Text.description, Text.Empty, Property.Attribute.None);
+        Put(Text.number, cast(d_number)(/*FACILITY |*/ 0),
+            Property.Attribute.None);
     }
 }
 
@@ -136,8 +137,8 @@ class Derror : Dobject
 
         immutable(char)[] msg;
         msg = m.toString();
-        Put(Text.message, msg, 0);
-        Put(Text.description, msg, 0);
+        Put(Text.message, msg, Property.Attribute.None);
+        Put(Text.description, msg, Property.Attribute.None);
         if(m.isString())
         {
         }
@@ -145,18 +146,18 @@ class Derror : Dobject
         {
             d_number n = m.toNumber();
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
-            Put(Text.number, n, 0);
+            Put(Text.number, n, Property.Attribute.None);
         }
         if(v2.isString())
         {
-            Put(Text.description, v2.toString(), 0);
-            Put(Text.message, v2.toString(), 0);
+            Put(Text.description, v2.toString, Property.Attribute.None);
+            Put(Text.message, v2.toString, Property.Attribute.None);
         }
         else if(v2.isNumber())
         {
             d_number n = v2.toNumber();
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
-            Put(Text.number, n, 0);
+            Put(Text.number, n, Property.Attribute.None);
         }
     }
 
@@ -181,7 +182,10 @@ class Derror : Dobject
         Derror_constructor = new DerrorConstructor();
         Derror_prototype = new DerrorPrototype();
 
-        Derror_constructor.Put(Text.prototype, Derror_prototype, DontEnum | DontDelete | ReadOnly);
+        Derror_constructor.Put(Text.prototype, Derror_prototype,
+                               Property.Attribute.DontEnum |
+                               Property.Attribute.DontDelete |
+                               Property.Attribute.ReadOnly);
     }
 }
 

@@ -36,7 +36,10 @@ class DnumberConstructor : Dfunction
     this()
     {
         super(1, Dfunction_prototype);
-        uint attributes = DontEnum | DontDelete | ReadOnly;
+        auto attributes =
+            Property.Attribute.DontEnum |
+            Property.Attribute.DontDelete |
+            Property.Attribute.ReadOnly;
 
         name = Text.Number;
         Put(Text.MAX_VALUE, d_number.max, attributes);
@@ -46,7 +49,7 @@ class DnumberConstructor : Dfunction
         Put(Text.POSITIVE_INFINITY, d_number.infinity, attributes);
     }
 
-    override Status* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
     {
         // ECMA 15.7.2
         d_number n;
@@ -58,7 +61,7 @@ class DnumberConstructor : Dfunction
         return null;
     }
 
-    override Status* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
     {
         // ECMA 15.7.1
         d_number n;
@@ -72,7 +75,7 @@ class DnumberConstructor : Dfunction
 
 /* ===================== Dnumber_prototype_toString =============== */
 
-Status* Dnumber_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.7.4.2
     d_string s;
@@ -117,7 +120,7 @@ Status* Dnumber_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ===================== Dnumber_prototype_toLocaleString =============== */
 
-Status* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // ECMA v3 15.7.4.3
     d_string s;
@@ -142,7 +145,7 @@ Status* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject
 
 /* ===================== Dnumber_prototype_valueOf =============== */
 
-Status* Dnumber_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     // othis must be a Number
     if(!othis.isClass(Text.Number))
@@ -203,7 +206,7 @@ number_t deconstruct_real(d_number x, int f, out int pe)
 
 /* ===================== Dnumber_prototype_toFixed =============== */
 
-Status* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.exception : assumeUnique;
@@ -325,7 +328,7 @@ Status* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis,
 
 /* ===================== Dnumber_prototype_toExponential =============== */
 
-Status* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
@@ -461,7 +464,7 @@ Status* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject 
 
 /* ===================== Dnumber_prototype_toPrecision =============== */
 
-Status* Dnumber_prototype_toPrecision(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toPrecision(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
@@ -603,7 +606,7 @@ class DnumberPrototype : Dnumber
     this()
     {
         super(Dobject_prototype);
-        uint attributes = DontEnum;
+        auto attributes = Property.Attribute.DontEnum;
 
         Dobject f = Dfunction_prototype;
 
@@ -658,7 +661,10 @@ class Dnumber : Dobject
         Dnumber_constructor = new DnumberConstructor();
         Dnumber_prototype = new DnumberPrototype();
 
-        Dnumber_constructor.Put(Text.prototype, Dnumber_prototype, DontEnum | DontDelete | ReadOnly);
+        Dnumber_constructor.Put(Text.prototype, Dnumber_prototype,
+                                Property.Attribute.DontEnum |
+                                Property.Attribute.DontDelete |
+                                Property.Attribute.ReadOnly);
     }
 }
 

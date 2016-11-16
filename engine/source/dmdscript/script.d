@@ -220,17 +220,18 @@ private:
 
              if (0 < srcline.length)
              {
-                 size_t col = 0;
-                 for (size_t i = 0; i < srcline.length && i < charpos; ++i)
-                 {
-                     if (srcline[i] == '\t') col += Tab.length;
-                     else ++col;
-                 }
-
                  sink("\n"); sink(srcline.replace("\t", Tab).to!string);
 
                  if (0 <= charpos)
                  {
+                     size_t col = 0;
+                 
+                     for (size_t i = 0; i < srcline.length && i < charpos; ++i)
+                     {
+                         if (srcline[i] == '\t') col += Tab.length;
+                         else ++col;
+                     }
+
                      sink("\n");
                      sink(' '.repeat.take(col).to!string);
                      sink("^");
@@ -258,7 +259,7 @@ struct CallContext
     Dobject            caller;           // caller function object
     FunctionDefinition callerf;
 
-    Status value;                // place to store exception; must be same size as Value
+    DError value;                // place to store exception; must be same size as Value
     Loc               linnum;     // source line number of exception (1 based, 0 if not available)
 
     int                Interrupt;  // !=0 if cancelled due to interrupt
@@ -473,17 +474,19 @@ int localeCompare(CallContext *cc, d_string s1, d_string s2)
     return cmp(s1, s2);
 }
 
-package @trusted @nogc pure nothrow
+private:
+
+@trusted @nogc pure nothrow
 d_string getLineAt(d_string base, const(tchar)* p,
                    out Loc linnum, out int charpos)
 {
-    assert(base.ptr <= p && p <= base.ptr + base.length);
-
     immutable(char)* s;
     immutable(char)* slinestart;
 
     linnum = 1;
     if (0 == base.length || p is null) return null;
+
+    assert(base.ptr <= p && p <= base.ptr + base.length);
 
     // Find the beginning of the line
     slinestart = base.ptr;
@@ -514,23 +517,22 @@ d_string getLineAt(d_string base, const(tchar)* p,
     return slinestart[0.. s - slinestart];
 }
 
-package @trusted @nogc pure nothrow
+@safe @nogc pure nothrow
 d_string getLineAt(d_string src, Loc loc)
 {
-    immutable(tchar)* slinestart;
-    immutable(tchar)* s;
+    size_t slinestart = 0;
+    size_t i;
     uint linnum = 1;
 
-    if(!src)
+    if(0 == src.length)
         return null;
-    slinestart = src.ptr;
-    loop: for(s = src.ptr;; ++s)
+    loop: for(i = 0; i < src.length; ++i)
     {
-        switch(*s)
+        switch(src[i])
         {
         case '\n':
             if(loc <= linnum) break loop;
-            slinestart = s + 1;
+            slinestart = i + 1;
             ++linnum;
             break;
 
@@ -542,7 +544,7 @@ d_string getLineAt(d_string src, Loc loc)
     }
 
     // Remove trailing \r's
-    while(slinestart < s && s[-1] == '\r') --s;
+    while(slinestart < i && src[i-1] == '\r') --i;
 
-    return slinestart[0 .. slinestart - s];
+    return src[slinestart .. i];
 }

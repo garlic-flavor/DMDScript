@@ -93,7 +93,7 @@ struct Iterator
             p = *key in o.proptable.table;
             if(!p)                      // if no longer in property table
                 continue;
-            if(p.attributes & DontEnum)
+            if(p.attributes & Property.Attribute.DontEnum)
                 continue;
             else
             {

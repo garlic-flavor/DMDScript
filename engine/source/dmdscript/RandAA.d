@@ -36,13 +36,6 @@ module dmdscript.RandAA;
 import std.traits, core.memory, core.exception, std.algorithm, std.conv,
        std.exception, std.math;
 
-/**Exception thrown on missing keys.*/
-class KeyError : Exception {
-    this(string msg) {
-        super(msg);
-    }
-}
-
 private enum
 {
     EMPTY,
@@ -56,15 +49,15 @@ private template shouldStoreHash(K)
 {
     enum bool shouldStoreHash = !isFloatingPoint !K && !isIntegral !K;
 }
-/**Forward range to iterate over keys or values of a RandAA.  Elements can
- * safely be removed (but not added) while iterating over the keys.*/
 
-
-
+/+ not used.
 private void missing_key(K) (K key)
 {
-    throw new KeyError(text("missing or invalid key ", key));
+    throw new Exception(text("missing or invalid key ", key));
 }
+
+/**Forward range to iterate over keys or values of a RandAA.  Elements can
+ * safely be removed (but not added) while iterating over the keys.*/
 
 struct aard (K, V, bool useRandom = false)
 {
@@ -194,7 +187,7 @@ struct aard (K, V, bool useRandom = false)
         return (imp_ !is null) ? imp_.opApply(dg) : 0;
     }
 }
-
++/
 
 
 /**An associative array class that uses randomized probing and open
@@ -204,7 +197,8 @@ struct aard (K, V, bool useRandom = false)
  * default, the hash is stored unless the array is an array of floating point
  * or integer types.
  */
-final class RandAA(K, V, bool storeHash = shouldStoreHash!(K), bool useRandom = false)
+final class RandAA(K, V, bool storeHash = shouldStoreHash!(K),
+                   bool useRandom = false)
 {
 private:
 
@@ -217,7 +211,7 @@ private:
 
     static if(storeHash)
     {
-        hash_t* hashes;  // For fast reindexing.
+        size_t* hashes;  // For fast reindexing.
     }
 
     size_t mask;    // easy modular 2
@@ -235,20 +229,21 @@ private:
 
     // Optimized for a few special cases to avoid the virtual function call
     // to TypeInfo.getHash().
-    hash_t getHash(K key) const
+    @safe
+    size_t getHash(K key) const
     {
-        static if(is (K : long) && K.sizeof <= hash_t.sizeof)
+        static if(is (K : long) && K.sizeof <= size_t.sizeof)
         {
-            hash_t hash = cast(hash_t)key;
+            size_t hash = cast(size_t)key;
         }
         else
             static if(is (typeof(key.toHash())))
             {
-                hash_t hash = key.toHash();
+                size_t hash = key.toHash();
             }
             else
             {
-                hash_t hash = typeid(K).getHash(cast(const (void)*)&key);
+                size_t hash = typeid(K).getHash(cast(const (void)*)&key);
             }
 
         return hash;
@@ -292,7 +287,7 @@ private:
             return (flag == USED) ? pos : size_t.max;
         }
 
-        size_t findForInsert(ref K key, immutable hash_t hashFull)
+        size_t findForInsert(ref K key, immutable size_t hashFull)
         {
             size_t pos = hashFull & mask;
             static if(useRandom)
@@ -363,7 +358,7 @@ private:
             return (flag == USED) ? pos : size_t.max;
         }
 
-        size_t findForInsert(ref K key, immutable hash_t hashFull) const
+        size_t findForInsert(ref K key, immutable size_t hashFull) const
         {
             size_t pos = hashFull & mask;
             static if(useRandom)
@@ -397,7 +392,7 @@ private:
         }
     }
 
-    void assignNoRehashCheck(ref K key, ref V val, hash_t hashFull)
+    void assignNoRehashCheck(ref K key, ref V val, size_t hashFull)
     {
         size_t i = findForInsert(key, hashFull);
         vals[i] = val;
@@ -416,7 +411,7 @@ private:
 
     void assignNoRehashCheck(ref K key, ref V val)
     {
-        hash_t hashFull = getHash(key);
+        size_t hashFull = getHash(key);
         size_t i = findForInsert(key, hashFull);
         vals[i] = val;
         immutable uint flag = flags[i];
@@ -433,11 +428,13 @@ private:
     }
 
     // Dummy constructor only used internally.
-    this(bool dummy) {}
+    @safe @nogc pure nothrow
+    this(bool dummy) const {}
 
 public:
 
-    static size_t getNextP2(size_t n)
+    static @safe @nogc pure nothrow
+    size_t getNextP2(size_t n)
     {
         // get the powerof 2 > n
 
@@ -450,7 +447,9 @@ public:
     }
     /**Construct an instance of RandAA with initial size initSize.
      * initSize determines the amount of slots pre-allocated.*/
-    this(size_t initSize = 10) {
+    @trusted pure nothrow
+    this(size_t initSize = 10)
+    {
         //initSize = nextSize(initSize);
         space = getNextP2(initSize);
         mask = space - 1;
@@ -459,7 +458,7 @@ public:
 
         static if(storeHash)
         {
-            hashes = (new hash_t[space]).ptr;
+            hashes = (new size_t[space]).ptr;
         }
 
         flags = (new ubyte[space]).ptr;
@@ -521,7 +520,7 @@ public:
         size_t i = findExisting(index);
         if(i == size_t.max)
         {
-            throw new KeyError("Could not find key " ~ to !string(index));
+            throw new Exception("Could not find key " ~ to !string(index));
         }
         else
         {
@@ -544,7 +543,7 @@ public:
     }
 +/
 	///Hackery
-	V* findExistingAlt(ref K key, hash_t hashFull){
+	V* findExistingAlt(ref K key, size_t hashFull){
             size_t pos = hashFull & mask;
             static if(useRandom)
                 size_t rand = hashFull + 1;
@@ -576,7 +575,7 @@ public:
             }
             return (flag == USED) ? &vals[pos] : null;
         }
-    void insertAlt(ref K key, ref V val, hash_t hashFull){
+    void insertAlt(ref K key, ref V val, size_t hashFull){
         assignNoRehashCheck(key, val, hashFull);
         rehash();
     }
@@ -587,8 +586,9 @@ public:
         assignNoRehashCheck(index, val);
         rehash();
     }
-    struct KeyValRange (K, V, bool storeHash, bool vals) {
-private:
+    struct KeyValRange (K, V, bool storeHash, bool vals)
+    {
+    private:
         static if(vals)
         {
             alias V T;
@@ -599,8 +599,10 @@ private:
         }
         size_t index = 0;
         RandAA aa;
-public:
-        this(RandAA aa) {
+    public:
+        @trusted @nogc pure nothrow
+        this(RandAA aa)
+        {
             this.aa = aa;
             while(aa.flags[index] != USED && index < aa.space)
             {
@@ -609,6 +611,7 @@ public:
         }
 
         ///
+        @trusted @nogc pure nothrow
         T front()
         {
             static if(vals)
@@ -622,6 +625,7 @@ public:
         }
 
         ///
+        @trusted @nogc pure nothrow
         void popFront()
         {
             index++;
@@ -632,7 +636,8 @@ public:
         }
 
         ///
-        bool empty()
+        @safe @nogc pure nothrow
+        bool empty() const
         {
             return index == aa.space;
         }
@@ -657,12 +662,14 @@ public:
     alias KeyValRange!(K, V, storeHash, true) value_range;
 
     /**Does not allocate.  Returns a simple forward range.*/
+    @safe @nogc pure nothrow
     key_range keyRange()
     {
         return key_range(this);
     }
 
     /**Does not allocate.  Returns a simple forward range.*/
+    @safe @nogc pure nothrow
     value_range valueRange()
     {
         return value_range(this);
@@ -675,7 +682,7 @@ public:
         size_t i = findExisting(index);
         if(i == size_t.max)
         {
-            throw new KeyError("Could not find key " ~ to!string(index));
+            throw new Exception("Could not find key " ~ to!string(index));
         }
         else
         {
@@ -686,6 +693,7 @@ public:
         }
     }
 
+    @trusted
     V[] values()
     {
         size_t i = 0;
@@ -695,6 +703,7 @@ public:
             result[i++] = v;
         return result;
     }
+    @trusted
     K[] keys()
     {
         size_t i = 0;
@@ -754,7 +763,7 @@ public:
     {
         static if(isStaticArray!(T))
         {
-            alias typeof(T.init[0])[] type;             //the equivalent dynamic array
+            alias typeof(T.init[0])[] type;     //the equivalent dynamic array
         }
         else
         {
@@ -770,12 +779,14 @@ public:
         return opApply((ref K_ k, ref V_ v) { return dg(v); });
     }
 
+    @safe pure nothrow
     void clear()
     {
         free();
     }
     /**Allows for deleting the contents of the array manually, if supported
      * by the GC.*/
+    @trusted pure nothrow
     void free()
     {
         GC.free(cast(void*)this._keys);
@@ -789,7 +800,8 @@ public:
     }
 
     ///
-    size_t length()
+    @property @safe @nogc pure nothrow
+    size_t length() const
     {
         return _length;
     }
