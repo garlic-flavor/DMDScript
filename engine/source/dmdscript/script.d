@@ -262,7 +262,7 @@ private:
                  if (0 <= charpos)
                  {
                      size_t col = 0;
-                 
+
                      for (size_t i = 0; i < srcline.length && i < charpos; ++i)
                      {
                          if (srcline[i] == '\t') col += Tab.length;
@@ -314,8 +314,6 @@ struct CallContext
     Dobject            callerothis;      // caller's othis
     Dobject            caller;           // caller function object
     FunctionDefinition callerf;
-
-    DError value;                // place to store exception; must be same size as Value
 
     int                Interrupt;  // !=0 if cancelled due to interrupt
 }

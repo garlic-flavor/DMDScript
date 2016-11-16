@@ -26,7 +26,8 @@ import dmdscript.property;
 
 /******************* DnativeFunction ****************************/
 
-alias DError* function(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist) PCall;
+alias PCall = DError* function(Dobject pthis, CallContext* cc, Dobject othis,
+                               Value* ret, Value[] arglist);
 
 struct NativeFunctionData
 {
@@ -53,7 +54,8 @@ class DnativeFunction : Dfunction
         pcall = func;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret,
+                          Value[] arglist)
     {
         return (*pcall)(this, cc, othis, ret, arglist);
     }

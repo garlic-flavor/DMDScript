@@ -171,16 +171,3 @@ alias proto!(Text.RangeError) rangeerror;
 alias proto!(Text.TypeError) typeerror;
 alias proto!(Text.URIError) urierror;
 
-/**********************************
- * Register initializer for each class.
- */
-
-static this()
-{
-    threadInitTable ~= &syntaxerror.D0.init;
-    threadInitTable ~= &evalerror.D0.init;
-    threadInitTable ~= &referenceerror.D0.init;
-    threadInitTable ~= &rangeerror.D0.init;
-    threadInitTable ~= &typeerror.D0.init;
-    threadInitTable ~= &urierror.D0.init;
-}

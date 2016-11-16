@@ -83,12 +83,13 @@ class DobjectConstructor : Dfunction
             else
                 o = v.toObject();
         }
-        //printf("constructed object o=%p, v=%p,'%s'\n", o, v,v.getType());
+
         ret.putVobject(o);
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(CallContext* cc, Dobject othis, Value* ret,
+                          Value[] arglist)
     {
         Dobject o;
         DError* result;
@@ -117,7 +118,8 @@ class DobjectConstructor : Dfunction
 
 /* ===================== Dobject_prototype_toString ================ */
 
-DError* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_toString(Dobject pthis, CallContext* cc,
+                                   Dobject othis, Value* ret, Value[] arglist)
 {
     import std.format : format;
 
@@ -140,7 +142,9 @@ DError* Dobject_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ===================== Dobject_prototype_toLocaleString ================ */
 
-DError* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc,
+                                         Dobject othis, Value* ret,
+                                         Value[] arglist)
 {
     // ECMA v3 15.2.4.3
     //	"This function returns the result of calling toString()."
@@ -164,7 +168,8 @@ DError* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject
 
 /* ===================== Dobject_prototype_valueOf ================ */
 
-DError* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc,
+                                  Dobject othis, Value* ret, Value[] arglist)
 {
     ret.putVobject(othis);
     return null;
@@ -172,12 +177,11 @@ DError* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
 
 /* ===================== Dobject_prototype_toSource ================ */
 
-DError* Dobject_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_toSource(Dobject pthis, CallContext* cc,
+                                   Dobject othis, Value* ret, Value[] arglist)
 {
     d_string buf;
     int any;
-
-    //writef("Dobject.prototype.toSource(this = %p, ret = %p)\n", this, ret);
 
     buf = "{";
     any = 0;
@@ -201,7 +205,9 @@ DError* Dobject_prototype_toSource(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ===================== Dobject_prototype_hasOwnProperty ================ */
 
-DError* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc,
+                                         Dobject othis, Value* ret,
+                                         Value[] arglist)
 {
     // ECMA v3 15.2.4.5
     Value* v;
@@ -213,7 +219,9 @@ DError* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc, Dobject
 
 /* ===================== Dobject_prototype_isPrototypeOf ================ */
 
-DError* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc,
+                                        Dobject othis, Value* ret,
+                                        Value[] arglist)
 {
     // ECMA v3 15.2.4.6
     d_boolean result = false;
@@ -243,7 +251,9 @@ DError* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc, Dobject 
 
 /* ===================== Dobject_prototype_propertyIsEnumerable ================ */
 
-DError* Dobject_prototype_propertyIsEnumerable(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_propertyIsEnumerable(Dobject pthis, CallContext* cc,
+                                               Dobject othis, Value* ret,
+                                               Value[] arglist)
 {
     // ECMA v3 15.2.4.7
     Value* v;
@@ -284,8 +294,6 @@ class Dobject
     @safe pure nothrow
     this(Dobject prototype)
     {
-        //writef("new Dobject = %x, prototype = %x, line = %d, file = '%s'\n", this, prototype, GC.line, ascii2unicode(GC.file));
-        //writef("Dobject(prototype = %p)\n", prototype);
         proptable = new PropTable;
         internal_prototype = prototype;
         if(prototype)
@@ -336,7 +344,6 @@ class Dobject
                 Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
-        //writef("Dobject.Put(this = %p)\n", this);
         proptable.put(PropertyName, value, attributes);
         return null;
     }
@@ -345,7 +352,6 @@ class Dobject
                 Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
-        //writef("Dobject.Put(this = %p)\n", this);
         proptable.put(&key.value, key.value.hash, value, attributes);
         return null;
     }
@@ -402,14 +408,12 @@ class Dobject
     DError* PutDefault(Value* value)
     {
         // Not ECMA, Microsoft extension
-        //writef("Dobject.PutDefault(this = %p)\n", this);
         return NoDefaultPutError;
     }
 
     DError* put_Value(Value* ret, Value[] arglist)
     {
         // Not ECMA, Microsoft extension
-        //writef("Dobject.put_Value(this = %p)\n", this);
         return FunctionNotLvalueError;
     }
 
@@ -433,7 +437,6 @@ class Dobject
     int Delete(d_string PropertyName)
     {
         // ECMA 8.6.2.5
-        //writef("Dobject.Delete('%ls')\n", d_string_ptr(PropertyName));
         return proptable.del(PropertyName);
     }
 
@@ -460,7 +463,6 @@ class Dobject
         int i = 0;                      // initializer necessary for /W4
 
         // ECMA 8.6.2.6
-        //writef("Dobject.DefaultValue(ret = %x, Hint = '%s')\n", cast(uint)ret, Hint);
 
         if(Hint == TypeString ||
            (Hint == null && this.isDdate()))
@@ -479,15 +481,13 @@ class Dobject
         {
             d_string htab = table[i];
 
-            //writefln("\ti = %d, htab = '%s'", i, htab);
             v = Get(htab, Value.calcHash(htab));
-            //writefln("\tv = %x", cast(uint)v);
+
             if(v && !v.isPrimitive())   // if it's an Object
             {
                 DError* a;
                 CallContext *cc;
 
-                //writefln("\tfound default value");
                 o = v.object;
                 cc = Program.getProgram().callcontext;
                 a = o.Call(cc, this, ret, null);
@@ -562,19 +562,6 @@ class Dobject
         return false;
     }
 
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // to remove
-
-    // deprecated
-    // final @trusted
-    // ScriptException getException(Loc linnum,
-    //                              string f = __FILE__, size_t l = __LINE__)
-    // {
-    //     Value v;
-    //     v.putVobject(this);
-    //     return new ScriptException(v.toString, linnum, f, l);
-    // }
-
     final @trusted
     DError* putIterator(Value* v)
     {
@@ -617,7 +604,8 @@ class Dobject
             { Text.valueOf, &Dobject_prototype_valueOf, 0 },
             { Text.hasOwnProperty, &Dobject_prototype_hasOwnProperty, 1 },
             { Text.isPrototypeOf, &Dobject_prototype_isPrototypeOf, 0 },
-            { Text.propertyIsEnumerable, &Dobject_prototype_propertyIsEnumerable, 0 },
+            { Text.propertyIsEnumerable,
+              &Dobject_prototype_propertyIsEnumerable, 0 },
         ];
 
         DnativeFunction.initialize(op, nfd, Property.Attribute.DontEnum);
@@ -628,22 +616,11 @@ class Dobject
 /*********************************************
  * Initialize the built-in's.
  */
-
 void dobject_init()
 {
     //writef("dobject_init(tc = %x)\n", cast(uint)tc);
     if(Dobject_prototype)
         return;                 // already initialized for this thread
-
-    version(none)
-    {
-        writef("sizeof(Dobject) = %d\n", sizeof(Dobject));
-        writef("sizeof(PropTable) = %d\n", sizeof(PropTable));
-        writef("offsetof(proptable) = %d\n", offsetof(Dobject, proptable));
-        writef("offsetof(internal_prototype) = %d\n", offsetof(Dobject, internal_prototype));
-        writef("offsetof(classname) = %d\n", offsetof(Dobject, classname));
-        writef("offsetof(value) = %d\n", offsetof(Dobject, value));
-    }
 
     Dobject.initialize();
     Dboolean.initialize();
@@ -655,14 +632,17 @@ void dobject_init()
     Dregexp.initialize();
     Derror.initialize();
 
-    // Call registered initializer for each object type
-    foreach(void function() fpinit; threadInitTable)
-        (*fpinit)();
+
+    syntaxerror.D0.init;
+    evalerror.D0.init;
+    referenceerror.D0.init;
+    rangeerror.D0.init;
+    typeerror.D0.init;
+    urierror.D0.init;
 }
 /*Not used anyway
 void dobject_term()
 {
-    //writef("dobject_term(program = %x)\n", program);
 
     memset(&program, 0, ThreadContext.sizeof - Thread.sizeof);
 }

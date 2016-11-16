@@ -46,11 +46,11 @@ version = SCOPECACHING;         // turn scope caching on
 class Catch : Dobject
 {
     // This is so scope_get() will skip over these objects
-    override Value* Get(d_string PropertyName) const
+    override Value* Get(d_string) const
     {
         return null;
     }
-    override Value* Get(d_string PropertyName, uint hash) const
+    override Value* Get(d_string, uint) const
     {
         return null;
     }
@@ -80,11 +80,11 @@ class Catch : Dobject
 
 class Finally : Dobject
 {
-    override Value* Get(d_string PropertyName) const
+    override Value* Get(d_string) const
     {
         return null;
     }
-    override Value* Get(d_string PropertyName, uint hash) const
+    override Value* Get(d_string, uint) const
     {
         return null;
     }
@@ -118,8 +118,6 @@ Value* scope_get(Dobject[] scopex, Identifier* id, Dobject *pthis)
     Dobject o;
     Value* v;
 
-    //writef("scope_get: scope = %p, scope.data = %p\n", scopex, scopex.data);
-    //writefln("scope_get: scopex = %x, length = %d, id = %s", cast(uint)scopex.ptr, scopex.length, id.toString());
     d = scopex.length;
     for(;; )
     {
@@ -131,7 +129,6 @@ Value* scope_get(Dobject[] scopex, Identifier* id, Dobject *pthis)
         }
         d--;
         o = scopex[d];
-        //writef("o = %x, hash = x%x, s = '%s'\n", o, hash, s);
         v = o.Get(id);
         if(v)
         {
@@ -148,7 +145,6 @@ Value* scope_get_lambda(Dobject[] scopex, Identifier* id, Dobject *pthis)
     Dobject o;
     Value* v;
 
-    //writefln("scope_get_lambda: scope = %x, length = %d, id = %s", cast(uint)scopex.ptr, scopex.length, id.toString());
     d = scopex.length;
     for(;; )
     {
@@ -160,9 +156,6 @@ Value* scope_get_lambda(Dobject[] scopex, Identifier* id, Dobject *pthis)
         }
         d--;
         o = scopex[d];
-        //printf("o = %p ", o);
-        //writefln("o = %s", o);
-        //printf("o = %x, hash = x%x, s = '%.*s'\n", o, hash, s);
         //v = o.GetLambda(s, hash);
         v = o.Get(id);
         if(v)
@@ -171,7 +164,6 @@ Value* scope_get_lambda(Dobject[] scopex, Identifier* id, Dobject *pthis)
             break;
         }
     }
-    //writefln("v = %x", cast(uint)cast(void*)v);
     return v;
 }
 
@@ -181,7 +173,6 @@ Value* scope_get(Dobject[] scopex, Identifier* id)
     Dobject o;
     Value* v;
 
-    //writefln("scope_get: scopex = %x, length = %d, id = %s", cast(uint)scopex.ptr, scopex.length, id.toString());
     d = scopex.length;
     // 1 is most common case for d
     if(d == 1)
@@ -197,11 +188,10 @@ Value* scope_get(Dobject[] scopex, Identifier* id)
         }
         d--;
         o = scopex[d];
-        //writefln("\to = %s", o);
+
         v = o.Get(id);
         if(v)
             break;
-        //writefln("\tnot found");
     }
     return v;
 }
@@ -356,7 +346,6 @@ struct IR
                         IR* code, Value* ret, Value* locals)
     {
         import std.conv : to;
-        import std.stdio : writef;
         import std.string : cmp;
 
         Value* a;
@@ -386,45 +375,42 @@ struct IR
         //So we are doing "push IP in some stack" + "jump"
         IR*[] finallyStack;      //it's a stack of backreferences for finally
         d_number inc;
-        void callFinally(Finally f){
+
+        @safe pure nothrow
+        void callFinally(Finally f)
+        {
             //cc.scopex = scopex;
             finallyStack ~= code;
             code = f.finallyblock;
         }
+
         DError* unwindStack(DError* err)
         {
-            assert(scopex.length && scopex[0] !is null,"Null in scopex, Line " ~ to!string(code.opcode.linnum));
-            sta = err;
-            a = &sta.entity;
-            //v = scope_get(scopex,Identifier.build("mycars2"));
-            //a.getErrInfo(null, GETlinnum(code));
+            assert(scopex.length && scopex[0] !is null,
+                   "Null in scopex, Line " ~ code.opcode.linnum.to!string);
 
             for(;; )
             {
                 if(scopex.length <= dimsave)
                 {
                     ret.putVundefined();
-                    // 'a' may be pointing into the stack, which means
-                    // it gets scrambled on return. Therefore, we copy
-                    // its contents into a safe area in CallContext.
-                    assert(cc.value.sizeof == DError.sizeof);
-                    DError.copy(&cc.value, sta);
-                    return &cc.value;
+                    return err;
                 }
                 o = scopex[$ - 1];
-                scopex = scopex[0 .. $ - 1];            // pop entry off scope chain
+                scopex = scopex[0 .. $ - 1]; // pop entry off scope chain
 
                 if(o.isCatch)
                 {
                     ca = cast(Catch)o;
-                    o = new Dobject(Dobject.getPrototype());
+                    o = new Dobject(Dobject.getPrototype);
                     version(JSCRIPT_CATCH_BUG)
                     {
-                        PutValue(cc, ca.name, a);
+                        PutValue(cc, ca.name, &err.entity);
                     }
                     else
                     {
-                        o.Put(ca.name, a, Property.Attribute.DontDelete);
+                        o.Put(ca.name, &err.entity,
+                              Property.Attribute.DontDelete);
                     }
                     scopex ~= o;
                     cc.scopex = scopex;
@@ -482,10 +468,8 @@ struct IR
         debug(VERIFY) uint checksum = IR.verify(__LINE__, code);
 
         scopex = cc.scopex;
-        //printf("call: scope = %p, length = %d\n", scopex.ptr, scopex.length);
+
         dimsave = scopex.length;
-        //if (logflag)
-        //    writef("IR.call(othis = %p, code = %p, locals = %p)\n",othis,code,locals);
 
         assert(code);
         assert(othis);
@@ -493,7 +477,6 @@ struct IR
         for(;; )
         {
             Lnext:
-            //writef("cc = %x, interrupt = %d\n", cc, cc.Interrupt);
             if(cc.Interrupt)                    // see if script was interrupted
                 goto Linterrupt;
             try{
@@ -522,7 +505,6 @@ struct IR
                        (i32 = cast(d_int32)c.number) == c.number &&
                        i32 >= 0)
                     {
-                        //writef("IRget %d\n", i32);
                         v = o.Get(cast(d_uint32)i32, c);
                     }
                     else
@@ -544,7 +526,6 @@ struct IR
                        (i32 = cast(d_int32)c.number) == c.number &&
                        i32 >= 0)
                     {
-                        //writef("IRput %d\n", i32);
                         if(b.vtype == V_OBJECT)
                             sta = b.object.Put(cast(d_uint32)i32, c, a,
                                                Property.Attribute.None);
@@ -575,7 +556,6 @@ struct IR
                     v = o.Get(s);
                     if(!v)
                     {
-                        //writef("IRgets: %s.%s is undefined\n", b.getType(), d_string_ptr(s));
                         v = &vundefined;
                     }
                     Value.copy(a, v);
@@ -603,7 +583,6 @@ struct IR
                             code += 3;
                             break;
                         }
-                        //writefln("miss %s, was %s, s.ptr = %x, cache.ptr = %x", s, scopecache[si].s, cast(uint)s.ptr, cast(uint)scopecache[si].s.ptr);
                     }
                     version(all)
                     {
@@ -624,9 +603,7 @@ struct IR
                             }
                         }
                     }
-                    //writef("v = %p\n", v);
-                    //writef("v = %g\n", v.toNumber());
-                    //writef("v = %s\n", d_string_ptr(v.toString()));
+
                     Value.copy(a, v);
                     code += IRTypes[Opcode.GetScope].size;
                     break;
@@ -790,7 +767,7 @@ struct IR
                 }
                 case Opcode.This:                // a = this
                     (locals + (code + 1).index).putVobject(othis);
-                    //writef("IRthis: %s, othis = %x\n", GETa(code).getType(), othis);
+
                     code += IRTypes[Opcode.This].size;
                     break;
 
@@ -937,7 +914,6 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
 
-                    //writef("%g / %g = %g\n", b.toNumber() , c.toNumber(), b.toNumber() / c.toNumber());
                     a.putVnumber(b.toNumber() / c.toNumber());
                     code += IRTypes[Opcode.Div].size;
                     break;
@@ -1615,7 +1591,7 @@ struct IR
                     break;
 
                 case Opcode.Next:        // a, b.c, iter
-                                    // if (!(b.c = iter)) goto a; iter = iter.next
+                    // if (!(b.c = iter)) goto a; iter = iter.next
                     s = (locals + (code + 3).index).toString();
                     goto case_next;
 
@@ -1668,15 +1644,14 @@ struct IR
                         goto Lcallerror;
                     }
                     {
-                        //writef("v.call\n");
                         v = o.Get(s);
                         if(!v)
                             goto Lcallerror;
-                        //writef("calling... '%s'\n", v.toString());
+
                         cc.callerothis = othis;
                         a.putVundefined();
-                        sta = v.Call(cc, o, a, (locals + (code + 5).index)[0 .. (code + 4).index]);
-                        //writef("regular call, a = %x\n", a);
+                        sta = v.Call(cc, o, a, (locals + (code + 5).index)
+                                                   [0 .. (code + 4).index]);
                     }
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
@@ -1690,7 +1665,6 @@ struct IR
 
                     Lcallerror:
                     {
-                        //writef("%s %s.%s is undefined and has no Call method\n", b.getType(), b.toString(), s);
                         sta = UndefinedNoCall3Error(b.getType, b.toString, s);
                         goto Lthrow;
                     }
@@ -1700,7 +1674,7 @@ struct IR
                     s = id.value.text;
                     a = locals + (code + 1).index;
                     v = scope_get_lambda(scopex, id, &o);
-                    //writefln("v.toString() = '%s'", v.toString());
+
                     if(!v)
                     {
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
@@ -1710,8 +1684,9 @@ struct IR
                     // Should we pass othis or o? I think othis.
                     cc.callerothis = othis;        // pass othis to eval()
                     a.putVundefined();
-                    sta = v.Call(cc, o, a, (locals + (code + 4).index)[0 .. (code + 3).index]);
-                    //writef("callscope result = %x\n", a);
+                    sta = v.Call(cc, o, a, (locals + (code + 4).index)
+                                               [0 .. (code + 3).index]);
+
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
                     if(sta)
@@ -1725,7 +1700,6 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
                         sta = UndefinedNoCall2Error(b.getType, b.toString);
                         goto Lthrow;
                     }
@@ -1866,14 +1840,14 @@ struct IR
                     a = locals + (code + 1).index;
                     a.checkReference();
                     Value.copy(ret, a);
-                    //writef("returns: %s\n", ret.toString());
+
                     return null;
 
                 case Opcode.ImpRet:
                     a = locals + (code + 1).index;
                     a.checkReference();
                     Value.copy(ret, a);
-                    //writef("implicit return: %s\n", ret.toString());
+
                     code += IRTypes[Opcode.ImpRet].size;
                     goto Lnext;
 
@@ -1944,12 +1918,22 @@ struct IR
         return null;
     }
 
+    /*********************************
+     * Give size of opcode.
+     */
+
+    static size_t size(Opcode opcode)
+    {
+        static size_t sizeOf(T)(){ return T.size; }
+        return IRTypeDispatcher!sizeOf(opcode);
+    }
+
     /*******************************************
      * This is a 'disassembler' for our interpreted code.
      * Useful for debugging.
      */
 
-    debug static void toBuffer(uint address, const(IR)* code,
+    debug static void toBuffer(size_t address, const(IR)* code,
                                scope void delegate(in tchar[]) sink)
     {
         static string proc(T)(size_t address, const(IR)* c)
@@ -1966,40 +1950,30 @@ struct IR
         sink(IRTypeDispatcher!proc(code.opcode, address, code,));
     }
 
-    /*********************************
-     * Give size of opcode.
-     */
-
-    static size_t size(Opcode opcode)
+    debug static d_string toString(const(IR)* code)
     {
-        static size_t sizeOf(T)(){ return T.size; }
-        return IRTypeDispatcher!sizeOf(opcode);
+        import std.conv : to;
+        import std.array : Appender;
+
+        Appender!d_string buf;
+        auto codestart = code;
+
+        for(;; )
+        {
+            buf.put((cast(size_t)(code - codestart)).to!d_string);
+            toBuffer(code - codestart, code, b=>buf.put(b));
+            if(code.opcode == Opcode.End)
+                break;
+            code += size(code.opcode);
+        }
+        return buf.data;
     }
-
-    // deprecated
-    // debug static void printfunc(IR* code)
-    // {
-    //     import std.stdio : writef;
-
-    //     // IR* codestart = code;
-
-    //     // for(;; )
-    //     // {
-    //     //     //writef("%2d(%d):", code - codestart, code.linnum);
-    //     //     writef("%2d:", code - codestart);
-    //     //     print(code - codestart, code);
-    //     //     if(code.opcode == Opcode.End)
-    //     //         return;
-    //     //     code += size(code.opcode);
-    //     // }
-    // }
 
     /***************************************
      * Verify that it is a correct sequence of code.
      * Useful for isolating memory corruption bugs.
      */
-
-    static uint verify(uint linnum, IR* codestart)
+    debug static uint verify(uint linnum, IR* codestart)
     {
         debug(VERIFY)
         {

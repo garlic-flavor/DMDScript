@@ -1226,10 +1226,6 @@ struct DError
     Value entity;
     alias entity this;
 
-    static @trusted @nogc pure nothrow
-    void copy(DError* to, DError* from)
-    { *to = *from; }
-
     @safe
     ScriptException toScriptException()
     {
