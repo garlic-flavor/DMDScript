@@ -346,10 +346,13 @@ class Dmath : Dobject
         DnativeFunction.initialize(this, nfd, attributes);
     }
 
-    static void initialize()
+static:
+    void initialize()
     {
-        Dmath_object = new Dmath();
+        object = new Dmath();
     }
+
+package:
+    Dmath object;
 }
 
-package Dmath Dmath_object;

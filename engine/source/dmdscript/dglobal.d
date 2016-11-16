@@ -844,8 +844,8 @@ class Dglobal : Dobject
 
         // Other properties
 
-        assert(Dmath_object);
-        Put(Text.Math, Dmath_object, Property.Attribute.DontEnum);
+        assert(Dmath.object);
+        Put(Text.Math, Dmath.object, Property.Attribute.DontEnum);
 
         // Build an "arguments" property out of argv[],
         // and add it to the global object.

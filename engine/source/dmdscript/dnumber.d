@@ -609,7 +609,7 @@ class DnumberPrototype : Dnumber
 
         Dobject f = Dfunction.getPrototype;
 
-        Put(Text.constructor, Dnumber_constructor, attributes);
+        Put(Text.constructor, Dnumber.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -645,29 +645,31 @@ class Dnumber : Dobject
         value.putVnumber(0);
     }
 
-    static Dfunction getConstructor()
+static:
+    Dfunction getConstructor()
     {
-        return Dnumber_constructor;
+        return _constructor;
     }
 
-    static Dobject getPrototype()
+    Dobject getPrototype()
     {
-        return Dnumber_prototype;
+        return _prototype;
     }
 
-    static void initialize()
+     void initialize()
     {
-        Dnumber_constructor = new DnumberConstructor();
-        Dnumber_prototype = new DnumberPrototype();
+        _constructor = new DnumberConstructor();
+        _prototype = new DnumberPrototype();
 
-        Dnumber_constructor.Put(Text.prototype, Dnumber_prototype,
-                                Property.Attribute.DontEnum |
-                                Property.Attribute.DontDelete |
-                                Property.Attribute.ReadOnly);
+        _constructor.Put(Text.prototype, _prototype,
+                         Property.Attribute.DontEnum |
+                         Property.Attribute.DontDelete |
+                         Property.Attribute.ReadOnly);
     }
+private:
+    Dfunction _constructor;
+    Dobject _prototype;
 }
 
 
-private Dfunction Dnumber_constructor;
-private Dobject Dnumber_prototype;
 

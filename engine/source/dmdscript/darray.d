@@ -967,7 +967,8 @@ class DarrayPrototype : Darray
         super(Dobject.getPrototype);
         Dobject f = Dfunction.getPrototype;
 
-        Put(Text.constructor, Darray_constructor, Property.Attribute.DontEnum);
+        Put(Text.constructor, Darray.getConstructor,
+            Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -1213,28 +1214,29 @@ class Darray : Dobject
     }
 
 
-    static Dfunction getConstructor()
+static:
+    Dfunction getConstructor()
     {
-        return Darray_constructor;
+        return _constructor;
     }
 
-    static Dobject getPrototype()
+    Dobject getPrototype()
     {
-        return Darray_prototype;
+        return _prototype;
     }
 
-    static void initialize()
+    void initialize()
     {
-        Darray_constructor = new DarrayConstructor();
-        Darray_prototype = new DarrayPrototype();
+        _constructor = new DarrayConstructor();
+        _prototype = new DarrayPrototype();
 
-        Darray_constructor.Put(Text.prototype, Darray_prototype,
-                               Property.Attribute.DontEnum |
-                               Property.Attribute.ReadOnly);
+        _constructor.Put(Text.prototype, _prototype,
+                         Property.Attribute.DontEnum |
+                         Property.Attribute.ReadOnly);
     }
+private:
+    Dfunction _constructor;
+    Dobject _prototype;
 }
 
-
-private Dfunction Darray_constructor;
-private Dobject Darray_prototype;
 

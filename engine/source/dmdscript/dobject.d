@@ -48,9 +48,9 @@ class DobjectConstructor : Dfunction
     this()
     {
         super(1, Dfunction.getPrototype);
-        if(Dobject_prototype)
+        if(Dobject.getPrototype)
         {
-            Put(Text.prototype, Dobject_prototype,
+            Put(Text.prototype, Dobject.getPrototype,
                 Property.Attribute.DontEnum |
                 Property.Attribute.DontDelete |
                 Property.Attribute.ReadOnly);
@@ -571,28 +571,29 @@ class Dobject
         return null;
     }
 
-    static @safe @nogc nothrow
+static:
+    @safe @nogc nothrow
     Dfunction getConstructor()
     {
-        return Dobject_constructor;
+        return _constructor;
     }
 
-    static @safe @nogc nothrow
+    @safe @nogc nothrow
     Dobject getPrototype()
     {
-        return Dobject_prototype;
+        return _prototype;
     }
 
-    static void initialize()
+    void initialize()
     {
-        Dobject_prototype = new DobjectPrototype();
+        _prototype = new DobjectPrototype();
         Dfunction.initialize();
-        Dobject_constructor = new DobjectConstructor();
+        _constructor = new DobjectConstructor();
 
-        Dobject op = Dobject_prototype;
+        Dobject op = _prototype;
         Dobject f = Dfunction.getPrototype;
 
-        op.Put(Text.constructor, Dobject_constructor,
+        op.Put(Text.constructor, _constructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
@@ -609,10 +610,11 @@ class Dobject
 
         DnativeFunction.initialize(op, nfd, Property.Attribute.DontEnum);
     }
+private:
+    Dfunction _constructor;
+    Dobject _prototype;
 }
 
-private Dfunction Dobject_constructor;
-private Dobject Dobject_prototype;
 
 /*********************************************
  * Initialize the built-in's.
@@ -620,7 +622,7 @@ private Dobject Dobject_prototype;
 void dobject_init()
 {
     //writef("dobject_init(tc = %x)\n", cast(uint)tc);
-    if(Dobject_prototype)
+    if(Dobject.getPrototype !is null)
         return;                 // already initialized for this thread
 
     Dobject.initialize();

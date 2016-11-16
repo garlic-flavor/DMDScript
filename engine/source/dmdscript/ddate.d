@@ -1437,7 +1437,8 @@ class DdatePrototype : Ddate
 
         Dobject f = Dfunction.getPrototype;
 
-        Put(Text.constructor, Ddate_constructor, Property.Attribute.DontEnum);
+        Put(Text.constructor, Ddate.getConstructor,
+            Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -1502,14 +1503,14 @@ class Ddate : Dobject
 {
     this(d_number n)
     {
-        super(Ddate.getPrototype());
+        super(_prototype);
         classname = Text.Date;
         value.putVnumber(n);
     }
 
     this(d_time n)
     {
-        super(Ddate.getPrototype());
+        super(_prototype);
         classname = Text.Date;
         value.putVtime(n);
     }
@@ -1521,32 +1522,35 @@ class Ddate : Dobject
         value.putVnumber(d_number.nan);
     }
 
-    static void initialize()
+static:
+    void initialize()
     {
-        Ddate_constructor = new DdateConstructor();
-        Ddate_prototype = new DdatePrototype();
+        _constructor = new DdateConstructor();
+        _prototype = new DdatePrototype();
 
-        Ddate_constructor.Put(Text.prototype, Ddate_prototype,
-                              Property.Attribute.DontEnum |
-                              Property.Attribute.DontDelete |
-                              Property.Attribute.ReadOnly);
+        _constructor.Put(Text.prototype, _prototype,
+                         Property.Attribute.DontEnum |
+                         Property.Attribute.DontDelete |
+                         Property.Attribute.ReadOnly);
 
-        assert(Ddate_prototype.proptable.table.length != 0);
+        assert(_prototype.proptable.table.length != 0);
     }
 
-    static Dfunction getConstructor()
+    Dfunction getConstructor()
     {
-        return Ddate_constructor;
+        return _constructor;
     }
 
-    static Dobject getPrototype()
+    Dobject getPrototype()
     {
-        return Ddate_prototype;
+        return _prototype;
     }
+
+private:
+    Dfunction _constructor;
+    Dobject _prototype;
 }
 
-private Dfunction Ddate_constructor;
-private Dobject Ddate_prototype;
 
 /* =========== ported from undead.date. =========== */
 private

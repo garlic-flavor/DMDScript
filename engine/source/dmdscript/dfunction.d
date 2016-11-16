@@ -37,7 +37,7 @@ class DfunctionConstructor : Dfunction
 {
     this()
     {
-        super(1, Dfunction_prototype);
+        super(1, Dfunction.getPrototype);
 
         // Actually put in later by Dfunction::initialize()
         //unsigned attributes = DontEnum | DontDelete | ReadOnly;
@@ -263,7 +263,7 @@ class DfunctionPrototype : Dfunction
 
         classname = Text.Function;
         name = "prototype";
-        Put(Text.constructor, Dfunction_constructor, attributes);
+        Put(Text.constructor, Dfunction.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -362,49 +362,50 @@ class Dfunction : Dobject
       return null;
   }
 
-  static Dfunction isFunction(Value* v)
-  {
-      Dfunction r;
-      Dobject o;
+static:
+    Dfunction isFunction(Value* v)
+    {
+        Dfunction r;
+        Dobject o;
 
-      r = null;
-      if(!v.isPrimitive())
-      {
-          o = v.toObject();
-          if(o.isClass(Text.Function))
-              r = cast(Dfunction)o;
-      }
-      return r;
-  }
+        r = null;
+        if(!v.isPrimitive())
+        {
+            o = v.toObject();
+            if(o.isClass(Text.Function))
+                r = cast(Dfunction)o;
+        }
+        return r;
+    }
 
 
-  static @safe @nogc nothrow
-  Dfunction getConstructor()
-  {
-      return Dfunction_constructor;
-  }
+    @safe @nogc nothrow
+    Dfunction getConstructor()
+    {
+        return _constructor;
+    }
 
-  static @safe @nogc nothrow
-  Dobject getPrototype()
-  {
-      return Dfunction_prototype;
-  }
+    @safe @nogc nothrow
+    Dobject getPrototype()
+    {
+        return _prototype;
+    }
 
-  static void initialize()
-  {
-      Dfunction_constructor = new DfunctionConstructor();
-      Dfunction_prototype = new DfunctionPrototype();
+    void initialize()
+    {
+        _constructor = new DfunctionConstructor();
+        _prototype = new DfunctionPrototype();
 
-      Dfunction_constructor.Put(Text.prototype, Dfunction_prototype,
-                                Property.Attribute.DontEnum |
-                                Property.Attribute.DontDelete |
-                                Property.Attribute.ReadOnly);
+        _constructor.Put(Text.prototype, _prototype,
+                         Property.Attribute.DontEnum |
+                         Property.Attribute.DontDelete |
+                         Property.Attribute.ReadOnly);
 
-      Dfunction_constructor.internal_prototype = Dfunction_prototype;
-      Dfunction_constructor.proptable.previous = Dfunction_prototype.proptable;
-  }
+        _constructor.internal_prototype = _prototype;
+        _constructor.proptable.previous = _prototype.proptable;
+    }
+private:
+    Dfunction _constructor;
+    Dobject _prototype;
 }
-
-private Dfunction Dfunction_constructor;
-private Dobject Dfunction_prototype;
 

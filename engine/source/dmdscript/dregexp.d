@@ -389,7 +389,7 @@ class DregexpPrototype : Dregexp
             Property.Attribute.DontEnum;
         Dobject f = Dfunction.getPrototype;
 
-        Put(Text.constructor, Dregexp_constructor, attributes);
+        Put(Text.constructor, Dregexp.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -521,7 +521,8 @@ class Dregexp : Dobject
         return v.toObject().Call(cc, this, ret, arglist);
     }
 
-    static Dregexp isRegExp(Value* v)
+static:
+    Dregexp isRegExp(Value* v)
     {
         Dregexp r;
 
@@ -532,7 +533,7 @@ class Dregexp : Dobject
         return r;
     }
 
-    static DError* exec(Dobject othis, Value* ret, Value[] arglist, int rettype)
+    DError* exec(Dobject othis, Value* ret, Value[] arglist, int rettype)
     {
         //writef("Dregexp.exec(arglist.length = %d, rettype = %d)\n", arglist.length, rettype);
 
@@ -712,40 +713,41 @@ class Dregexp : Dobject
         return null;
     }
 
-    static Dfunction getConstructor()
+    Dfunction getConstructor()
     {
-        return Dregexp_constructor;
+        return _constructor;
     }
 
-    static Dobject getPrototype()
+    Dobject getPrototype()
     {
-        return Dregexp_prototype;
+        return _prototype;
     }
 
-    static void initialize()
+    void initialize()
     {
-        Dregexp_constructor = new DregexpConstructor();
-        Dregexp_prototype = new DregexpPrototype();
+        _constructor = new DregexpConstructor();
+        _prototype = new DregexpPrototype();
 
         version(none)
         {
-            writef("Dregexp_constructor = %x\n", Dregexp_constructor);
+            writef("Dregexp_constructor = %x\n", _constructor);
             uint *p;
-            p = cast(uint *)Dregexp_constructor;
+            p = cast(uint *)_constructor;
             writef("p = %x\n", p);
             if(p)
                 writef("*p = %x, %x, %x, %x\n", p[0], p[1], p[2], p[3]);
         }
 
-        Dregexp_constructor.Put(Text.prototype, Dregexp_prototype,
-                                Property.Attribute.DontEnum |
-                                Property.Attribute.DontDelete |
-                                Property.Attribute.ReadOnly);
+        _constructor.Put(Text.prototype, _prototype,
+                         Property.Attribute.DontEnum |
+                         Property.Attribute.DontDelete |
+                         Property.Attribute.ReadOnly);
     }
+private:
+    Dfunction _constructor;
+    Dobject _prototype;
 }
 
-private Dfunction Dregexp_constructor;
-private Dobject Dregexp_prototype;
 
 
 package

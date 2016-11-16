@@ -1149,7 +1149,8 @@ class DstringPrototype : Dstring
     {
         super(Dobject.getPrototype);
 
-        Put(Text.constructor, Dstring_constructor, Property.Attribute.DontEnum);
+        Put(Text.constructor, Dstring.getConstructor,
+            Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -1221,28 +1222,30 @@ class Dstring : Dobject
         value.putVstring(null);
     }
 
-    static void initialize()
+static:
+    Dfunction getConstructor()
     {
-        Dstring_constructor = new DstringConstructor();
-        Dstring_prototype = new DstringPrototype();
+        return _constructor;
+    }
 
-        Dstring_constructor.Put(Text.prototype, Dstring_prototype,
+    Dobject getPrototype()
+    {
+        return _prototype;
+    }
+    void initialize()
+    {
+        _constructor = new DstringConstructor();
+        _prototype = new DstringPrototype();
+
+        _constructor.Put(Text.prototype, _prototype,
                                 Property.Attribute.DontEnum |
                                 Property.Attribute.DontDelete |
                                 Property.Attribute.ReadOnly);
     }
 
-    static Dfunction getConstructor()
-    {
-        return Dstring_constructor;
-    }
-
-    static Dobject getPrototype()
-    {
-        return Dstring_prototype;
-    }
+private:
+    Dfunction _constructor;
+    Dobject _prototype;
 }
 
-private Dfunction Dstring_constructor;
-private Dobject Dstring_prototype;
 
