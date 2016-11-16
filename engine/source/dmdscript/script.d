@@ -202,7 +202,9 @@ private:
         {
             this.base = base;
             this.code = code;
-            assert(base !is null && code !is null && base < code);
+            assert(base !is null);
+            assert(code !is null);
+            assert(base <= code);
         }
 
         @safe @nogc pure nothrow
