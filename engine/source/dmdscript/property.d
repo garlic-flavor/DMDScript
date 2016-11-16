@@ -52,9 +52,8 @@ struct PropTable
 {
     RandAA!(Value, Property) table;
     PropTable* previous;
-    alias PA = Property.Attribute;
 
-    int        opApply(int delegate(ref Property) dg)
+    int opApply(int delegate(ref Property) dg)
     {
         initialize();
         int result;
@@ -100,6 +99,7 @@ struct PropTable
         return p;
     }
 
+    @trusted
     Value* get(Value* key, hash_t hash)
     {
         uint i;
@@ -136,6 +136,7 @@ struct PropTable
         return null;                    // not found
     }
 
+    @trusted
     Value* get(d_uint32 index)
     {
         //writefln("get(index = %d)", index);
@@ -145,6 +146,7 @@ struct PropTable
         return get(&key, Value.calcHash(index));
     }
 
+    @trusted
     Value* get(Identifier* id)
     {
         //writefln("get('%s', hash = x%x)", name, hash);
@@ -152,6 +154,7 @@ struct PropTable
         //return get(id.value.string, id.value.hash);
     }
 
+    @trusted
     Value* get(d_string name, hash_t hash)
     {
         //writefln("get('%s', hash = x%x)", name, hash);
@@ -165,7 +168,7 @@ struct PropTable
      * Determine if property exists for this object.
      * The enumerable flag means the DontEnum attribute cannot be set.
      */
-
+    @safe
     int hasownproperty(Value* key, int enumerable)
     {
         initialize();
@@ -176,12 +179,15 @@ struct PropTable
                      !(p.attributes & Property.Attribute.DontEnum));
     }
 
+    @safe
     int hasproperty(Value* key)
     {
         initialize();
-        return (*key in table) != null || (previous && previous.hasproperty(key));
+        return (*key in table) != null ||
+            (previous && previous.hasproperty(key));
     }
 
+    @trusted
     int hasproperty(d_string name)
     {
         Value v;
@@ -190,7 +196,9 @@ struct PropTable
         return hasproperty(&v);
     }
 
-    Value* put(Value* key, hash_t hash, Value* value, PA attributes)
+    @safe
+    Value* put(Value* key, hash_t hash, Value* value,
+               Property.Attribute attributes)
     {
         initialize();
         Property* p;
@@ -241,19 +249,23 @@ struct PropTable
 
             // Overwrite property with new value
             Value.copy(&p.value, value);
-            p.attributes = (cast(PA)attributes & ~PA.DontOverride) |
-                cast(PA)(p.attributes & (PA.DontDelete | PA.DontEnum));
+            p.attributes =
+                (attributes & ~Property.Attribute.DontOverride) |
+                (p.attributes & (Property.Attribute.DontDelete |
+                                 Property.Attribute.DontEnum));
             return null;
         }
         else
         {
             //table[*key] = Property(attributes & ~DontOverride,*value);
-            auto v = Property(*value, (cast(PA)attributes & ~PA.DontOverride));
+            auto v = Property(*value,
+                              (attributes & ~Property.Attribute.DontOverride));
             table.insertAlt(*key, v, hash);
             return null; // success
         }
     }
 
+    @trusted
     Value* put(d_string name, Value* value, Property.Attribute attributes)
     {
         Value key;
@@ -264,6 +276,7 @@ struct PropTable
         return put(&key, Value.calcHash(name), value, attributes);
     }
 
+    @trusted
     Value* put(d_uint32 index, Value* value, Property.Attribute attributes)
     {
         Value key;
@@ -274,6 +287,7 @@ struct PropTable
         return put(&key, Value.calcHash(index), value, attributes);
     }
 
+    @trusted
     Value* put(d_uint32 index, d_string str, Property.Attribute attributes)
     {
         Value key;
@@ -285,6 +299,7 @@ struct PropTable
         return put(&key, Value.calcHash(index), &value, attributes);
     }
 
+    @safe
     int canput(Value* key, hash_t hash)
     {
         initialize();
@@ -306,6 +321,7 @@ struct PropTable
         return true;                    // success
     }
 
+    @trusted
     int canput(d_string name)
     {
         Value v;
@@ -315,6 +331,7 @@ struct PropTable
         return canput(&v, v.toHash());
     }
 
+    @safe
     int del(Value* key)
     {
         initialize();
@@ -331,6 +348,7 @@ struct PropTable
         return true;                    // not found
     }
 
+    @trusted
     int del(d_string name)
     {
         Value v;
@@ -341,6 +359,7 @@ struct PropTable
         return del(&v);
     }
 
+    @trusted
     int del(d_uint32 index)
     {
         Value v;
@@ -350,6 +369,8 @@ struct PropTable
         //writef("PropTable::del(%d)\n", index);
         return del(&v);
     }
+
+    @safe pure nothrow
     void initialize()
     {
         if(table is null)

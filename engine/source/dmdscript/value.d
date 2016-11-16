@@ -1221,6 +1221,8 @@ Value* signalingUndefined(d_string id)
  */
 struct DError
 {
+    import dmdscript.opcodes : IR;
+
     Value entity;
     alias entity this;
 
@@ -1246,6 +1248,20 @@ struct DError
         {
             assert(d0.exception);
             d0.exception.addTrace(name, srctext);
+        }
+        else
+            assert(0);
+    }
+
+    @safe
+    void addTrace(const(IR)* base, const(IR)* code)
+    {
+        import dmdscript.protoerror;
+
+        if (auto d0 = cast(D0base)entity.toObject)
+        {
+            assert(d0.exception);
+            d0.exception.addTrace(base, code);
         }
         else
             assert(0);

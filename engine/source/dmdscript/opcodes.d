@@ -312,17 +312,17 @@ void PutValue(CallContext* cc, Identifier* id, Value* a)
  * Helper function for Values that cannot be converted to Objects.
  */
 
-DError* cannotConvert(Value* b, int linnum)
+DError* cannotConvert(Value* b)
 {
     DError* sta;
 
-    if(b.isUndefinedOrNull())
+    if(b.isUndefinedOrNull)
     {
-        sta = CannotConvertToObject4Error(b.getType, linnum);
+        sta = CannotConvertToObject4Error(b.getType);
     }
     else
     {
-        sta = CannotConvertToObject2Error(b.getType, b.toString, linnum);
+        sta = CannotConvertToObject2Error(b.getType, b.toString);
     }
     return sta;
 }
@@ -414,10 +414,9 @@ struct IR
                 o = scopex[$ - 1];
                 scopex = scopex[0 .. $ - 1];            // pop entry off scope chain
 
-                if(o.isCatch())
+                if(o.isCatch)
                 {
                     ca = cast(Catch)o;
-                    //writef("catch('%s')\n", ca.name);
                     o = new Dobject(Dobject.getPrototype());
                     version(JSCRIPT_CATCH_BUG)
                     {
@@ -482,34 +481,11 @@ struct IR
 
         debug(VERIFY) uint checksum = IR.verify(__LINE__, code);
 
-        version(none)
-        {
-            writefln("+printfunc");
-            printfunc(code);
-            writefln("-printfunc");
-        }
         scopex = cc.scopex;
         //printf("call: scope = %p, length = %d\n", scopex.ptr, scopex.length);
         dimsave = scopex.length;
         //if (logflag)
         //    writef("IR.call(othis = %p, code = %p, locals = %p)\n",othis,code,locals);
-
-        //debug
-        version(none) //no data field in scop struct
-        {
-            uint debug_scoperoot = cc.scoperoot;
-            uint debug_globalroot = cc.globalroot;
-            uint debug_scopedim = scopex.length;
-            uint debug_scopeallocdim = scopex.allocdim;
-            Dobject debug_global = cc.global;
-            Dobject debug_variable = cc.variable;
-
-            void** debug_pscoperootdata = cast(void**)mem.malloc((void*).sizeof * debug_scoperoot);
-            void** debug_pglobalrootdata = cast(void**)mem.malloc((void*).sizeof * debug_globalroot);
-
-            memcpy(debug_pscoperootdata, scopex.data, (void*).sizeof * debug_scoperoot);
-            memcpy(debug_pglobalrootdata, scopex.data, (void*).sizeof * debug_globalroot);
-        }
 
         assert(code);
         assert(othis);
@@ -521,33 +497,6 @@ struct IR
             if(cc.Interrupt)                    // see if script was interrupted
                 goto Linterrupt;
             try{
-                version(none)
-                {
-                    writef("Scopex len: %d ",scopex.length);
-                    writef("%2d:", code - codestart);
-                    print(code - codestart, code);
-                    writeln();
-                }
-
-                //debug
-                version(none) //no data field in scop struct
-                {
-                    assert(scopex == cc.scopex);
-                    assert(debug_scoperoot == cc.scoperoot);
-                    assert(debug_globalroot == cc.globalroot);
-                    assert(debug_global == cc.global);
-                    assert(debug_variable == cc.variable);
-                    assert(scopex.length >= debug_scoperoot);
-                    assert(scopex.length >= debug_globalroot);
-                    assert(scopex.length >= debug_scopedim);
-                    assert(scopex.allocdim >= debug_scopeallocdim);
-                    assert(0 == memcmp(debug_pscoperootdata, scopex.data, (void*).sizeof * debug_scoperoot));
-                    assert(0 == memcmp(debug_pglobalrootdata, scopex.data, (void*).sizeof * debug_globalroot));
-                    assert(scopex);
-                }
-
-                //writef("\tIR%d:\n", code.opcode);
-
                 assert(code.opcode < Opcode.max,
                        "Unrecognized IR instruction " ~ code.opcode.to!string);
                 final switch(code.opcode)
@@ -565,7 +514,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = cannotConvert(b, code.opcode.linnum);
+                        sta = cannotConvert(b);
                         goto Lthrow;
                     }
                     c = locals + (code + 3).index;
@@ -769,7 +718,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = cannotConvert(b, code.opcode.linnum);
+                        sta = cannotConvert(b);
                         goto Lthrow;
                     }
                     sta = o.Put((code + 3).id.value.text, a,
@@ -1261,7 +1210,7 @@ struct IR
                         o = b.toObject();
                         if(!o)
                         {
-                            sta = cannotConvert(b, code.opcode.linnum);
+                            sta = cannotConvert(b);
                             goto Lthrow;
                         }
                         s = (code.opcode == Opcode.Del)
@@ -1403,8 +1352,6 @@ struct IR
                     Lagain:
                     tx = b.getType();
                     ty = c.getType();
-                    if(logflag)
-                        writef("tx('%s', '%s')\n", tx, ty);
                     if(tx == ty)
                     {
                         if(tx == TypeUndefined ||
@@ -1416,16 +1363,9 @@ struct IR
                             d_number y = c.number;
 
                             res = (x == y);
-                            //writef("x = %g, y = %g, res = %d\n", x, y, res);
                         }
                         else if(tx == TypeString)
                         {
-                            if(logflag)
-                            {
-                                writef("b = %x, c = %x\n", b, c);
-                                writef("cmp('%s', '%s')\n", b.text, c.text);
-                                writef("cmp(%d, %d)\n", b.text.length, c.text.length);
-                            }
                             res = (b.text == c.text);
                         }
                         else if(tx == TypeBoolean)
@@ -1500,12 +1440,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    version(none)
-                    {
-                        writeln("***\n");
-                        print(code-codestart,code);
-                        writeln();
-                    }
+
                     tx = b.getType();
                     ty = c.getType();
                     if(tx == ty)
@@ -1670,7 +1605,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = cannotConvert(b, code.opcode.linnum);
+                        sta = cannotConvert(b);
                         goto Lthrow;
                     }
                     sta = o.putIterator(a);
@@ -1769,7 +1704,7 @@ struct IR
                     if(!v)
                     {
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
-                        sta = UndefinedVarError(s, code.opcode.linnum);
+                        sta = UndefinedVarError(s);
                         goto Lthrow;
                     }
                     // Should we pass othis or o? I think othis.
@@ -1890,7 +1825,7 @@ struct IR
                     o = a.toObject();
                     if(!o)
                     {
-                        sta = cannotConvert(a, code.opcode.linnum);
+                        sta = cannotConvert(a);
                         goto Lthrow;
                     }
                     scopex ~= o;                // push entry onto scope chain
@@ -1945,12 +1880,14 @@ struct IR
                 case Opcode.Throw:
                     a = locals + (code + 1).index;
                     sta = new DError(*a);
-                    cc.linnum = code.opcode.linnum;
                     Lthrow:
                     assert(scopex[0] !is null);
                     sta = unwindStack(sta);
                     if(sta)
+                    {
+                        sta.addTrace(codestart, code);
                         return sta;
+                    }
                     break;
                 case Opcode.TryCatch:
                     SCOPECACHE_CLEAR();
@@ -1975,7 +1912,7 @@ struct IR
                     version(all)  // Not supported under some com servers
                     {
                         auto linnum = (code + 1).index;
-                        sta = AssertError(linnum, linnum);
+                        sta = AssertError(linnum);
                         goto Lthrow;
                     }
                     else
@@ -1994,15 +1931,12 @@ struct IR
             {
                 sta = unwindStack(t.toDError!typeerror);
                 if (sta)
+                {
+                    sta.addTrace(codestart, code);
                     return sta;
+                }
 
             }
-            // catch(ErrorValue err)
-            // {
-            //     sta = unwindStack(&err.value);
-            //     if(sta)//sta is exception that was not caught
-            //         return sta;
-            // }
         }
 
         Linterrupt:
@@ -2015,11 +1949,10 @@ struct IR
      * Useful for debugging.
      */
 
-    debug static void print(uint address, IR* code)
+    debug static void toBuffer(uint address, const(IR)* code,
+                               scope void delegate(in tchar[]) sink)
     {
-        import std.stdio : writeln;
-
-        static string proc(T)(size_t address, IR* c)
+        static string proc(T)(size_t address, const(IR)* c)
         {
             import std.traits : Parameters;
 
@@ -2030,7 +1963,7 @@ struct IR
                 return (cast(T*)c).toString(address);
             else static assert(0);
         }
-        IRTypeDispatcher!proc(code.opcode, address, code,).writeln;
+        sink(IRTypeDispatcher!proc(code.opcode, address, code,));
     }
 
     /*********************************
@@ -2043,22 +1976,23 @@ struct IR
         return IRTypeDispatcher!sizeOf(opcode);
     }
 
-    debug static void printfunc(IR* code)
-    {
-        import std.stdio : writef;
+    // deprecated
+    // debug static void printfunc(IR* code)
+    // {
+    //     import std.stdio : writef;
 
-        IR* codestart = code;
+    //     // IR* codestart = code;
 
-        for(;; )
-        {
-            //writef("%2d(%d):", code - codestart, code.linnum);
-            writef("%2d:", code - codestart);
-            print(code - codestart, code);
-            if(code.opcode == Opcode.End)
-                return;
-            code += size(code.opcode);
-        }
-    }
+    //     // for(;; )
+    //     // {
+    //     //     //writef("%2d(%d):", code - codestart, code.linnum);
+    //     //     writef("%2d:", code - codestart);
+    //     //     print(code - codestart, code);
+    //     //     if(code.opcode == Opcode.End)
+    //     //         return;
+    //     //     code += size(code.opcode);
+    //     // }
+    // }
 
     /***************************************
      * Verify that it is a correct sequence of code.

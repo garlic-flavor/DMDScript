@@ -22,6 +22,7 @@ import dmdscript.dobject;
 import dmdscript.program;
 import dmdscript.text;
 import dmdscript.functiondefinition;
+import dmdscript.opcodes;
 
 debug import std.stdio;
 /* =================== Configuration ======================= */
@@ -38,24 +39,22 @@ enum uint JSCRIPT_ESCAPEV_BUG = 0; // emulate Jscript's bug where \v is
 
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-alias char tchar;
+alias tchar = char;
 
-alias ulong number_t;
-alias double real_t;
+alias number_t = ulong;
+alias real_t = double;
 
-alias uint Loc;                 // file location (line number)
+alias Loc = uint;                 // file location (line number)
 
 // Aliases for script primitive types
-alias uint d_boolean;
-alias double d_number;
-alias int d_int32;
-alias uint d_uint32;
-alias ushort d_uint16;
-alias immutable(tchar)[] d_string;
+alias d_boolean = uint;
+alias d_number = double;
+alias d_int32 = int;
+alias d_uint32 = uint;
+alias d_uint16 = ushort;
+alias d_string = immutable(tchar)[];
 alias d_time = long;
 enum d_time_nan = long.min;
-
-int logflag;    // used for debugging
 
 //
 class ScriptException : Exception
@@ -64,40 +63,60 @@ class ScriptException : Exception
 
     @nogc @safe pure nothrow
     this(d_string msg, d_string file = __FILE__, size_t line = __LINE__)
-    { super(msg, file, line); }
+    {
+        super(msg, file, line);
+    }
 
     @safe pure
     this(d_string message, d_string sourcename, d_string source,
          immutable(tchar)* pos, string file = __FILE__, size_t line = __LINE__)
-    { super(message, file, line); addTrace(sourcename, source, pos); }
+    {
+        super(message, file, line); addTrace(sourcename, source, pos);
+    }
 
     @safe pure
     this(d_string message, d_string sourcename, d_string source,
          Loc loc, string file = __FILE__, size_t line = __LINE__)
-    { super(message, file, line); addTrace(sourcename, source, loc); }
+    {
+        super(message, file, line); addTrace(sourcename, source, loc);
+    }
 
     @safe pure
     this(d_string msg, Loc loc, string file = __FILE__, size_t line = __LINE__)
-    { super(msg, file, line); addTrace(loc); }
-
+    {
+        super(msg, file, line); addTrace(loc);
+    }
 
     @safe pure
     void addTrace(d_string sourcename, d_string source, Loc loc)
-    { trace ~= SourceDescriptor(sourcename, source, loc); }
+    {
+        trace ~= SourceDescriptor(sourcename, source, loc);
+    }
 
     @safe pure
     void addTrace(d_string sourcename, d_string source,
                    immutable(tchar)* pos)
-    { trace ~= SourceDescriptor(sourcename, source, pos); }
+    {
+        trace ~= SourceDescriptor(sourcename, source, pos);
+    }
 
     @safe pure
     void addTrace(Loc loc)
-    { trace ~= SourceDescriptor(loc); }
+    {
+        trace ~= SourceDescriptor(loc);
+    }
+
+    @safe pure
+    void addTrace(const(IR)* base, const(IR)* code)
+    {
+        trace ~= SourceDescriptor(base, code);
+    }
 
     @safe @nogc pure nothrow
     void addTrace(d_string sourcename, d_string source)
-    { foreach (ref one; trace) one.addTrace(sourcename, source); }
-
+    {
+        foreach (ref one; trace) one.addTrace(sourcename, source);
+    }
 
     override void toString(scope void delegate(in char[]) sink) const
     {
@@ -150,8 +169,13 @@ private:
     struct SourceDescriptor
     {
         d_string name;
+
         d_string buf;
         immutable(tchar)* pos; // pos is in buf.
+
+        const(IR)* base;
+        const(IR)* code;
+
         Loc linnum; // source line number (1 based, 0 if not available)
 
         @trusted @nogc pure nothrow
@@ -174,8 +198,18 @@ private:
         }
 
         @safe @nogc pure nothrow
+        this(const(IR)* base, const(IR)* code)
+        {
+            this.base = base;
+            this.code = code;
+            assert(base !is null && code !is null && base < code);
+        }
+
+        @safe @nogc pure nothrow
         this(Loc linnum)
-        { this.linnum = linnum; }
+        {
+            this.linnum = linnum;
+        }
 
         @trusted @nogc pure nothrow
         void addTrace(d_string name, d_string buf)
@@ -195,11 +229,12 @@ private:
              import std.conv : to;
              import std.array : replace;
              import std.range : repeat, take;
+             import dmdscript.ir : Opcode;
 
              char[2] tmpBuff = void;
              string srcline;
              int charpos = -1;
-             Loc linnum = this.linnum;
+             Loc linnum = code !is null ? code.opcode.linnum : this.linnum;
              enum Tab = "    ";
 
              if (0 < buf.length)
@@ -237,6 +272,25 @@ private:
                      sink("^");
                  }
              }
+
+             debug
+             {
+                 if (base !is null && code !is null && 0 < linnum)
+                 {
+                     for (const(IR)* ite = base; ; ite += IR.size(ite.opcode))
+                     {
+                         if (ite.opcode == Opcode.End ||
+                             ite.opcode == Opcode.Error ||
+                             linnum < ite.opcode.linnum)
+                             break;
+                         if (ite.opcode.linnum < linnum)
+                             continue;
+                         sink(ite is code ? "\n*" : "\n ");
+                         IR.toBuffer(0, ite, sink);
+                     }
+                     sink("\n");
+                 }
+             }
         }
 
     }
@@ -260,7 +314,6 @@ struct CallContext
     FunctionDefinition callerf;
 
     DError value;                // place to store exception; must be same size as Value
-    Loc               linnum;     // source line number of exception (1 based, 0 if not available)
 
     int                Interrupt;  // !=0 if cancelled due to interrupt
 }

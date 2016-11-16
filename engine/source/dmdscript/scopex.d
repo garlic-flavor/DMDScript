@@ -45,8 +45,6 @@ struct Scope
     @safe @nogc pure nothrow
     void zero()
     {
-        destroy(this);
-/*
         enclosing = null;
 
         src = null;
@@ -60,7 +58,6 @@ struct Scope
         continueTarget = null;
         breakTarget = null;
         switchTarget = null;
-*/
     }
 
     @safe @nogc pure nothrow

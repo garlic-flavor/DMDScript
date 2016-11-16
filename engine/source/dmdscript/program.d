@@ -226,8 +226,7 @@ class Program
         result = IR.call(cc, cc.global, globalfunction.code, &ret, locals.ptr);
         if(result)
         {
-            auto exception = result.toScriptException;//(cc.linnum);
-            cc.linnum = 0;
+            auto exception = result.toScriptException;
             p1 = null;
             exception.addTrace(
                 globalfunction.name !is null ? globalfunction.name.toString
