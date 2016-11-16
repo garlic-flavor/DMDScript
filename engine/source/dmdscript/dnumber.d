@@ -23,7 +23,6 @@ import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.dfunction;
 import dmdscript.value;
-import dmdscript.threadcontext;
 import dmdscript.text;
 import dmdscript.property;
 import dmdscript.errmsgs;
@@ -35,7 +34,7 @@ class DnumberConstructor : Dfunction
 {
     this()
     {
-        super(1, Dfunction_prototype);
+        super(1, Dfunction.getPrototype);
         auto attributes =
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
@@ -605,10 +604,10 @@ class DnumberPrototype : Dnumber
 {
     this()
     {
-        super(Dobject_prototype);
+        super(Dobject.getPrototype);
         auto attributes = Property.Attribute.DontEnum;
 
-        Dobject f = Dfunction_prototype;
+        Dobject f = Dfunction.getPrototype;
 
         Put(Text.constructor, Dnumber_constructor, attributes);
 
@@ -668,4 +667,7 @@ class Dnumber : Dobject
     }
 }
 
+
+private Dfunction Dnumber_constructor;
+private Dobject Dnumber_prototype;
 

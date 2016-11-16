@@ -22,7 +22,6 @@ debug import std.stdio;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.value;
-import dmdscript.threadcontext;
 import dmdscript.dfunction;
 import dmdscript.dnative;
 import dmdscript.property;
@@ -183,7 +182,7 @@ class DdateConstructor : Dfunction
 {
     this()
     {
-        super(7, Dfunction_prototype);
+        super(7, Dfunction.getPrototype);
         name = "Date";
 
         static enum NativeFunctionData[] nfd =
@@ -1434,9 +1433,9 @@ class DdatePrototype : Ddate
 {
     this()
     {
-        super(Dobject_prototype);
+        super(Dobject.getPrototype);
 
-        Dobject f = Dfunction_prototype;
+        Dobject f = Dfunction.getPrototype;
 
         Put(Text.constructor, Ddate_constructor, Property.Attribute.DontEnum);
 
@@ -1546,6 +1545,8 @@ class Ddate : Dobject
     }
 }
 
+private Dfunction Ddate_constructor;
+private Dobject Ddate_prototype;
 
 /* =========== ported from undead.date. =========== */
 private

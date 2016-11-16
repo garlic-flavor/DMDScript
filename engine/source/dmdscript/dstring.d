@@ -23,7 +23,6 @@ import dmdscript.dobject;
 import dmdscript.dregexp;
 import dmdscript.darray;
 import dmdscript.value;
-import dmdscript.threadcontext;
 import dmdscript.dfunction;
 import dmdscript.text;
 import dmdscript.property;
@@ -70,7 +69,7 @@ class DstringConstructor : Dfunction
 {
     this()
     {
-        super(1, Dfunction_prototype);
+        super(1, Dfunction.getPrototype);
         name = "String";
 
         static enum NativeFunctionData[] nfd =
@@ -1148,7 +1147,7 @@ class DstringPrototype : Dstring
 {
     this()
     {
-        super(Dobject_prototype);
+        super(Dobject.getPrototype);
 
         Put(Text.constructor, Dstring_constructor, Property.Attribute.DontEnum);
 
@@ -1243,3 +1242,7 @@ class Dstring : Dobject
         return Dstring_prototype;
     }
 }
+
+private Dfunction Dstring_constructor;
+private Dobject Dstring_prototype;
+

@@ -23,7 +23,6 @@ import dmdscript.dobject;
 import dmdscript.dglobal;
 import dmdscript.functiondefinition;
 import dmdscript.statement;
-import dmdscript.threadcontext;
 import dmdscript.value;
 import dmdscript.opcodes;
 import dmdscript.darray;
@@ -32,6 +31,7 @@ import dmdscript.scopex;
 import dmdscript.text;
 import dmdscript.property;
 import dmdscript.identifier;
+import dmdscript.ddate;
 
 debug import std.stdio;
 
@@ -77,7 +77,7 @@ class Program
         cc.scoperoot++;
         cc.globalroot++;
 
-        assert(Ddate_prototype.proptable.table.length != 0);
+        assert(Ddate.getPrototype.proptable.table.length != 0);
     }
 
     /**************************************************

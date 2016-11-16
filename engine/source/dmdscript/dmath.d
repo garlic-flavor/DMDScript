@@ -24,7 +24,6 @@ import dmdscript.script;
 import dmdscript.value;
 import dmdscript.dobject;
 import dmdscript.dnative;
-import dmdscript.threadcontext;
 import dmdscript.text;
 import dmdscript.property;
 
@@ -288,7 +287,7 @@ class Dmath : Dobject
 {
     this()
     {
-        super(Dobject_prototype);
+        super(Dobject.getPrototype);
 
         //writef("Dmath::Dmath(%x)\n", this);
         auto attributes =
@@ -353,3 +352,4 @@ class Dmath : Dobject
     }
 }
 
+package Dmath Dmath_object;

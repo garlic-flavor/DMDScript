@@ -21,7 +21,6 @@ import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.dfunction;
 import dmdscript.value;
-import dmdscript.threadcontext;
 import dmdscript.dnative;
 import dmdscript.text;
 import dmdscript.property;
@@ -36,7 +35,7 @@ class DerrorConstructor : Dfunction
 {
     this()
     {
-        super(1, Dfunction_prototype);
+        super(1, Dfunction.getPrototype);
     }
 
     override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
@@ -104,8 +103,8 @@ class DerrorPrototype : Derror
 {
     this()
     {
-        super(Dobject_prototype);
-        Dobject f = Dfunction_prototype;
+        super(Dobject.getPrototype);
+        Dobject f = Dfunction.getPrototype;
         //d_string m = d_string_ctor(DTEXT("Error.prototype.message"));
 
         Put(Text.constructor, Derror_constructor, Property.Attribute.DontEnum);
@@ -188,4 +187,7 @@ class Derror : Dobject
                                Property.Attribute.ReadOnly);
     }
 }
+
+private Dfunction Derror_constructor;
+private Dobject Derror_prototype;
 

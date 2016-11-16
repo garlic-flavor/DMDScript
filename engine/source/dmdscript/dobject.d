@@ -21,7 +21,6 @@ import dmdscript.script;
 import dmdscript.value;
 import dmdscript.dfunction;
 import dmdscript.property;
-import dmdscript.threadcontext;
 import dmdscript.iterator;
 import dmdscript.identifier;
 import dmdscript.errmsgs;
@@ -48,7 +47,7 @@ class DobjectConstructor : Dfunction
 {
     this()
     {
-        super(1, Dfunction_prototype);
+        super(1, Dfunction.getPrototype);
         if(Dobject_prototype)
         {
             Put(Text.prototype, Dobject_prototype,
@@ -591,7 +590,7 @@ class Dobject
         Dobject_constructor = new DobjectConstructor();
 
         Dobject op = Dobject_prototype;
-        Dobject f = Dfunction_prototype;
+        Dobject f = Dfunction.getPrototype;
 
         op.Put(Text.constructor, Dobject_constructor,
                Property.Attribute.DontEnum);
@@ -612,6 +611,8 @@ class Dobject
     }
 }
 
+private Dfunction Dobject_constructor;
+private Dobject Dobject_prototype;
 
 /*********************************************
  * Initialize the built-in's.

@@ -24,7 +24,6 @@ import dmdscript.text;
 import dmdscript.dobject;
 import dmdscript.value;
 import dmdscript.statement;
-import dmdscript.threadcontext;
 import dmdscript.functiondefinition;
 import dmdscript.scopex;
 import dmdscript.opcodes;
@@ -37,6 +36,9 @@ import dmdscript.dnumber;
 import dmdscript.dboolean;
 import dmdscript.dfunction;
 import dmdscript.dnative;
+import dmdscript.ddate;
+import dmdscript.derror;
+import dmdscript.dmath;
 
 d_string arg0string(Value[] arglist)
 {
@@ -807,29 +809,38 @@ class Dglobal : Dobject
 
         // Constructor properties
 
-        Put(Text.Object, Dobject_constructor,
+        Put(Text.Object, Dobject.getConstructor,
             Property.Attribute.DontEnum);
-        Put(Text.Function, Dfunction_constructor,
+        Put(Text.Function, Dfunction.getConstructor,
             Property.Attribute.DontEnum);
-        Put(Text.Array, Darray_constructor,
+        Put(Text.Array, Darray.getConstructor,
             Property.Attribute.DontEnum);
-        Put(Text.String, Dstring_constructor,
+        Put(Text.String, Dstring.getConstructor,
             Property.Attribute.DontEnum);
-        Put(Text.Boolean, Dboolean_constructor,
+        Put(Text.Boolean, Dboolean.getConstructor,
             Property.Attribute.DontEnum);
-        Put(Text.Number, Dnumber_constructor,
+        Put(Text.Number, Dnumber.getConstructor,
             Property.Attribute.DontEnum);
-        Put(Text.Date, Ddate_constructor,
+        Put(Text.Date, Ddate.getConstructor,
             Property.Attribute.DontEnum);
-        Put(Text.RegExp, Dregexp_constructor,
+        Put(Text.RegExp, Dregexp.getConstructor,
             Property.Attribute.DontEnum);
-        Put(Text.Error, Derror_constructor,
+        Put(Text.Error, Derror.getConstructor,
             Property.Attribute.DontEnum);
 
-        foreach(d_string key, Dfunction ctor; ctorTable)
-        {
-            Put(key, ctor, Property.Attribute.DontEnum);
-        }
+        Put(syntaxerror.Text, syntaxerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        Put(evalerror.Text, evalerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        Put(referenceerror.Text, referenceerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        Put(rangeerror.Text, rangeerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        Put(typeerror.Text, typeerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        Put(urierror.Text, urierror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+
 
         // Other properties
 

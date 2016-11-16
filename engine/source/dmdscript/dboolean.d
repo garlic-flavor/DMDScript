@@ -20,7 +20,6 @@ module dmdscript.dboolean;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.value;
-import dmdscript.threadcontext;
 import dmdscript.dfunction;
 import dmdscript.text;
 import dmdscript.property;
@@ -33,7 +32,7 @@ class DbooleanConstructor : Dfunction
 {
     this()
     {
-        super(1, Dfunction_prototype);
+        super(1, Dfunction.getPrototype);
         name = "Boolean";
     }
 
@@ -110,7 +109,7 @@ class DbooleanPrototype : Dboolean
 {
     this()
     {
-        super(Dobject_prototype);
+        super(Dobject.getPrototype);
         //Dobject f = Dfunction_prototype;
 
         Put(Text.constructor, Dboolean_constructor,
@@ -166,4 +165,7 @@ class Dboolean : Dobject
                                  Property.Attribute.ReadOnly);
     }
 }
+
+private Dfunction Dboolean_constructor;
+private Dobject Dboolean_prototype;
 

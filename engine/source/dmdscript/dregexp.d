@@ -24,7 +24,6 @@ import dmdscript.value;
 import dmdscript.protoerror;
 import dmdscript.text;
 import dmdscript.darray;
-import dmdscript.threadcontext;
 import dmdscript.dfunction;
 import dmdscript.property;
 import dmdscript.errmsgs;
@@ -54,7 +53,7 @@ class DregexpConstructor : Dfunction
 
     this()
     {
-        super(2, Dfunction_prototype);
+        super(2, Dfunction.getPrototype);
 
         Value v;
         v.putVstring(null);
@@ -382,13 +381,13 @@ class DregexpPrototype : Dregexp
 {
     this()
     {
-        super(Dobject_prototype);
+        super(Dobject.getPrototype);
         classname = Text.Object;
         auto attributes =
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum;
-        Dobject f = Dfunction_prototype;
+        Dobject f = Dfunction.getPrototype;
 
         Put(Text.constructor, Dregexp_constructor, attributes);
 
@@ -744,6 +743,10 @@ class Dregexp : Dobject
                                 Property.Attribute.ReadOnly);
     }
 }
+
+private Dfunction Dregexp_constructor;
+private Dobject Dregexp_prototype;
+
 
 package
 {

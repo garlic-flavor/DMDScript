@@ -21,10 +21,10 @@ module dmdscript.protoerror;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.value;
-import dmdscript.threadcontext;
 import dmdscript.text;
 import dmdscript.dfunction;
 import dmdscript.property;
+import dmdscript.derror;
 
 int foo;        // cause this module to be linked in
 
@@ -37,7 +37,7 @@ class D0_constructor : Dfunction
 
     this(d_string text_d1, Dobject function(d_string) newD0)
     {
-        super(1, Dfunction_prototype);
+        super(1, Dfunction.getPrototype);
         this.text_d1 = text_d1;
         this.newD0 = newD0;
     }
@@ -100,18 +100,21 @@ package class D0base : Dobject
 
 template proto(alias TEXT_D1)
 {
+    enum Text = TEXT_D1;
+
+    private Dobject _prototype;
+    private Dfunction _ctor;
     /* ===================== D0_prototype ==================== */
 
     class D0_prototype : D0
     {
         this()
         {
-            super(Derror_prototype);
+            super(Derror.getPrototype);
 
             d_string s;
 
-            Put(Text.constructor, ctorTable[TEXT_D1],
-                Property.Attribute.DontEnum);
+            Put(Text.constructor, _ctor, Property.Attribute.DontEnum);
             Put(Text.name, TEXT_D1, Property.Attribute.None);
             s = TEXT_D1 ~ ".prototype.message";
             Put(Text.message, s, Property.Attribute.None);
@@ -125,22 +128,28 @@ template proto(alias TEXT_D1)
     class D0 : D0base
     {
         private this(Dobject prototype)
-        { super(prototype); }
+        {
+            super(prototype);
+        }
 
         this(d_string m)
-        { super(D0.getPrototype, m); }
+        {
+            super(D0.getPrototype, m);
+        }
 
         this(ScriptException exception)
-        { super(D0.getPrototype, exception); }
+        {
+            super(D0.getPrototype, exception);
+        }
 
         static Dfunction getConstructor()
         {
-            return ctorTable[TEXT_D1];
+            return _ctor;
         }
 
         static Dobject getPrototype()
         {
-            return protoTable[TEXT_D1];
+            return _prototype;
         }
 
         static Dobject newD0(d_string s)
@@ -151,10 +160,10 @@ template proto(alias TEXT_D1)
         static void init()
         {
             Dfunction constructor = new D0_constructor(TEXT_D1, &newD0);
-            ctorTable[TEXT_D1] = constructor;
+            _ctor = constructor;
 
             Dobject prototype = new D0_prototype();
-            protoTable[TEXT_D1] = prototype;
+            _prototype = prototype;
 
             constructor.Put(Text.prototype, prototype,
                             Property.Attribute.DontEnum |

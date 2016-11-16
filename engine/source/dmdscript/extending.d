@@ -20,7 +20,6 @@ import dmdscript.dfunction;
 import dmdscript.dnative;
 import dmdscript.program;
 import dmdscript.property;
-import dmdscript.threadcontext;
 
 import std.typecons;
 import std.traits;

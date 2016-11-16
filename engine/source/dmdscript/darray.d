@@ -25,7 +25,6 @@ version =  SliceSpliceExtension;
 import dmdscript.script;
 import dmdscript.value;
 import dmdscript.dobject;
-import dmdscript.threadcontext;
 import dmdscript.identifier;
 import dmdscript.dfunction;
 import dmdscript.text;
@@ -41,7 +40,7 @@ class DarrayConstructor : Dfunction
 {
     this()
     {
-        super(1, Dfunction_prototype);
+        super(1, Dfunction.getPrototype);
         name = "Array";
     }
 
@@ -965,8 +964,8 @@ class DarrayPrototype : Darray
 {
     this()
     {
-        super(Dobject_prototype);
-        Dobject f = Dfunction_prototype;
+        super(Dobject.getPrototype);
+        Dobject f = Dfunction.getPrototype;
 
         Put(Text.constructor, Darray_constructor, Property.Attribute.DontEnum);
 
@@ -1235,4 +1234,7 @@ class Darray : Dobject
     }
 }
 
+
+private Dfunction Darray_constructor;
+private Dobject Darray_prototype;
 

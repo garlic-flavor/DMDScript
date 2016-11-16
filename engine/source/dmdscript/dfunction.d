@@ -22,7 +22,6 @@ import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.value;
 import dmdscript.protoerror;
-import dmdscript.threadcontext;
 import dmdscript.text;
 import dmdscript.errmsgs;
 import dmdscript.property;
@@ -258,7 +257,7 @@ class DfunctionPrototype : Dfunction
 {
     this()
     {
-        super(0, Dobject_prototype);
+        super(0, Dobject.getPrototype);
 
         auto attributes = Property.Attribute.DontEnum;
 
@@ -405,4 +404,7 @@ class Dfunction : Dobject
       Dfunction_constructor.proptable.previous = Dfunction_prototype.proptable;
   }
 }
+
+private Dfunction Dfunction_constructor;
+private Dobject Dfunction_prototype;
 
