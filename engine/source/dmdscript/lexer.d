@@ -209,7 +209,7 @@ protected:
     {
         assert(se !is null);
 
-        se.addSource(sourcename, base, p);
+        se.addTrace(sourcename, base, p);
 
         assert(base.ptr < end);
         p = end - 1;

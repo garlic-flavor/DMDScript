@@ -229,7 +229,7 @@ class Program
             auto exception = result.toScriptException;//(cc.linnum);
             cc.linnum = 0;
             p1 = null;
-            exception.addSource(
+            exception.addTrace(
                 globalfunction.name !is null ? globalfunction.name.toString
                 : "anonymous",
                 globalfunction.srctext);

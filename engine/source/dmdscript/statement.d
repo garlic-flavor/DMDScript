@@ -110,7 +110,7 @@ class TopStatement
                     sourcename = sc.funcdef.name.toString;
             }
 
-            se.addSource(sourcename, sc.getSource, loc);
+            se.addTrace(sourcename, sc.getSource, loc);
             sc.exception = se;
         }
         assert(se !is null);

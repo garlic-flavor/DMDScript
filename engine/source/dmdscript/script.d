@@ -69,34 +69,34 @@ class ScriptException : Exception
     @safe pure
     this(d_string message, d_string sourcename, d_string source,
          immutable(tchar)* pos, string file = __FILE__, size_t line = __LINE__)
-    { super(message, file, line); addSource(sourcename, source, pos); }
+    { super(message, file, line); addTrace(sourcename, source, pos); }
 
     @safe pure
     this(d_string message, d_string sourcename, d_string source,
          Loc loc, string file = __FILE__, size_t line = __LINE__)
-    { super(message, file, line); addSource(sourcename, source, loc); }
+    { super(message, file, line); addTrace(sourcename, source, loc); }
 
     @safe pure
     this(d_string msg, Loc loc, string file = __FILE__, size_t line = __LINE__)
-    { super(msg, file, line); addSource(loc); }
+    { super(msg, file, line); addTrace(loc); }
 
 
     @safe pure
-    void addSource(d_string sourcename, d_string source, Loc loc)
+    void addTrace(d_string sourcename, d_string source, Loc loc)
     { trace ~= SourceDescriptor(sourcename, source, loc); }
 
     @safe pure
-    void addSource(d_string sourcename, d_string source,
+    void addTrace(d_string sourcename, d_string source,
                    immutable(tchar)* pos)
     { trace ~= SourceDescriptor(sourcename, source, pos); }
 
     @safe pure
-    void addSource(Loc loc)
+    void addTrace(Loc loc)
     { trace ~= SourceDescriptor(loc); }
 
     @safe @nogc pure nothrow
-    void addSource(d_string sourcename, d_string source)
-    { foreach (ref one; trace) one.addSource(sourcename, source); }
+    void addTrace(d_string sourcename, d_string source)
+    { foreach (ref one; trace) one.addTrace(sourcename, source); }
 
 
     override void toString(scope void delegate(in char[]) sink) const
@@ -178,7 +178,7 @@ private:
         { this.linnum = linnum; }
 
         @trusted @nogc pure nothrow
-        void addSource(d_string name, d_string buf)
+        void addTrace(d_string name, d_string buf)
         {
             if (this.name.length == 0 && this.buf.length == 0)
             {

@@ -151,8 +151,8 @@ class DdeclaredFunction : Dfunction
         result = IR.call(cc, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addSource(fd.name !is null ? fd.name.toString : "anonymous",
-                             fd.srctext);
+            result.addTrace(fd.name !is null ? fd.name.toString : "anonymous",
+                            fd.srctext);
         }
 
         delete p1;

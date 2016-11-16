@@ -1238,14 +1238,14 @@ struct DError
     }
 
     @safe
-    void addSource(d_string name, d_string srctext)
+    void addTrace(d_string name, d_string srctext)
     {
         import dmdscript.protoerror;
 
         if (auto d0 = cast(D0base)entity.toObject)
         {
             assert(d0.exception);
-            d0.exception.addSource(name, srctext);
+            d0.exception.addTrace(name, srctext);
         }
         else
             assert(0);
