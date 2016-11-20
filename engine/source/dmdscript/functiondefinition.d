@@ -221,7 +221,7 @@ class FunctionDefinition : TopStatement
         foreach(Identifier* name; varnames)
         {
             // If name is already declared, don't override it
-            actobj.Put(name.toString, &vundefined,
+            actobj.Put(name.toString, vundefined,
                        Property.Attribute.Instantiate |
                        Property.Attribute.DontOverride | attributes);
         }

@@ -53,18 +53,18 @@ class Darguments : Dobject
         if(caller)
             Put(Text.caller, caller, Property.Attribute.DontEnum);
         else
-            Put(Text.caller, &vnull, Property.Attribute.DontEnum);
+            Put(Text.caller, vnull, Property.Attribute.DontEnum);
 
         Put(Text.callee, callee, Property.Attribute.DontEnum);
         Put(Text.length, arglist.length, Property.Attribute.DontEnum);
 
         for(uint a = 0; a < arglist.length; a++)
         {
-            Put(a, &arglist[a], Property.Attribute.DontEnum);
+            Put(a, arglist[a], Property.Attribute.DontEnum);
         }
     }
 
-    override Value* Get(d_string PropertyName)
+    override Value* Get(in d_string PropertyName)
     {
         d_uint32 index;
 
@@ -73,22 +73,22 @@ class Darguments : Dobject
                : Dobject.Get(PropertyName);
     }
 
-    override Value* Get(d_uint32 index)
+    override Value* Get(in d_uint32 index)
     {
         return (index < parameters.length)
                ? actobj.Get(index)
                : Dobject.Get(index);
     }
 
-    override Value* Get(d_uint32 index, Value* vindex)
+    override Value* Get(in d_uint32 index, ref Value vindex)
     {
         return (index < parameters.length)
                ? actobj.Get(index, vindex)
                : Dobject.Get(index, vindex);
     }
 
-    override DError* Put(d_string PropertyName, Value* value,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string PropertyName, ref Value value,
+                         in Property.Attribute attributes)
     {
         d_uint32 index;
 
@@ -98,8 +98,8 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, value, attributes);
     }
 
-    override DError* Put(Identifier* key, Value* value,
-                         Property.Attribute attributes)
+    override DError* Put(ref Identifier key, ref Value value,
+                         in Property.Attribute attributes)
     {
         d_uint32 index;
 
@@ -109,8 +109,8 @@ class Darguments : Dobject
             return Dobject.Put(key, value, attributes);
     }
 
-    override DError* Put(d_string PropertyName, Dobject o,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string PropertyName, Dobject o,
+                         in Property.Attribute attributes)
     {
         d_uint32 index;
 
@@ -120,8 +120,8 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, o, attributes);
     }
 
-    override DError* Put(d_string PropertyName, d_number n,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string PropertyName, in d_number n,
+                         in Property.Attribute attributes)
     {
         d_uint32 index;
 
@@ -131,8 +131,8 @@ class Darguments : Dobject
             return Dobject.Put(PropertyName, n, attributes);
     }
 
-    override DError* Put(d_uint32 index, Value* vindex, Value* value,
-                         Property.Attribute attributes)
+    override DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
+                         in Property.Attribute attributes)
     {
         if(index < parameters.length)
             return actobj.Put(index, vindex, value, attributes);
@@ -140,8 +140,8 @@ class Darguments : Dobject
             return Dobject.Put(index, vindex, value, attributes);
     }
 
-    override DError* Put(d_uint32 index, Value* value,
-                         Property.Attribute attributes)
+    override DError* Put(in d_uint32 index, ref Value value,
+                         in Property.Attribute attributes)
     {
         if(index < parameters.length)
             return actobj.Put(index, value, attributes);
@@ -149,7 +149,7 @@ class Darguments : Dobject
             return Dobject.Put(index, value, attributes);
     }
 
-    override int CanPut(d_string PropertyName)
+    override int CanPut(in d_string PropertyName)
     {
         d_uint32 index;
 
@@ -158,7 +158,7 @@ class Darguments : Dobject
                : Dobject.CanPut(PropertyName);
     }
 
-    override int HasProperty(d_string PropertyName)
+    override int HasProperty(in d_string PropertyName)
     {
         d_uint32 index;
 
@@ -167,7 +167,7 @@ class Darguments : Dobject
                : Dobject.HasProperty(PropertyName);
     }
 
-    override int Delete(d_string PropertyName)
+    override int Delete(in d_string PropertyName)
     {
         d_uint32 index;
 

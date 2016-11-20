@@ -36,7 +36,8 @@ class DbooleanConstructor : Dfunction
         name = "Boolean";
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 15.6.2
         d_boolean b;
@@ -48,7 +49,8 @@ class DbooleanConstructor : Dfunction
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // ECMA 15.6.1
         d_boolean b;
@@ -98,7 +100,7 @@ DError* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis
         Value *v;
 
         v = &(cast(Dboolean)othis).value;
-        Value.copy(ret, v);
+        *ret = *v;
     }
     return null;
 }

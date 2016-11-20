@@ -67,38 +67,38 @@ class DregexpConstructor : Dfunction
         name = "RegExp";
 
         // Static properties
-        Put(Text.input, &v, Property.Attribute.DontDelete);
-        Put(Text.multiline, &vb, Property.Attribute.DontDelete);
-        Put(Text.lastMatch, &v,
+        Put(Text.input, v, Property.Attribute.DontDelete);
+        Put(Text.multiline, vb, Property.Attribute.DontDelete);
+        Put(Text.lastMatch, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.lastParen, &v,
+        Put(Text.lastParen, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.leftContext, &v,
+        Put(Text.leftContext, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.rightContext, &v,
+        Put(Text.rightContext, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar1, &v,
+        Put(Text.dollar1, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar2, &v,
+        Put(Text.dollar2, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar3, &v,
+        Put(Text.dollar3, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar4, &v,
+        Put(Text.dollar4, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar5, &v,
+        Put(Text.dollar5, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar6, &v,
+        Put(Text.dollar6, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar7, &v,
+        Put(Text.dollar7, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar8, &v,
+        Put(Text.dollar8, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.dollar9, &v,
+        Put(Text.dollar9, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
 
-        Put(Text.index, &vnm1,
+        Put(Text.index, vnm1,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        Put(Text.lastIndex, &vnm1,
+        Put(Text.lastIndex, vnm1,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
 
         input = Get(Text.input);
@@ -128,7 +128,8 @@ class DregexpConstructor : Dfunction
         // any difference.
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 262 v3 15.10.4.1
 
@@ -185,7 +186,8 @@ class DregexpConstructor : Dfunction
         }
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // ECMA 262 v3 15.10.3.1
         if(arglist.length >= 1)
@@ -210,40 +212,40 @@ class DregexpConstructor : Dfunction
     }
 
 
-    override Value* Get(d_string PropertyName)
+    override Value* Get(in d_string PropertyName)
     {
         return Dfunction.Get(perlAlias(PropertyName));
     }
 
-    override DError* Put(d_string PropertyName, Value* value,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string PropertyName, ref Value value,
+                         in Property.Attribute attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), value, attributes);
     }
 
-    override DError* Put(d_string PropertyName, Dobject o,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string PropertyName, Dobject o,
+                         in Property.Attribute attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), o, attributes);
     }
 
-    override DError* Put(d_string PropertyName, d_number n,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string PropertyName, in d_number n,
+                         in Property.Attribute attributes)
     {
         return Dfunction.Put(perlAlias(PropertyName), n, attributes);
     }
 
-    override int CanPut(d_string PropertyName)
+    override int CanPut(in d_string PropertyName)
     {
         return Dfunction.CanPut(perlAlias(PropertyName));
     }
 
-    override int HasProperty(d_string PropertyName)
+    override int HasProperty(in d_string PropertyName)
     {
         return Dfunction.HasProperty(perlAlias(PropertyName));
     }
 
-    override int Delete(d_string PropertyName)
+    override int Delete(in d_string PropertyName)
     {
         return Dfunction.Delete(perlAlias(PropertyName));
     }
@@ -430,19 +432,19 @@ class Dregexp : Dobject
         classname = Text.RegExp;
 
         //writef("Dregexp.Dregexp(pattern = '%ls', attributes = '%ls')\n", d_string_ptr(pattern), d_string_ptr(attributes));
-        Put(Text.source, &v,
+        Put(Text.source, v,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
-        Put(Text.global, &vb,
+        Put(Text.global, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
-        Put(Text.ignoreCase, &vb,
+        Put(Text.ignoreCase, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
-        Put(Text.multiline, &vb,
+        Put(Text.multiline, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
@@ -483,19 +485,19 @@ class Dregexp : Dobject
 
         classname = Text.RegExp;
 
-        Put(Text.source, &v,
+        Put(Text.source, v,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
-        Put(Text.global, &vb,
+        Put(Text.global, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
-        Put(Text.ignoreCase, &vb,
+        Put(Text.ignoreCase, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
-        Put(Text.multiline, &vb,
+        Put(Text.multiline, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
@@ -512,7 +514,8 @@ class Dregexp : Dobject
         re = new RegExp(null, null);
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
@@ -620,7 +623,7 @@ static:
 
                 // Last substring in $1..$9, or "" if none
                 if(0 < nmatches)
-                    Value.copy(dc.lastParen, lastv);
+                    *dc.lastParen = *lastv;
                 else
                     dc.lastParen.putVstring(null);
 
@@ -634,7 +637,7 @@ static:
                     a.Put(Text.index, r.index, Property.Attribute.None);
                     a.Put(Text.lastIndex, r.lastIndex, Property.Attribute.None);
 
-                    a.Put(cast(d_uint32)0, dc.lastMatch,
+                    a.Put(cast(d_uint32)0, *dc.lastMatch,
                           Property.Attribute.None);
 
                     // [1]..[nparens]
@@ -647,13 +650,13 @@ static:
 
                         // Reuse values already put into dc.dollar[]
                         else if(r.nmatches <= 9)
-                            a.Put(i, dc.dollar[i], Property.Attribute.None);
+                            a.Put(i, *dc.dollar[i], Property.Attribute.None);
                         else if(i > r.nmatches - 9)
-                            a.Put(i, dc.dollar[i - (r.nmatches - 9)],
+                            a.Put(i, *dc.dollar[i - (r.nmatches - 9)],
                                   Property.Attribute.None);
                         else if(r.captures(i) is null)
                         {
-                            a.Put(i, &vundefined, Property.Attribute.None);
+                            a.Put(i, vundefined, Property.Attribute.None);
                         }
                         else
                         {
@@ -664,7 +667,7 @@ static:
                     break;
                 }
                 case EXEC_STRING:
-                    Value.copy(ret, dc.lastMatch);
+                    *ret = *dc.lastMatch;
                     break;
 
                 case EXEC_BOOLEAN:

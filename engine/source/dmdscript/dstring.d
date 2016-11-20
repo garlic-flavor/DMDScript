@@ -80,7 +80,8 @@ class DstringConstructor : Dfunction
         DnativeFunction.initialize(this, nfd, Property.Attribute.None);
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 15.5.2
         d_string s;
@@ -92,7 +93,8 @@ class DstringConstructor : Dfunction
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // ECMA 15.5.1
         d_string s;
@@ -120,7 +122,7 @@ DError* Dstring_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
         Value* v;
 
         v = &(cast(Dstring)othis).value;
-        Value.copy(ret, v);
+        *ret = *v;
     }
     return null;
 }
@@ -143,7 +145,7 @@ DError* Dstring_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
         Value* v;
 
         v = &(cast(Dstring)othis).value;
-        Value.copy(ret, v);
+        *ret = *v;
     }
     return null;
 }
@@ -328,7 +330,7 @@ DError* Dstring_prototype_lastIndexOf(Dobject pthis, CallContext* cc, Dobject ot
             Value* v;
             DError* a;
             v = othis.Get(Text.toString);
-            a = v.Call(cc, othis, ret, null);
+            a = v.Call(*cc, othis, *ret, null);
             if(a)                       // if exception was thrown
                 return a;
             s = ret.toString();
@@ -415,7 +417,7 @@ DError* Dstring_prototype_match(Dobject pthis, CallContext* cc, Dobject othis, V
         Value regret;
 
         regret.putVobject(null);
-        Dregexp.getConstructor().Construct(cc, &regret, arglist);
+        Dregexp.getConstructor().Construct(*cc, regret, arglist);
         o = regret.object;
     }
 
@@ -443,7 +445,7 @@ DError* Dstring_prototype_match(Dobject pthis, CallContext* cc, Dobject othis, V
             if(i == lasti)              // if no source was consumed
                 i++;                    // consume a character
 
-            a.Put(n, ret, Property.Attribute.None);           // a[n] = ret;
+            a.Put(n, *ret, Property.Attribute.None);           // a[n] = ret;
         }
         ret.putVobject(a);
     }
@@ -515,7 +517,7 @@ DError* Dstring_prototype_replace(Dobject pthis, CallContext* cc, Dobject othis,
                 }
                 alist[m + 1].putVnumber(re.index);
                 alist[m + 2].putVstring(str);
-                f.Call(cc, f, ret, alist[0 .. m + 3]);
+                f.Call(*cc, f, *ret, alist[0 .. m + 3]);
                 replacement = ret.toString();
             }
             else
@@ -560,7 +562,7 @@ DError* Dstring_prototype_replace(Dobject pthis, CallContext* cc, Dobject othis,
                 alist[0].putVstring(searchString);
                 alist[1].putVnumber(match);
                 alist[2].putVstring(str);
-                f.Call(cc, f, ret, alist);
+                f.Call(*cc, f, *ret, alist);
                 replacement = ret.toString();
             }
             else
@@ -600,7 +602,7 @@ DError* Dstring_prototype_search(Dobject pthis, CallContext* cc, Dobject othis, 
         Value regret;
 
         regret.putVobject(null);
-        Dregexp.getConstructor().Construct(cc, &regret, arglist);
+        Dregexp.getConstructor().Construct(*cc, regret, arglist);
         o = regret.object;
     }
 

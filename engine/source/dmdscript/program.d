@@ -77,7 +77,7 @@ class Program
         cc.scoperoot++;
         cc.globalroot++;
 
-        assert(Ddate.getPrototype.proptable.table.length != 0);
+        assert(Ddate.getPrototype.proptable.length != 0);
     }
 
     /**************************************************
@@ -223,7 +223,7 @@ class Program
 
         setProgram(this);
         ret.putVundefined();
-        result = IR.call(cc, cc.global, globalfunction.code, &ret, locals.ptr);
+        result = IR.call(*cc, cc.global, globalfunction.code, ret, locals.ptr);
         if(result)
         {
             auto exception = result.toScriptException;

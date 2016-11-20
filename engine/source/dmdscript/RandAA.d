@@ -33,8 +33,6 @@ module dmdscript.RandAA;
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-import std.traits, core.memory, core.exception, std.algorithm, std.conv,
-       std.exception, std.math;
 
 private enum
 {
@@ -47,6 +45,8 @@ private enum
 // faster not to if it's cheap to compute.
 private template shouldStoreHash(K)
 {
+    import std.traits : isFloatingPoint, isIntegral;
+
     enum bool shouldStoreHash = !isFloatingPoint !K && !isIntegral !K;
 }
 
@@ -89,22 +89,21 @@ private:
 
     // Optimized for a few special cases to avoid the virtual function call
     // to TypeInfo.getHash().
-    @safe
-    size_t getHash(K key) const
+    static @safe
+    size_t getHash(ref K key)
     {
         static if(is (K : long) && K.sizeof <= size_t.sizeof)
         {
             size_t hash = cast(size_t)key;
         }
+        else static if(is (typeof(key.toHash())))
+        {
+            size_t hash = key.toHash();
+        }
         else
-            static if(is (typeof(key.toHash())))
-            {
-                size_t hash = key.toHash();
-            }
-            else
-            {
-                size_t hash = typeid(K).getHash(cast(const (void)*)&key);
-            }
+        {
+            size_t hash = typeid(K).getHash(cast(const(void)*)&key);
+        }
 
         return hash;
     }
@@ -129,7 +128,8 @@ private:
             while(true)
             {
                 flag = flags[pos];
-                if(flag == EMPTY || (hashFull == hashes[pos] && key == _keys[pos] && flag != EMPTY))
+                if(flag == EMPTY || (hashFull == hashes[pos] &&
+                                     key == _keys[pos] && flag != EMPTY))
                 {
                     break;
                 }
@@ -149,7 +149,7 @@ private:
         }
 
         @trusted
-        size_t findForInsert(ref K key, immutable size_t hashFull)
+        size_t findForInsert(ref K key, in size_t hashFull)
         {
             size_t pos = hashFull & mask;
             static if(useRandom)
@@ -162,7 +162,8 @@ private:
 
             while(true)
             {
-                if(flags[pos] != USED || (hashes[pos] == hashFull && _keys[pos] == key))
+                if(flags[pos] != USED ||
+                   (hashes[pos] == hashFull && _keys[pos] == key))
                 {
                     break;
                 }
@@ -220,7 +221,7 @@ private:
             return (flag == USED) ? pos : size_t.max;
         }
 
-        size_t findForInsert(ref K key, immutable size_t hashFull) const
+        size_t findForInsert(ref K key, in size_t hashFull) const
         {
             size_t pos = hashFull & mask;
             static if(useRandom)
@@ -329,6 +330,7 @@ public:
     }
 
     ///
+    @safe
     void rehash()
     {
         if(cast(float)(_length + nDead) / space < 0.7)
@@ -345,6 +347,8 @@ public:
     @trusted
     private void reserve(size_t newSize)
     {
+        import core.memory : GC;
+
         scope typeof(this)newTable = new typeof(this)(newSize);
 
         foreach(i; 0..space)
@@ -381,12 +385,14 @@ public:
 
     /**Throws a KeyError on unsuccessful key search.*/
     @trusted
-    ref V opIndex(K index)
+    ref V opIndex()(auto ref K index)
     {
+        import std.conv : text;
+
         size_t i = findExisting(index);
         if(i == size_t.max)
         {
-            throw new Exception("Could not find key " ~ index.to!string);
+            throw new Exception(text("Could not find key ", index));
         }
         else
         {
@@ -454,26 +460,14 @@ public:
 
     ///
     @safe
-    void opIndexAssign(V val, K index)
+    void opIndexAssign()(auto ref V val, in auto ref K index)
     {
         assignNoRehashCheck(index, val);
         rehash();
     }
 
-    struct KeyValRange (K, V, bool storeHash, bool vals)
+    struct KeyValRange(T)
     {
-    private:
-        static if(vals)
-        {
-            alias V T;
-        }
-        else
-        {
-            alias K T;
-        }
-        size_t index = 0;
-        RandAA aa;
-    public:
         @trusted @nogc pure nothrow
         this(RandAA aa)
         {
@@ -488,14 +482,15 @@ public:
         @trusted @nogc pure nothrow
         T front()
         {
-            static if(vals)
+            static if      (is(T == V))
             {
                 return aa.vals[index];
             }
-            else
+            else static if (is(T == K))
             {
                 return aa._keys[index];
             }
+            else static assert(0);
         }
 
         ///
@@ -518,6 +513,9 @@ public:
 
         string toString()
         {
+            import std.conv : to;
+            import std.exception : assumeUnique;
+
             char[] ret = "[".dup;
             auto copy = this;
             foreach(elem; copy)
@@ -531,9 +529,13 @@ public:
             auto retImmutable = assumeUnique(ret);
             return retImmutable;
         }
+
+    private:
+        size_t index = 0;
+        RandAA aa;
     }
-    alias KeyValRange!(K, V, storeHash, false) key_range;
-    alias KeyValRange!(K, V, storeHash, true) value_range;
+    alias key_range = KeyValRange!K;
+    alias value_range = KeyValRange!V;
 
     /**Does not allocate.  Returns a simple forward range.*/
     @safe @nogc pure nothrow
@@ -552,12 +554,14 @@ public:
     /**Removes an element from this.  Elements *may* be removed while iterating
      * via .keys.*/
     @trusted
-    V remove(K index)
+    V remove()(auto ref K index)
     {
+        import std.conv : text;
+
         size_t i = findExisting(index);
         if(i == size_t.max)
         {
-            throw new Exception("Could not find key " ~ to!string(index));
+            throw new Exception(text("Could not find key ", index));
         }
         else
         {
@@ -568,28 +572,28 @@ public:
         }
     }
 
-    @trusted
+    @property @trusted pure nothrow
     V[] values()
     {
         size_t i = 0;
         V[] result = new V[this._length];
 
-        foreach(k, v; this)
+        foreach(ref K k, ref V v; this)
             result[i++] = v;
         return result;
     }
-    @trusted
+    @property @trusted pure nothrow
     K[] keys()
     {
         size_t i = 0;
         K[] result = new K[this._length];
 
-        foreach(k, v; this)
+        foreach(ref K k, ref V v; this)
             result[i++] = k;
         return result;
     }
     @trusted
-    bool remove(K index, ref V value)
+    bool remove()(auto ref K index, ref V value)
     {
         size_t i = findExisting(index);
         if(i == size_t.max)
@@ -607,7 +611,7 @@ public:
     }
     /**Returns null if index is not found.*/
     @trusted
-    V* opIn_r(K index)
+    V* opBinaryRight(string OP : "in")(auto ref K index)
     {
         size_t i = findExisting(index);
         if(i == size_t.max)
@@ -621,6 +625,27 @@ public:
     }
 
     /**Iterate over keys, values in lockstep.*/
+    auto opApply(Dg)(scope Dg dg)
+    {
+        import std.traits : ParameterTypeTuple;
+        int result;
+        foreach(i, k; _keys[0..space])
+        {
+            if (flags[i] == USED)
+            {
+                static if      (1 == ParameterTypeTuple!Dg.length)
+                    result = dg(vals[i]);
+                else static if (2 == ParameterTypeTuple!Dg.length)
+                    result = dg(k, vals[i]);
+                if (result)
+                    break;
+            }
+        }
+
+        return result;
+    }
+
+/+
     int opApply(int delegate(ref K, ref V) dg)
     {
         int result;
@@ -636,25 +661,29 @@ public:
         return result;
     }
 
-    private template DeconstArrayType(T)
-    {
-        static if(isStaticArray!(T))
-        {
-            alias typeof(T.init[0])[] type;     //the equivalent dynamic array
-        }
-        else
-        {
-            alias T type;
-        }
-    }
-
-    alias DeconstArrayType!(K).type K_;
-    alias DeconstArrayType!(V).type V_;
-
     public int opApply(int delegate(ref V_ value) dg)
     {
         return opApply((ref K_ k, ref V_ v) { return dg(v); });
     }
+
+    private template DeconstArrayType(T)
+    {
+        import std.traits : isStaticArray;
+
+        static if(isStaticArray!(T))
+        {
+            //the equivalent dynamic array
+            alias typeof(T.init[0])[] DeconstArrayType;
+        }
+        else
+        {
+            alias T DeconstArrayType;
+        }
+    }
+
+    alias K_ = DeconstArrayType!(K);
+    alias V_ = DeconstArrayType!(V);
++/
 
     @safe pure nothrow
     void clear()
@@ -666,6 +695,8 @@ public:
     @trusted pure nothrow
     void free()
     {
+        import core.memory : GC;
+
         GC.free(cast(void*)this._keys);
         GC.free(cast(void*)this.vals);
         GC.free(cast(void*)this.flags);
@@ -684,10 +715,11 @@ public:
     }
 }
 
-/*
-import std.random, std.exception, std.stdio;
-   // Test it out.
-   void unit_tests() {
+unittest
+{
+    import std.random, std.exception, std.stdio;
+
+    // Test it out.
     string[string] builtin;
     auto myAA = new RandAA!(string, string)();
 
@@ -738,9 +770,8 @@ import std.random, std.exception, std.stdio;
     enforce(myValues == builtinVals);
 
     writeln("Passed all tests.");
-   }
+}
 
- */
 
 /+ not used.
 private void missing_key(K) (K key)

@@ -29,7 +29,7 @@ Dobject getPrototype(Dobject o)
 {
     version(all)
     {
-        return o.internal_prototype;    // use internal [[Prototype]]
+        return o.Prototype;    // use internal [[Prototype]]
     }
     else
     {
@@ -68,7 +68,7 @@ struct Iterator
         //writef("Iterator: o = %p, p = %p\n", o, p);
         ostart = o;
         this.o = o;
-        keys = o.proptable.table.keys.sort().release;
+        keys = o.proptable.keys.sort().release;
         keyindex = 0;
     }
 
@@ -86,11 +86,11 @@ struct Iterator
                 o = getPrototype(o);
                 if(!o)
                     return null;
-                keys = o.proptable.table.keys.sort().release;
+                keys = o.proptable.keys.sort().release;
                 keyindex = 0;
             }
             Value* key = &keys[keyindex];
-            p = *key in o.proptable.table;
+            p = *key in *o.proptable;
             if(!p)                      // if no longer in property table
                 continue;
             if(p.attributes & Property.Attribute.DontEnum)
@@ -105,7 +105,7 @@ struct Iterator
                     for(Dobject ot = ostart; ot != o; ot = getPrototype(ot))
                     {
                         // If property p is in t, don't enumerate
-                        if(*key in ot.proptable.table)
+                        if(*key in *ot.proptable)
                             goto Lcontinue;
                     }
                 }

@@ -44,7 +44,8 @@ class DarrayConstructor : Dfunction
         name = "Array";
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 15.4.2
         Darray a;
@@ -89,7 +90,7 @@ class DarrayConstructor : Dfunction
             {
                 a.ulength = 1;
                 a.length.number = 1;
-                a.Put(cast(d_uint32)0, v, Property.Attribute.None);
+                a.Put(cast(d_uint32)0, *v, Property.Attribute.None);
             }
         }
         else
@@ -106,15 +107,16 @@ class DarrayConstructor : Dfunction
             a.length.number = arglist.length;
             for(uint k = 0; k < arglist.length; k++)
             {
-                a.Put(k, &arglist[k], Property.Attribute.None);
+                a.Put(k, arglist[k], Property.Attribute.None);
             }
         }
-        Value.copy(ret, &a.value);
+        ret = a.value;
         //writef("Darray_constructor.Construct(): length = %g\n", a.length.number);
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // ECMA 15.4.1
         return Construct(cc, ret, arglist);
@@ -181,7 +183,7 @@ DError* Darray_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject 
 
                 o = v.object;
                 rt.putVundefined();
-                a = o.Call(cc, ot, &rt, null);
+                a = o.Call(*cc, ot, rt, null);
                 if(a)                   // if exception was thrown
                     return a;
                 r ~= rt.toString();
@@ -220,13 +222,13 @@ DError* Darray_prototype_concat(Dobject pthis, CallContext* cc, Dobject othis, V
             {
                 v = E.Get(k);
                 if(v)
-                    A.Put(n, v, Property.Attribute.None);
+                    A.Put(n, *v, Property.Attribute.None);
                 n++;
             }
         }
         else
         {
-            A.Put(n, v, Property.Attribute.None);
+            A.Put(n, *v, Property.Attribute.None);
             n++;
         }
         if(a == arglist.length)
@@ -235,7 +237,7 @@ DError* Darray_prototype_concat(Dobject pthis, CallContext* cc, Dobject othis, V
     }
 
     A.Put(Text.length, n, Property.Attribute.DontEnum);
-    Value.copy(ret, &A.value);
+    *ret = A.value;
     return null;
 }
 
@@ -329,7 +331,7 @@ DError* Darray_prototype_pop(Dobject pthis, CallContext* cc, Dobject othis, Valu
         v = othis.Get(u - 1);
         if(!v)
             v = &vundefined;
-        Value.copy(ret, v);
+        *ret = *v;
         othis.Delete(u - 1);
         othis.Put(Text.length, u - 1, Property.Attribute.DontEnum);
     }
@@ -352,7 +354,7 @@ DError* Darray_prototype_push(Dobject pthis, CallContext* cc, Dobject othis, Val
     u = v.toUint32();
     for(a = 0; a < arglist.length; a++)
     {
-        othis.Put(u + a, &arglist[a], Property.Attribute.None);
+        othis.Put(u + a, arglist[a], Property.Attribute.None);
     }
     othis.Put(Text.length, u + a,  Property.Attribute.DontEnum);
     ret.putVnumber(u + a);
@@ -382,19 +384,19 @@ DError* Darray_prototype_reverse(Dobject pthis, CallContext* cc, Dobject othis, 
         //writef("a = %d, b = %d\n", a, b);
         va = othis.Get(a);
         if(va)
-            Value.copy(&tmp, va);
+            tmp = *va;
         vb = othis.Get(b);
         if(vb)
-            othis.Put(a, vb, Property.Attribute.None);
+            othis.Put(a, *vb, Property.Attribute.None);
         else
             othis.Delete(a);
 
         if(va)
-            othis.Put(b, &tmp, Property.Attribute.None);
+            othis.Put(b, tmp, Property.Attribute.None);
         else
             othis.Delete(b);
     }
-    Value.copy(ret, &othis.value);
+    *ret = othis.value;
     return null;
 }
 
@@ -418,13 +420,13 @@ DError* Darray_prototype_shift(Dobject pthis, CallContext* cc, Dobject othis, Va
     if(len)
     {
         result = othis.Get(0u);
-        Value.copy(ret, result ? result : &vundefined);
+        *ret = result ? *result : vundefined;
         for(k = 1; k != len; k++)
         {
             v = othis.Get(k);
             if(v)
             {
-                othis.Put(k - 1, v, Property.Attribute.None);
+                othis.Put(k - 1, *v, Property.Attribute.None);
             }
             else
             {
@@ -435,7 +437,7 @@ DError* Darray_prototype_shift(Dobject pthis, CallContext* cc, Dobject othis, Va
         len--;
     }
     else
-        Value.copy(ret, &vundefined);
+        *ret = vundefined;
 
     othis.Put(Text.length, len, Property.Attribute.DontEnum);
     return null;
@@ -581,13 +583,13 @@ else
         v = othis.Get(k);
         if(v)
         {
-            A.Put(n, v, Property.Attribute.None);
+            A.Put(n, *v, Property.Attribute.None);
         }
         n++;
     }
 
     A.Put(Text.length, n, Property.Attribute.DontEnum);
-    Value.copy(ret, &A.value);
+    *ret = A.value;
     return null;
 }
 
@@ -622,10 +624,10 @@ extern (C) int compare_value(const void* x, const void* y)
             Value* v;
             d_number n;
 
-            Value.copy(&arglist[0], vx);
-            Value.copy(&arglist[1], vy);
+            arglist[0] = *vx;
+            arglist[1] = *vy;
             ret.putVundefined();
-            comparefn.Call(comparecc, comparefn, &ret, arglist);
+            comparefn.Call(*comparecc, comparefn, ret, arglist);
             n = ret.toNumber();
             if(n < 0)
                 cmp = -1;
@@ -728,7 +730,7 @@ DError* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Val
         if(p.attributes == 0 && key.isArrayIndex(index))
         {
             pindices[nprops] = index;
-            Value.copy(&pvalues[nprops], &p.value);
+            pvalues[nprops] = p.value;
             nprops++;
         }
     }
@@ -755,7 +757,7 @@ DError* Darray_prototype_sort(Dobject pthis, CallContext* cc, Dobject othis, Val
     {
         d_uint32 index;
 
-        othis.Put(u, &pvalues[u], Property.Attribute.None);
+        othis.Put(u, pvalues[u], Property.Attribute.None);
         index = pindices[u];
         if(index >= nprops)
         {
@@ -879,7 +881,7 @@ else
     {
         v = othis.Get(startidx + k);
         if(v)
-            A.Put(k, v, Property.Attribute.None);
+            A.Put(k, *v, Property.Attribute.None);
     }
 
     A.Put(Text.length, delcnt, Property.Attribute.DontEnum);
@@ -892,7 +894,7 @@ else
             {
                 v = othis.Get(k + delcnt);
                 if(v)
-                    othis.Put(k + inscnt, v, Property.Attribute.None);
+                    othis.Put(k + inscnt, *v, Property.Attribute.None);
                 else
                     othis.Delete(k + inscnt);
             }
@@ -906,7 +908,7 @@ else
             {
                 v = othis.Get(k + delcnt - 1);
                 if(v)
-                    othis.Put(k + inscnt - 1, v, Property.Attribute.None);
+                    othis.Put(k + inscnt - 1, *v, Property.Attribute.None);
                 else
                     othis.Delete(k + inscnt - 1);
             }
@@ -916,12 +918,12 @@ else
     for(a = 2; a < arglist.length; a++)
     {
         v = &arglist[a];
-        othis.Put(k, v, Property.Attribute.None);
+        othis.Put(k, *v, Property.Attribute.None);
         k++;
     }
 
     othis.Put(Text.length, len - delcnt + inscnt,  Property.Attribute.DontEnum);
-    Value.copy(ret, &A.value);
+    *ret = A.value;
     return null;
 }
 
@@ -943,7 +945,7 @@ DError* Darray_prototype_unshift(Dobject pthis, CallContext* cc, Dobject othis, 
     {
         v = othis.Get(k - 1);
         if(v)
-            othis.Put(cast(uint)(k + arglist.length - 1), v,
+            othis.Put(cast(uint)(k + arglist.length - 1), *v,
                       Property.Attribute.None);
         else
             othis.Delete(cast(uint)(k + arglist.length - 1));
@@ -951,7 +953,7 @@ DError* Darray_prototype_unshift(Dobject pthis, CallContext* cc, Dobject othis, 
 
     for(k = 0; k < arglist.length; k++)
     {
-        othis.Put(k, &arglist[k], Property.Attribute.None);
+        othis.Put(k, arglist[k], Property.Attribute.None);
     }
     othis.Put(Text.length, len + arglist.length, Property.Attribute.DontEnum);
     ret.putVnumber(len + arglist.length);
@@ -1012,17 +1014,17 @@ class Darray : Dobject
         classname = Text.Array;
     }
 
-    override DError* Put(Identifier* key, Value* value,
-                         Property.Attribute attributes)
+    override DError* Put(ref Identifier key, ref Value value,
+                         in Property.Attribute attributes)
     {
-        auto result = proptable.put(&key.value, key.value.hash, value, attributes);
+        auto result = proptable.put(key.value, key.value.hash, value, attributes);
         if(!result)
             Put(key.value.text, value, attributes);
         return null;
     }
 
-    override DError* Put(d_string name, Value* v,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string name, ref Value v,
+                         in Property.Attribute attributes)
     {
         d_uint32 i;
         uint c;
@@ -1095,32 +1097,32 @@ class Darray : Dobject
         return null;
     }
 
-    override DError* Put(d_string name, Dobject o,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string name, Dobject o,
+                         in Property.Attribute attributes)
     {
-        return Put(name, &o.value, attributes);
+        return Put(name, o.value, attributes);
     }
 
-    override DError* Put(d_string PropertyName, d_number n,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string PropertyName, in d_number n,
+                         in Property.Attribute attributes)
     {
         Value v;
 
         v.putVnumber(n);
-        return Put(PropertyName, &v, attributes);
+        return Put(PropertyName, v, attributes);
     }
 
-    override DError* Put(d_string PropertyName, d_string str,
-                         Property.Attribute attributes)
+    override DError* Put(in d_string PropertyName, in d_string str,
+                         in Property.Attribute attributes)
     {
         Value v;
 
         v.putVstring(str);
-        return Put(PropertyName, &v, attributes);
+        return Put(PropertyName, v, attributes);
     }
 
-    override DError* Put(d_uint32 index, Value* vindex, Value* value,
-                         Property.Attribute attributes)
+    override DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
+                         in Property.Attribute attributes)
     {
         if(index >= ulength)
             ulength = index + 1;
@@ -1129,8 +1131,8 @@ class Darray : Dobject
         return null;
     }
 
-    override DError* Put(d_uint32 index, Value* value,
-                         Property.Attribute attributes)
+    override DError* Put(in d_uint32 index, ref Value value,
+                         in Property.Attribute attributes)
     {
         if(index >= ulength)
         {
@@ -1155,7 +1157,7 @@ class Darray : Dobject
         return null;
     }
 
-    override Value* Get(Identifier* id)
+    override Value* Get(ref Identifier id)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(id.value.text == Text.length)
@@ -1167,7 +1169,7 @@ class Darray : Dobject
             return Dobject.Get(id);
     }
 
-    override Value* Get(d_string PropertyName, uint hash)
+    override Value* Get(in d_string PropertyName, in size_t hash)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(PropertyName == Text.length)
@@ -1179,7 +1181,7 @@ class Darray : Dobject
             return Dobject.Get(PropertyName, hash);
     }
 
-    override Value* Get(d_uint32 index)
+    override Value* Get(in d_uint32 index)
     {
         Value* v;
 
@@ -1188,7 +1190,7 @@ class Darray : Dobject
         return v;
     }
 
-    override Value* Get(d_uint32 index, Value* vindex)
+    override Value* Get(in d_uint32 index, ref Value vindex)
     {
         Value* v;
 
@@ -1197,7 +1199,7 @@ class Darray : Dobject
         return v;
     }
 
-    override int Delete(d_string PropertyName)
+    override int Delete(in d_string PropertyName)
     {
         // ECMA 8.6.2.5
         //writef("Darray.Delete('%ls')\n", d_string_ptr(PropertyName));
@@ -1207,7 +1209,7 @@ class Darray : Dobject
             return proptable.del(PropertyName);
     }
 
-    override int Delete(d_uint32 index)
+    override int Delete(in d_uint32 index)
     {
         // ECMA 8.6.2.5
         return proptable.del(index);

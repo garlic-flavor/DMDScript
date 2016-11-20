@@ -42,7 +42,8 @@ class D0_constructor : Dfunction
         this.newD0 = newD0;
     }
 
-    override DError* Construct(CallContext* cc, Value *ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 15.11.7.2
         Value* m;
@@ -60,7 +61,8 @@ class D0_constructor : Dfunction
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // ECMA v3 15.11.7.1
         return Construct(cc, ret, arglist);

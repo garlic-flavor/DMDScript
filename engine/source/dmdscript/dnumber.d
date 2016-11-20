@@ -48,7 +48,8 @@ class DnumberConstructor : Dfunction
         Put(Text.POSITIVE_INFINITY, d_number.infinity, attributes);
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 15.7.2
         d_number n;
@@ -60,7 +61,8 @@ class DnumberConstructor : Dfunction
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // ECMA 15.7.1
         d_number n;
@@ -157,7 +159,7 @@ DError* Dnumber_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
         Value* v;
 
         v = &(cast(Dnumber)othis).value;
-        Value.copy(ret, v);
+        *ret = *v;
     }
     return null;
 }

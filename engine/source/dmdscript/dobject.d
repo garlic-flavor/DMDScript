@@ -57,7 +57,8 @@ class DobjectConstructor : Dfunction
         }
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         Dobject o;
         Value* v;
@@ -87,7 +88,7 @@ class DobjectConstructor : Dfunction
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret,
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         Dobject o;
@@ -158,7 +159,7 @@ DError* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc,
         Dobject o;
 
         o = v.object;
-        a = o.Call(cc, othis, ret, arglist);
+        a = o.Call(*cc, othis, *ret, arglist);
         if(a)                   // if exception was thrown
             return a;
     }
@@ -212,7 +213,7 @@ DError* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc,
     Value* v;
 
     v = arglist.length ? &arglist[0] : &vundefined;
-    ret.putVboolean(othis.proptable.hasownproperty(v, 0));
+    ret.putVboolean(othis.proptable.hasownproperty(*v, 0));
     return null;
 }
 
@@ -258,7 +259,7 @@ DError* Dobject_prototype_propertyIsEnumerable(Dobject pthis, CallContext* cc,
     Value* v;
 
     v = arglist.length ? &arglist[0] : &vundefined;
-    ret.putVboolean(othis.proptable.hasownproperty(v, 1));
+    ret.putVboolean(othis.proptable.hasownproperty(*v, 1));
     return null;
 }
 
@@ -278,53 +279,68 @@ class DobjectPrototype : Dobject
 class Dobject
 {
     PropTable* proptable;
-    Dobject internal_prototype;
     string classname;
     Value value;
-
-    enum uint DOBJECT_SIGNATURE = 0xAA31EE31;
-    uint signature;
-
-    invariant()
-    {
-        assert(signature == DOBJECT_SIGNATURE);
-    }
 
     @safe pure nothrow
     this(Dobject prototype)
     {
+        signature = DOBJECT_SIGNATURE;
+
         proptable = new PropTable;
-        internal_prototype = prototype;
-        if(prototype)
-            proptable.previous = prototype.proptable;
+        Prototype(prototype);
         classname = Text.Object;
         value.putVobject(this);
-
-        signature = DOBJECT_SIGNATURE;
     }
 
-    final @safe @nogc pure nothrow
-    Dobject Prototype()
+    final @property @safe @nogc pure nothrow
+    Dobject Prototype() // [[GetPrototypeOf]]
     {
         return internal_prototype;
     }
 
-    Value* Get(d_string PropertyName)
+    final @property @safe @nogc pure nothrow
+    bool Prototype(Dobject prototype) // [[SetPrototypeOf]]
+    {
+        internal_prototype = prototype;
+        if (prototype !is null)
+        {
+            proptable.previous = prototype.proptable;
+            debug checkCircularPrototype;
+        }
+        return true;
+    }
+
+    @disable
+    @property @safe @nogc pure nothrow
+    bool isExtensible() const // [[IsExtensible]]
+    {
+        return true;
+    }
+
+    @disable
+    @property @safe @nogc pure nothrow
+    bool preventExtensions() const // [[PreventExtensions]]
+    {
+        return false;
+    }
+
+    Value* Get(in d_string PropertyName)
     {
         return Get(PropertyName, Value.calcHash(PropertyName));
     }
 
-    Value* Get(Identifier* id)
+    Value* Get(ref Identifier id)
     {
-        return proptable.get(&id.value, id.value.hash);
+        return proptable.get(id.value, id.value.hash);
     }
 
-    Value* Get(d_string PropertyName, size_t hash)
+    Value* Get(in d_string PropertyName, in size_t hash)
     {
         return proptable.get(PropertyName, hash);
     }
 
-    Value* Get(d_uint32 index)
+    Value* Get(in d_uint32 index)
     {
         Value* v;
 
@@ -334,95 +350,95 @@ class Dobject
         return v;
     }
 
-    Value* Get(d_uint32 index, Value* vindex)
+    Value* Get(in d_uint32 index, ref Value vindex)
     {
         return proptable.get(vindex, Value.calcHash(index));
     }
 
-    DError* Put(d_string PropertyName, Value* value,
-                Property.Attribute attributes)
+    DError* Put(in d_string PropertyName, ref Value value,
+                in Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         proptable.put(PropertyName, value, attributes);
         return null;
     }
 
-    DError* Put(Identifier* key, Value* value,
-                Property.Attribute attributes)
+    DError* Put(ref Identifier key, ref Value value,
+                in Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
-        proptable.put(&key.value, key.value.hash, value, attributes);
+        proptable.put(key.value, key.value.hash, value, attributes);
         return null;
     }
 
-    DError* Put(d_string PropertyName, Dobject o,
-                Property.Attribute attributes)
+    DError* Put(in d_string PropertyName, Dobject o,
+                in Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         Value v;
         v.putVobject(o);
 
-        proptable.put(PropertyName, &v, attributes);
+        proptable.put(PropertyName, v, attributes);
         return null;
     }
 
-    DError* Put(d_string PropertyName, d_number n,
-                Property.Attribute attributes)
+    DError* Put(in d_string PropertyName, in d_number n,
+                in Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         Value v;
         v.putVnumber(n);
 
-        proptable.put(PropertyName, &v, attributes);
+        proptable.put(PropertyName, v, attributes);
         return null;
     }
 
-    DError* Put(d_string PropertyName, d_string s,
-                Property.Attribute attributes)
+    DError* Put(in d_string PropertyName, in d_string s,
+                in Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         Value v;
         v.putVstring(s);
 
-        proptable.put(PropertyName, &v, attributes);
+        proptable.put(PropertyName, v, attributes);
         return null;
     }
 
-    DError* Put(d_uint32 index, Value* vindex, Value* value,
-                Property.Attribute attributes)
+    DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
+                in Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         proptable.put(vindex, Value.calcHash(index), value, attributes);
         return null;
     }
 
-    DError* Put(d_uint32 index, Value* value,
-                Property.Attribute attributes)
+    DError* Put(in d_uint32 index, ref Value value,
+                in Property.Attribute attributes)
     {
         // ECMA 8.6.2.2
         proptable.put(index, value, attributes);
         return null;
     }
 
-    DError* PutDefault(Value* value)
+    DError* PutDefault(out Value value)
     {
         // Not ECMA, Microsoft extension
         return NoDefaultPutError;
     }
 
-    DError* put_Value(Value* ret, Value[] arglist)
+    DError* put_Value(out Value ret, Value[] arglist)
     {
         // Not ECMA, Microsoft extension
         return FunctionNotLvalueError;
     }
 
-    int CanPut(d_string PropertyName)
+    int CanPut(in d_string PropertyName)
     {
         // ECMA 8.6.2.3
         return proptable.canput(PropertyName);
     }
 
-    int HasProperty(d_string PropertyName)
+    int HasProperty(in d_string PropertyName)
     {
         // ECMA 8.6.2.4
         return proptable.hasproperty(PropertyName);
@@ -433,13 +449,13 @@ class Dobject
      *	TRUE	not found or successful delete
      *	FALSE	property is marked with DontDelete attribute
      */
-    int Delete(d_string PropertyName)
+    int Delete(in d_string PropertyName)
     {
         // ECMA 8.6.2.5
         return proptable.del(PropertyName);
     }
 
-    int Delete(d_uint32 index)
+    int Delete(in d_uint32 index)
     {
         // ECMA 8.6.2.5
         return proptable.del(index);
@@ -454,7 +470,7 @@ class Dobject
     }
 
     final @trusted
-    DError* DefaultValue(Value* ret, d_string Hint)
+    DError* DefaultValue(out Value ret, in d_string Hint)
     {
         Dobject o;
         Value* v;
@@ -463,12 +479,12 @@ class Dobject
 
         // ECMA 8.6.2.6
 
-        if(Hint == TypeString ||
+        if(Hint == Value.TypeName.String ||
            (Hint == null && this.isDdate()))
         {
             i = 0;
         }
-        else if(Hint == TypeNumber ||
+        else if(Hint == Value.TypeName.Number ||
                 Hint == null)
         {
             i = 1;
@@ -489,7 +505,7 @@ class Dobject
 
                 o = v.object;
                 cc = Program.getProgram().callcontext;
-                a = o.Call(cc, this, ret, null);
+                a = o.Call(*cc, this, ret, null);
                 if(a)                   // if exception was thrown
                     return a;
                 if(ret.isPrimitive)
@@ -502,17 +518,18 @@ class Dobject
         //return RuntimeError(&errinfo, DTEXT("no Default Value for object"));
     }
 
-    DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    DError* Construct(ref CallContext cc, out Value ret, Value[] arglist)
     {
         return SNoConstructError(classname);
     }
 
-    DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                 Value[] arglist)
     {
         return SNoCallError(classname);
     }
 
-    DError* HasInstance(Value* ret, Value* v)
+    DError* HasInstance(out Value ret, ref Value v)
     {   // ECMA v3 8.6.2
         return SNoInstanceError(classname);
     }
@@ -562,16 +579,75 @@ class Dobject
     }
 
     final @trusted
-    DError* putIterator(Value* v)
+    DError* putIterator(out Value v)
     {
-        Iterator* i = new Iterator;
+        auto i = new Iterator;
 
         i.ctor(this);
         v.putViterator(i);
         return null;
     }
 
-static:
+    Property* getOwnProperty(ref Value key)
+    {
+        assert(proptable !is null);
+        return proptable.getProperty(&key);
+    }
+
+    @safe pure nothrow
+    Value[] OwnPropertyKeys()
+    {
+        assert(proptable !is null);
+        return proptable.keys;
+    }
+
+    @disable
+    bool DefineOwnProperty(ref Value key, ref Property desc)
+    {
+        assert(proptable !is null);
+        if      (auto p = proptable.getProperty(&key))
+        {
+            if (desc.overwritableTo(*p))
+            {
+                desc.overwriteTo(*p);
+                return true;
+            }
+        }
+        else if (!isExtensible)
+        {
+            
+            return false;
+        }
+        else
+        {
+        }
+
+        return false;
+    }
+
+private:
+    Dobject internal_prototype;
+    enum uint DOBJECT_SIGNATURE = 0xAA31EE31;
+    uint signature;
+
+    invariant()
+    {
+        assert(signature == DOBJECT_SIGNATURE);
+    }
+
+    // See_Also:
+    // Ecma-272-v7:6.1.7.3 Invariants of the Essential Internal Methods
+    debug @trusted @nogc pure nothrow
+    void checkCircularPrototype() const
+    {
+        for (auto ite = cast(Dobject)internal_prototype; ite !is null;
+             ite = ite.internal_prototype)
+            assert(this !is ite);
+        if (internal_prototype !is null)
+            internal_prototype.checkCircularPrototype;
+    }
+
+public static:
     @safe @nogc nothrow
     Dfunction getConstructor()
     {
@@ -610,6 +686,7 @@ static:
 
         DnativeFunction.initialize(op, nfd, Property.Attribute.DontEnum);
     }
+
 private:
     Dfunction _constructor;
     Dobject _prototype;
@@ -621,7 +698,6 @@ private:
  */
 void dobject_init()
 {
-    //writef("dobject_init(tc = %x)\n", cast(uint)tc);
     if(Dobject.getPrototype !is null)
         return;                 // already initialized for this thread
 

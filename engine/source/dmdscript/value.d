@@ -43,26 +43,27 @@ debug import std.stdio;
 //    padding can contain garbage stack pointers which can
 //    prevent memory from being garbage collected.
 
-version(DigitalMars)
-    version(D_InlineAsm)
-        version = UseAsm;
-
-enum
-{
-    V_REF_ERROR = 0,//triggers ReferenceError expcetion when accessed
-    V_UNDEFINED = 1,
-    V_NULL      = 2,
-    V_BOOLEAN   = 3,
-    V_NUMBER    = 4,
-    V_STRING    = 5,
-    V_OBJECT    = 6,
-    V_ITER      = 7,
-}
+// version(DigitalMars)
+//     version(D_InlineAsm)
+//         version = UseAsm;
 
 struct Value
 {
     uint  hash;               // cache 'hash' value
-    ubyte vtype = V_UNDEFINED;
+
+    enum Type : ubyte
+    {
+        RefError = 0,//triggers ReferenceError expcetion when accessed
+        Undefined = 1,
+        Null      = 2,
+        Boolean   = 3,
+        Number    = 4,
+        String    = 5,
+        Object    = 6,
+        Iter      = 7,
+    }
+    Type vtype = Type.Undefined;
+
     union
     {
         d_boolean dbool;        // can be true or false
@@ -79,7 +80,7 @@ struct Value
     @trusted
     void checkReference() const
     {
-        if(vtype == V_REF_ERROR)
+        if(vtype == Type.RefError)
             throwRefError();
     }
 
@@ -92,13 +93,13 @@ struct Value
     @trusted @nogc pure nothrow
     void putSignalingUndefined(d_string id)
     {
-        vtype = V_REF_ERROR;
+        vtype = Type.RefError;
         text = id;
     }
     @trusted @nogc pure nothrow
     void putVundefined()
     {
-        vtype = V_UNDEFINED;
+        vtype = Type.Undefined;
         hash = 0;
         text = null;
     }
@@ -106,7 +107,7 @@ struct Value
     @safe @nogc pure nothrow
     void putVnull()
     {
-        vtype = V_NULL;
+        vtype = Type.Null;
     }
 
     @trusted @nogc pure nothrow
@@ -117,28 +118,28 @@ struct Value
     }
     body
     {
-        vtype = V_BOOLEAN;
+        vtype = Type.Boolean;
         dbool = b;
     }
 
     @trusted @nogc pure nothrow
     void putVnumber(d_number n)
     {
-        vtype = V_NUMBER;
+        vtype = Type.Number;
         number = n;
     }
 
     @trusted @nogc pure nothrow
     void putVtime(d_time n)
     {
-        vtype = V_NUMBER;
+        vtype = Type.Number;
         number = (n == d_time_nan) ? d_number.nan : n;
     }
 
     @trusted @nogc pure nothrow
     void putVstring(d_string s)
     {
-        vtype = V_STRING;
+        vtype = Type.String;
         hash = 0;
         text = s;
     }
@@ -146,7 +147,7 @@ struct Value
     @trusted @nogc pure nothrow
     void putVstring(d_string s, uint hash)
     {
-        vtype = V_STRING;
+        vtype = Type.String;
         this.hash = hash;
         this.text = s;
     }
@@ -154,14 +155,14 @@ struct Value
     @trusted @nogc pure nothrow
     void putVobject(Dobject o)
     {
-        vtype = V_OBJECT;
+        vtype = Type.Object;
         object = o;
     }
 
     @trusted @nogc pure nothrow
     void putViterator(Iterator* i)
     {
-        vtype = V_ITER;
+        vtype = Type.Iter;
         iter = i;
     }
 
@@ -191,15 +192,9 @@ struct Value
  +/
     }
 
-    static @safe @nogc pure nothrow
-    void copy(Value* to, in Value* from)
+    void toPrimitive(out Value v, in d_string PreferredType)
     {
-        *to = *from;
-    }
-
-    void toPrimitive(Value* v, d_string PreferredType)
-    {
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
         {
             /*	ECMA 9.1
                 Return a default value for the Object.
@@ -226,7 +221,7 @@ struct Value
         }
         else
         {
-            copy(v, &this);
+            v = this;
         }
     }
 
@@ -236,24 +231,23 @@ struct Value
     {
         import std.math : isNaN;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
-        case V_NULL:
+        case Type.Undefined:
+        case Type.Null:
+        case Type.Iter:
             return false;
-        case V_BOOLEAN:
+        case Type.Boolean:
             return dbool;
-        case V_NUMBER:
+        case Type.Number:
             return !(number == 0.0 || isNaN(number));
-        case V_STRING:
+        case Type.String:
             return text.length ? true : false;
-        case V_OBJECT:
+        case Type.Object:
             return true;
-        default:
-            assert(0);
         }
         assert(0);
     }
@@ -261,20 +255,21 @@ struct Value
     @trusted
     d_number toNumber()
     {
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
+        case Type.Undefined:
+        case Type.Iter:
             return d_number.nan;
-        case V_NULL:
+        case Type.Null:
             return 0;
-        case V_BOOLEAN:
+        case Type.Boolean:
             return dbool ? 1 : 0;
-        case V_NUMBER:
+        case Type.Number:
             return number;
-        case V_STRING:
+        case Type.String:
         {
             d_number n;
             size_t len;
@@ -296,14 +291,14 @@ struct Value
 
             return n;
         }
-        case V_OBJECT:
+        case Type.Object:
         { Value val;
           Value* v;
           // void* a;
 
           //writefln("Vobject.toNumber()");
           v = &val;
-          toPrimitive(v, TypeNumber);
+          toPrimitive(*v, TypeName.Number);
           /*a = toPrimitive(v, TypeNumber);
           if(a)//rerr
                   return d_number.nan;*/
@@ -312,8 +307,6 @@ struct Value
           else
               return d_number.nan;
         }
-        default:
-            assert(0);
         }
         assert(0);
     }
@@ -329,19 +322,19 @@ struct Value
     {
         import std.math : floor, isInfinity, isNaN;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError;
             assert(0);
-        case V_UNDEFINED:
+        case Type.Undefined:
             return d_number.nan;
-        case V_NULL:
+        case Type.Null:
             return 0;
-        case V_BOOLEAN:
+        case Type.Boolean:
             return dbool ? 1 : 0;
 
-        default:
+        case Type.Number, Type.String, Type.Object, Type.Iter:
         {
             d_number number;
 
@@ -355,7 +348,8 @@ struct Value
                 number = floor(number);
             else
                 number = -floor(-number);
-            return number; }
+            return number;
+        }
         }
         assert(0);
     }
@@ -365,18 +359,18 @@ struct Value
     {
         import std.math : floor, isInfinity, isNaN;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
-        case V_NULL:
+        case Type.Undefined:
+        case Type.Null:
             return 0;
-        case V_BOOLEAN:
+        case Type.Boolean:
             return dbool ? 1 : 0;
 
-        default:
+        case Type.Number, Type.String, Type.Object, Type.Iter:
         {
             d_int32 int32;
             d_number number;
@@ -408,18 +402,18 @@ struct Value
     {
         import std.math : floor, isInfinity, isNaN;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
-        case V_NULL:
+        case Type.Undefined:
+        case Type.Null:
             return 0;
-        case V_BOOLEAN:
+        case Type.Boolean:
             return dbool ? 1 : 0;
 
-        default:
+        case Type.Number, Type.String, Type.Object, Type.Iter:
         {
             d_uint32 uint32;
             d_number number;
@@ -451,18 +445,18 @@ struct Value
     {
         import std.math : floor, isInfinity, isNaN;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
-        case V_NULL:
+        case Type.Undefined:
+        case Type.Null:
             return 0;
-        case V_BOOLEAN:
+        case Type.Boolean:
             return cast(d_uint16)(dbool ? 1 : 0);
 
-        default:
+        case Type.Number, Type.String, Type.Object, Type.Iter:
         {
             d_uint16 uint16;
             d_number number;
@@ -493,18 +487,18 @@ struct Value
         import std.math : isInfinity, isNaN;
         import core.stdc.string : strlen;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
+        case Type.Undefined:
             return Text.undefined;
-        case V_NULL:
+        case Type.Null:
             return Text._null;
-        case V_BOOLEAN:
+        case Type.Boolean:
             return dbool ? Text._true : Text._false;
-        case V_NUMBER:
+        case Type.Number:
         {
             d_string str;
             static enum d_string[10]  strs =
@@ -577,23 +571,23 @@ struct Value
             //writefln("str = '%s'", str);
             return str;
         }
-        case V_STRING:
+        case Type.String:
             return text;
-        case V_OBJECT:
+        case Type.Object:
         {
             Value val;
             Value* v = &val;
             // void* a;
 
             //writef("Vobject.toString()\n");
-            toPrimitive(v, TypeString);
+            toPrimitive(*v, TypeName.String);
             //assert(!a);
             if(v.isPrimitive)
                 return v.toString;
             else
                 return v.toObject.classname;
         }
-        default:
+        case Type.Iter:
             assert(0);
         }
         assert(0);
@@ -604,12 +598,12 @@ struct Value
         return toString();
     }
 
-    d_string toString(int radix)
+    d_string toString(in int radix)
     {
         import std.math : isFinite;
         import std.conv : to;
 
-        if(vtype == V_NUMBER)
+        if(vtype == Type.Number)
         {
             assert(2 <= radix && radix <= 36);
             if(!isFinite(number))
@@ -626,14 +620,14 @@ struct Value
     {
         switch(vtype)
         {
-        case V_STRING:
+        case Type.String:
         {
             d_string s;
 
             s = "\"" ~ text ~ "\"";
             return s;
         }
-        case V_OBJECT:
+        case Type.Object:
         {
             Value* v;
 
@@ -654,7 +648,7 @@ struct Value
                 o = v.object;
                 cc = Program.getProgram().callcontext;
                 ret = &val;
-                a = o.Call(cc, this.object, ret, null);
+                a = o.Call(*cc, this.object, *ret, null);
                 if(a)                             // if exception was thrown
                 {
                     /*return a;*/
@@ -674,33 +668,33 @@ struct Value
     @trusted
     Dobject toObject()
     {
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
+        case Type.Undefined:
             //RuntimeErrorx("cannot convert undefined to Object");
             return null;
-        case V_NULL:
+        case Type.Null:
             //RuntimeErrorx("cannot convert null to Object");
             return null;
-        case V_BOOLEAN:
+        case Type.Boolean:
             return new Dboolean(dbool);
-        case V_NUMBER:
+        case Type.Number:
             return new Dnumber(number);
-        case V_STRING:
+        case Type.String:
             return new Dstring(text);
-        case V_OBJECT:
+        case Type.Object:
             return object;
-        default:
+        case Type.Iter:
             assert(0);
         }
         assert(0);
     }
 
     @safe
-    bool opEquals(ref const (Value)v) const
+    bool opEquals(in ref Value v) const
     {
         return(opCmp(v) == 0);
     }
@@ -712,7 +706,7 @@ struct Value
      */
 
     static @trusted @nogc pure nothrow
-    int stringcmp(d_string s1, d_string s2)
+    int stringcmp(in d_string s1, in d_string s2)
     {
         import core.stdc.string : memcmp;
 
@@ -727,30 +721,30 @@ struct Value
     }
 
     @trusted
-    int opCmp(const (Value)v) const
+    int opCmp()(in auto ref Value v) const
     {
         import std.math : isNaN;
         import core.stdc.string : memcmp;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
+        case Type.Undefined:
             if(vtype == v.vtype)
                 return 0;
             break;
-        case V_NULL:
+        case Type.Null:
             if(vtype == v.vtype)
                 return 0;
             break;
-        case V_BOOLEAN:
+        case Type.Boolean:
             if(vtype == v.vtype)
                 return v.dbool - dbool;
             break;
-        case V_NUMBER:
-            if(v.vtype == V_NUMBER)
+        case Type.Number:
+            if(v.vtype == Type.Number)
             {
                 if(number == v.number)
                     return 0;
@@ -759,13 +753,13 @@ struct Value
                 if(number > v.number)
                     return 1;
             }
-            else if(v.vtype == V_STRING)
+            else if(v.vtype == Type.String)
             {
                 return stringcmp((cast(Value*)&this).toString(), v.text);    //TODO: remove this hack!
             }
             break;
-        case V_STRING:
-            if(v.vtype == V_STRING)
+        case Type.String:
+            if(v.vtype == Type.String)
             {
                 //writefln("'%s'.compareTo('%s')", string, v.string);
                 int len = text.length - v.text.length;
@@ -777,25 +771,33 @@ struct Value
                 }
                 return len;
             }
-            else if(v.vtype == V_NUMBER)
+            else if(v.vtype == Type.Number)
             {
                 //writefln("'%s'.compareTo(%g)\n", text, v.number);
                 return stringcmp(text, (cast(Value*)&v).toString());    //TODO: remove this hack!
             }
             break;
-        case V_OBJECT:
+        case Type.Object:
             if(v.object == object)
                 return 0;
             break;
-        default:
+        case Type.Iter:
             assert(0);
         }
         return -1;
     }
 
-    void copyTo(in Value* v)
-    {   // Copy everything, including vptr
-        copy(&this, v);
+
+    enum TypeName
+    {
+        Undefined = "Undefined",
+        Null = "Null",
+        Boolean = "Boolean",
+        Number = "Number",
+        String = "String",
+        Object = "Object",
+
+        Iterator = "Iterator",
     }
 
     @safe @nogc nothrow
@@ -803,18 +805,16 @@ struct Value
     {
         d_string s;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
-        case V_UNDEFINED:   s = TypeUndefined; break;
-        case V_NULL:        s = TypeNull;      break;
-        case V_BOOLEAN:     s = TypeBoolean;   break;
-        case V_NUMBER:      s = TypeNumber;    break;
-        case V_STRING:      s = TypeString;    break;
-        case V_OBJECT:      s = TypeObject;    break;
-        case V_ITER:        s = TypeIterator;  break;
-        default:
-            assert(0);
+        case Type.RefError:
+        case Type.Undefined:   s = TypeName.Undefined; break;
+        case Type.Null:        s = TypeName.Null;      break;
+        case Type.Boolean:     s = TypeName.Boolean;   break;
+        case Type.Number:      s = TypeName.Number;    break;
+        case Type.String:      s = TypeName.String;    break;
+        case Type.Object:      s = TypeName.Object;    break;
+        case Type.Iter:        s = TypeName.Iterator;  break;
         }
         return s;
     }
@@ -824,77 +824,77 @@ struct Value
     {
         d_string s;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
-        case V_UNDEFINED:   s = Text.undefined;     break;
-        case V_NULL:        s = Text.object;        break;
-        case V_BOOLEAN:     s = Text.boolean;       break;
-        case V_NUMBER:      s = Text.number;        break;
-        case V_STRING:      s = Text.string;        break;
-        case V_OBJECT:      s = object.getTypeof(); break;
-        default:
+        case Type.RefError:
+        case Type.Undefined:   s = Text.undefined;     break;
+        case Type.Null:        s = Text.object;        break;
+        case Type.Boolean:     s = Text.boolean;       break;
+        case Type.Number:      s = Text.number;        break;
+        case Type.String:      s = Text.string;        break;
+        case Type.Object:      s = object.getTypeof(); break;
+        case Type.Iter:
             assert(0);
         }
         return s;
     }
 
     @safe @nogc pure nothrow
-    int isUndefined() const
+    bool isUndefined() const
     {
-        return vtype == V_UNDEFINED;
+        return vtype == Type.Undefined;
     }
     @safe @nogc pure nothrow
-    int isNull() const
+    bool isNull() const
     {
-        return vtype == V_NULL;
+        return vtype == Type.Null;
     }
     @safe @nogc pure nothrow
-    int isBoolean() const
+    bool isBoolean() const
     {
-        return vtype == V_BOOLEAN;
+        return vtype == Type.Boolean;
     }
     @safe @nogc pure nothrow
-    int isNumber() const
+    bool isNumber() const
     {
-        return vtype == V_NUMBER;
+        return vtype == Type.Number;
     }
     @safe @nogc pure nothrow
-    int isString() const
+    bool isString() const
     {
-        return vtype == V_STRING;
+        return vtype == Type.String;
     }
     @safe @nogc pure nothrow
-    int isObject() const
+    bool isObject() const
     {
-        return vtype == V_OBJECT;
+        return vtype == Type.Object;
     }
     @safe @nogc pure nothrow
-    int isIterator() const
+    bool isIterator() const
     {
-        return vtype == V_ITER;
+        return vtype == Type.Iter;
     }
 
     @safe @nogc pure nothrow
-    int isUndefinedOrNull() const
+    bool isUndefinedOrNull() const
     {
-        return vtype == V_UNDEFINED || vtype == V_NULL;
+        return vtype == Type.Undefined || vtype == Type.Null;
     }
     @safe @nogc pure nothrow
-    int isPrimitive() const
+    bool isPrimitive() const
     {
-        return vtype != V_OBJECT;
+        return vtype != Type.Object;
     }
 
     @trusted
-    int isArrayIndex(out d_uint32 index)
+    bool isArrayIndex(out d_uint32 index)
     {
         switch(vtype)
         {
-        case V_NUMBER:
+        case Type.Number:
             index = toUint32();
             return true;
-        case V_STRING:
+        case Type.String:
             return StringToIndex(text, index);
         default:
             index = 0;
@@ -904,19 +904,21 @@ struct Value
     }
 
     static @safe @nogc pure nothrow
-    uint calcHash(uint u)
+    size_t calcHash(in size_t u)
     {
-        return u ^ 0x55555555;
+        static if (size_t.sizeof == 4)
+            return u ^ 0x55555555;
+        else static assert(0);
     }
 
     static @safe @nogc pure nothrow
-    uint calcHash(double d)
+    uint calcHash(in double d)
     {
         return calcHash(cast(uint)d);
     }
 
     static @trusted @nogc pure nothrow
-    size_t calcHash(d_string s)
+    size_t calcHash(in d_string s)
     {
         size_t hash;
 
@@ -989,34 +991,41 @@ struct Value
         return calcHash(hash);
     }
 
+    static @safe
+    size_t calcHash(Value* v)
+    {
+        assert (v !is null);
+        return v.toHash;
+    }
+
     @trusted
     size_t toHash()
     {
         size_t h;
 
-        switch(vtype)
+        final switch(vtype)
         {
-        case V_REF_ERROR:
+        case Type.RefError:
             throwRefError();
             assert(0);
-        case V_UNDEFINED:
-        case V_NULL:
+        case Type.Undefined:
+        case Type.Null:
             h = 0;
             break;
-        case V_BOOLEAN:
+        case Type.Boolean:
             h = dbool ? 1 : 0;
             break;
-        case V_NUMBER:
+        case Type.Number:
             h = calcHash(number);
             break;
-        case V_STRING:
+        case Type.String:
             // Since strings are immutable, if we've already
             // computed the hash, use previous value
             if(!hash)
                 hash = calcHash(text);
             h = hash;
             break;
-        case V_OBJECT:
+        case Type.Object:
             /* Uses the address of the object as the hash.
              * Since the object never moves, it will work
              * as its hash.
@@ -1024,16 +1033,15 @@ struct Value
              */
             h = cast(uint)cast(void*)object;
             break;
-        default:
+        case Type.Iter:
             assert(0);
         }
-        //writefln("\tValue.toHash() = %x", h);
         return h;
     }
 
-    DError* Put(d_string PropertyName, Value* value)
+    DError* Put(in d_string PropertyName, ref Value value)
     {
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
             return object.Put(PropertyName, value, Property.Attribute.None);
         else
         {
@@ -1042,9 +1050,9 @@ struct Value
         }
     }
 
-    DError* Put(d_uint32 index, Value* vindex, Value* value)
+    DError* Put(in d_uint32 index, ref Value vindex, ref Value value)
     {
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
             return object.Put(index, vindex, value, Property.Attribute.None);
         else
         {
@@ -1053,11 +1061,11 @@ struct Value
         }
     }
 
-    Value* Get(d_string PropertyName)
+    Value* Get(in d_string PropertyName)
     {
         import std.format : format;
 
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
             return object.Get(PropertyName);
         else
         {
@@ -1068,11 +1076,11 @@ struct Value
         }
     }
 
-    Value* Get(d_uint32 index)
+    Value* Get(in d_uint32 index)
     {
         import std.format : format;
 
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
             return object.Get(index);
         else
         {
@@ -1083,13 +1091,13 @@ struct Value
         }
     }
 
-    Value* Get(Identifier *id)
+    Value* Get(ref Identifier id)
     {
         import std.format : format;
 
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
             return object.Get(id);
-        else if(vtype == V_REF_ERROR){
+        else if(vtype == Type.RefError){
             throwRefError();
             assert(0);
         }
@@ -1118,11 +1126,11 @@ struct Value
         }
     }
  +/
-    DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    DError* Construct(ref CallContext cc, out Value ret, Value[] arglist)
     {
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
             return object.Construct(cc, ret, arglist);
-        else if(vtype == V_REF_ERROR){
+        else if(vtype == Type.RefError){
             throwRefError();
             assert(0);
         }
@@ -1133,9 +1141,10 @@ struct Value
         }
     }
 
-    DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                 Value[] arglist)
     {
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
         {
             DError* a;
 
@@ -1143,7 +1152,7 @@ struct Value
             //if (a) writef("Vobject.Call() returned %x\n", a);
             return a;
         }
-        else if(vtype == V_REF_ERROR){
+        else if(vtype == Type.RefError){
             throwRefError();
             assert(0);
         }
@@ -1155,9 +1164,9 @@ struct Value
         }
     }
 
-    DError* putIterator(Value* v)
+    DError* putIterator(out Value v)
     {
-        if(vtype == V_OBJECT)
+        if(vtype == Type.Object)
             return object.putIterator(v);
         else
         {
@@ -1165,20 +1174,6 @@ struct Value
             return ForInMustBeObjectError;
         }
     }
-
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // to remove
-
-    // deprecated
-    // ScriptException getException(Loc linnum,
-    //                              string f = __FILE__, size_t l = __LINE__)
-    // {
-    //     // if (vtype == V_OBJECT)
-    //     //     return object.getException(linnum, f, l);
-    //     // else
-    //         return new ScriptException("Unhandled exception: " ~ toString,
-    //                                    linnum, f, l);
-    // }
 
     debug void dump()
     {
@@ -1195,29 +1190,22 @@ else static if (size_t.sizeof == 8)
   static assert(Value.sizeof == 24); //fat string point 2*8 + type tag & hash
 else static assert(0, "This machine is not supported.");
 
-Value vundefined = { V_UNDEFINED };
-Value vnull = { V_NULL };
-
-string TypeUndefined = "Undefined";
-string TypeNull = "Null";
-string TypeBoolean = "Boolean";
-string TypeNumber = "Number";
-string TypeString = "String";
-string TypeObject = "Object";
-
-string TypeIterator = "Iterator";
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// How do I make these to be enum?
+Value vundefined = { vtype: Value.Type.Undefined };
+Value vnull = { vtype: Value.Type.Null };
 
 @safe pure nothrow
-Value* signalingUndefined(d_string id)
+Value* signalingUndefined(in d_string id)
 {
-    Value* p;
-    p = new Value;
+    auto p = new Value;
     p.putSignalingUndefined(id);
     return p;
 }
 
-/* Status contains the ending status of a function.
- * Mostly, this contains an error status or a yielding status.
+/* DError contains the ending status of a function.
+Mostly, this contains a ScriptException.
+DError is needed for catch statements in ths script.
  */
 struct DError
 {

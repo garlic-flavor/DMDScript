@@ -55,6 +55,8 @@ alias d_uint16 = ushort;
 alias d_string = immutable(tchar)[];
 alias d_time = long;
 enum d_time_nan = long.min;
+enum d_boolean d_true = 1;
+enum d_boolean d_false = 0;
 
 //
 class ScriptException : Exception
@@ -372,7 +374,7 @@ int isStrWhiteSpaceChar(dchar c)
  *	false	it's not an index
  */
 @safe @nogc pure nothrow
-int StringToIndex(d_string name, out d_uint32 index)
+bool StringToIndex(d_string name, out d_uint32 index)
 {
     if(name.length)
     {

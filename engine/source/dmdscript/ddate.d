@@ -194,7 +194,8 @@ class DdateConstructor : Dfunction
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 15.9.3
         Dobject o;
@@ -254,9 +255,9 @@ class DdateConstructor : Dfunction
 
         case 1:
             arglist[0].toPrimitive(ret, null);
-            if(ret.getType() == TypeString)
+            if(ret.getType() == Value.TypeName.String)
             {
-                n = parseDateString(cc, ret.text);
+                n = parseDateString(&cc, ret.text);
             }
             else
             {
@@ -275,7 +276,8 @@ class DdateConstructor : Dfunction
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // ECMA 15.9.2
         // return string as if (new Date()).toString()
@@ -286,7 +288,7 @@ class DdateConstructor : Dfunction
         {
             t = getUTCtime();
             t = UTCtoLocalTime(t);
-            s = dateToString(cc, t, TIMEFORMAT.String);
+            s = dateToString(&cc, t, TIMEFORMAT.String);
         }
         else
         {
@@ -1533,7 +1535,7 @@ static:
                          Property.Attribute.DontDelete |
                          Property.Attribute.ReadOnly);
 
-        assert(_prototype.proptable.table.length != 0);
+        assert(_prototype.proptable.length != 0);
     }
 
     Dfunction getConstructor()

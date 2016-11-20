@@ -54,10 +54,10 @@ class DnativeFunction : Dfunction
         pcall = func;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret,
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
-        return (*pcall)(this, cc, othis, ret, arglist);
+        return (*pcall)(this, &cc, othis, &ret, arglist);
     }
 
     /*********************************

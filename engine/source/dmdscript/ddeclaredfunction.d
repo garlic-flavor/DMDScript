@@ -41,7 +41,7 @@ class DdeclaredFunction : Dfunction
     {
         super(cast(d_uint32)fd.parameters.length, Dfunction.getPrototype);
         assert(Dfunction.getPrototype);
-        assert(internal_prototype);
+        assert(Prototype);
         this.fd = fd;
 
         // ECMA 3 13.2
@@ -50,7 +50,7 @@ class DdeclaredFunction : Dfunction
         o.Put(Text.constructor, this, Property.Attribute.DontEnum); // step 10
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret,
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // 1. Create activation object per ECMA 10.1.6
@@ -84,7 +84,7 @@ class DdeclaredFunction : Dfunction
         if(fd.name)
         {
            vtmp.putVobject(this);
-           actobj.Put(fd.name, &vtmp, Property.Attribute.DontDelete);
+           actobj.Put(*fd.name, vtmp, Property.Attribute.DontDelete);
         }
         // Instantiate the parameters
         {
@@ -92,7 +92,7 @@ class DdeclaredFunction : Dfunction
             foreach(Identifier* p; fd.parameters)
             {
                 Value* v = (a < arglist.length) ? &arglist[a++] : &vundefined;
-                actobj.Put(p.toString(), v, Property.Attribute.DontDelete);
+                actobj.Put(p.toString, *v, Property.Attribute.DontDelete);
             }
         }
 
@@ -168,13 +168,14 @@ class DdeclaredFunction : Dfunction
         //Value* v;
         //v=Get(TEXT_arguments);
         //writef("1v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
-        Put(Text.arguments, &vundefined, Property.Attribute.None);
+        Put(Text.arguments, vundefined, Property.Attribute.None);
         //actobj.Put(TEXT_arguments, &vundefined, 0);
 
         return result;
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 3 13.2.2
         Dobject othis;
@@ -184,7 +185,7 @@ class DdeclaredFunction : Dfunction
 
         v = Get(Text.prototype);
         if(v.isPrimitive())
-            proto = Dobject.getPrototype();
+            proto = Dobject.getPrototype;
         else
             proto = v.toObject();
         othis = new Dobject(proto);

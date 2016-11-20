@@ -44,7 +44,8 @@ class DfunctionConstructor : Dfunction
         //Put(TEXT_prototype, Dfunction::getPrototype(), attributes);
     }
 
-    override DError* Construct(CallContext* cc, Value* ret, Value[] arglist)
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
     {
         // ECMA 15.3.2.1
         d_string bdy;
@@ -102,7 +103,8 @@ class DfunctionConstructor : Dfunction
         return v;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
     {
         // ECMA 15.3.1
         return Construct(cc, ret, arglist);
@@ -174,7 +176,7 @@ DError* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
 
     if(argArray.isUndefinedOrNull())
     {
-        v = othis.Call(cc, o, ret, null);
+        v = othis.Call(*cc, o, *ret, null);
     }
     else
     {
@@ -215,10 +217,10 @@ DError* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
         for(i = 0; i < len; i++)
         {
             x = a.Get(i);
-            Value.copy(&alist[i], x);
+            alist[i] = *x;
         }
 
-        v = othis.Call(cc, o, ret, alist);
+        v = othis.Call(*cc, o, *ret, alist);
 
         delete p1;
     }
@@ -237,7 +239,7 @@ DError* Dfunction_prototype_call(Dobject pthis, CallContext* cc, Dobject othis, 
     if(arglist.length == 0)
     {
         o = cc.global;
-        v = othis.Call(cc, o, ret, arglist);
+        v = othis.Call(*cc, o, *ret, arglist);
     }
     else
     {
@@ -246,7 +248,7 @@ DError* Dfunction_prototype_call(Dobject pthis, CallContext* cc, Dobject othis, 
             o = cc.global;
         else
             o = thisArg.toObject();
-        v = othis.Call(cc, o, ret, arglist[1 .. $]);
+        v = othis.Call(*cc, o, *ret, arglist[1 .. $]);
     }
     return v;
 }
@@ -275,7 +277,7 @@ class DfunctionPrototype : Dfunction
         DnativeFunction.initialize(this, nfd, attributes);
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, Value* ret,
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA v3 15.3.4
@@ -328,7 +330,7 @@ class Dfunction : Dobject
       return s;
   }
 
-  override DError* HasInstance(Value* ret, Value* v)
+  override DError* HasInstance(out Value ret, ref Value v)
   {
       // ECMA v3 15.3.5.3
       Dobject V;
@@ -346,7 +348,7 @@ class Dfunction : Dobject
       o = w.toObject();
       for(;; )
       {
-          V = V.internal_prototype;
+          V = V.Prototype;
           if(!V)
               goto Lfalse;
           if(o == V)
@@ -401,7 +403,7 @@ static:
                          Property.Attribute.DontDelete |
                          Property.Attribute.ReadOnly);
 
-        _constructor.internal_prototype = _prototype;
+        _constructor.Prototype = _prototype;
         _constructor.proptable.previous = _prototype.proptable;
     }
 private:

@@ -62,9 +62,9 @@ DError* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
     //FuncLog funclog(L"Global.eval()");
 
     v = arglist.length ? &arglist[0] : &vundefined;
-    if(v.getType() != TypeString)
+    if(v.getType() != Value.TypeName.String)
     {
-        Value.copy(ret, v);
+        *ret = *v;
         return null;
     }
     s = v.toString();
@@ -149,7 +149,7 @@ DError* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
         // The this value is the same as the this value of the
         // calling context.
         assert(cc.callerothis);
-        result = IR.call(cc, cc.callerothis, fd.code, ret, locals.ptr);
+        result = IR.call(*cc, cc.callerothis, fd.code, *ret, locals.ptr);
         if(p1)
             delete p1;
         fd = null;
@@ -771,7 +771,7 @@ class Dglobal : Dobject
         Put(Text.Infinity, d_number.infinity,
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete);
-        Put(Text.undefined, &vundefined,
+        Put(Text.undefined, vundefined,
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete);
         static enum NativeFunctionData[] nfd =
@@ -858,7 +858,7 @@ class Dglobal : Dobject
         {
             arguments.Put(i, argv[i].idup, Property.Attribute.DontEnum);
         }
-        arguments.Put(Text.callee, &vnull, Property.Attribute.DontEnum);
+        arguments.Put(Text.callee, vnull, Property.Attribute.DontEnum);
     }
 }
 
