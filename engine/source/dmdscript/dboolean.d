@@ -64,7 +64,9 @@ class DbooleanConstructor : Dfunction
 
 /* ===================== Dboolean_prototype_toString =============== */
 
-DError* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dboolean_prototype_toString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // othis must be a Boolean
     if(!othis.isClass(Text.Boolean))
@@ -77,14 +79,16 @@ DError* Dboolean_prototype_toString(Dobject pthis, CallContext* cc, Dobject othi
         Value *v;
 
         v = &(cast(Dboolean)othis).value;
-        ret.putVstring(v.toString());
+        ret.putVstring(v.toString);
     }
     return null;
 }
 
 /* ===================== Dboolean_prototype_valueOf =============== */
 
-DError* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dboolean_prototype_valueOf(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     //FuncLog f("Boolean.prototype.valueOf()");
     //logflag = 1;
@@ -100,7 +104,7 @@ DError* Dboolean_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis
         Value *v;
 
         v = &(cast(Dboolean)othis).value;
-        *ret = *v;
+        ret = *v;
     }
     return null;
 }

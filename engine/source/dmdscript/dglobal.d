@@ -48,7 +48,9 @@ d_string arg0string(Value[] arglist)
 
 /* ====================== Dglobal_eval ================ */
 
-DError* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_eval(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
 
@@ -64,7 +66,7 @@ DError* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
     v = arglist.length ? &arglist[0] : &vundefined;
     if(v.getType() != Value.TypeName.String)
     {
-        *ret = *v;
+        ret = *v;
         return null;
     }
     s = v.toString();
@@ -149,7 +151,7 @@ DError* Dglobal_eval(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, 
         // The this value is the same as the this value of the
         // calling context.
         assert(cc.callerothis);
-        result = IR.call(*cc, cc.callerothis, fd.code, *ret, locals.ptr);
+        result = IR.call(cc, cc.callerothis, fd.code, ret, locals.ptr);
         if(p1)
             delete p1;
         fd = null;
@@ -175,7 +177,9 @@ Lsyntaxerror:
 
 /* ====================== Dglobal_parseInt ================ */
 
-DError* Dglobal_parseInt(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_parseInt(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.utf : decode;
 
@@ -300,7 +304,9 @@ DError* Dglobal_parseInt(Dobject pthis, CallContext* cc, Dobject othis, Value* r
 
 /* ====================== Dglobal_parseFloat ================ */
 
-DError* Dglobal_parseFloat(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_parseFloat(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.1.2.3
     d_number n;
@@ -324,7 +330,9 @@ int ISURIALNUM(dchar c)
 
 tchar[16 + 1] TOHEX = "0123456789ABCDEF";
 
-DError* Dglobal_escape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_escape(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.exception : assumeUnique;
     import std.string : indexOf;
@@ -390,7 +398,9 @@ DError* Dglobal_escape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
 
 /* ====================== Dglobal_unescape ================ */
 
-DError* Dglobal_unescape(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_unescape(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.exception : assumeUnique;
     import std.traits : Unqual, ForeachType;
@@ -474,7 +484,9 @@ DError* Dglobal_unescape(Dobject pthis, CallContext* cc, Dobject othis, Value* r
 
 /* ====================== Dglobal_isNaN ================ */
 
-DError* Dglobal_isNaN(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_isNaN(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.math : isNaN;
 
@@ -495,7 +507,9 @@ DError* Dglobal_isNaN(Dobject pthis, CallContext* cc, Dobject othis, Value* ret,
 
 /* ====================== Dglobal_isFinite ================ */
 
-DError* Dglobal_isFinite(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_isFinite(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.math : isFinite;
 
@@ -524,7 +538,9 @@ DError* URI_error(d_string s)
     return v;
 }
 
-DError* Dglobal_decodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_decodeURI(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.uri : decode, URIException;
     // ECMA v3 15.1.3.1
@@ -544,7 +560,9 @@ DError* Dglobal_decodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* 
     return null;
 }
 
-DError* Dglobal_decodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_decodeURIComponent(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.uri : decodeComponent, URIException;
     // ECMA v3 15.1.3.2
@@ -564,7 +582,9 @@ DError* Dglobal_decodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis
     return null;
 }
 
-DError* Dglobal_encodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_encodeURI(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.uri : encode, URIException;
 
@@ -585,7 +605,9 @@ DError* Dglobal_encodeURI(Dobject pthis, CallContext* cc, Dobject othis, Value* 
     return null;
 }
 
-DError* Dglobal_encodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_encodeURIComponent(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.uri : encodeComponent, URIException;
     // ECMA v3 15.1.3.4
@@ -607,7 +629,8 @@ DError* Dglobal_encodeURIComponent(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ====================== Dglobal_print ================ */
 
-static void dglobal_print(CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+static void dglobal_print(
+    ref CallContext cc, Dobject othis, out Value ret, Value[] arglist)
 {
     import std.stdio : writef;
     // Our own extension
@@ -626,7 +649,9 @@ static void dglobal_print(CallContext* cc, Dobject othis, Value* ret, Value[] ar
     ret.putVundefined();
 }
 
-DError* Dglobal_print(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_print(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // Our own extension
     dglobal_print(cc, othis, ret, arglist);
@@ -635,7 +660,9 @@ DError* Dglobal_print(Dobject pthis, CallContext* cc, Dobject othis, Value* ret,
 
 /* ====================== Dglobal_println ================ */
 
-DError* Dglobal_println(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_println(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.stdio : writef;
 
@@ -647,7 +674,9 @@ DError* Dglobal_println(Dobject pthis, CallContext* cc, Dobject othis, Value* re
 
 /* ====================== Dglobal_readln ================ */
 
-DError* Dglobal_readln(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_readln(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.exception : assumeUnique;
     import std.traits : Unqual, ForeachType;
@@ -699,7 +728,9 @@ DError* Dglobal_readln(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
 
 /* ====================== Dglobal_getenv ================ */
 
-DError* Dglobal_getenv(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_getenv(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.string : toStringz;
     import core.sys.posix.stdlib : getenv;
@@ -722,25 +753,33 @@ DError* Dglobal_getenv(Dobject pthis, CallContext* cc, Dobject othis, Value* ret
 
 /* ====================== Dglobal_ScriptEngine ================ */
 
-DError* Dglobal_ScriptEngine(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_ScriptEngine(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     ret.putVstring(Text.DMDScript);
     return null;
 }
 
-DError* Dglobal_ScriptEngineBuildVersion(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_ScriptEngineBuildVersion(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     ret.putVnumber(BUILD_VERSION);
     return null;
 }
 
-DError* Dglobal_ScriptEngineMajorVersion(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_ScriptEngineMajorVersion(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     ret.putVnumber(MAJOR_VERSION);
     return null;
 }
 
-DError* Dglobal_ScriptEngineMinorVersion(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dglobal_ScriptEngineMinorVersion(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     ret.putVnumber(MINOR_VERSION);
     return null;

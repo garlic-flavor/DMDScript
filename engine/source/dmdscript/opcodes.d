@@ -746,8 +746,7 @@ struct IR
                     break;
 
                 case Opcode.Mov:                 // a = b
-                    *(locals + (code + 1).index) =
-                        *(locals + (code + 2).index);
+                    *(locals + (code + 1).index) = *(locals + (code + 2).index);
                     code += IRTypes[Opcode.Mov].size;
                     break;
 

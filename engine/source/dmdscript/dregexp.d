@@ -283,7 +283,9 @@ class DregexpConstructor : Dfunction
 
 /* ===================== Dregexp_prototype_toString =============== */
 
-DError* Dregexp_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dregexp_prototype_toString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // othis must be a RegExp
     Dregexp r;
@@ -309,7 +311,9 @@ DError* Dregexp_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ===================== Dregexp_prototype_test =============== */
 
-DError* Dregexp_prototype_test(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dregexp_prototype_test(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.10.6.3 says this is equivalent to:
     //	RegExp.prototype.exec(string) != null
@@ -318,7 +322,9 @@ DError* Dregexp_prototype_test(Dobject pthis, CallContext* cc, Dobject othis, Va
 
 /* ===================== Dregexp_prototype_exec ============= */
 
-DError* Dregexp_prototype_exec(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dregexp_prototype_exec(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     return Dregexp.exec(othis, ret, arglist, EXEC_ARRAY);
 }
@@ -326,7 +332,9 @@ DError* Dregexp_prototype_exec(Dobject pthis, CallContext* cc, Dobject othis, Va
 
 /* ===================== Dregexp_prototype_compile ============= */
 
-DError* Dregexp_prototype_compile(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dregexp_prototype_compile(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // RegExp.prototype.compile(pattern, attributes)
 
@@ -536,7 +544,7 @@ static:
         return r;
     }
 
-    DError* exec(Dobject othis, Value* ret, Value[] arglist, int rettype)
+    DError* exec(Dobject othis, out Value ret, Value[] arglist, int rettype)
     {
         //writef("Dregexp.exec(arglist.length = %d, rettype = %d)\n", arglist.length, rettype);
 
@@ -667,7 +675,7 @@ static:
                     break;
                 }
                 case EXEC_STRING:
-                    *ret = *dc.lastMatch;
+                    ret = *dc.lastMatch;
                     break;
 
                 case EXEC_BOOLEAN:

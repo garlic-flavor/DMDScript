@@ -114,7 +114,9 @@ class DfunctionConstructor : Dfunction
 
 /* ===================== Dfunction_prototype_toString =============== */
 
-DError* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dfunction_prototype_toString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     immutable(char)[] s;
     Dfunction f;
@@ -144,7 +146,9 @@ DError* Dfunction_prototype_toString(Dobject pthis, CallContext* cc, Dobject oth
 
 /* ===================== Dfunction_prototype_apply =============== */
 
-DError* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dfunction_prototype_apply(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.3.4.3
 
@@ -176,7 +180,7 @@ DError* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
 
     if(argArray.isUndefinedOrNull())
     {
-        v = othis.Call(*cc, o, *ret, null);
+        v = othis.Call(cc, o, ret, null);
     }
     else
     {
@@ -220,7 +224,7 @@ DError* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
             alist[i] = *x;
         }
 
-        v = othis.Call(*cc, o, *ret, alist);
+        v = othis.Call(cc, o, ret, alist);
 
         delete p1;
     }
@@ -229,7 +233,9 @@ DError* Dfunction_prototype_apply(Dobject pthis, CallContext* cc, Dobject othis,
 
 /* ===================== Dfunction_prototype_call =============== */
 
-DError* Dfunction_prototype_call(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dfunction_prototype_call(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.3.4.4
     Value* thisArg;
@@ -239,7 +245,7 @@ DError* Dfunction_prototype_call(Dobject pthis, CallContext* cc, Dobject othis, 
     if(arglist.length == 0)
     {
         o = cc.global;
-        v = othis.Call(*cc, o, *ret, arglist);
+        v = othis.Call(cc, o, ret, arglist);
     }
     else
     {
@@ -248,7 +254,7 @@ DError* Dfunction_prototype_call(Dobject pthis, CallContext* cc, Dobject othis, 
             o = cc.global;
         else
             o = thisArg.toObject();
-        v = othis.Call(*cc, o, *ret, arglist[1 .. $]);
+        v = othis.Call(cc, o, ret, arglist[1 .. $]);
     }
     return v;
 }

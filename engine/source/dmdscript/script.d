@@ -523,7 +523,7 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
 }
 
 @safe @nogc pure nothrow
-int localeCompare(CallContext *cc, d_string s1, d_string s2)
+int localeCompare(ref CallContext cc, d_string s1, d_string s2)
 {   // no locale support here
     import std.string : cmp;
     return cmp(s1, s2);

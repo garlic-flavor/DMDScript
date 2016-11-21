@@ -42,12 +42,12 @@ enum TIMEFORMAT
     UTCString,
 }
 
-d_time parseDateString(CallContext* cc, d_string s)
+d_time parseDateString(ref CallContext cc, d_string s)
 {
     return s.parse;
 }
 
-d_string dateToString(CallContext* cc, d_time t, TIMEFORMAT tf)
+d_string dateToString(ref CallContext cc, d_time t, TIMEFORMAT tf)
 {
     d_string p;
 
@@ -102,7 +102,9 @@ d_string dateToString(CallContext* cc, d_time t, TIMEFORMAT tf)
 
 /* ===================== Ddate.constructor functions ==================== */
 
-DError* Ddate_parse(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_parse(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.4.2
     d_string s;
@@ -120,7 +122,9 @@ DError* Ddate_parse(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, V
     return null;
 }
 
-DError* Ddate_UTC(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_UTC(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.4.3 - 15.9.4.10
 
@@ -257,7 +261,7 @@ class DdateConstructor : Dfunction
             arglist[0].toPrimitive(ret, null);
             if(ret.getType() == Value.TypeName.String)
             {
-                n = parseDateString(&cc, ret.text);
+                n = parseDateString(cc, ret.text);
             }
             else
             {
@@ -288,7 +292,7 @@ class DdateConstructor : Dfunction
         {
             t = getUTCtime();
             t = UTCtoLocalTime(t);
-            s = dateToString(&cc, t, TIMEFORMAT.String);
+            s = dateToString(cc, t, TIMEFORMAT.String);
         }
         else
         {
@@ -303,13 +307,13 @@ class DdateConstructor : Dfunction
 
 /* ===================== Ddate.prototype functions =============== */
 
-DError* checkdate(Value* ret, d_string name, Dobject othis)
+DError* checkdate(out Value ret, d_string name, Dobject othis)
 {
     ret.putVundefined();
     return FunctionWantsDateError(name, othis.classname);
 }
 
-int getThisTime(Value* ret, Dobject othis, out d_time n)
+int getThisTime(out Value ret, Dobject othis, out d_time n)
 {
     d_number x;
 
@@ -318,7 +322,7 @@ int getThisTime(Value* ret, Dobject othis, out d_time n)
     return (n == d_time_nan) ? 1 : 0;
 }
 
-int getThisLocalTime(Value* ret, Dobject othis, out d_time n)
+int getThisLocalTime(out Value ret, Dobject othis, out d_time n)
 {
     int isn = 1;
 
@@ -332,7 +336,9 @@ int getThisLocalTime(Value* ret, Dobject othis, out d_time n)
     return isn;
 }
 
-DError* Ddate_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_toString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.2
     d_time n;
@@ -356,7 +362,9 @@ DError* Ddate_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, 
     return null;
 }
 
-DError* Ddate_prototype_toDateString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_toDateString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.3
     d_time n;
@@ -379,7 +387,9 @@ DError* Ddate_prototype_toDateString(Dobject pthis, CallContext* cc, Dobject oth
     return null;
 }
 
-DError* Ddate_prototype_toTimeString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_toTimeString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.4
     d_time n;
@@ -403,7 +413,9 @@ DError* Ddate_prototype_toTimeString(Dobject pthis, CallContext* cc, Dobject oth
     return null;
 }
 
-DError* Ddate_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_valueOf(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.3
     d_time n;
@@ -414,7 +426,9 @@ DError* Ddate_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, V
     return null;
 }
 
-DError* Ddate_prototype_getTime(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getTime(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.4
     d_time n;
@@ -425,7 +439,9 @@ DError* Ddate_prototype_getTime(Dobject pthis, CallContext* cc, Dobject othis, V
     return null;
 }
 
-DError* Ddate_prototype_getYear(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getYear(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.5
     d_time n;
@@ -450,7 +466,9 @@ DError* Ddate_prototype_getYear(Dobject pthis, CallContext* cc, Dobject othis, V
     return null;
 }
 
-DError* Ddate_prototype_getFullYear(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getFullYear(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.6
     d_time n;
@@ -466,7 +484,9 @@ DError* Ddate_prototype_getFullYear(Dobject pthis, CallContext* cc, Dobject othi
     return null;
 }
 
-DError* Ddate_prototype_getUTCFullYear(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getUTCFullYear(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.7
     d_time n;
@@ -481,7 +501,9 @@ DError* Ddate_prototype_getUTCFullYear(Dobject pthis, CallContext* cc, Dobject o
     return null;
 }
 
-DError* Ddate_prototype_getMonth(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getMonth(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.8
     d_time n;
@@ -497,7 +519,9 @@ DError* Ddate_prototype_getMonth(Dobject pthis, CallContext* cc, Dobject othis, 
     return null;
 }
 
-DError* Ddate_prototype_getUTCMonth(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getUTCMonth(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.9
     d_time n;
@@ -513,7 +537,9 @@ DError* Ddate_prototype_getUTCMonth(Dobject pthis, CallContext* cc, Dobject othi
     return null;
 }
 
-DError* Ddate_prototype_getDate(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getDate(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.10
     d_time n;
@@ -531,7 +557,9 @@ DError* Ddate_prototype_getDate(Dobject pthis, CallContext* cc, Dobject othis, V
     return null;
 }
 
-DError* Ddate_prototype_getUTCDate(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getUTCDate(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.11
     d_time n;
@@ -547,7 +575,9 @@ DError* Ddate_prototype_getUTCDate(Dobject pthis, CallContext* cc, Dobject othis
     return null;
 }
 
-DError* Ddate_prototype_getDay(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getDay(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.12
     d_time n;
@@ -563,7 +593,9 @@ DError* Ddate_prototype_getDay(Dobject pthis, CallContext* cc, Dobject othis, Va
     return null;
 }
 
-DError* Ddate_prototype_getUTCDay(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getUTCDay(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.13
     d_time n;
@@ -579,7 +611,9 @@ DError* Ddate_prototype_getUTCDay(Dobject pthis, CallContext* cc, Dobject othis,
     return null;
 }
 
-DError* Ddate_prototype_getHours(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getHours(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.14
     d_time n;
@@ -595,7 +629,9 @@ DError* Ddate_prototype_getHours(Dobject pthis, CallContext* cc, Dobject othis, 
     return null;
 }
 
-DError* Ddate_prototype_getUTCHours(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getUTCHours(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.15
     d_time n;
@@ -611,7 +647,9 @@ DError* Ddate_prototype_getUTCHours(Dobject pthis, CallContext* cc, Dobject othi
     return null;
 }
 
-DError* Ddate_prototype_getMinutes(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getMinutes(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.16
     d_time n;
@@ -627,7 +665,9 @@ DError* Ddate_prototype_getMinutes(Dobject pthis, CallContext* cc, Dobject othis
     return null;
 }
 
-DError* Ddate_prototype_getUTCMinutes(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getUTCMinutes(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.17
     d_time n;
@@ -643,7 +683,9 @@ DError* Ddate_prototype_getUTCMinutes(Dobject pthis, CallContext* cc, Dobject ot
     return null;
 }
 
-DError* Ddate_prototype_getSeconds(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getSeconds(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.18
     d_time n;
@@ -659,7 +701,9 @@ DError* Ddate_prototype_getSeconds(Dobject pthis, CallContext* cc, Dobject othis
     return null;
 }
 
-DError* Ddate_prototype_getUTCSeconds(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getUTCSeconds(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.19
     d_time n;
@@ -675,7 +719,9 @@ DError* Ddate_prototype_getUTCSeconds(Dobject pthis, CallContext* cc, Dobject ot
     return null;
 }
 
-DError* Ddate_prototype_getMilliseconds(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getMilliseconds(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.20
     d_time n;
@@ -691,7 +737,9 @@ DError* Ddate_prototype_getMilliseconds(Dobject pthis, CallContext* cc, Dobject 
     return null;
 }
 
-DError* Ddate_prototype_getUTCMilliseconds(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getUTCMilliseconds(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.21
     d_time n;
@@ -707,7 +755,9 @@ DError* Ddate_prototype_getUTCMilliseconds(Dobject pthis, CallContext* cc, Dobje
     return null;
 }
 
-DError* Ddate_prototype_getTimezoneOffset(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_getTimezoneOffset(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.22
     d_time n;
@@ -723,7 +773,9 @@ DError* Ddate_prototype_getTimezoneOffset(Dobject pthis, CallContext* cc, Dobjec
     return null;
 }
 
-DError* Ddate_prototype_setTime(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setTime(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.23
     d_time n;
@@ -741,7 +793,9 @@ DError* Ddate_prototype_setTime(Dobject pthis, CallContext* cc, Dobject othis, V
     return null;
 }
 
-DError* Ddate_prototype_setMilliseconds(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setMilliseconds(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.24
 
@@ -767,7 +821,9 @@ DError* Ddate_prototype_setMilliseconds(Dobject pthis, CallContext* cc, Dobject 
     return null;
 }
 
-DError* Ddate_prototype_setUTCMilliseconds(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setUTCMilliseconds(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.25
     d_time ms;
@@ -792,7 +848,9 @@ DError* Ddate_prototype_setUTCMilliseconds(Dobject pthis, CallContext* cc, Dobje
     return null;
 }
 
-DError* Ddate_prototype_setSeconds(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setSeconds(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.26
     d_time ms;
@@ -832,7 +890,9 @@ DError* Ddate_prototype_setSeconds(Dobject pthis, CallContext* cc, Dobject othis
     return null;
 }
 
-DError* Ddate_prototype_setUTCSeconds(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setUTCSeconds(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.27
     d_time ms;
@@ -872,7 +932,9 @@ DError* Ddate_prototype_setUTCSeconds(Dobject pthis, CallContext* cc, Dobject ot
     return null;
 }
 
-DError* Ddate_prototype_setMinutes(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setMinutes(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.28
     d_time ms;
@@ -922,7 +984,9 @@ DError* Ddate_prototype_setMinutes(Dobject pthis, CallContext* cc, Dobject othis
     return null;
 }
 
-DError* Ddate_prototype_setUTCMinutes(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setUTCMinutes(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.29
     d_time ms;
@@ -972,7 +1036,9 @@ DError* Ddate_prototype_setUTCMinutes(Dobject pthis, CallContext* cc, Dobject ot
     return null;
 }
 
-DError* Ddate_prototype_setHours(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setHours(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.30
     d_time ms;
@@ -1034,7 +1100,9 @@ DError* Ddate_prototype_setHours(Dobject pthis, CallContext* cc, Dobject othis, 
     return null;
 }
 
-DError* Ddate_prototype_setUTCHours(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setUTCHours(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.31
     d_time ms;
@@ -1096,7 +1164,9 @@ DError* Ddate_prototype_setUTCHours(Dobject pthis, CallContext* cc, Dobject othi
     return null;
 }
 
-DError* Ddate_prototype_setDate(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setDate(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.32
     d_time date;
@@ -1121,7 +1191,9 @@ DError* Ddate_prototype_setDate(Dobject pthis, CallContext* cc, Dobject othis, V
     return null;
 }
 
-DError* Ddate_prototype_setUTCDate(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setUTCDate(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.33
     d_time date;
@@ -1146,7 +1218,9 @@ DError* Ddate_prototype_setUTCDate(Dobject pthis, CallContext* cc, Dobject othis
     return null;
 }
 
-DError* Ddate_prototype_setMonth(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setMonth(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.34
     d_time date;
@@ -1186,7 +1260,9 @@ DError* Ddate_prototype_setMonth(Dobject pthis, CallContext* cc, Dobject othis, 
     return null;
 }
 
-DError* Ddate_prototype_setUTCMonth(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setUTCMonth(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.35
     d_time date;
@@ -1226,7 +1302,9 @@ DError* Ddate_prototype_setUTCMonth(Dobject pthis, CallContext* cc, Dobject othi
     return null;
 }
 
-DError* Ddate_prototype_setFullYear(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setFullYear(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.36
     d_time date;
@@ -1276,7 +1354,9 @@ DError* Ddate_prototype_setFullYear(Dobject pthis, CallContext* cc, Dobject othi
     return null;
 }
 
-DError* Ddate_prototype_setUTCFullYear(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setUTCFullYear(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.37
     d_time date;
@@ -1326,7 +1406,9 @@ DError* Ddate_prototype_setUTCFullYear(Dobject pthis, CallContext* cc, Dobject o
     return null;
 }
 
-DError* Ddate_prototype_setYear(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_setYear(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.38
     d_time date;
@@ -1363,7 +1445,9 @@ DError* Ddate_prototype_setYear(Dobject pthis, CallContext* cc, Dobject othis, V
     return null;
 }
 
-DError* Ddate_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_toLocaleString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.39
     immutable(char)[] s;
@@ -1380,7 +1464,9 @@ DError* Ddate_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject o
     return null;
 }
 
-DError* Ddate_prototype_toLocaleDateString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_toLocaleDateString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.6
     immutable(char)[] s;
@@ -1397,7 +1483,9 @@ DError* Ddate_prototype_toLocaleDateString(Dobject pthis, CallContext* cc, Dobje
     return null;
 }
 
-DError* Ddate_prototype_toLocaleTimeString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_toLocaleTimeString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.7
     immutable(char)[] s;
@@ -1413,7 +1501,9 @@ DError* Ddate_prototype_toLocaleTimeString(Dobject pthis, CallContext* cc, Dobje
     return null;
 }
 
-DError* Ddate_prototype_toUTCString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Ddate_prototype_toUTCString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA 15.9.5.40
     immutable(char)[] s;

@@ -118,8 +118,9 @@ class DobjectConstructor : Dfunction
 
 /* ===================== Dobject_prototype_toString ================ */
 
-DError* Dobject_prototype_toString(Dobject pthis, CallContext* cc,
-                                   Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_toString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import std.format : format;
 
@@ -142,9 +143,9 @@ DError* Dobject_prototype_toString(Dobject pthis, CallContext* cc,
 
 /* ===================== Dobject_prototype_toLocaleString ================ */
 
-DError* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc,
-                                         Dobject othis, Value* ret,
-                                         Value[] arglist)
+DError* Dobject_prototype_toLocaleString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.2.4.3
     //	"This function returns the result of calling toString()."
@@ -159,7 +160,7 @@ DError* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc,
         Dobject o;
 
         o = v.object;
-        a = o.Call(*cc, othis, *ret, arglist);
+        a = o.Call(cc, othis, ret, arglist);
         if(a)                   // if exception was thrown
             return a;
     }
@@ -168,8 +169,9 @@ DError* Dobject_prototype_toLocaleString(Dobject pthis, CallContext* cc,
 
 /* ===================== Dobject_prototype_valueOf ================ */
 
-DError* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc,
-                                  Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_valueOf(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     ret.putVobject(othis);
     return null;
@@ -177,8 +179,9 @@ DError* Dobject_prototype_valueOf(Dobject pthis, CallContext* cc,
 
 /* ===================== Dobject_prototype_toSource ================ */
 
-DError* Dobject_prototype_toSource(Dobject pthis, CallContext* cc,
-                                   Dobject othis, Value* ret, Value[] arglist)
+DError* Dobject_prototype_toSource(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     d_string buf;
     int any;
@@ -205,9 +208,9 @@ DError* Dobject_prototype_toSource(Dobject pthis, CallContext* cc,
 
 /* ===================== Dobject_prototype_hasOwnProperty ================ */
 
-DError* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc,
-                                         Dobject othis, Value* ret,
-                                         Value[] arglist)
+DError* Dobject_prototype_hasOwnProperty(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.2.4.5
     Value* v;
@@ -219,9 +222,9 @@ DError* Dobject_prototype_hasOwnProperty(Dobject pthis, CallContext* cc,
 
 /* ===================== Dobject_prototype_isPrototypeOf ================ */
 
-DError* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc,
-                                        Dobject othis, Value* ret,
-                                        Value[] arglist)
+DError* Dobject_prototype_isPrototypeOf(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.2.4.6
     d_boolean result = false;
@@ -251,9 +254,9 @@ DError* Dobject_prototype_isPrototypeOf(Dobject pthis, CallContext* cc,
 
 /* ===================== Dobject_prototype_propertyIsEnumerable ================ */
 
-DError* Dobject_prototype_propertyIsEnumerable(Dobject pthis, CallContext* cc,
-                                               Dobject othis, Value* ret,
-                                               Value[] arglist)
+DError* Dobject_prototype_propertyIsEnumerable(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.2.4.7
     Value* v;

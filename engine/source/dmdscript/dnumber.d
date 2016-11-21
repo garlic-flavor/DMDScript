@@ -76,7 +76,9 @@ class DnumberConstructor : Dfunction
 
 /* ===================== Dnumber_prototype_toString =============== */
 
-DError* Dnumber_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.7.4.2
     d_string s;
@@ -121,7 +123,9 @@ DError* Dnumber_prototype_toString(Dobject pthis, CallContext* cc, Dobject othis
 
 /* ===================== Dnumber_prototype_toLocaleString =============== */
 
-DError* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toLocaleString(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // ECMA v3 15.7.4.3
     d_string s;
@@ -146,7 +150,9 @@ DError* Dnumber_prototype_toLocaleString(Dobject pthis, CallContext* cc, Dobject
 
 /* ===================== Dnumber_prototype_valueOf =============== */
 
-DError* Dnumber_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_valueOf(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     // othis must be a Number
     if(!othis.isClass(Text.Number))
@@ -159,7 +165,7 @@ DError* Dnumber_prototype_valueOf(Dobject pthis, CallContext* cc, Dobject othis,
         Value* v;
 
         v = &(cast(Dnumber)othis).value;
-        *ret = *v;
+        ret = *v;
     }
     return null;
 }
@@ -207,7 +213,9 @@ number_t deconstruct_real(d_number x, int f, out int pe)
 
 /* ===================== Dnumber_prototype_toFixed =============== */
 
-DError* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toFixed(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.exception : assumeUnique;
@@ -329,7 +337,9 @@ DError* Dnumber_prototype_toFixed(Dobject pthis, CallContext* cc, Dobject othis,
 
 /* ===================== Dnumber_prototype_toExponential =============== */
 
-DError* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toExponential(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
@@ -465,7 +475,9 @@ DError* Dnumber_prototype_toExponential(Dobject pthis, CallContext* cc, Dobject 
 
 /* ===================== Dnumber_prototype_toPrecision =============== */
 
-DError* Dnumber_prototype_toPrecision(Dobject pthis, CallContext* cc, Dobject othis, Value* ret, Value[] arglist)
+DError* Dnumber_prototype_toPrecision(
+    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
