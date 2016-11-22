@@ -90,7 +90,7 @@ struct Iterator
                 keyindex = 0;
             }
             Value* key = &keys[keyindex];
-            p = *key in *o.proptable;
+            p = *key in o.proptable;
             if(!p)                      // if no longer in property table
                 continue;
             if(p.attributes & Property.Attribute.DontEnum)
@@ -105,7 +105,7 @@ struct Iterator
                     for(Dobject ot = ostart; ot != o; ot = getPrototype(ot))
                     {
                         // If property p is in t, don't enumerate
-                        if(*key in *ot.proptable)
+                        if(*key in ot.proptable)
                             goto Lcontinue;
                     }
                 }

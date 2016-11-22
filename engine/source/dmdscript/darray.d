@@ -701,7 +701,7 @@ DError* Darray_prototype_sort(
     else
     {
         parraydim = 0;
-        foreach(ref Property p; *othis.proptable)
+        foreach(ref Property p; othis.proptable)
         {
             if(p.attributes == 0)       // don't count special properties
                 parraydim++;
@@ -743,7 +743,7 @@ DError* Darray_prototype_sort(
 
     // Now fill it with all the Property's that are array indices
     nprops = 0;
-    foreach(Value key, ref Property p; *othis.proptable)
+    foreach(Value key, ref Property p; othis.proptable)
     {
         d_uint32 index;
 
@@ -1070,7 +1070,7 @@ class Darray : Dobject
                     // delete all properties with keys >= i
                     d_uint32[] todelete;
 
-                    foreach(Value key, ref Property p; *proptable)
+                    foreach(Value key, ref Property p; proptable)
                     {
                         d_uint32 j;
 

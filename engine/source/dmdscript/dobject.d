@@ -188,7 +188,7 @@ DError* Dobject_prototype_toSource(
 
     buf = "{";
     any = 0;
-    foreach(Value key, Property p; *othis.proptable)
+    foreach(Value key, Property p; othis.proptable)
     {
         if(!(p.attributes &
              (Property.Attribute.DontEnum | Property.Attribute.Deleted)))
@@ -281,7 +281,7 @@ class DobjectPrototype : Dobject
 
 class Dobject
 {
-    PropTable* proptable;
+    PropTable proptable;
     string classname;
     Value value;
 
@@ -594,7 +594,7 @@ class Dobject
     Property* getOwnProperty(ref Value key)
     {
         assert(proptable !is null);
-        return proptable.getProperty(&key);
+        return proptable.getProperty(key);
     }
 
     @safe pure nothrow
@@ -608,9 +608,9 @@ class Dobject
     bool DefineOwnProperty(ref Value key, ref Property desc)
     {
         assert(proptable !is null);
-        if      (auto p = proptable.getProperty(&key))
+        if      (auto p = proptable.getProperty(key))
         {
-            if (desc.overwritableTo(*p))
+            if (desc.canOverwriteTo(*p))
             {
                 desc.overwriteTo(*p);
                 return true;

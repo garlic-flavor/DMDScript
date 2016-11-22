@@ -992,9 +992,8 @@ struct Value
     }
 
     static @safe
-    size_t calcHash(Value* v)
+    size_t calcHash(ref Value v)
     {
-        assert (v !is null);
         return v.toHash;
     }
 

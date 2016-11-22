@@ -91,7 +91,7 @@ struct Property
     }
 
     @property @safe @nogc pure nothrow
-    bool changeableAttribute() const
+    bool canChangeAttribute() const
     {
         return 0 == (attributes & Attribute.DontChangeAttr);
     }
@@ -105,7 +105,7 @@ struct Property
     }
 
     @safe @nogc pure nothrow
-    bool overwritableTo(in ref Property p) const
+    bool canOverwriteTo(in ref Property p) const
     {
         if      (p.configurable)
             return true;
@@ -117,28 +117,29 @@ struct Property
     }
 
     @trusted @nogc pure nothrow
-    void overwriteTo(ref Property p)
+    void overwriteTo(ref Property target)
     {
-        Attribute attr;
-        if (0 == (p.attributes & Attribute.DontOverride))
-            attr = attributes;
-        else
-            attr = p.attributes | (attributes & Attribute.ReadOnly);
 
-        if (attr & Attribute.Accessor)
-        {
-            if (0 == (attr & Attribute.DontOverride))
-            {
-                p.Get = Get;
-                p.Set = Set;
-            }
-        }
-        else
-        {
-            if (0 == (attr & Attribute.ReadOnly))
-                p.value = value;
-        }
-        p.attributes = attr;
+        // Attribute attr;
+        // if (0 == (p.attributes & Attribute.DontOverride))
+        //     attr = attributes;
+        // else
+        //     attr = p.attributes | (attributes & Attribute.ReadOnly);
+
+        // if (attr & Attribute.Accessor)
+        // {
+        //     if (0 == (attr & Attribute.DontOverride))
+        //     {
+        //         p.Get = Get;
+        //         p.Set = Set;
+        //     }
+        // }
+        // else
+        // {
+        //     if (0 == (attr & Attribute.ReadOnly))
+        //         p.value = value;
+        // }
+        // p.attributes = attr;
     }
 }
 
@@ -194,17 +195,22 @@ Dobject toObject(Property* desc)
 }
 +/
 /*********************************** PropTable *********************/
-struct PropTable
+final class PropTable
 {
+    @safe pure nothrow
+    this()
+    {
+        table = new RandAA!(Value, Property);
+    }
+
+
     int opApply(scope int delegate(ref Property) dg)
     {
-        initialize;
         return table.opApply(dg);
     }
 
     int opApply(scope int delegate(ref Value, ref Property) dg)
     {
-        initialize;
         return table.opApply(dg);
     }
 
@@ -212,65 +218,35 @@ struct PropTable
      * Look up name and get its corresponding Property.
      * Return null if not found.
      */
-    @trusted
-    Property* getProperty(T)(T name)
-        if (is(T == d_string) || is(T == Value*))
+    @safe
+    Property* getProperty(ref Value key)
     {
-        Value* v;
-        Property* p;
-
-        v = get(*name, Value.calcHash(name));
-        if(!v)
-            return null;
-
-        // Work backwards from &p->value to p
-        p = cast(Property*)(cast(void*)v - Property.value.offsetof);
-
-        return p;
+        return getProperty(key, key.toHash);
     }
 
-    Value* get(ref Value key, in size_t hash/*, CallContext* cc, Dobject othis*/)
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// To_Do: implement Accessor version.
+    Value* get(ref Value key, in size_t hash/*, ref CallContext cc, Dobject othis*/)
     {
-        assert(key.toHash == hash);
-        auto t = &this;
-        do
+        if (auto p = getProperty(key, hash))
         {
-            t.initialize();
-            //p = *key in t.table;
-            if (auto p = t.table.findExistingAlt(key, hash))
-            {
-                //TODO: what's that assert for? -- seems to run OK without it
-                //bombs with range violation otherwise!
-                /*try{
-                        assert(t.table[*key] == p);
-                   }catch(Error e){
-                        writef("get(key = '%s', hash = x%x)", key.toString(), hash);
-                        //writefln("\tfound");
-                        p.value.dump();
-                   }*/
-                //p.value.dump();
+            // if (p.attributes & Property.Attribute.Accessor)
+            // {
+            //     assert(p.Get !is null);
+            //     auto ret = new Value;
+            //     auto err = p.Get.Call(cc, othis, *ret, null);
+            //     debug if (err !is null)
+            //         throw err.toScriptException;
 
-/+
-                if (p.attributes & Property.Attribute.Accessor)
-                {
-                    assert(p.Get !is null);
-                    auto ret = new Value;
-                    auto err = p.Get(cc, othis, ret, null);
-                    debug if (err !is null)
-                        throw err.toScriptException;
-
-                    if (err is null)
-                        return null;
-                    else
-                        return ret;
-                }
-                else
-+/
-                    return &p.value;
-            }
-            t = t._previous;
-        } while(t);
-        return null;                    // not found
+            //     if (err !is null)
+            //         return null;
+            //     else
+            //         return ret;
+            // }
+            // else
+                return &p.value;
+        }
+        return null;
     }
 
     Value* get(in d_uint32 index)
@@ -281,16 +257,8 @@ struct PropTable
         return get(key, Value.calcHash(index));
     }
 
-    // @trusted
-    // Value* get(ref Identifier id)
-    // {
-    //     return get(id.value, id.value.hash);
-    // }
-
-    @trusted
     Value* get(in d_string name, in size_t hash)
     {
-        //writefln("get('%s', hash = x%x)", name, hash);
         Value key;
 
         key.putVstring(name);
@@ -304,7 +272,6 @@ struct PropTable
     @safe
     int hasownproperty(ref Value key, in int enumerable)
     {
-        initialize();
         Property* p;
 
         p = key in table;
@@ -315,27 +282,25 @@ struct PropTable
     @trusted
     int hasproperty(in d_string name)
     {
-        initialize;
         Value v;
         v.putVstring(name);
 
         return hasproperty(v);
     }
 
+/+
+    Value* put(ref Value key, size_t hash, ref Property value)
+    {
+        
+    }
++/
+
+
     @trusted
     Value* put(ref Value key, size_t hash, ref Value value,
                in Property.Attribute attributes)
     {
-        initialize;
         Property* p;
-        //writefln("table contains %d properties",table.length);
-        //writefln("put(key = %s, hash = x%x, value = %s, attributes = x%x)", key.toString(), hash, value.toString(), attributes);
-        //writefln("put(key = %s)", key.toString());
-
-        //p = &table[*key];
-        //version(none){
-        //writeln(cast(void*)table);
-        //p = *key in table;
         p = table.findExistingAlt(key, hash);
 
         if(p)
@@ -350,13 +315,12 @@ struct PropTable
                 return &vundefined;
             }
 
-            PropTable* t = _previous;
+            auto t = _previous;
             if(t)
             {
                 do
                 {
                     Property* q;
-                    t.initialize;
                     //q = *key in t.table;
                     q = t.table.findExistingAlt(key, hash);
                     if(q)
@@ -455,7 +419,6 @@ struct PropTable
     @property @safe pure nothrow
     Value[] keys()
     {
-        initialize();
         return table.keys;
     }
 
@@ -466,7 +429,7 @@ struct PropTable
     }
 
     @property @safe @nogc pure nothrow
-    void previous(PropTable* p)
+    void previous(PropTable p)
     {
         _previous = p;
     }
@@ -479,24 +442,23 @@ struct PropTable
 
 private:
     RandAA!(Value, Property) table;
-    PropTable* _previous;
+    PropTable _previous;
 
-    @safe pure nothrow
-    void initialize()
-    out
+    @safe
+    Property* getProperty(ref Value key, in size_t hash)
     {
-        assert(table !is null);
-    }
-    body
-    {
-        if(table is null)
-            table = new RandAA!(Value, Property);
+        assert(key.toHash == hash);
+        for (auto t = this; t !is null; t = t._previous)
+        {
+            if (auto p = t.table.findExistingAlt(key, hash))
+                return p;
+        }
+        return null;
     }
 
     @safe
     int hasproperty(ref Value key)
     {
-        initialize();
         return (key in table) !is null ||
             (_previous && _previous.hasproperty(key));
     }
@@ -504,11 +466,10 @@ private:
     @safe
     int canput(ref Value key, size_t hash)
     {
-        initialize();
         Property* p;
-        PropTable* t;
+        PropTable t;
 
-        t = &this;
+        t = this;
         do
         {
             //p = *key in t.table;
@@ -526,7 +487,6 @@ private:
     @safe
     int del(ref Value key)
     {
-        initialize();
         Property* p;
 
         p = key in table;
