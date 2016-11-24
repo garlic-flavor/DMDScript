@@ -64,27 +64,27 @@ class Darguments : Dobject
         }
     }
 
-    override Value* Get(in d_string PropertyName)
+    override Value* Get(in d_string PropertyName, ref CallContext cc)
     {
         d_uint32 index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
-               ? actobj.Get(index)
-               : Dobject.Get(PropertyName);
+            ? actobj.Get(index, cc)
+            : Dobject.Get(PropertyName, cc);
     }
 
-    override Value* Get(in d_uint32 index)
+    override Value* Get(in d_uint32 index, ref CallContext cc)
     {
         return (index < parameters.length)
-               ? actobj.Get(index)
-               : Dobject.Get(index);
+            ? actobj.Get(index, cc)
+            : Dobject.Get(index, cc);
     }
 
-    override Value* Get(in d_uint32 index, ref Value vindex)
+    override Value* Get(in d_uint32 index, ref Value vindex, ref CallContext cc)
     {
         return (index < parameters.length)
-               ? actobj.Get(index, vindex)
-               : Dobject.Get(index, vindex);
+            ? actobj.Get(index, vindex, cc)
+            : Dobject.Get(index, vindex, cc);
     }
 
     override DError* Put(in d_string PropertyName, ref Value value,

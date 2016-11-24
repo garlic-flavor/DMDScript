@@ -203,7 +203,7 @@ DError* Dfunction_prototype_apply(
         Value[] alist;
         Value* x;
 
-        x = a.Get(Text.length);
+        x = a.Get(Text.length, cc);
         len = x ? x.toUint32() : 0;
 
         Value[] p1;
@@ -220,7 +220,7 @@ DError* Dfunction_prototype_apply(
 
         for(i = 0; i < len; i++)
         {
-            x = a.Get(i);
+            x = a.Get(i, cc);
             alist[i] = *x;
         }
 
@@ -325,50 +325,50 @@ class Dfunction : Dobject
       return Text._function;
   }
 
-  override string toString()
-  {
-      import std.string : format;
-      // Native overrides of this function replace Identifier with the actual name.
-      // Don't need to do parameter list, though.
-      immutable(char)[] s;
+    override string toString()
+    {
+        import std.string : format;
+        // Native overrides of this function replace Identifier with the actual name.
+        // Don't need to do parameter list, though.
+        immutable(char)[] s;
 
-      s = format("function %s() { [native code] }", name);
-      return s;
-  }
+        s = format("function %s() { [native code] }", name);
+        return s;
+    }
 
-  override DError* HasInstance(out Value ret, ref Value v)
-  {
-      // ECMA v3 15.3.5.3
-      Dobject V;
-      Value* w;
-      Dobject o;
+    override DError* HasInstance(ref CallContext cc, out Value ret, ref Value v)
+    {
+        // ECMA v3 15.3.5.3
+        Dobject V;
+        Value* w;
+        Dobject o;
 
-      if(v.isPrimitive())
-          goto Lfalse;
-      V = v.toObject();
-      w = Get(Text.prototype);
-      if(w.isPrimitive())
-      {
-          return MustBeObjectError(w.getType);
-      }
-      o = w.toObject();
-      for(;; )
-      {
-          V = V.Prototype;
-          if(!V)
-              goto Lfalse;
-          if(o == V)
-              goto Ltrue;
-      }
+        if(v.isPrimitive())
+            goto Lfalse;
+        V = v.toObject();
+        w = Get(Text.prototype, cc);
+        if(w.isPrimitive())
+        {
+            return MustBeObjectError(w.getType);
+        }
+        o = w.toObject();
+        for(;; )
+        {
+            V = V.Prototype;
+            if(!V)
+                goto Lfalse;
+            if(o == V)
+                goto Ltrue;
+        }
 
-      Ltrue:
-      ret.putVboolean(true);
-      return null;
+    Ltrue:
+        ret.putVboolean(true);
+        return null;
 
-      Lfalse:
-      ret.putVboolean(false);
-      return null;
-  }
+    Lfalse:
+        ret.putVboolean(false);
+        return null;
+    }
 
 static:
     Dfunction isFunction(Value* v)

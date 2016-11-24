@@ -258,7 +258,7 @@ class DdateConstructor : Dfunction
             break;
 
         case 1:
-            arglist[0].toPrimitive(ret, null);
+            arglist[0].toPrimitive(cc, ret, null);
             if(ret.getType() == Value.TypeName.String)
             {
                 n = parseDateString(cc, ret.text);
@@ -1584,7 +1584,13 @@ class DdatePrototype : Ddate
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
-        assert(proptable.get("toString", Value.calcHash("toString")));
+
+        debug
+        {
+            CallContext cc;
+            assert(proptable.get("toString", Value.calcHash("toString"), cc,
+                                 null));
+        }
     }
 }
 

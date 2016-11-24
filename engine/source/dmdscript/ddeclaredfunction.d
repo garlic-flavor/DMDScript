@@ -183,7 +183,7 @@ class DdeclaredFunction : Dfunction
         Value* v;
         DError* result;
 
-        v = Get(Text.prototype);
+        v = Get(Text.prototype, cc);
         if(v.isPrimitive())
             proto = Dobject.getPrototype;
         else

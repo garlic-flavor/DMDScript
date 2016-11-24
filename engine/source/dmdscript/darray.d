@@ -131,7 +131,7 @@ DError* Darray_prototype_toString(
     Value[] arglist)
 {
     //writef("Darray_prototype_toString()\n");
-    array_join(othis, ret, null);
+    array_join(cc, othis, ret, null);
     return null;
 }
 
@@ -154,7 +154,7 @@ DError* Darray_prototype_toLocaleString(
         return TlsNotTransferrableError;
     }
 
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     len = v ? v.toUint32() : 0;
 
     Program prog = cc.prog;
@@ -170,13 +170,13 @@ DError* Darray_prototype_toLocaleString(
     {
         if(k)
             r ~= separator;
-        v = othis.Get(k);
+        v = othis.Get(k, cc);
         if(v && !v.isUndefinedOrNull())
         {
             Dobject ot;
 
             ot = v.toObject();
-            v = ot.Get(Text.toLocaleString);
+            v = ot.Get(Text.toLocaleString, cc);
             if(v && !v.isPrimitive())   // if it's an Object
             {
                 DError* a;
@@ -224,7 +224,7 @@ DError* Darray_prototype_concat(
             len = E.ulength;
             for(k = 0; k != len; k++)
             {
-                v = E.Get(k);
+                v = E.Get(k, cc);
                 if(v)
                     A.Put(n, *v, Property.Attribute.None);
                 n++;
@@ -251,11 +251,12 @@ DError* Darray_prototype_join(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    array_join(othis, ret, arglist);
+    array_join(cc, othis, ret, arglist);
     return null;
 }
 
-void array_join(Dobject othis, out Value ret, Value[] arglist)
+void array_join(ref CallContext cc, Dobject othis, out Value ret,
+                Value[] arglist)
 {
     // ECMA 15.4.4.3
     d_string separator;
@@ -265,7 +266,7 @@ void array_join(Dobject othis, out Value ret, Value[] arglist)
     Value* v;
 
     //writef("array_join(othis = %p)\n", othis);
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     len = v ? v.toUint32() : 0;
     if(arglist.length == 0 || arglist[0].isUndefined())
         separator = Text.comma;
@@ -276,7 +277,7 @@ void array_join(Dobject othis, out Value ret, Value[] arglist)
     {
         if(k)
             r ~= separator;
-        v = othis.Get(k);
+        v = othis.Get(k, cc);
         if(v && !v.isUndefinedOrNull())
             r ~= v.toString();
     }
@@ -296,7 +297,7 @@ DError* Darray_prototype_toSource(
     d_uint32 k;
     Value* v;
 
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     len = v ? v.toUint32() : 0;
     separator = ",";
 
@@ -305,7 +306,7 @@ DError* Darray_prototype_toSource(
     {
         if(k)
             r ~= separator;
-        v = othis.Get(k);
+        v = othis.Get(k, cc);
         if(v && !v.isUndefinedOrNull())
             r ~= v.toSource();
     }
@@ -327,7 +328,7 @@ DError* Darray_prototype_pop(
     d_uint32 u;
 
     // If othis is a Darray, then we can optimize this significantly
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
     u = v.toUint32();
@@ -338,7 +339,7 @@ DError* Darray_prototype_pop(
     }
     else
     {
-        v = othis.Get(u - 1);
+        v = othis.Get(u - 1, cc);
         if(!v)
             v = &vundefined;
         ret = *v;
@@ -360,7 +361,7 @@ DError* Darray_prototype_push(
     d_uint32 a;
 
     // If othis is a Darray, then we can optimize this significantly
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
     u = v.toUint32();
@@ -389,17 +390,17 @@ DError* Darray_prototype_reverse(
     d_uint32 len;
     Value tmp;
 
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     len = v ? v.toUint32() : 0;
     pivot = len / 2;
     for(a = 0; a != pivot; a++)
     {
         b = len - a - 1;
         //writef("a = %d, b = %d\n", a, b);
-        va = othis.Get(a);
+        va = othis.Get(a, cc);
         if(va)
             tmp = *va;
-        vb = othis.Get(b);
+        vb = othis.Get(b, cc);
         if(vb)
             othis.Put(a, *vb, Property.Attribute.None);
         else
@@ -428,18 +429,18 @@ DError* Darray_prototype_shift(
 
     // If othis is a Darray, then we can optimize this significantly
     //writef("shift(othis = %p)\n", othis);
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
     len = v.toUint32();
 
     if(len)
     {
-        result = othis.Get(0u);
+        result = othis.Get(0u, cc);
         ret = result ? *result : vundefined;
         for(k = 1; k != len; k++)
         {
-            v = othis.Get(k);
+            v = othis.Get(k, cc);
             if(v)
             {
                 othis.Put(k - 1, *v, Property.Attribute.None);
@@ -475,7 +476,7 @@ DError* Darray_prototype_slice(
     Value* v;
     Darray A;
 
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
     len = v.toUint32();
@@ -598,7 +599,7 @@ else
     A = new Darray();
     for(n = 0; k < r8; k++)
     {
-        v = othis.Get(k);
+        v = othis.Get(k, cc);
         if(v)
         {
             A.Put(n, *v, Property.Attribute.None);
@@ -680,7 +681,7 @@ DError* Darray_prototype_sort(
     uint u;
 
     //writef("Array.prototype.sort()\n");
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     len = v ? v.toUint32() : 0;
 
     // This is not optimal, as isArrayIndex is done at least twice
@@ -809,7 +810,7 @@ DError* Darray_prototype_splice(
     d_uint32 inscnt;
     d_uint32 startidx;
 
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
     len = v.toUint32();
@@ -901,7 +902,7 @@ else
     //writef("Darray.splice(startidx = %d, delcnt = %d)\n", startidx, delcnt);
     for(k = 0; k != delcnt; k++)
     {
-        v = othis.Get(startidx + k);
+        v = othis.Get(startidx + k, cc);
         if(v)
             A.Put(k, *v, Property.Attribute.None);
     }
@@ -914,7 +915,7 @@ else
         {
             for(k = startidx; k != (len - delcnt); k++)
             {
-                v = othis.Get(k + delcnt);
+                v = othis.Get(k + delcnt, cc);
                 if(v)
                     othis.Put(k + inscnt, *v, Property.Attribute.None);
                 else
@@ -928,7 +929,7 @@ else
         {
             for(k = len - delcnt; k != startidx; k--)
             {
-                v = othis.Get(k + delcnt - 1);
+                v = othis.Get(k + delcnt - 1, cc);
                 if(v)
                     othis.Put(k + inscnt - 1, *v, Property.Attribute.None);
                 else
@@ -960,14 +961,14 @@ DError* Darray_prototype_unshift(
     d_uint32 len;
     d_uint32 k;
 
-    v = othis.Get(Text.length);
+    v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
     len = v.toUint32();
 
     for(k = len; k>0; k--)
     {
-        v = othis.Get(k - 1);
+        v = othis.Get(k - 1, cc);
         if(v)
             othis.Put(cast(uint)(k + arglist.length - 1), *v,
                       Property.Attribute.None);
@@ -1181,7 +1182,7 @@ class Darray : Dobject
         return null;
     }
 
-    override Value* Get(ref Identifier id)
+    override Value* Get(ref Identifier id, ref CallContext cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(id.value.text == Text.length)
@@ -1190,10 +1191,11 @@ class Darray : Dobject
             return &length;
         }
         else
-            return Dobject.Get(id);
+            return Dobject.Get(id, cc);
     }
 
-    override Value* Get(in d_string PropertyName, in size_t hash)
+    override Value* Get(in d_string PropertyName, in size_t hash,
+                        ref CallContext cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(PropertyName == Text.length)
@@ -1202,24 +1204,25 @@ class Darray : Dobject
             return &length;
         }
         else
-            return Dobject.Get(PropertyName, hash);
+            return Dobject.Get(PropertyName, hash, cc);
     }
 
-    override Value* Get(in d_uint32 index)
+    override Value* Get(in d_uint32 index, ref CallContext cc)
     {
         Value* v;
 
         //writef("Darray.Get(%p, %d)\n", &proptable, index);
-        v = proptable.get(index);
+        v = proptable.get(index, cc, this);
         return v;
     }
 
-    override Value* Get(in d_uint32 index, ref Value vindex)
+    override Value* Get(in d_uint32 index, ref Value vindex, ref CallContext cc)
     {
         Value* v;
 
         //writef("Darray.Get(%p, %d)\n", &proptable, index);
-        v = proptable.get(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/);
+        v = proptable.get(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/,
+                          cc, this);
         return v;
     }
 

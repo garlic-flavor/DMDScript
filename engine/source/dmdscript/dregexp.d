@@ -101,25 +101,26 @@ class DregexpConstructor : Dfunction
         Put(Text.lastIndex, vnm1,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
 
-        input = Get(Text.input);
-        multiline = Get(Text.multiline);
-        lastMatch = Get(Text.lastMatch);
-        lastParen = Get(Text.lastParen);
-        leftContext = Get(Text.leftContext);
-        rightContext = Get(Text.rightContext);
+        CallContext cc;
+        input = Get(Text.input, cc);
+        multiline = Get(Text.multiline, cc);
+        lastMatch = Get(Text.lastMatch, cc);
+        lastParen = Get(Text.lastParen, cc);
+        leftContext = Get(Text.leftContext, cc);
+        rightContext = Get(Text.rightContext, cc);
         dollar[0] = lastMatch;
-        dollar[1] = Get(Text.dollar1);
-        dollar[2] = Get(Text.dollar2);
-        dollar[3] = Get(Text.dollar3);
-        dollar[4] = Get(Text.dollar4);
-        dollar[5] = Get(Text.dollar5);
-        dollar[6] = Get(Text.dollar6);
-        dollar[7] = Get(Text.dollar7);
-        dollar[8] = Get(Text.dollar8);
-        dollar[9] = Get(Text.dollar9);
+        dollar[1] = Get(Text.dollar1, cc);
+        dollar[2] = Get(Text.dollar2, cc);
+        dollar[3] = Get(Text.dollar3, cc);
+        dollar[4] = Get(Text.dollar4, cc);
+        dollar[5] = Get(Text.dollar5, cc);
+        dollar[6] = Get(Text.dollar6, cc);
+        dollar[7] = Get(Text.dollar7, cc);
+        dollar[8] = Get(Text.dollar8, cc);
+        dollar[9] = Get(Text.dollar9, cc);
 
-        index = Get(Text.index);
-        lastIndex = Get(Text.lastIndex);
+        index = Get(Text.index, cc);
+        lastIndex = Get(Text.lastIndex, cc);
 
         // Should lastMatch be an alias for dollar[nparens],
         // or should it be a separate property?
@@ -212,9 +213,9 @@ class DregexpConstructor : Dfunction
     }
 
 
-    override Value* Get(in d_string PropertyName)
+    override Value* Get(in d_string PropertyName, ref CallContext cc)
     {
-        return Dfunction.Get(perlAlias(PropertyName));
+        return Dfunction.Get(perlAlias(PropertyName), cc);
     }
 
     override DError* Put(in d_string PropertyName, ref Value value,
@@ -460,11 +461,12 @@ class Dregexp : Dobject
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
 
-        source = Get(Text.source);
-        global = Get(Text.global);
-        ignoreCase = Get(Text.ignoreCase);
-        multiline = Get(Text.multiline);
-        lastIndex = Get(Text.lastIndex);
+        CallContext cc;
+        source = Get(Text.source, cc);
+        global = Get(Text.global, cc);
+        ignoreCase = Get(Text.ignoreCase, cc);
+        multiline = Get(Text.multiline, cc);
+        lastIndex = Get(Text.lastIndex, cc);
 
         re = new RegExp(pattern, attributes);
         if(re.errors == 0)
@@ -513,11 +515,12 @@ class Dregexp : Dobject
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum);
 
-        source = Get(Text.source);
-        global = Get(Text.global);
-        ignoreCase = Get(Text.ignoreCase);
-        multiline = Get(Text.multiline);
-        lastIndex = Get(Text.lastIndex);
+        CallContext cc;
+        source = Get(Text.source, cc);
+        global = Get(Text.global, cc);
+        ignoreCase = Get(Text.ignoreCase, cc);
+        multiline = Get(Text.multiline, cc);
+        lastIndex = Get(Text.lastIndex, cc);
 
         re = new RegExp(null, null);
     }
@@ -528,7 +531,7 @@ class Dregexp : Dobject
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
 
-        v = Get(Text.exec);
+        v = Get(Text.exec, cc);
         return v.toObject().Call(cc, this, ret, arglist);
     }
 

@@ -153,7 +153,7 @@ DError* Dobject_prototype_toLocaleString(
     Value* v;
 
     //writef("Dobject.prototype.toLocaleString(ret = %x)\n", ret);
-    v = othis.Get(Text.toString);
+    v = othis.Get(Text.toString, cc);
     if(v && !v.isPrimitive())   // if it's an Object
     {
         DError* a;
@@ -328,34 +328,34 @@ class Dobject
         return false;
     }
 
-    Value* Get(in d_string PropertyName)
+    Value* Get(in d_string PropertyName, ref CallContext cc)
     {
-        return Get(PropertyName, Value.calcHash(PropertyName));
+        return Get(PropertyName, Value.calcHash(PropertyName), cc);
     }
 
-    Value* Get(ref Identifier id)
+    Value* Get(ref Identifier id, ref CallContext cc)
     {
-        return proptable.get(id.value, id.value.hash);
+        return proptable.get(id.value, id.value.hash, cc, this);
     }
 
-    Value* Get(in d_string PropertyName, in size_t hash)
+    Value* Get(in d_string PropertyName, in size_t hash, ref CallContext cc)
     {
-        return proptable.get(PropertyName, hash);
+        return proptable.get(PropertyName, hash, cc, this);
     }
 
-    Value* Get(in d_uint32 index)
+    Value* Get(in d_uint32 index, ref CallContext cc)
     {
         Value* v;
 
-        v = proptable.get(index);
+        v = proptable.get(index, cc, this);
         //    if (!v)
         //	v = &vundefined;
         return v;
     }
 
-    Value* Get(in d_uint32 index, ref Value vindex)
+    Value* Get(in d_uint32 index, ref Value vindex, ref CallContext cc)
     {
-        return proptable.get(vindex, Value.calcHash(index));
+        return proptable.get(vindex, Value.calcHash(index), cc, this);
     }
 
     DError* Put(in d_string PropertyName, ref Value value,
@@ -473,7 +473,7 @@ class Dobject
     }
 
     final @trusted
-    DError* DefaultValue(out Value ret, in d_string Hint)
+    DError* DefaultValue(ref CallContext cc, out Value ret, in d_string Hint)
     {
         Dobject o;
         Value* v;
@@ -499,16 +499,16 @@ class Dobject
         {
             d_string htab = table[i];
 
-            v = Get(htab, Value.calcHash(htab));
+            v = Get(htab, Value.calcHash(htab), cc);
 
             if(v && !v.isPrimitive())   // if it's an Object
             {
                 DError* a;
-                CallContext *cc;
+                CallContext* cc2;
 
                 o = v.object;
-                cc = Program.getProgram().callcontext;
-                a = o.Call(*cc, this, ret, null);
+                cc2 = Program.getProgram().callcontext;
+                a = o.Call(*cc2, this, ret, null);
                 if(a)                   // if exception was thrown
                     return a;
                 if(ret.isPrimitive)
@@ -532,7 +532,7 @@ class Dobject
         return SNoCallError(classname);
     }
 
-    DError* HasInstance(out Value ret, ref Value v)
+    DError* HasInstance(ref CallContext cc, out Value ret, ref Value v)
     {   // ECMA v3 8.6.2
         return SNoInstanceError(classname);
     }

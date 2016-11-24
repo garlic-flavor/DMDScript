@@ -192,7 +192,7 @@ struct Value
  +/
     }
 
-    void toPrimitive(out Value v, in d_string PreferredType)
+    void toPrimitive(ref CallContext cc, out Value v, in d_string PreferredType)
     {
         if(vtype == Type.Object)
         {
@@ -210,7 +210,7 @@ struct Value
             DError* a;
 
             assert(object);
-            a = object.DefaultValue(v, PreferredType);
+            a = object.DefaultValue(cc, v, PreferredType);
             if(a)
                 throw a.toScriptException;
             if(!v.isPrimitive)
@@ -294,11 +294,12 @@ struct Value
         case Type.Object:
         { Value val;
           Value* v;
+          CallContext cc;
           // void* a;
 
           //writefln("Vobject.toNumber()");
           v = &val;
-          toPrimitive(*v, TypeName.Number);
+          toPrimitive(cc, *v, TypeName.Number);
           /*a = toPrimitive(v, TypeNumber);
           if(a)//rerr
                   return d_number.nan;*/
@@ -577,10 +578,11 @@ struct Value
         {
             Value val;
             Value* v = &val;
+            CallContext cc;
             // void* a;
 
             //writef("Vobject.toString()\n");
-            toPrimitive(*v, TypeName.String);
+            toPrimitive(cc, *v, TypeName.String);
             //assert(!a);
             if(v.isPrimitive)
                 return v.toString;
@@ -630,9 +632,10 @@ struct Value
         case Type.Object:
         {
             Value* v;
+            CallContext cc;
 
             //writefln("Vobject.toSource()");
-            v = Get(Text.toSource);
+            v = Get(Text.toSource, cc);
             if(!v)
                 v = &vundefined;
             if(v.isPrimitive())
@@ -640,15 +643,15 @@ struct Value
             else          // it's an Object
             {
                 DError* a;
-                CallContext *cc;
+                CallContext* pcc;
                 Dobject o;
                 Value* ret;
                 Value val;
 
                 o = v.object;
-                cc = Program.getProgram().callcontext;
+                pcc = Program.getProgram.callcontext;
                 ret = &val;
-                a = o.Call(*cc, this.object, *ret, null);
+                a = o.Call(*pcc, this.object, *ret, null);
                 if(a)                             // if exception was thrown
                 {
                     /*return a;*/
@@ -1066,12 +1069,12 @@ struct Value
         }
     }
 
-    Value* Get(in d_string PropertyName)
+    Value* Get(in d_string PropertyName, ref CallContext cc)
     {
         import std.format : format;
 
         if(vtype == Type.Object)
-            return object.Get(PropertyName);
+            return object.Get(PropertyName, cc);
         else
         {
             // Should we generate the error, or just return undefined?
@@ -1081,12 +1084,12 @@ struct Value
         }
     }
 
-    Value* Get(in d_uint32 index)
+    Value* Get(in d_uint32 index, ref CallContext cc)
     {
         import std.format : format;
 
         if(vtype == Type.Object)
-            return object.Get(index);
+            return object.Get(index, cc);
         else
         {
             // Should we generate the error, or just return undefined?
@@ -1096,12 +1099,12 @@ struct Value
         }
     }
 
-    Value* Get(ref Identifier id)
+    Value* Get(ref Identifier id, ref CallContext cc)
     {
         import std.format : format;
 
         if(vtype == Type.Object)
-            return object.Get(id);
+            return object.Get(id, cc);
         else if(vtype == Type.RefError){
             throwRefError();
             assert(0);
@@ -1224,8 +1227,11 @@ struct DError
     {
         import dmdscript.protoerror;
 
-        if (auto d0 = cast(D0base)entity.toObject) return d0.exception;
-        assert(0);
+        auto d0 = cast(D0base)entity.toObject;
+        assert(d0);
+        assert(d0.exception);
+
+        return d0.exception;
     }
 
     @safe

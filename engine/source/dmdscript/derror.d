@@ -94,10 +94,10 @@ DError* Derror_prototype_toString(
     Value* v;
 
     //writef("Error.prototype.toString()\n");
-    v = othis.Get(Text.message);
+    v = othis.Get(Text.message, cc);
     if(!v)
         v = &vundefined;
-    ret.putVstring(othis.Get(Text.name).toString()~": "~v.toString());
+    ret.putVstring(othis.Get(Text.name, cc).toString()~": "~v.toString());
     return null;
 }
 

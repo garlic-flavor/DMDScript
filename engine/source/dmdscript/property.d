@@ -248,45 +248,46 @@ final class PropTable
         return getProperty(key, key.toHash);
     }
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// To_Do: implement Accessor version.
-    Value* get(ref Value key, in size_t hash/*, ref CallContext cc, Dobject othis*/)
+    Value* get(ref Value key, in size_t hash, ref CallContext cc, Dobject othis)
     {
         if (auto p = getProperty(key, hash))
         {
-            // if (p.attributes & Property.Attribute.Accessor)
-            // {
-            //     assert(p.Get !is null);
-            //     auto ret = new Value;
-            //     auto err = p.Get.Call(cc, othis, *ret, null);
-            //     debug if (err !is null)
-            //         throw err.toScriptException;
+            if (p.attributes & Property.Attribute.Accessor)
+            {
+                if (p.Get is null)
+                    return null;
 
-            //     if (err !is null)
-            //         return null;
-            //     else
-            //         return ret;
-            // }
-            // else
+                auto ret = new Value;
+                auto err = p.Get.Call(cc, othis, *ret, null);
+                debug if (err !is null)
+                    throw err.toScriptException;
+
+                if (err !is null)
+                    return null;
+                else
+                    return ret;
+            }
+            else
                 return &p.value;
         }
         return null;
     }
 
-    Value* get(in d_uint32 index)
+    Value* get(in d_uint32 index, ref CallContext cc, Dobject othis)
     {
         Value key;
 
         key.putVnumber(index);
-        return get(key, Value.calcHash(index));
+        return get(key, Value.calcHash(index), cc, othis);
     }
 
-    Value* get(in d_string name, in size_t hash)
+    Value* get(in d_string name, in size_t hash, ref CallContext cc,
+               Dobject othis)
     {
         Value key;
 
         key.putVstring(name);
-        return get(key, hash);
+        return get(key, hash, cc, othis);
     }
 
     /*******************************

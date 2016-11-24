@@ -345,7 +345,7 @@ DError* Dstring_prototype_lastIndexOf(
             // This is the 'transferable' version
             Value* v;
             DError* a;
-            v = othis.Get(Text.toString);
+            v = othis.Get(Text.toString, cc);
             a = v.Call(cc, othis, ret, null);
             if(a)                       // if exception was thrown
                 return a;
