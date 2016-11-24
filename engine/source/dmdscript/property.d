@@ -71,6 +71,15 @@ struct Property
         attributes = attr;
     }
 
+    @property @trusted @nogc pure nothrow
+    bool empty() const
+    {
+        if (attributes & Attribute.Accessor)
+            return Get is null && Set is null;
+        else
+            return value.isEmpty;
+    }
+
     @property @safe @nogc pure nothrow
     bool writable() const
     {
@@ -105,11 +114,11 @@ struct Property
     }
 
     @safe @nogc pure nothrow
-    bool canOverwriteTo(in ref Property p) const
+    bool canOverrideWith(in ref Property p) const
     {
-        if      (p.configurable)
+        if      (configurable)
             return true;
-        else if (p.writable && !writable)
+        else if (writable && !p.writable)
             return true;
         else if (attributes == p.attributes)
             return true;
@@ -117,29 +126,44 @@ struct Property
     }
 
     @trusted @nogc pure nothrow
-    void overwriteTo(ref Property target)
+    void overrideWith(ref Property right)
     {
+        if ((right.attributes & Attribute.DontOverride) && !empty)
+            return;
 
-        // Attribute attr;
-        // if (0 == (p.attributes & Attribute.DontOverride))
-        //     attr = attributes;
-        // else
-        //     attr = p.attributes | (attributes & Attribute.ReadOnly);
+        Attribute attr;
+        if (attributes & Attribute.DontChangeAttr)
+            attr = attributes | (right.attributes & Attribute.ReadOnly);
+        else
+            attr = (right.attributes & ~Attribute.DontOverride) |
+                (attributes & (Attribute.DontDelete | Attribute.DontEnum));
 
-        // if (attr & Attribute.Accessor)
-        // {
-        //     if (0 == (attr & Attribute.DontOverride))
-        //     {
-        //         p.Get = Get;
-        //         p.Set = Set;
-        //     }
-        // }
-        // else
-        // {
-        //     if (0 == (attr & Attribute.ReadOnly))
-        //         p.value = value;
-        // }
-        // p.attributes = attr;
+        if (0 == (attr & attributes & Attribute.ReadOnly))
+        {
+            if      (attr & attributes & Attribute.DontChangeAttr)
+            {
+                if      (attr & attributes & Attribute.Accessor)
+                {
+                    Get = right.Get;
+                    Set = right.Set;
+                }
+                else if (~attr & ~attributes & Attribute.Accessor)
+                {
+                    value = right.value;
+                }
+            }
+            else if (attr & Attribute.Accessor)
+            {
+                Get = right.Get;
+                Set = right.Set;
+            }
+            else
+            {
+                if (0 == (attr & Attribute.ReadOnly))
+                    value = right.value;
+            }
+        }
+        attributes = attr;
     }
 }
 
@@ -288,70 +312,56 @@ final class PropTable
         return hasproperty(v);
     }
 
-/+
-    Value* put(ref Value key, size_t hash, ref Property value)
+    Value* put(ref Value key, size_t hash, ref Property prop)
     {
-        
+        if (auto p = table.findExistingAlt(key, hash))
+        {
+            if ((prop.attributes & Property.Attribute.DontOverride &&
+                 !p.empty) ||
+                p.attributes & Property.Attribute.ReadOnly)
+            {
+                if (p.attributes & Property.Attribute.KeyWord)
+                    return null;
+                return &vundefined;
+            }
+
+            for (auto t = _previous; t !is null; t = t._previous)
+            {
+                if (auto p2 = t.table.findExistingAlt(key, hash))
+                {
+                    if (p2.attributes & Property.Attribute.ReadOnly)
+                    {
+                        p.attributes |= Property.Attribute.ReadOnly;
+                        return &vundefined;
+                    }
+                    break;
+                }
+            }
+
+            p.overrideWith(prop);
+            return null;
+        }
+        else
+        {
+            if (prop.attributes & Property.Attribute.DontOverride)
+            {
+                auto p = prop;
+                p.attributes &= ~Property.Attribute.DontOverride;
+                table.insertAlt(key, p, hash);
+            }
+            else
+                table.insertAlt(key, prop, hash);
+            return null;
+        }
     }
-+/
 
 
     @trusted
     Value* put(ref Value key, size_t hash, ref Value value,
                in Property.Attribute attributes)
     {
-        Property* p;
-        p = table.findExistingAlt(key, hash);
-
-        if(p)
-        {
-            Lx:
-            if(attributes & Property.Attribute.DontOverride &&
-               p.value.vtype != Value.Type.RefError ||
-               p.attributes & Property.Attribute.ReadOnly)
-            {
-                if(p.attributes & Property.Attribute.KeyWord)
-                    return null;
-                return &vundefined;
-            }
-
-            auto t = _previous;
-            if(t)
-            {
-                do
-                {
-                    Property* q;
-                    //q = *key in t.table;
-                    q = t.table.findExistingAlt(key, hash);
-                    if(q)
-                    {
-                        if(q.attributes & Property.Attribute.ReadOnly)
-                        {
-                            p.attributes |= Property.Attribute.ReadOnly;
-                            return &vundefined;
-                        }
-                        break;
-                    }
-                    t = t._previous;
-                } while(t);
-            }
-
-            // Overwrite property with new value
-            p.value = value;
-            p.attributes =
-                (attributes & ~Property.Attribute.DontOverride) |
-                (p.attributes & (Property.Attribute.DontDelete |
-                                 Property.Attribute.DontEnum));
-            return null;
-        }
-        else
-        {
-            //table[*key] = Property(attributes & ~DontOverride,*value);
-            auto v = Property(value,
-                              (attributes & ~Property.Attribute.DontOverride));
-            table.insertAlt(key, v, hash);
-            return null; // success
-        }
+        auto prop = Property(value, attributes);
+        return put(key, hash, prop);
     }
 
     @trusted
@@ -361,8 +371,8 @@ final class PropTable
         Value key;
 
         key.putVstring(name);
-
-        return put(key, Value.calcHash(name), value, attributes);
+        auto prop = Property(value, attributes);
+        return put(key, Value.calcHash(name), prop);
     }
 
     @trusted
@@ -372,7 +382,8 @@ final class PropTable
         Value key;
 
         key.putVnumber(index);
-        return put(key, Value.calcHash(index), value, attributes);
+        auto prop = Property(value, attributes);
+        return put(key, Value.calcHash(index), prop);
     }
 
     @trusted
@@ -384,8 +395,9 @@ final class PropTable
 
         key.putVnumber(index);
         value.putVstring(str);
+        auto prop = Property(value, attributes);
 
-        return put(key, Value.calcHash(index), value, attributes);
+        return put(key, Value.calcHash(index), prop);
     }
 
     @trusted
@@ -437,7 +449,7 @@ final class PropTable
     @safe
     Property* opBinaryRight(string OP : "in")(auto ref Value index)
     {
-        return table !is null ? index in table : null;
+        return index in table;
     }
 
 private:

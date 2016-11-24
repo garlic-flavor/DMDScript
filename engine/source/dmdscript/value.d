@@ -839,48 +839,54 @@ struct Value
         return s;
     }
 
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
+    bool isEmpty() const
+    {
+        return vtype == Type.RefError;
+    }
+
+    @property @safe @nogc pure nothrow
     bool isUndefined() const
     {
         return vtype == Type.Undefined;
     }
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
     bool isNull() const
     {
         return vtype == Type.Null;
     }
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
     bool isBoolean() const
     {
         return vtype == Type.Boolean;
     }
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
     bool isNumber() const
     {
         return vtype == Type.Number;
     }
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
     bool isString() const
     {
         return vtype == Type.String;
     }
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
     bool isObject() const
     {
         return vtype == Type.Object;
     }
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
     bool isIterator() const
     {
         return vtype == Type.Iter;
     }
 
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
     bool isUndefinedOrNull() const
     {
         return vtype == Type.Undefined || vtype == Type.Null;
     }
-    @safe @nogc pure nothrow
+    @property @safe @nogc pure nothrow
     bool isPrimitive() const
     {
         return vtype != Type.Object;

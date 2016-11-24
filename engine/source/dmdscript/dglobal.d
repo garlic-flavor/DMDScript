@@ -49,7 +49,7 @@ d_string arg0string(Value[] arglist)
 /* ====================== Dglobal_eval ================ */
 
 DError* Dglobal_eval(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -178,7 +178,7 @@ Lsyntaxerror:
 /* ====================== Dglobal_parseInt ================ */
 
 DError* Dglobal_parseInt(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : decode;
@@ -305,7 +305,7 @@ DError* Dglobal_parseInt(
 /* ====================== Dglobal_parseFloat ================ */
 
 DError* Dglobal_parseFloat(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.1.2.3
@@ -331,7 +331,7 @@ int ISURIALNUM(dchar c)
 tchar[16 + 1] TOHEX = "0123456789ABCDEF";
 
 DError* Dglobal_escape(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -399,7 +399,7 @@ DError* Dglobal_escape(
 /* ====================== Dglobal_unescape ================ */
 
 DError* Dglobal_unescape(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -485,7 +485,7 @@ DError* Dglobal_unescape(
 /* ====================== Dglobal_isNaN ================ */
 
 DError* Dglobal_isNaN(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isNaN;
@@ -508,7 +508,7 @@ DError* Dglobal_isNaN(
 /* ====================== Dglobal_isFinite ================ */
 
 DError* Dglobal_isFinite(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isFinite;
@@ -539,7 +539,7 @@ DError* URI_error(d_string s)
 }
 
 DError* Dglobal_decodeURI(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decode, URIException;
@@ -561,7 +561,7 @@ DError* Dglobal_decodeURI(
 }
 
 DError* Dglobal_decodeURIComponent(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decodeComponent, URIException;
@@ -583,7 +583,7 @@ DError* Dglobal_decodeURIComponent(
 }
 
 DError* Dglobal_encodeURI(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encode, URIException;
@@ -606,7 +606,7 @@ DError* Dglobal_encodeURI(
 }
 
 DError* Dglobal_encodeURIComponent(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encodeComponent, URIException;
@@ -650,7 +650,7 @@ static void dglobal_print(
 }
 
 DError* Dglobal_print(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Our own extension
@@ -661,7 +661,7 @@ DError* Dglobal_print(
 /* ====================== Dglobal_println ================ */
 
 DError* Dglobal_println(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.stdio : writef;
@@ -675,7 +675,7 @@ DError* Dglobal_println(
 /* ====================== Dglobal_readln ================ */
 
 DError* Dglobal_readln(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -729,7 +729,7 @@ DError* Dglobal_readln(
 /* ====================== Dglobal_getenv ================ */
 
 DError* Dglobal_getenv(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.string : toStringz;
@@ -754,7 +754,7 @@ DError* Dglobal_getenv(
 /* ====================== Dglobal_ScriptEngine ================ */
 
 DError* Dglobal_ScriptEngine(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.putVstring(Text.DMDScript);
@@ -762,7 +762,7 @@ DError* Dglobal_ScriptEngine(
 }
 
 DError* Dglobal_ScriptEngineBuildVersion(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.putVnumber(BUILD_VERSION);
@@ -770,7 +770,7 @@ DError* Dglobal_ScriptEngineBuildVersion(
 }
 
 DError* Dglobal_ScriptEngineMajorVersion(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.putVnumber(MAJOR_VERSION);
@@ -778,7 +778,7 @@ DError* Dglobal_ScriptEngineMajorVersion(
 }
 
 DError* Dglobal_ScriptEngineMinorVersion(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.putVnumber(MINOR_VERSION);

@@ -26,8 +26,9 @@ import dmdscript.property;
 
 /******************* DnativeFunction ****************************/
 
-alias PCall = DError* function(Dobject pthis, ref CallContext cc, Dobject othis,
-                               out Value ret, Value[] arglist);
+alias PCall = DError* function(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist);
 
 struct NativeFunctionData
 {

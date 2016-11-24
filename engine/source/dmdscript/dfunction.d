@@ -115,7 +115,7 @@ class DfunctionConstructor : Dfunction
 /* ===================== Dfunction_prototype_toString =============== */
 
 DError* Dfunction_prototype_toString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     immutable(char)[] s;
@@ -147,7 +147,7 @@ DError* Dfunction_prototype_toString(
 /* ===================== Dfunction_prototype_apply =============== */
 
 DError* Dfunction_prototype_apply(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.3.4.3
@@ -234,7 +234,7 @@ DError* Dfunction_prototype_apply(
 /* ===================== Dfunction_prototype_call =============== */
 
 DError* Dfunction_prototype_call(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.3.4.4

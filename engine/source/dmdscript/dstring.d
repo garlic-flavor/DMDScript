@@ -35,7 +35,7 @@ debug import std.stdio;
 /* ===================== Dstring_fromCharCode ==================== */
 
 DError* Dstring_fromCharCode(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -111,7 +111,7 @@ class DstringConstructor : Dfunction
 /* ===================== Dstring_prototype_toString =============== */
 
 DError* Dstring_prototype_toString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     //writef("Dstring.prototype.toString()\n");
@@ -134,7 +134,7 @@ DError* Dstring_prototype_toString(
 /* ===================== Dstring_prototype_valueOf =============== */
 
 DError* Dstring_prototype_valueOf(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Does same thing as String.prototype.toString()
@@ -159,7 +159,7 @@ DError* Dstring_prototype_valueOf(
 /* ===================== Dstring_prototype_charAt =============== */
 
 DError* Dstring_prototype_charAt(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : stride;
@@ -203,7 +203,7 @@ DError* Dstring_prototype_charAt(
 /* ===================== Dstring_prototype_charCodeAt ============= */
 
 DError* Dstring_prototype_charCodeAt(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : decode, stride;
@@ -250,7 +250,7 @@ DError* Dstring_prototype_charCodeAt(
 /* ===================== Dstring_prototype_concat ============= */
 
 DError* Dstring_prototype_concat(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.6
@@ -269,7 +269,7 @@ DError* Dstring_prototype_concat(
 /* ===================== Dstring_prototype_indexOf ============= */
 
 DError* Dstring_prototype_indexOf(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : toUCSindex, toUTFindex;
@@ -321,7 +321,7 @@ DError* Dstring_prototype_indexOf(
 /* ===================== Dstring_prototype_lastIndexOf ============= */
 
 DError* Dstring_prototype_lastIndexOf(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : toUCSindex, toUTFindex;
@@ -401,7 +401,7 @@ DError* Dstring_prototype_lastIndexOf(
 /* ===================== Dstring_prototype_localeCompare ============= */
 
 DError* Dstring_prototype_localeCompare(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.9
@@ -421,7 +421,7 @@ DError* Dstring_prototype_localeCompare(
 /* ===================== Dstring_prototype_match ============= */
 
 DError* Dstring_prototype_match(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.10
@@ -479,7 +479,7 @@ DError* Dstring_prototype_match(
 /* ===================== Dstring_prototype_replace ============= */
 
 DError* Dstring_prototype_replace(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -609,7 +609,7 @@ DError* Dstring_prototype_replace(
 /* ===================== Dstring_prototype_search ============= */
 
 DError* Dstring_prototype_search(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.12
@@ -638,7 +638,7 @@ DError* Dstring_prototype_search(
 /* ===================== Dstring_prototype_slice ============= */
 
 DError* Dstring_prototype_slice(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : toUTFindex, toUCSindex;
@@ -704,7 +704,7 @@ DError* Dstring_prototype_slice(
 /* ===================== Dstring_prototype_split ============= */
 
 DError* Dstring_prototype_split(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.stdc.string : memcmp;
@@ -897,7 +897,7 @@ DError* dstring_substring(d_string s, size_t sUCSdim, d_number start,
 }
 
 DError* Dstring_prototype_substr(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : toUCSindex;
@@ -934,7 +934,7 @@ DError* Dstring_prototype_substr(
 /* ===================== Dstring_prototype_substring ============= */
 
 DError* Dstring_prototype_substring(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : toUCSindex;
@@ -1002,7 +1002,7 @@ DError* tocase(Dobject othis, out Value ret, CASE caseflag)
 }
 
 DError* Dstring_prototype_toLowerCase(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.5.4.11
@@ -1015,7 +1015,7 @@ DError* Dstring_prototype_toLowerCase(
 /* ===================== Dstring_prototype_toLocaleLowerCase ============= */
 
 DError* Dstring_prototype_toLocaleLowerCase(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.17
@@ -1027,7 +1027,7 @@ DError* Dstring_prototype_toLocaleLowerCase(
 /* ===================== Dstring_prototype_toUpperCase ============= */
 
 DError* Dstring_prototype_toUpperCase(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.5.4.12
@@ -1039,7 +1039,7 @@ DError* Dstring_prototype_toUpperCase(
 /* ===================== Dstring_prototype_toLocaleUpperCase ============= */
 
 DError* Dstring_prototype_toLocaleUpperCase(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.18
@@ -1081,7 +1081,7 @@ DError* dstring_anchor(
 
 
 DError* Dstring_prototype_anchor(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Non-standard extension
@@ -1095,21 +1095,21 @@ DError* Dstring_prototype_anchor(
 }
 
 DError* Dstring_prototype_fontcolor(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_anchor(othis, ret, "FONT", "COLOR", arglist);
 }
 
 DError* Dstring_prototype_fontsize(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_anchor(othis, ret, "FONT", "SIZE", arglist);
 }
 
 DError* Dstring_prototype_link(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_anchor(othis, ret, "A", "HREF", arglist);
@@ -1140,7 +1140,7 @@ DError* dstring_bracket(Dobject othis, out Value ret, d_string tag)
 }
 
 DError* Dstring_prototype_big(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Non-standard extension
@@ -1154,56 +1154,56 @@ DError* Dstring_prototype_big(
 }
 
 DError* Dstring_prototype_blink(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "BLINK");
 }
 
 DError* Dstring_prototype_bold(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "B");
 }
 
 DError* Dstring_prototype_fixed(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "TT");
 }
 
 DError* Dstring_prototype_italics(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "I");
 }
 
 DError* Dstring_prototype_small(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "SMALL");
 }
 
 DError* Dstring_prototype_strike(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "STRIKE");
 }
 
 DError* Dstring_prototype_sub(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "SUB");
 }
 
 DError* Dstring_prototype_sup(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "SUP");

@@ -86,7 +86,7 @@ class DerrorConstructor : Dfunction
 /* ===================== Derror_prototype_toString =============== */
 
 DError* Derror_prototype_toString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.11.4.3

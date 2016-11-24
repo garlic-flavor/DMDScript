@@ -284,7 +284,7 @@ class DregexpConstructor : Dfunction
 /* ===================== Dregexp_prototype_toString =============== */
 
 DError* Dregexp_prototype_toString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a RegExp
@@ -312,7 +312,7 @@ DError* Dregexp_prototype_toString(
 /* ===================== Dregexp_prototype_test =============== */
 
 DError* Dregexp_prototype_test(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.10.6.3 says this is equivalent to:
@@ -323,7 +323,7 @@ DError* Dregexp_prototype_test(
 /* ===================== Dregexp_prototype_exec ============= */
 
 DError* Dregexp_prototype_exec(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return Dregexp.exec(othis, ret, arglist, EXEC_ARRAY);
@@ -333,7 +333,7 @@ DError* Dregexp_prototype_exec(
 /* ===================== Dregexp_prototype_compile ============= */
 
 DError* Dregexp_prototype_compile(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // RegExp.prototype.compile(pattern, attributes)

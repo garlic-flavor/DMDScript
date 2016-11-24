@@ -119,7 +119,7 @@ class DobjectConstructor : Dfunction
 /* ===================== Dobject_prototype_toString ================ */
 
 DError* Dobject_prototype_toString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.format : format;
@@ -144,7 +144,7 @@ DError* Dobject_prototype_toString(
 /* ===================== Dobject_prototype_toLocaleString ================ */
 
 DError* Dobject_prototype_toLocaleString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.2.4.3
@@ -170,7 +170,7 @@ DError* Dobject_prototype_toLocaleString(
 /* ===================== Dobject_prototype_valueOf ================ */
 
 DError* Dobject_prototype_valueOf(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.putVobject(othis);
@@ -180,7 +180,7 @@ DError* Dobject_prototype_valueOf(
 /* ===================== Dobject_prototype_toSource ================ */
 
 DError* Dobject_prototype_toSource(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     d_string buf;
@@ -209,7 +209,7 @@ DError* Dobject_prototype_toSource(
 /* ===================== Dobject_prototype_hasOwnProperty ================ */
 
 DError* Dobject_prototype_hasOwnProperty(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.2.4.5
@@ -223,7 +223,7 @@ DError* Dobject_prototype_hasOwnProperty(
 /* ===================== Dobject_prototype_isPrototypeOf ================ */
 
 DError* Dobject_prototype_isPrototypeOf(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.2.4.6
@@ -255,7 +255,7 @@ DError* Dobject_prototype_isPrototypeOf(
 /* ===================== Dobject_prototype_propertyIsEnumerable ================ */
 
 DError* Dobject_prototype_propertyIsEnumerable(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.2.4.7
@@ -610,9 +610,9 @@ class Dobject
         assert(proptable !is null);
         if      (auto p = proptable.getProperty(key))
         {
-            if (desc.canOverwriteTo(*p))
+            if (p.canOverrideWith(desc))
             {
-                desc.overwriteTo(*p);
+                p.overrideWith(desc);
                 return true;
             }
         }

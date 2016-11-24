@@ -127,7 +127,7 @@ class DarrayConstructor : Dfunction
 /* ===================== Darray_prototype_toString ================= */
 
 DError* Darray_prototype_toString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     //writef("Darray_prototype_toString()\n");
@@ -138,7 +138,7 @@ DError* Darray_prototype_toString(
 /* ===================== Darray_prototype_toLocaleString ================= */
 
 DError* Darray_prototype_toLocaleString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.3
@@ -200,7 +200,7 @@ DError* Darray_prototype_toLocaleString(
 /* ===================== Darray_prototype_concat ================= */
 
 DError* Darray_prototype_concat(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.4
@@ -248,7 +248,7 @@ DError* Darray_prototype_concat(
 /* ===================== Darray_prototype_join ================= */
 
 DError* Darray_prototype_join(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     array_join(othis, ret, arglist);
@@ -287,7 +287,7 @@ void array_join(Dobject othis, out Value ret, Value[] arglist)
 /* ===================== Darray_prototype_toSource ================= */
 
 DError* Darray_prototype_toSource(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     d_string separator;
@@ -319,7 +319,7 @@ DError* Darray_prototype_toSource(
 /* ===================== Darray_prototype_pop ================= */
 
 DError* Darray_prototype_pop(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.6
@@ -351,7 +351,7 @@ DError* Darray_prototype_pop(
 /* ===================== Darray_prototype_push ================= */
 
 DError* Darray_prototype_push(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.7
@@ -376,7 +376,7 @@ DError* Darray_prototype_push(
 /* ===================== Darray_prototype_reverse ================= */
 
 DError* Darray_prototype_reverse(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.4.4.4
@@ -417,7 +417,7 @@ DError* Darray_prototype_reverse(
 /* ===================== Darray_prototype_shift ================= */
 
 DError* Darray_prototype_shift(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.9
@@ -463,7 +463,7 @@ DError* Darray_prototype_shift(
 /* ===================== Darray_prototype_slice ================= */
 
 DError* Darray_prototype_slice(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.10
@@ -669,7 +669,7 @@ extern (C) int compare_value(const void* x, const void* y)
 }
 
 DError* Darray_prototype_sort(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : qsort;
@@ -795,7 +795,7 @@ DError* Darray_prototype_sort(
 /* ===================== Darray_prototype_splice ================= */
 
 DError* Darray_prototype_splice(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.12
@@ -952,7 +952,7 @@ else
 /* ===================== Darray_prototype_unshift ================= */
 
 DError* Darray_prototype_unshift(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.13

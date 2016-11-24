@@ -77,7 +77,7 @@ class DnumberConstructor : Dfunction
 /* ===================== Dnumber_prototype_toString =============== */
 
 DError* Dnumber_prototype_toString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.2
@@ -124,7 +124,7 @@ DError* Dnumber_prototype_toString(
 /* ===================== Dnumber_prototype_toLocaleString =============== */
 
 DError* Dnumber_prototype_toLocaleString(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.3
@@ -151,7 +151,7 @@ DError* Dnumber_prototype_toLocaleString(
 /* ===================== Dnumber_prototype_valueOf =============== */
 
 DError* Dnumber_prototype_valueOf(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a Number
@@ -214,7 +214,7 @@ number_t deconstruct_real(d_number x, int f, out int pe)
 /* ===================== Dnumber_prototype_toFixed =============== */
 
 DError* Dnumber_prototype_toFixed(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -338,7 +338,7 @@ DError* Dnumber_prototype_toFixed(
 /* ===================== Dnumber_prototype_toExponential =============== */
 
 DError* Dnumber_prototype_toExponential(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -476,7 +476,7 @@ DError* Dnumber_prototype_toExponential(
 /* ===================== Dnumber_prototype_toPrecision =============== */
 
 DError* Dnumber_prototype_toPrecision(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;

@@ -36,7 +36,7 @@ d_number math_helper(Value[] arglist)
 }
 
 DError* Dmath_abs(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.1
@@ -48,7 +48,7 @@ DError* Dmath_abs(
 }
 
 DError* Dmath_acos(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.2
@@ -60,7 +60,7 @@ DError* Dmath_acos(
 }
 
 DError* Dmath_asin(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.3
@@ -72,7 +72,7 @@ DError* Dmath_asin(
 }
 
 DError* Dmath_atan(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.4
@@ -84,7 +84,7 @@ DError* Dmath_atan(
 }
 
 DError* Dmath_atan2(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.5
@@ -100,7 +100,7 @@ DError* Dmath_atan2(
 }
 
 DError* Dmath_ceil(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.6
@@ -112,7 +112,7 @@ DError* Dmath_ceil(
 }
 
 DError* Dmath_cos(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.7
@@ -124,7 +124,7 @@ DError* Dmath_cos(
 }
 
 DError* Dmath_exp(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.8
@@ -136,7 +136,7 @@ DError* Dmath_exp(
 }
 
 DError* Dmath_floor(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.9
@@ -148,7 +148,7 @@ DError* Dmath_floor(
 }
 
 DError* Dmath_log(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.10
@@ -160,7 +160,7 @@ DError* Dmath_log(
 }
 
 DError* Dmath_max(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.8.2.11
@@ -191,7 +191,7 @@ DError* Dmath_max(
 }
 
 DError* Dmath_min(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.8.2.12
@@ -222,7 +222,7 @@ DError* Dmath_min(
 }
 
 DError* Dmath_pow(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.13
@@ -238,7 +238,7 @@ DError* Dmath_pow(
 }
 
 DError* Dmath_random(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.14
@@ -268,7 +268,7 @@ DError* Dmath_random(
 }
 
 DError* Dmath_round(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.15
@@ -282,7 +282,7 @@ DError* Dmath_round(
 }
 
 DError* Dmath_sin(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.16
@@ -294,7 +294,7 @@ DError* Dmath_sin(
 }
 
 DError* Dmath_sqrt(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.17
@@ -306,7 +306,7 @@ DError* Dmath_sqrt(
 }
 
 DError* Dmath_tan(
-    Dobject pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.18
