@@ -18,12 +18,12 @@
 
 module dmdscript.property;
 
-import dmdscript.script;
-import dmdscript.value;
-import dmdscript.identifier;
-import dmdscript.dobject;
+// import dmdscript.script;
+// import dmdscript.value;
+// import dmdscript.identifier;
+// import dmdscript.dobject;
 
-import dmdscript.RandAA;
+// import dmdscript.RandAA;
 
 debug import std.stdio;
 
@@ -31,6 +31,9 @@ debug import std.stdio;
 struct Property
 {
     import dmdscript.dfunction : Dfunction;
+    import dmdscript.dobject : Dobject;
+    import dmdscript.script : CallContext;
+    import dmdscript.value : Value, DError;
 
     // attribute flags
     enum Attribute : uint
@@ -39,132 +42,239 @@ struct Property
         ReadOnly       = 0x0001,
         DontEnum       = 0x0002,
         DontDelete     = 0x0004,
-        Internal       = 0x0008,
+        // Internal       = 0x0008,
         Deleted        = 0x0010,
-        Locked         = 0x0020,
+        // Locked         = 0x0020,
         DontOverride   = 0x0040, // pseudo for an argument of a setter method
         KeyWord        = 0x0080,
-        DebugFree      = 0x0100, // for debugging help
+        // DebugFree      = 0x0100, // for debugging help
         Instantiate    = 0x0200, // For COM named item namespace support
 
-        DontChangeAttr = 0x0400,
-        DontConfig     = 0x0800, // "don't change data or accessor."
+        DontConfig     = 0x0400, //
 
         Accessor       = 0x8000, // This is an Accessor Property.
     }
-    union
-    {
-        Value value;
-        struct // for an Accessor Property.
-        {
-            Dfunction Get;
-            Dfunction Set;
-        }
-    }
 
-    Attribute  attributes;
-
+    //
     @trusted @nogc pure nothrow
-    this(ref Value v, in Attribute attr)
+    this(ref Value v, in Attribute a)
     {
-        value = v;
-        attributes = attr;
+        _value = v;
+        _attr = a & ~Attribute.Accessor & ~Attribute.DontOverride;
     }
 
-    @property @trusted @nogc pure nothrow
-    bool empty() const
+    //
+    @trusted @nogc pure nothrow
+    this(Dfunction getter, Dfunction setter, in Attribute a)
     {
-        if (attributes & Attribute.Accessor)
-            return Get is null && Set is null;
+        _Get = getter;
+        _Set = setter;
+        _attr = a | Attribute.Accessor & ~Attribute.DontOverride &
+            ~Attribute.ReadOnly;
+    }
+
+    @property @safe @nogc pure nothrow
+    Attribute attributes() const
+    {
+        return _attr;
+    }
+
+    //
+    @trusted @nogc pure nothrow
+    bool canExtendWith(ref Value v, ref Attribute a)
+    {
+        auto na = a & ~Attribute.Accessor & ~Attribute.DontOverride;
+
+        if (_attr & Attribute.Accessor)
+        {
+            if (a & Attribute.DontOverride)
+                return false;
+
+            if (_attr & Attribute.DontConfig)
+                return false;
+        }
         else
-            return value.isEmpty;
+        {
+            if ((a & Attribute.DontOverride) && !_value.isEmpty)
+                return false;
+
+            if ((_attr & Attribute.DontConfig) && _attr != na &&
+                (~_attr & na) != Attribute.ReadOnly)
+                return false;
+        }
+        a = na;
+        return true;
     }
 
-    @property @safe @nogc pure nothrow
-    bool writable() const
+    //
+    @trusted @nogc pure nothrow
+    bool canExtendWith(Dfunction getter, Dfunction setter, ref Attribute a)
     {
-        return (0 == (attributes & Attribute.Accessor)) &&
-            (0 == (attributes & Attribute.ReadOnly));
+        auto na = a | Attribute.Accessor & ~Attribute.DontOverride &
+            ~Attribute.ReadOnly;
+
+        if (_attr & Attribute.Accessor)
+        {
+            if ((a & Attribute.DontOverride) && _Get !is null && _Set !is null)
+                return false;
+
+            if ((_attr & Attribute.DontConfig) && _attr != na)
+                return false;
+        }
+        else
+        {
+            if ((a & Attribute.DontOverride) && !_value.isEmpty)
+                return false;
+
+            if ((_attr & Attribute.DontConfig) || (_attr & Attribute.ReadOnly))
+                return false;
+        }
+        a = na;
+        return true;
     }
 
-    @property @safe @nogc pure nothrow
-    bool enumerable() const
-    {
-        return 0 == (attributes & Attribute.DontEnum);
-    }
 
-    @property @safe @nogc pure nothrow
-    bool deletable() const
+    //
+    @trusted @nogc pure nothrow
+    bool extend(ref Value v, Attribute a)
     {
-        return 0 == (attributes & Attribute.DontDelete);
-    }
-
-    @property @safe @nogc pure nothrow
-    bool canChangeAttribute() const
-    {
-        return 0 == (attributes & Attribute.DontChangeAttr);
-    }
-
-    @property @safe @nogc pure nothrow
-    bool configurable() const
-    {
-        enum mask = Attribute.DontDelete | Attribute.DontConfig |
-            Attribute.DontChangeAttr;
-        return (attributes & mask) != mask;
-    }
-
-    @safe @nogc pure nothrow
-    bool canOverrideWith(in ref Property p) const
-    {
-        if      (configurable)
+        if (canExtendWith(v, a))
+        {
+            _attr = a;
+            _value = v;
             return true;
-        else if (writable && !p.writable)
-            return true;
-        else if (attributes == p.attributes)
-            return true;
+        }
         return false;
     }
 
+    //
     @trusted @nogc pure nothrow
-    void overrideWith(ref Property right)
+    bool extend(Dfunction getter, Dfunction setter, Attribute a)
     {
-        if ((right.attributes & Attribute.DontOverride) && !empty)
-            return;
-
-        Attribute attr;
-        if (attributes & Attribute.DontChangeAttr)
-            attr = attributes | (right.attributes & Attribute.ReadOnly);
-        else
-            attr = (right.attributes & ~Attribute.DontOverride) |
-                (attributes & (Attribute.DontDelete | Attribute.DontEnum));
-
-        if (0 == (attr & attributes & Attribute.ReadOnly))
+        auto na = a;
+        if (canExtendWith(getter, setter, a))
         {
-            if      (attr & attributes & Attribute.DontChangeAttr)
+            _attr = a;
+            _Get = getter;
+            _Set = setter;
+            return true;
+        }
+        return false;
+    }
+
+    //
+    Value* get(ref CallContext cc, Dobject othis)
+    {
+        if (_attr & Attribute.Accessor)
+        {
+            if (_Get !is null)
             {
-                if      (attr & attributes & Attribute.Accessor)
+                auto ret = new Value;
+                auto err = _Get.Call(cc, othis, *ret, null);
+                if (err is null)
+                    return ret;
+                else
                 {
-                    Get = right.Get;
-                    Set = right.Set;
+                    debug throw err.toScriptException;
+                    return null;
                 }
-                else if (~attr & ~attributes & Attribute.Accessor)
-                {
-                    value = right.value;
-                }
-            }
-            else if (attr & Attribute.Accessor)
-            {
-                Get = right.Get;
-                Set = right.Set;
-            }
-            else
-            {
-                if (0 == (attr & Attribute.ReadOnly))
-                    value = right.value;
             }
         }
-        attributes = attr;
+        else
+            return &_value;
+
+        return null;
     }
+
+    //
+    DError* set(ref Value v, in Attribute attr,
+                ref CallContext cc, Dobject othis,)
+    {
+        if (_attr & Attribute.Accessor)
+        {
+            if (_Set !is null)
+            {
+                Value ret;
+                return _Set.Call(cc, othis, ret, [v]);
+            }
+            else
+                return null;
+        }
+        else if (0 == (_attr & Attribute.ReadOnly))
+            _value = v;
+        return null;
+    }
+
+    //
+    @property @safe @nogc pure nothrow
+    bool isAccessor() const
+    {
+        return 0 == (_attr & Attribute.Accessor);
+    }
+
+    //
+    @property @safe @nogc pure nothrow
+    bool isKeyWord() const
+    {
+        return 0 == (_attr & Attribute.KeyWord);
+    }
+
+    //
+    @property @safe @nogc pure nothrow
+    bool writable() const
+    {
+        return 0 == (_attr & Attribute.ReadOnly);
+    }
+
+    //
+    @safe @nogc pure nothrow
+    void preventExtending()
+    {
+        if (_attr & Attribute.Accessor)
+            _attr |= Attribute.DontConfig;
+        else
+            _attr |= Attribute.ReadOnly;
+    }
+
+    //
+    @property @safe @nogc pure nothrow
+    bool enumerable() const
+    {
+        return 0 == (_attr & Attribute.DontEnum);
+    }
+
+    //
+    @property @safe @nogc pure nothrow
+    bool deletable() const
+    {
+        return 0 == (_attr & (Attribute.DontDelete | Attribute.DontConfig));
+    }
+
+    //
+    @property @safe @nogc pure nothrow
+    bool configurable() const
+    {
+        return 0 == (_attr & Attribute.DontConfig);
+    }
+
+    deprecated @property
+    auto ref value() inout
+    {
+        return _value;
+    }
+
+private:
+    union
+    {
+        Value _value;
+        struct // for an Accessor Property.
+        {
+            Dfunction _Get;
+            Dfunction _Set;
+        }
+    }
+
+    Attribute  _attr;
 }
 
 // See_Also: Ecma-262-v7:6.2.4 The Property Descriptor Specification Type
@@ -221,21 +331,28 @@ Dobject toObject(Property* desc)
 /*********************************** PropTable *********************/
 final class PropTable
 {
+    import dmdscript.dobject : Dobject;
+    import dmdscript.script : CallContext, d_uint32, d_string, vundefined;
+    import dmdscript.value : Value;
+    import dmdscript.RandAA : RandAA;
+
+    //
     @safe pure nothrow
     this()
     {
-        table = new RandAA!(Value, Property);
+        _table = new RandAA!(Value, Property);
     }
 
-
+    //
     int opApply(scope int delegate(ref Property) dg)
     {
-        return table.opApply(dg);
+        return _table.opApply(dg);
     }
 
+    //
     int opApply(scope int delegate(ref Value, ref Property) dg)
     {
-        return table.opApply(dg);
+        return _table.opApply(dg);
     }
 
     /*******************************
@@ -245,31 +362,13 @@ final class PropTable
     @safe
     Property* getProperty(ref Value key)
     {
-        return getProperty(key, key.toHash);
+        return _getProperty(key, key.toHash);
     }
 
     Value* get(ref Value key, in size_t hash, ref CallContext cc, Dobject othis)
     {
-        if (auto p = getProperty(key, hash))
-        {
-            if (p.attributes & Property.Attribute.Accessor)
-            {
-                if (p.Get is null)
-                    return null;
-
-                auto ret = new Value;
-                auto err = p.Get.Call(cc, othis, *ret, null);
-                debug if (err !is null)
-                    throw err.toScriptException;
-
-                if (err !is null)
-                    return null;
-                else
-                    return ret;
-            }
-            else
-                return &p.value;
-        }
+        if (auto p = _getProperty(key, hash))
+            p.get(cc, othis);
         return null;
     }
 
@@ -278,7 +377,9 @@ final class PropTable
         Value key;
 
         key.putVnumber(index);
-        return get(key, Value.calcHash(index), cc, othis);
+        if (auto p = _getProperty(key, Value.calcHash(index)))
+            p.get(cc, othis);
+        return null;
     }
 
     Value* get(in d_string name, in size_t hash, ref CallContext cc,
@@ -287,7 +388,9 @@ final class PropTable
         Value key;
 
         key.putVstring(name);
-        return get(key, hash, cc, othis);
+        if (auto p = _getProperty(key, hash))
+            p.get(cc, othis);
+        return null;
     }
 
     /*******************************
@@ -295,74 +398,59 @@ final class PropTable
      * The enumerable flag means the DontEnum attribute cannot be set.
      */
     @safe
-    int hasownproperty(ref Value key, in int enumerable)
+    bool hasownproperty(ref Value key, in int enumerable)
     {
-        Property* p;
-
-        p = key in table;
-        return p && (!enumerable ||
-                     !(p.attributes & Property.Attribute.DontEnum));
+        if (auto p = key in _table)
+            return !enumerable || p.enumerable;
+        return false;
     }
 
     @trusted
     int hasproperty(in d_string name)
     {
-        Value v;
-        v.putVstring(name);
-
-        return hasproperty(v);
+        Value key;
+        key.putVstring(name);
+        return _hasproperty(key, key.toHash) is null ? 0 : 1;
     }
 
-    Value* put(ref Value key, size_t hash, ref Property prop)
+    Value* put(ref Value key, size_t hash, ref Value value,
+               in Property.Attribute attributes)
     {
-        if (auto p = table.findExistingAlt(key, hash))
+        assert(key.toHash == hash);
+
+        if (auto p = _table.findExistingAlt(key, hash))
         {
-            if ((prop.attributes & Property.Attribute.DontOverride &&
-                 !p.empty) ||
-                p.attributes & Property.Attribute.ReadOnly)
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canExtendWith(value, na))
             {
-                if (p.attributes & Property.Attribute.KeyWord)
+                if (p.isKeyWord)
                     return null;
                 return &vundefined;
             }
 
             for (auto t = _previous; t !is null; t = t._previous)
             {
-                if (auto p2 = t.table.findExistingAlt(key, hash))
+                if (auto p2 = t._table.findExistingAlt(key, hash))
                 {
-                    if (p2.attributes & Property.Attribute.ReadOnly)
+                    if (!p2.writable || (p.isAccessor && !p.configurable))
                     {
-                        p.attributes |= Property.Attribute.ReadOnly;
+                        p.preventExtending;
                         return &vundefined;
                     }
                     break;
                 }
             }
 
-            p.overrideWith(prop);
+            p.extend(value, na);
+
             return null;
         }
         else
         {
-            if (prop.attributes & Property.Attribute.DontOverride)
-            {
-                auto p = prop;
-                p.attributes &= ~Property.Attribute.DontOverride;
-                table.insertAlt(key, p, hash);
-            }
-            else
-                table.insertAlt(key, prop, hash);
+            auto p = Property(value, attributes);
+            _table.insertAlt(key, p, hash);
             return null;
         }
-    }
-
-
-    @trusted
-    Value* put(ref Value key, size_t hash, ref Value value,
-               in Property.Attribute attributes)
-    {
-        auto prop = Property(value, attributes);
-        return put(key, hash, prop);
     }
 
     @trusted
@@ -372,8 +460,7 @@ final class PropTable
         Value key;
 
         key.putVstring(name);
-        auto prop = Property(value, attributes);
-        return put(key, Value.calcHash(name), prop);
+        return put(key, Value.calcHash(name), value, attributes);
     }
 
     @trusted
@@ -383,8 +470,7 @@ final class PropTable
         Value key;
 
         key.putVnumber(index);
-        auto prop = Property(value, attributes);
-        return put(key, Value.calcHash(index), prop);
+        return put(key, Value.calcHash(index), value, attributes);
     }
 
     @trusted
@@ -396,9 +482,7 @@ final class PropTable
 
         key.putVnumber(index);
         value.putVstring(str);
-        auto prop = Property(value, attributes);
-
-        return put(key, Value.calcHash(index), prop);
+        return put(key, Value.calcHash(index), value, attributes);
     }
 
     @trusted
@@ -408,7 +492,7 @@ final class PropTable
 
         v.putVstring(name);
 
-        return canput(v, v.toHash);
+        return _canput(v, v.toHash);
     }
 
     @trusted
@@ -417,7 +501,7 @@ final class PropTable
         Value v;
 
         v.putVstring(name);
-        return del(v);
+        return _del(v);
     }
 
     @trusted
@@ -426,19 +510,19 @@ final class PropTable
         Value v;
 
         v.putVnumber(index);
-        return del(v);
+        return _del(v);
     }
 
     @property @safe pure nothrow
     Value[] keys()
     {
-        return table.keys;
+        return _table.keys;
     }
 
     @property @safe @nogc pure nothrow
     size_t length() const
     {
-        return table !is null ? table.length : 0;
+        return _table.length;
     }
 
     @property @safe @nogc pure nothrow
@@ -450,34 +534,38 @@ final class PropTable
     @safe
     Property* opBinaryRight(string OP : "in")(auto ref Value index)
     {
-        return index in table;
+        return index in _table;
     }
 
 private:
-    RandAA!(Value, Property) table;
+    RandAA!(Value, Property) _table;
     PropTable _previous;
 
     @safe
-    Property* getProperty(ref Value key, in size_t hash)
+    Property* _getProperty(ref Value key, in size_t hash)
     {
         assert(key.toHash == hash);
         for (auto t = this; t !is null; t = t._previous)
         {
-            if (auto p = t.table.findExistingAlt(key, hash))
+            if (auto p = t._table.findExistingAlt(key, hash))
                 return p;
         }
         return null;
     }
 
     @safe
-    int hasproperty(ref Value key)
+    Property* _hasproperty(ref Value key, in size_t hash)
     {
-        return (key in table) !is null ||
-            (_previous && _previous.hasproperty(key));
+        for (auto t = this; t !is null; t = t._previous)
+        {
+            if (auto p = t._table.findExistingAlt(key, hash))
+                return p;
+        }
+        return null;
     }
 
     @safe
-    int canput(ref Value key, size_t hash)
+    int _canput(ref Value key, size_t hash)
     {
         Property* p;
         PropTable t;
@@ -486,11 +574,10 @@ private:
         do
         {
             //p = *key in t.table;
-             p = t.table.findExistingAlt(key, hash);
+             p = t._table.findExistingAlt(key, hash);
             if(p)
             {
-                return (p.attributes & Property.Attribute.ReadOnly)
-                       ? false : true;
+                return p.writable;
             }
             t = t._previous;
         } while(t);
@@ -498,16 +585,16 @@ private:
     }
 
     @safe
-    int del(ref Value key)
+    int _del(ref Value key)
     {
         Property* p;
 
-        p = key in table;
+        p = key in _table;
         if(p)
         {
-            if(p.attributes & Property.Attribute.DontDelete)
+            if(!p.deletable)
                 return false;
-            table.remove(key);
+            _table.remove(key);
         }
         return true;                    // not found
     }

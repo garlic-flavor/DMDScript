@@ -607,23 +607,23 @@ class Dobject
     @disable
     bool DefineOwnProperty(ref Value key, ref Property desc)
     {
-        assert(proptable !is null);
-        if      (auto p = proptable.getProperty(key))
-        {
-            if (p.canOverrideWith(desc))
-            {
-                p.overrideWith(desc);
-                return true;
-            }
-        }
-        else if (!isExtensible)
-        {
+        // assert(proptable !is null);
+        // if      (auto p = proptable.getProperty(key))
+        // {
+        //     if (p.canOverrideWith(desc))
+        //     {
+        //         p.overrideWith(desc);
+        //         return true;
+        //     }
+        // }
+        // else if (!isExtensible)
+        // {
             
-            return false;
-        }
-        else
-        {
-        }
+        //     return false;
+        // }
+        // else
+        // {
+        // }
 
         return false;
     }
