@@ -111,7 +111,9 @@ class DerrorPrototype : Derror
         Dobject f = Dfunction.getPrototype;
         //d_string m = d_string_ctor(DTEXT("Error.prototype.message"));
 
-        Put(Text.constructor, Derror_constructor, Property.Attribute.DontEnum);
+        CallContext cc;
+        Put(Text.constructor, Derror_constructor,
+            Property.Attribute.DontEnum, cc);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -120,11 +122,11 @@ class DerrorPrototype : Derror
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.None);
 
-        Put(Text.name, Text.Error, Property.Attribute.None);
-        Put(Text.message, Text.Empty, Property.Attribute.None);
-        Put(Text.description, Text.Empty, Property.Attribute.None);
+        Put(Text.name, Text.Error, Property.Attribute.None, cc);
+        Put(Text.message, Text.Empty, Property.Attribute.None, cc);
+        Put(Text.description, Text.Empty, Property.Attribute.None, cc);
         Put(Text.number, cast(d_number)(/*FACILITY |*/ 0),
-            Property.Attribute.None);
+            Property.Attribute.None, cc);
     }
 }
 
@@ -140,8 +142,9 @@ class Derror : Dobject
 
         immutable(char)[] msg;
         msg = m.toString();
-        Put(Text.message, msg, Property.Attribute.None);
-        Put(Text.description, msg, Property.Attribute.None);
+        CallContext cc;
+        Put(Text.message, msg, Property.Attribute.None, cc);
+        Put(Text.description, msg, Property.Attribute.None, cc);
         if(m.isString())
         {
         }
@@ -149,18 +152,18 @@ class Derror : Dobject
         {
             d_number n = m.toNumber();
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
-            Put(Text.number, n, Property.Attribute.None);
+            Put(Text.number, n, Property.Attribute.None, cc);
         }
         if(v2.isString())
         {
-            Put(Text.description, v2.toString, Property.Attribute.None);
-            Put(Text.message, v2.toString, Property.Attribute.None);
+            Put(Text.description, v2.toString, Property.Attribute.None, cc);
+            Put(Text.message, v2.toString, Property.Attribute.None, cc);
         }
         else if(v2.isNumber())
         {
             d_number n = v2.toNumber();
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
-            Put(Text.number, n, Property.Attribute.None);
+            Put(Text.number, n, Property.Attribute.None, cc);
         }
     }
 
@@ -185,10 +188,11 @@ class Derror : Dobject
         Derror_constructor = new DerrorConstructor();
         Derror_prototype = new DerrorPrototype();
 
+        CallContext cc;
         Derror_constructor.Put(Text.prototype, Derror_prototype,
                                Property.Attribute.DontEnum |
                                Property.Attribute.DontDelete |
-                               Property.Attribute.ReadOnly);
+                               Property.Attribute.ReadOnly, cc);
     }
 }
 

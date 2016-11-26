@@ -50,10 +50,11 @@ class DobjectConstructor : Dfunction
         super(1, Dfunction.getPrototype);
         if(Dobject.getPrototype)
         {
+            CallContext cc;
             Put(Text.prototype, Dobject.getPrototype,
                 Property.Attribute.DontEnum |
                 Property.Attribute.DontDelete |
-                Property.Attribute.ReadOnly);
+                Property.Attribute.ReadOnly, cc);
         }
     }
 
@@ -359,67 +360,68 @@ class Dobject
     }
 
     DError* Put(in d_string PropertyName, ref Value value,
-                in Property.Attribute attributes)
+                in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        proptable.put(PropertyName, value, attributes);
+        proptable.put(PropertyName, value, attributes, cc, this);
         return null;
     }
 
     DError* Put(ref Identifier key, ref Value value,
-                in Property.Attribute attributes)
+                in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        proptable.put(key.value, key.value.hash, value, attributes);
+        proptable.put(key.value, key.value.hash, value, attributes, cc, this);
         return null;
     }
 
     DError* Put(in d_string PropertyName, Dobject o,
-                in Property.Attribute attributes)
+                in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
         Value v;
         v.putVobject(o);
 
-        proptable.put(PropertyName, v, attributes);
+        proptable.put(PropertyName, v, attributes, cc, this);
         return null;
     }
 
     DError* Put(in d_string PropertyName, in d_number n,
-                in Property.Attribute attributes)
+                in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
         Value v;
         v.putVnumber(n);
 
-        proptable.put(PropertyName, v, attributes);
+        proptable.put(PropertyName, v, attributes, cc, this);
         return null;
     }
 
     DError* Put(in d_string PropertyName, in d_string s,
-                in Property.Attribute attributes)
+                in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
         Value v;
         v.putVstring(s);
 
-        proptable.put(PropertyName, v, attributes);
+        proptable.put(PropertyName, v, attributes, cc, this);
         return null;
     }
 
     DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
-                in Property.Attribute attributes)
+                in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        proptable.put(vindex, Value.calcHash(index), value, attributes);
+        proptable.put(vindex, Value.calcHash(index), value, attributes,
+                      cc, this);
         return null;
     }
 
     DError* Put(in d_uint32 index, ref Value value,
-                in Property.Attribute attributes)
+                in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        proptable.put(index, value, attributes);
+        proptable.put(index, value, attributes, cc, this);
         return null;
     }
 
@@ -672,8 +674,9 @@ public static:
         Dobject op = _prototype;
         Dobject f = Dfunction.getPrototype;
 
+        CallContext cc;
         op.Put(Text.constructor, _constructor,
-               Property.Attribute.DontEnum);
+               Property.Attribute.DontEnum, cc);
 
         static enum NativeFunctionData[] nfd =
         [

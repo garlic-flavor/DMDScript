@@ -67,41 +67,41 @@ class DregexpConstructor : Dfunction
         name = "RegExp";
 
         // Static properties
-        Put(Text.input, v, Property.Attribute.DontDelete);
-        Put(Text.multiline, vb, Property.Attribute.DontDelete);
+        CallContext cc;
+        Put(Text.input, v, Property.Attribute.DontDelete, cc);
+        Put(Text.multiline, vb, Property.Attribute.DontDelete, cc);
         Put(Text.lastMatch, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.lastParen, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.leftContext, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.rightContext, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar1, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar2, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar3, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar4, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar5, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar6, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar7, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar8, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.dollar9, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
 
         Put(Text.index, vnm1,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
         Put(Text.lastIndex, vnm1,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
 
-        CallContext cc;
         input = Get(Text.input, cc);
         multiline = Get(Text.multiline, cc);
         lastMatch = Get(Text.lastMatch, cc);
@@ -218,22 +218,25 @@ class DregexpConstructor : Dfunction
         return Dfunction.Get(perlAlias(PropertyName), cc);
     }
 
-    override DError* Put(in d_string PropertyName, ref Value value,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_string PropertyName, ref Value value,
+                in Property.Attribute attributes, ref CallContext cc)
     {
-        return Dfunction.Put(perlAlias(PropertyName), value, attributes);
+        return Dfunction.Put(perlAlias(PropertyName), value, attributes, cc);
     }
 
-    override DError* Put(in d_string PropertyName, Dobject o,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_string PropertyName, Dobject o,
+                in Property.Attribute attributes, ref CallContext cc)
     {
-        return Dfunction.Put(perlAlias(PropertyName), o, attributes);
+        return Dfunction.Put(perlAlias(PropertyName), o, attributes, cc);
     }
 
-    override DError* Put(in d_string PropertyName, in d_number n,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_string PropertyName, in d_number n,
+                in Property.Attribute attributes, ref CallContext cc)
     {
-        return Dfunction.Put(perlAlias(PropertyName), n, attributes);
+        return Dfunction.Put(perlAlias(PropertyName), n, attributes, cc);
     }
 
     override int CanPut(in d_string PropertyName)
@@ -400,7 +403,8 @@ class DregexpPrototype : Dregexp
             Property.Attribute.DontEnum;
         Dobject f = Dfunction.getPrototype;
 
-        Put(Text.constructor, Dregexp.getConstructor, attributes);
+        CallContext cc;
+        Put(Text.constructor, Dregexp.getConstructor, attributes, cc);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -440,28 +444,27 @@ class Dregexp : Dobject
 
         classname = Text.RegExp;
 
-        //writef("Dregexp.Dregexp(pattern = '%ls', attributes = '%ls')\n", d_string_ptr(pattern), d_string_ptr(attributes));
+        CallContext cc;
         Put(Text.source, v,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.global, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.ignoreCase, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.multiline, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.lastIndex, 0.0,
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
 
-        CallContext cc;
         source = Get(Text.source, cc);
         global = Get(Text.global, cc);
         ignoreCase = Get(Text.ignoreCase, cc);
@@ -495,27 +498,27 @@ class Dregexp : Dobject
 
         classname = Text.RegExp;
 
+        CallContext cc;
         Put(Text.source, v,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.global, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.ignoreCase, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.multiline, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.lastIndex, 0.0,
             Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
 
-        CallContext cc;
         source = Get(Text.source, cc);
         global = Get(Text.global, cc);
         ignoreCase = Get(Text.ignoreCase, cc);
@@ -644,12 +647,14 @@ static:
                 {
                     Darray a = new Darray();
 
-                    a.Put(Text.input, r.input, Property.Attribute.None);
-                    a.Put(Text.index, r.index, Property.Attribute.None);
-                    a.Put(Text.lastIndex, r.lastIndex, Property.Attribute.None);
+                    CallContext cc;
+                    a.Put(Text.input, r.input, Property.Attribute.None, cc);
+                    a.Put(Text.index, r.index, Property.Attribute.None, cc);
+                    a.Put(Text.lastIndex, r.lastIndex,
+                          Property.Attribute.None, cc);
 
                     a.Put(cast(d_uint32)0, *dc.lastMatch,
-                          Property.Attribute.None);
+                          Property.Attribute.None, cc);
 
                     // [1]..[nparens]
                     if (nmatches < 9)
@@ -657,21 +662,23 @@ static:
                     for(i = 1; i <= nmatches; i++)
                     {
                         if(i > r.nmatches)
-                            a.Put(i, Text.Empty, Property.Attribute.None);
+                            a.Put(i, Text.Empty, Property.Attribute.None, cc);
 
                         // Reuse values already put into dc.dollar[]
                         else if(r.nmatches <= 9)
-                            a.Put(i, *dc.dollar[i], Property.Attribute.None);
+                            a.Put(i, *dc.dollar[i],
+                                  Property.Attribute.None, cc);
                         else if(i > r.nmatches - 9)
                             a.Put(i, *dc.dollar[i - (r.nmatches - 9)],
-                                  Property.Attribute.None);
+                                  Property.Attribute.None, cc);
                         else if(r.captures(i) is null)
                         {
-                            a.Put(i, vundefined, Property.Attribute.None);
+                            a.Put(i, vundefined, Property.Attribute.None, cc);
                         }
                         else
                         {
-                            a.Put(i, r.captures(i), Property.Attribute.None);
+                            a.Put(i, r.captures(i),
+                                  Property.Attribute.None, cc);
                         }
                     }
                     ret.putVobject(a);
@@ -752,10 +759,11 @@ static:
                 writef("*p = %x, %x, %x, %x\n", p[0], p[1], p[2], p[3]);
         }
 
+        CallContext cc;
         _constructor.Put(Text.prototype, _prototype,
                          Property.Attribute.DontEnum |
                          Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly);
+                         Property.Attribute.ReadOnly, cc);
     }
 private:
     Dfunction _constructor;

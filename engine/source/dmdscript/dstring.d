@@ -465,7 +465,7 @@ DError* Dstring_prototype_match(
             if(i == lasti)              // if no source was consumed
                 i++;                    // consume a character
 
-            a.Put(n, ret, Property.Attribute.None);           // a[n] = ret;
+            a.Put(n, ret, Property.Attribute.None, cc);           // a[n] = ret;
         }
         ret.putVobject(a);
     }
@@ -788,7 +788,7 @@ DError* Dstring_prototype_split(
                         {
                             T = S[p .. q];
                             A.Put(cast(uint)A.length.number, T,
-                                  Property.Attribute.None);
+                                  Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
                             p = e;
@@ -807,7 +807,7 @@ DError* Dstring_prototype_split(
                             T = S[p .. q];
                             //writefln("S = '%s', T = '%s', p = %d, q = %d, e = %d\n", S, T, p, q, e);
                             A.Put(cast(uint)A.length.number, T,
-                                  Property.Attribute.None);
+                                  Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
                             p = e;
@@ -822,7 +822,7 @@ DError* Dstring_prototype_split(
                                 else
                                     T = null;
                                 A.Put(cast(uint)A.length.number, T,
-                                      Property.Attribute.None);
+                                      Property.Attribute.None, cc);
                                 if(A.length.number == lim)
                                     goto Lret;
                             }
@@ -832,7 +832,7 @@ DError* Dstring_prototype_split(
                 }
             }
             T = S[p .. S.length];
-            A.Put(cast(uint)A.length.number, T, Property.Attribute.None);
+            A.Put(cast(uint)A.length.number, T, Property.Attribute.None, cc);
             goto Lret;
         }
         if(str)                 // string
@@ -847,7 +847,7 @@ DError* Dstring_prototype_split(
         }
     }
 
-    A.Put(0u, S, Property.Attribute.None);
+    A.Put(0u, S, Property.Attribute.None, cc);
     Lret:
     ret.putVobject(A);
     return null;
@@ -1219,8 +1219,9 @@ class DstringPrototype : Dstring
     {
         super(Dobject.getPrototype);
 
+        CallContext cc;
         Put(Text.constructor, Dstring.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -1273,10 +1274,11 @@ class Dstring : Dobject
         super(getPrototype());
         classname = Text.String;
 
+        CallContext cc;
         Put(Text.length, toUCSindex(s, s.length),
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
-            Property.Attribute.ReadOnly);
+            Property.Attribute.ReadOnly, cc);
         value.putVstring(s);
     }
 
@@ -1285,10 +1287,11 @@ class Dstring : Dobject
         super(prototype);
 
         classname = Text.String;
+        CallContext cc;
         Put(Text.length, 0,
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
-            Property.Attribute.ReadOnly);
+            Property.Attribute.ReadOnly, cc);
         value.putVstring(null);
     }
 
@@ -1307,10 +1310,11 @@ static:
         _constructor = new DstringConstructor();
         _prototype = new DstringPrototype();
 
+        CallContext cc;
         _constructor.Put(Text.prototype, _prototype,
-                                Property.Attribute.DontEnum |
-                                Property.Attribute.DontDelete |
-                                Property.Attribute.ReadOnly);
+                         Property.Attribute.DontEnum |
+                         Property.Attribute.DontDelete |
+                         Property.Attribute.ReadOnly, cc);
     }
 
 private:

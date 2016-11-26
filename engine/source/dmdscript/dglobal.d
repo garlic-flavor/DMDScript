@@ -804,15 +804,16 @@ class Dglobal : Dobject
 
         // Value properties
 
+        CallContext cc;
         Put(Text.NaN, d_number.nan,
             Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete);
+            Property.Attribute.DontDelete, cc);
         Put(Text.Infinity, d_number.infinity,
             Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete);
+            Property.Attribute.DontDelete, cc);
         Put(Text.undefined, vundefined,
             Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete);
+            Property.Attribute.DontDelete, cc);
         static enum NativeFunctionData[] nfd =
         [
             // Function properties
@@ -849,55 +850,55 @@ class Dglobal : Dobject
         // Constructor properties
 
         Put(Text.Object, Dobject.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.Function, Dfunction.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.Array, Darray.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.String, Dstring.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.Boolean, Dboolean.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.Number, Dnumber.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.Date, Ddate.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.RegExp, Dregexp.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(Text.Error, Derror.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
 
         Put(syntaxerror.Text, syntaxerror.D0.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(evalerror.Text, evalerror.D0.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(referenceerror.Text, referenceerror.D0.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(rangeerror.Text, rangeerror.D0.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(typeerror.Text, typeerror.D0.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
         Put(urierror.Text, urierror.D0.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
 
 
         // Other properties
 
         assert(Dmath.object);
-        Put(Text.Math, Dmath.object, Property.Attribute.DontEnum);
+        Put(Text.Math, Dmath.object, Property.Attribute.DontEnum, cc);
 
         // Build an "arguments" property out of argv[],
         // and add it to the global object.
         Darray arguments;
 
         arguments = new Darray();
-        Put(Text.arguments, arguments, Property.Attribute.DontDelete);
+        Put(Text.arguments, arguments, Property.Attribute.DontDelete, cc);
         arguments.length.putVnumber(argv.length);
         for(int i = 0; i < argv.length; i++)
         {
-            arguments.Put(i, argv[i].idup, Property.Attribute.DontEnum);
+            arguments.Put(i, argv[i].idup, Property.Attribute.DontEnum, cc);
         }
-        arguments.Put(Text.callee, vnull, Property.Attribute.DontEnum);
+        arguments.Put(Text.callee, vnull, Property.Attribute.DontEnum, cc);
     }
 }
 

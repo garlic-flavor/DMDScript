@@ -41,11 +41,13 @@ class DnumberConstructor : Dfunction
             Property.Attribute.ReadOnly;
 
         name = Text.Number;
-        Put(Text.MAX_VALUE, d_number.max, attributes);
-        Put(Text.MIN_VALUE, d_number.min_normal*d_number.epsilon, attributes);
-        Put(Text.NaN, d_number.nan, attributes);
-        Put(Text.NEGATIVE_INFINITY, -d_number.infinity, attributes);
-        Put(Text.POSITIVE_INFINITY, d_number.infinity, attributes);
+        CallContext cc;
+        Put(Text.MAX_VALUE, d_number.max, attributes, cc);
+        Put(Text.MIN_VALUE, d_number.min_normal*d_number.epsilon,
+            attributes, cc);
+        Put(Text.NaN, d_number.nan, attributes, cc);
+        Put(Text.NEGATIVE_INFINITY, -d_number.infinity, attributes, cc);
+        Put(Text.POSITIVE_INFINITY, d_number.infinity, attributes, cc);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -623,7 +625,8 @@ class DnumberPrototype : Dnumber
 
         Dobject f = Dfunction.getPrototype;
 
-        Put(Text.constructor, Dnumber.getConstructor, attributes);
+        CallContext cc;
+        Put(Text.constructor, Dnumber.getConstructor, attributes, cc);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -675,10 +678,11 @@ static:
         _constructor = new DnumberConstructor();
         _prototype = new DnumberPrototype();
 
+        CallContext cc;
         _constructor.Put(Text.prototype, _prototype,
                          Property.Attribute.DontEnum |
                          Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly);
+                         Property.Attribute.ReadOnly, cc);
     }
 private:
     Dfunction _constructor;

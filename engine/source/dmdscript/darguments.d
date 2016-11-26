@@ -50,17 +50,18 @@ class Darguments : Dobject
         this.actobj = actobj;
         this.parameters = parameters;
 
+        CallContext cc;
         if(caller)
-            Put(Text.caller, caller, Property.Attribute.DontEnum);
+            Put(Text.caller, caller, Property.Attribute.DontEnum, cc);
         else
-            Put(Text.caller, vnull, Property.Attribute.DontEnum);
+            Put(Text.caller, vnull, Property.Attribute.DontEnum, cc);
 
-        Put(Text.callee, callee, Property.Attribute.DontEnum);
-        Put(Text.length, arglist.length, Property.Attribute.DontEnum);
+        Put(Text.callee, callee, Property.Attribute.DontEnum, cc);
+        Put(Text.length, arglist.length, Property.Attribute.DontEnum, cc);
 
         for(uint a = 0; a < arglist.length; a++)
         {
-            Put(a, arglist[a], Property.Attribute.DontEnum);
+            Put(a, arglist[a], Property.Attribute.DontEnum, cc);
         }
     }
 
@@ -87,66 +88,72 @@ class Darguments : Dobject
             : Dobject.Get(index, vindex, cc);
     }
 
-    override DError* Put(in d_string PropertyName, ref Value value,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_string PropertyName, ref Value value,
+                in Property.Attribute attributes, ref CallContext cc)
     {
         d_uint32 index;
 
         if(StringToIndex(PropertyName, index) && index < parameters.length)
-            return actobj.Put(PropertyName, value, attributes);
+            return actobj.Put(PropertyName, value, attributes, cc);
         else
-            return Dobject.Put(PropertyName, value, attributes);
+            return Dobject.Put(PropertyName, value, attributes, cc);
     }
 
-    override DError* Put(ref Identifier key, ref Value value,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(ref Identifier key, ref Value value,
+                in Property.Attribute attributes, ref CallContext cc)
     {
         d_uint32 index;
 
         if(StringToIndex(key.value.text, index) && index < parameters.length)
-            return actobj.Put(key, value, attributes);
+            return actobj.Put(key, value, attributes, cc);
         else
-            return Dobject.Put(key, value, attributes);
+            return Dobject.Put(key, value, attributes, cc);
     }
 
-    override DError* Put(in d_string PropertyName, Dobject o,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_string PropertyName, Dobject o,
+                in Property.Attribute attributes, ref CallContext cc)
     {
         d_uint32 index;
 
         if(StringToIndex(PropertyName, index) && index < parameters.length)
-            return actobj.Put(PropertyName, o, attributes);
+            return actobj.Put(PropertyName, o, attributes, cc);
         else
-            return Dobject.Put(PropertyName, o, attributes);
+            return Dobject.Put(PropertyName, o, attributes, cc);
     }
 
-    override DError* Put(in d_string PropertyName, in d_number n,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_string PropertyName, in d_number n,
+                in Property.Attribute attributes, ref CallContext cc)
     {
         d_uint32 index;
 
         if(StringToIndex(PropertyName, index) && index < parameters.length)
-            return actobj.Put(PropertyName, n, attributes);
+            return actobj.Put(PropertyName, n, attributes, cc);
         else
-            return Dobject.Put(PropertyName, n, attributes);
+            return Dobject.Put(PropertyName, n, attributes, cc);
     }
 
-    override DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
+                in Property.Attribute attributes, ref CallContext cc)
     {
         if(index < parameters.length)
-            return actobj.Put(index, vindex, value, attributes);
+            return actobj.Put(index, vindex, value, attributes, cc);
         else
-            return Dobject.Put(index, vindex, value, attributes);
+            return Dobject.Put(index, vindex, value, attributes, cc);
     }
 
-    override DError* Put(in d_uint32 index, ref Value value,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_uint32 index, ref Value value,
+                in Property.Attribute attributes, ref CallContext cc)
     {
         if(index < parameters.length)
-            return actobj.Put(index, value, attributes);
+            return actobj.Put(index, value, attributes, cc);
         else
-            return Dobject.Put(index, value, attributes);
+            return Dobject.Put(index, value, attributes, cc);
     }
 
     override int CanPut(in d_string PropertyName)

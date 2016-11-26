@@ -1047,10 +1047,10 @@ struct Value
         return h;
     }
 
-    DError* Put(in d_string PropertyName, ref Value value)
+    DError* Put(in d_string PropertyName, ref Value value, ref CallContext cc)
     {
         if(vtype == Type.Object)
-            return object.Put(PropertyName, value, Property.Attribute.None);
+            return object.Put(PropertyName, value, Property.Attribute.None, cc);
         else
         {
             return CannotPutToPrimitiveError(
@@ -1058,10 +1058,12 @@ struct Value
         }
     }
 
-    DError* Put(in d_uint32 index, ref Value vindex, ref Value value)
+    DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
+                ref CallContext cc)
     {
         if(vtype == Type.Object)
-            return object.Put(index, vindex, value, Property.Attribute.None);
+            return object.Put(index, vindex, value,
+                              Property.Attribute.None, cc);
         else
         {
             return CannotPutIndexToPrimitiveError(

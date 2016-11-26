@@ -271,7 +271,8 @@ class DfunctionPrototype : Dfunction
 
         classname = Text.Function;
         name = "prototype";
-        Put(Text.constructor, Dfunction.getConstructor, attributes);
+        CallContext cc;
+        Put(Text.constructor, Dfunction.getConstructor, attributes, cc);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -310,14 +311,15 @@ class Dfunction : Dobject
       super(prototype);
       classname = Text.Function;
       name = Text.Function;
+      CallContext cc;
       Put(Text.length, length,
           Property.Attribute.DontDelete |
           Property.Attribute.DontEnum |
-          Property.Attribute.ReadOnly);
+          Property.Attribute.ReadOnly, cc);
       Put(Text.arity, length,
           Property.Attribute.DontDelete |
           Property.Attribute.DontEnum |
-          Property.Attribute.ReadOnly);
+          Property.Attribute.ReadOnly, cc);
   }
 
   override immutable(char)[] getTypeof()
@@ -404,10 +406,11 @@ static:
         _constructor = new DfunctionConstructor();
         _prototype = new DfunctionPrototype();
 
+        CallContext cc;
         _constructor.Put(Text.prototype, _prototype,
                          Property.Attribute.DontEnum |
                          Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly);
+                         Property.Attribute.ReadOnly, cc);
 
         _constructor.Prototype = _prototype;
         _constructor.proptable.previous = _prototype.proptable;

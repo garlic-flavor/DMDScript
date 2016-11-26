@@ -46,8 +46,11 @@ class DdeclaredFunction : Dfunction
 
         // ECMA 3 13.2
         auto o = new Dobject(Dobject.getPrototype);        // step 9
-        Put(Text.prototype, o, Property.Attribute.DontEnum);  // step 11
-        o.Put(Text.constructor, this, Property.Attribute.DontEnum); // step 10
+        CallContext cc;
+        Put(Text.prototype, o, Property.Attribute.DontEnum, cc);  // step 11
+        // step 10
+        o.Put(Text.constructor, this, Property.Attribute.DontEnum, cc);
+
     }
 
     override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
@@ -84,7 +87,7 @@ class DdeclaredFunction : Dfunction
         if(fd.name)
         {
            vtmp.putVobject(this);
-           actobj.Put(*fd.name, vtmp, Property.Attribute.DontDelete);
+           actobj.Put(*fd.name, vtmp, Property.Attribute.DontDelete, cc);
         }
         // Instantiate the parameters
         {
@@ -92,7 +95,7 @@ class DdeclaredFunction : Dfunction
             foreach(Identifier* p; fd.parameters)
             {
                 Value* v = (a < arglist.length) ? &arglist[a++] : &vundefined;
-                actobj.Put(p.toString, *v, Property.Attribute.DontDelete);
+                actobj.Put(p.toString, *v, Property.Attribute.DontDelete, cc);
             }
         }
 
@@ -100,7 +103,7 @@ class DdeclaredFunction : Dfunction
         // ECMA v3 10.1.8
         args = new Darguments(cc.caller, this, actobj, fd.parameters, arglist);
 
-        actobj.Put(Text.arguments, args, Property.Attribute.DontDelete);
+        actobj.Put(Text.arguments, args, Property.Attribute.DontDelete, cc);
 
         // The following is not specified by ECMA, but seems to be supported
         // by jscript. The url www.grannymail.com has the following code
@@ -112,11 +115,8 @@ class DdeclaredFunction : Dfunction
         //		  this[i+1] = arguments[i]
         //	    }
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
-        Put(Text.arguments, args, Property.Attribute.DontDelete);
+        Put(Text.arguments, args, Property.Attribute.DontDelete, cc);
         // make grannymail bug work
-
-
-
 
         Dobject[] newScopex;
         newScopex = this.scopex.dup;//copy this function object scope chain
@@ -168,7 +168,7 @@ class DdeclaredFunction : Dfunction
         //Value* v;
         //v=Get(TEXT_arguments);
         //writef("1v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
-        Put(Text.arguments, vundefined, Property.Attribute.None);
+        Put(Text.arguments, vundefined, Property.Attribute.None, cc);
         //actobj.Put(TEXT_arguments, &vundefined, 0);
 
         return result;

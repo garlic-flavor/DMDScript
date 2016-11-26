@@ -90,7 +90,7 @@ class DarrayConstructor : Dfunction
             {
                 a.ulength = 1;
                 a.length.number = 1;
-                a.Put(cast(d_uint32)0, *v, Property.Attribute.None);
+                a.Put(cast(d_uint32)0, *v, Property.Attribute.None, cc);
             }
         }
         else
@@ -107,7 +107,7 @@ class DarrayConstructor : Dfunction
             a.length.number = arglist.length;
             for(uint k = 0; k < arglist.length; k++)
             {
-                a.Put(k, arglist[k], Property.Attribute.None);
+                a.Put(k, arglist[k], Property.Attribute.None, cc);
             }
         }
         ret = a.value;
@@ -226,13 +226,13 @@ DError* Darray_prototype_concat(
             {
                 v = E.Get(k, cc);
                 if(v)
-                    A.Put(n, *v, Property.Attribute.None);
+                    A.Put(n, *v, Property.Attribute.None, cc);
                 n++;
             }
         }
         else
         {
-            A.Put(n, *v, Property.Attribute.None);
+            A.Put(n, *v, Property.Attribute.None, cc);
             n++;
         }
         if(a == arglist.length)
@@ -240,7 +240,7 @@ DError* Darray_prototype_concat(
         v = &arglist[a];
     }
 
-    A.Put(Text.length, n, Property.Attribute.DontEnum);
+    A.Put(Text.length, n, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -334,7 +334,7 @@ DError* Darray_prototype_pop(
     u = v.toUint32();
     if(u == 0)
     {
-        othis.Put(Text.length, 0.0, Property.Attribute.DontEnum);
+        othis.Put(Text.length, 0.0, Property.Attribute.DontEnum, cc);
         ret.putVundefined();
     }
     else
@@ -344,7 +344,7 @@ DError* Darray_prototype_pop(
             v = &vundefined;
         ret = *v;
         othis.Delete(u - 1);
-        othis.Put(Text.length, u - 1, Property.Attribute.DontEnum);
+        othis.Put(Text.length, u - 1, Property.Attribute.DontEnum, cc);
     }
     return null;
 }
@@ -367,9 +367,9 @@ DError* Darray_prototype_push(
     u = v.toUint32();
     for(a = 0; a < arglist.length; a++)
     {
-        othis.Put(u + a, arglist[a], Property.Attribute.None);
+        othis.Put(u + a, arglist[a], Property.Attribute.None, cc);
     }
-    othis.Put(Text.length, u + a,  Property.Attribute.DontEnum);
+    othis.Put(Text.length, u + a,  Property.Attribute.DontEnum, cc);
     ret.putVnumber(u + a);
     return null;
 }
@@ -402,12 +402,12 @@ DError* Darray_prototype_reverse(
             tmp = *va;
         vb = othis.Get(b, cc);
         if(vb)
-            othis.Put(a, *vb, Property.Attribute.None);
+            othis.Put(a, *vb, Property.Attribute.None, cc);
         else
             othis.Delete(a);
 
         if(va)
-            othis.Put(b, tmp, Property.Attribute.None);
+            othis.Put(b, tmp, Property.Attribute.None, cc);
         else
             othis.Delete(b);
     }
@@ -443,7 +443,7 @@ DError* Darray_prototype_shift(
             v = othis.Get(k, cc);
             if(v)
             {
-                othis.Put(k - 1, *v, Property.Attribute.None);
+                othis.Put(k - 1, *v, Property.Attribute.None, cc);
             }
             else
             {
@@ -456,7 +456,7 @@ DError* Darray_prototype_shift(
     else
         ret = vundefined;
 
-    othis.Put(Text.length, len, Property.Attribute.DontEnum);
+    othis.Put(Text.length, len, Property.Attribute.DontEnum, cc);
     return null;
 }
 
@@ -602,12 +602,12 @@ else
         v = othis.Get(k, cc);
         if(v)
         {
-            A.Put(n, *v, Property.Attribute.None);
+            A.Put(n, *v, Property.Attribute.None, cc);
         }
         n++;
     }
 
-    A.Put(Text.length, n, Property.Attribute.DontEnum);
+    A.Put(Text.length, n, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -778,7 +778,7 @@ DError* Darray_prototype_sort(
     {
         d_uint32 index;
 
-        othis.Put(u, pvalues[u], Property.Attribute.None);
+        othis.Put(u, pvalues[u], Property.Attribute.None, cc);
         index = pindices[u];
         if(index >= nprops)
         {
@@ -904,10 +904,10 @@ else
     {
         v = othis.Get(startidx + k, cc);
         if(v)
-            A.Put(k, *v, Property.Attribute.None);
+            A.Put(k, *v, Property.Attribute.None, cc);
     }
 
-    A.Put(Text.length, delcnt, Property.Attribute.DontEnum);
+    A.Put(Text.length, delcnt, Property.Attribute.DontEnum, cc);
     inscnt = (arglist.length > 2) ? cast(uint)arglist.length - 2 : 0;
     if(inscnt != delcnt)
     {
@@ -917,7 +917,7 @@ else
             {
                 v = othis.Get(k + delcnt, cc);
                 if(v)
-                    othis.Put(k + inscnt, *v, Property.Attribute.None);
+                    othis.Put(k + inscnt, *v, Property.Attribute.None, cc);
                 else
                     othis.Delete(k + inscnt);
             }
@@ -931,7 +931,7 @@ else
             {
                 v = othis.Get(k + delcnt - 1, cc);
                 if(v)
-                    othis.Put(k + inscnt - 1, *v, Property.Attribute.None);
+                    othis.Put(k + inscnt - 1, *v, Property.Attribute.None, cc);
                 else
                     othis.Delete(k + inscnt - 1);
             }
@@ -941,11 +941,12 @@ else
     for(a = 2; a < arglist.length; a++)
     {
         v = &arglist[a];
-        othis.Put(k, *v, Property.Attribute.None);
+        othis.Put(k, *v, Property.Attribute.None, cc);
         k++;
     }
 
-    othis.Put(Text.length, len - delcnt + inscnt,  Property.Attribute.DontEnum);
+    othis.Put(Text.length, len - delcnt + inscnt,
+              Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -971,16 +972,17 @@ DError* Darray_prototype_unshift(
         v = othis.Get(k - 1, cc);
         if(v)
             othis.Put(cast(uint)(k + arglist.length - 1), *v,
-                      Property.Attribute.None);
+                      Property.Attribute.None, cc);
         else
             othis.Delete(cast(uint)(k + arglist.length - 1));
     }
 
     for(k = 0; k < arglist.length; k++)
     {
-        othis.Put(k, arglist[k], Property.Attribute.None);
+        othis.Put(k, arglist[k], Property.Attribute.None, cc);
     }
-    othis.Put(Text.length, len + arglist.length, Property.Attribute.DontEnum);
+    othis.Put(Text.length, len + arglist.length,
+              Property.Attribute.DontEnum, cc);
     ret.putVnumber(len + arglist.length);
     return null;
 }
@@ -994,8 +996,9 @@ class DarrayPrototype : Darray
         super(Dobject.getPrototype);
         Dobject f = Dfunction.getPrototype;
 
+        CallContext cc;
         Put(Text.constructor, Darray.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -1039,24 +1042,27 @@ class Darray : Dobject
         classname = Text.Array;
     }
 
-    override DError* Put(ref Identifier key, ref Value value,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(ref Identifier key, ref Value value,
+                in Property.Attribute attributes, ref CallContext cc)
     {
-        auto result = proptable.put(key.value, key.value.hash, value, attributes);
+        auto result = proptable.put(key.value, key.value.hash, value,
+                                    attributes, cc, this);
         if(!result)
-            Put(key.value.text, value, attributes);
+            Put(key.value.text, value, attributes, cc);
         return null;
     }
 
-    override DError* Put(in d_string name, ref Value v,
-                         in Property.Attribute attributes)
+    override
+    DError* Put(in d_string name, ref Value v,
+                in Property.Attribute attributes, ref CallContext cc)
     {
         d_uint32 i;
         uint c;
         Value* result;
 
         // ECMA 15.4.5.1
-        result = proptable.put(name, v, attributes);
+        result = proptable.put(name, v, attributes, cc, this);
         if(!result)
         {
             if(name == Text.length)
@@ -1087,7 +1093,8 @@ class Darray : Dobject
                 ulength = i;
                 length.number = i;
                 proptable.put(name, v,
-                              attributes | Property.Attribute.DontEnum);
+                              attributes | Property.Attribute.DontEnum,
+                              cc, this);
             }
 
             // if (name is an array index i)
@@ -1123,41 +1130,41 @@ class Darray : Dobject
     }
 
     override DError* Put(in d_string name, Dobject o,
-                         in Property.Attribute attributes)
+                         in Property.Attribute attributes, ref CallContext cc)
     {
-        return Put(name, o.value, attributes);
+        return Put(name, o.value, attributes, cc);
     }
 
     override DError* Put(in d_string PropertyName, in d_number n,
-                         in Property.Attribute attributes)
+                         in Property.Attribute attributes, ref CallContext cc)
     {
         Value v;
 
         v.putVnumber(n);
-        return Put(PropertyName, v, attributes);
+        return Put(PropertyName, v, attributes, cc);
     }
 
     override DError* Put(in d_string PropertyName, in d_string str,
-                         in Property.Attribute attributes)
+                         in Property.Attribute attributes, ref CallContext cc)
     {
         Value v;
 
         v.putVstring(str);
-        return Put(PropertyName, v, attributes);
+        return Put(PropertyName, v, attributes, cc);
     }
 
     override DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
-                         in Property.Attribute attributes)
+                         in Property.Attribute attributes, ref CallContext cc)
     {
         if(index >= ulength)
             ulength = index + 1;
 
-        proptable.put(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/, value, attributes);
+        proptable.put(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/, value, attributes, cc, this);
         return null;
     }
 
     override DError* Put(in d_uint32 index, ref Value value,
-                         in Property.Attribute attributes)
+                         in Property.Attribute attributes, ref CallContext cc)
     {
         if(index >= ulength)
         {
@@ -1165,12 +1172,12 @@ class Darray : Dobject
             length.number = ulength;
         }
 
-        proptable.put(index, value, attributes);
+        proptable.put(index, value, attributes, cc, this);
         return null;
     }
 
     final DError* Put(d_uint32 index, d_string str,
-                      Property.Attribute attributes)
+                      Property.Attribute attributes, ref CallContext cc)
     {
         if(index >= ulength)
         {
@@ -1178,7 +1185,7 @@ class Darray : Dobject
             length.number = ulength;
         }
 
-        proptable.put(index, str, attributes);
+        proptable.put(index, str, attributes, cc, this);
         return null;
     }
 
@@ -1259,9 +1266,10 @@ static:
         _constructor = new DarrayConstructor();
         _prototype = new DarrayPrototype();
 
+        CallContext cc;
         _constructor.Put(Text.prototype, _prototype,
                          Property.Attribute.DontEnum |
-                         Property.Attribute.ReadOnly);
+                         Property.Attribute.ReadOnly, cc);
     }
 private:
     Dfunction _constructor;

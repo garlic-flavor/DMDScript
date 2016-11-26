@@ -236,7 +236,7 @@ void PutValue(ref CallContext cc, in d_string s, Value* a)
     if(d == cc.globalroot)
     {
         o = scope_tos(cc.scopex);
-        o.Put(s, *a, Property.Attribute.None);
+        o.Put(s, *a, Property.Attribute.None, cc);
         return;
     }
 
@@ -252,12 +252,12 @@ void PutValue(ref CallContext cc, in d_string s, Value* a)
         {
             // Overwrite existing property with new one
             v.checkReference();
-            o.Put(s, *a, Property.Attribute.None);
+            o.Put(s, *a, Property.Attribute.None, cc);
             break;
         }
         if(d == cc.globalroot)
         {
-            o.Put(s, *a, Property.Attribute.None);
+            o.Put(s, *a, Property.Attribute.None, cc);
             return;
         }
     }
@@ -296,7 +296,7 @@ void PutValue(ref CallContext cc, Identifier* id, Value* a)
                 break;
         }
     }
-    o.Put(*id, *a, Property.Attribute.None);
+    o.Put(*id, *a, Property.Attribute.None, cc);
 }
 
 
@@ -412,7 +412,7 @@ struct IR
                     else
                     {
                         o.Put(ca.name, err.entity,
-                              Property.Attribute.DontDelete);
+                              Property.Attribute.DontDelete, cc);
                     }
                     scopex ~= o;
                     cc.scopex = scopex;
@@ -530,14 +530,14 @@ struct IR
                     {
                         if(b.vtype == Value.Type.Object)
                             sta = b.object.Put(cast(d_uint32)i32, *c, *a,
-                                               Property.Attribute.None);
+                                               Property.Attribute.None, cc);
                         else
-                            sta = b.Put(cast(d_uint32)i32, *c, *a);
+                            sta = b.Put(cast(d_uint32)i32, *c, *a, cc);
                     }
                     else
                     {
                         s = c.toString();
-                        sta = b.Put(s, *a);
+                        sta = b.Put(s, *a, cc);
                     }
                     if(sta)
                         goto Lthrow;
@@ -702,7 +702,7 @@ struct IR
                         goto Lthrow;
                     }
                     sta = o.Put((code + 3).id.value.text, *a,
-                                Property.Attribute.None);
+                                Property.Attribute.None, cc);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutS].size;
@@ -737,11 +737,12 @@ struct IR
                     if(o.HasProperty((code + 2).id.value.text))
                         sta = o.Put((code+2).id.value.text,
                                     *(locals + (code + 1).index),
-                                    Property.Attribute.DontDelete);
+                                    Property.Attribute.DontDelete, cc);
                     else
                         sta = cc.variable.Put((code + 2).id.value.text,
                                               *(locals + (code + 1).index),
-                                              Property.Attribute.DontDelete);
+                                              Property.Attribute.DontDelete,
+                                              cc);
                     if (sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutThis].size;
@@ -1017,7 +1018,7 @@ struct IR
                         v = &vundefined;
                     n = v.toNumber();
                     a.putVnumber(n + inc);
-                    b.Put(s, *a);
+                    b.Put(s, *a, cc);
 
                     static assert(IRTypes[Opcode.PreInc].size
                                   == IRTypes[Opcode.PreIncS].size &&
@@ -1110,7 +1111,7 @@ struct IR
                         v = &vundefined;
                     n = v.toNumber();
                     a.putVnumber(n + 1);
-                    b.Put(s, *a);
+                    b.Put(s, *a, cc);
                     a.putVnumber(n);
 
                     static assert(IRTypes[Opcode.PostInc].size
@@ -1152,7 +1153,7 @@ struct IR
                         v = &vundefined;
                     n = v.toNumber();
                     a.putVnumber(n - 1);
-                    b.Put(s, *a);
+                    b.Put(s, *a, cc);
                     a.putVnumber(n);
 
                     static assert(IRTypes[Opcode.PostDecS].size
@@ -1619,7 +1620,7 @@ struct IR
                     else
                     {
                         b = locals + (code + 2).index;
-                        b.Put(s, *v);
+                        b.Put(s, *v, cc);
 
                         static assert (IRTypes[Opcode.Next].size
                                        == IRTypes[Opcode.NextS].size);
@@ -1636,7 +1637,7 @@ struct IR
                     else
                     {
                         o = scope_tos(scopex);
-                        o.Put(s, *v, Property.Attribute.None);
+                        o.Put(s, *v, Property.Attribute.None, cc);
                         code += IRTypes[Opcode.NextScope].size;
                     }
                     break;

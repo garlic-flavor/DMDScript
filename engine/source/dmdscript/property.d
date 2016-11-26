@@ -18,13 +18,6 @@
 
 module dmdscript.property;
 
-// import dmdscript.script;
-// import dmdscript.value;
-// import dmdscript.identifier;
-// import dmdscript.dobject;
-
-// import dmdscript.RandAA;
-
 debug import std.stdio;
 
 // See_Also: Ecma-262-v7:6.1.7.1 Property Attributes
@@ -176,7 +169,7 @@ struct Property
                 else
                 {
                     debug throw err.toScriptException;
-                    return null;
+                    else return null;
                 }
             }
         }
@@ -187,9 +180,47 @@ struct Property
     }
 
     //
-    DError* set(ref Value v, in Attribute attr,
+    bool canSetValue(ref Attribute a)
+    {
+        if (_attr & Attribute.Accessor)
+        {
+            if (a & Attribute.DontOverride)
+                return false;
+
+            if ((_attr & Attribute.DontConfig) &&
+                _attr != (a | Attribute.Accessor & ~Attribute.ReadOnly))
+                return false;
+
+            a = a | Attribute.Accessor & ~Attribute.ReadOnly;
+        }
+        else
+        {
+            if ((a & Attribute.DontOverride) && !_value.isEmpty)
+                return false;
+
+            if (_attr & Attribute.ReadOnly)
+                return false;
+
+            if ((_attr & Attribute.DontConfig) &&
+                _attr != (a & ~Attribute.DontOverride & ~Attribute.Accessor &
+                          ~Attribute.ReadOnly))
+                return false;
+
+            a = a & ~Attribute.Accessor & ~Attribute.DontOverride;
+        }
+        return true;
+    }
+
+
+    //
+    DError* set(ref Value v, in Attribute a,
                 ref CallContext cc, Dobject othis,)
     {
+        auto na = cast(Attribute)a;
+        if (!canSetValue(na))
+            return null;
+
+        _attr = na;
         if (_attr & Attribute.Accessor)
         {
             if (_Set !is null)
@@ -197,11 +228,11 @@ struct Property
                 Value ret;
                 return _Set.Call(cc, othis, ret, [v]);
             }
-            else
-                return null;
         }
-        else if (0 == (_attr & Attribute.ReadOnly))
+        else
+        {
             _value = v;
+        }
         return null;
     }
 
@@ -368,7 +399,7 @@ final class PropTable
     Value* get(ref Value key, in size_t hash, ref CallContext cc, Dobject othis)
     {
         if (auto p = _getProperty(key, hash))
-            p.get(cc, othis);
+            return p.get(cc, othis);
         return null;
     }
 
@@ -378,7 +409,7 @@ final class PropTable
 
         key.putVnumber(index);
         if (auto p = _getProperty(key, Value.calcHash(index)))
-            p.get(cc, othis);
+            return p.get(cc, othis);
         return null;
     }
 
@@ -389,7 +420,7 @@ final class PropTable
 
         key.putVstring(name);
         if (auto p = _getProperty(key, hash))
-            p.get(cc, othis);
+            return p.get(cc, othis);
         return null;
     }
 
@@ -414,14 +445,15 @@ final class PropTable
     }
 
     Value* put(ref Value key, size_t hash, ref Value value,
-               in Property.Attribute attributes)
+               in Property.Attribute attributes,
+               ref CallContext cc, Dobject othis)
     {
         assert(key.toHash == hash);
 
         if (auto p = _table.findExistingAlt(key, hash))
         {
             auto na = cast(Property.Attribute)attributes;
-            if (!p.canExtendWith(value, na))
+            if (!p.canSetValue(na))
             {
                 if (p.isKeyWord)
                     return null;
@@ -432,7 +464,7 @@ final class PropTable
             {
                 if (auto p2 = t._table.findExistingAlt(key, hash))
                 {
-                    if (!p2.writable || (p.isAccessor && !p.configurable))
+                    if (!p2.writable || (p2.isAccessor && !p2.configurable))
                     {
                         p.preventExtending;
                         return &vundefined;
@@ -441,12 +473,24 @@ final class PropTable
                 }
             }
 
-            p.extend(value, na);
+            p.set(value, attributes, cc, othis);
 
             return null;
         }
         else
         {
+            for (auto t = _previous; t !is null; t = t._previous)
+            {
+                if (auto p2 = t._table.findExistingAlt(key, hash))
+                {
+                    if (!p2.writable || (p2.isAccessor && !p2.configurable))
+                    {
+                        return &vundefined;
+                    }
+                    break;
+                }
+            }
+
             auto p = Property(value, attributes);
             _table.insertAlt(key, p, hash);
             return null;
@@ -455,34 +499,37 @@ final class PropTable
 
     @trusted
     Value* put(in d_string name, ref Value value,
-               in Property.Attribute attributes)
+               in Property.Attribute attributes,
+               ref CallContext cc, Dobject othis)
     {
         Value key;
 
         key.putVstring(name);
-        return put(key, Value.calcHash(name), value, attributes);
+        return put(key, Value.calcHash(name), value, attributes, cc, othis);
     }
 
     @trusted
     Value* put(in d_uint32 index, ref Value value,
-               in Property.Attribute attributes)
+               in Property.Attribute attributes,
+               ref CallContext cc, Dobject othis)
     {
         Value key;
 
         key.putVnumber(index);
-        return put(key, Value.calcHash(index), value, attributes);
+        return put(key, Value.calcHash(index), value, attributes, cc, othis);
     }
 
     @trusted
     Value* put(in d_uint32 index, in d_string str,
-               in Property.Attribute attributes)
+               in Property.Attribute attributes,
+               ref CallContext cc, Dobject othis)
     {
         Value key;
         Value value;
 
         key.putVnumber(index);
         value.putVstring(str);
-        return put(key, Value.calcHash(index), value, attributes);
+        return put(key, Value.calcHash(index), value, attributes, cc, othis);
     }
 
     @trusted

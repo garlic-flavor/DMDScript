@@ -347,11 +347,12 @@ class Dmath : Dobject
             { Text.SQRT2, std.math.SQRT2 },
         ];
 
+        CallContext cc;
         for(size_t u = 0; u < table.length; u++)
         {
             DError* v;
 
-            v = Put(table[u].name, table[u].value, attributes);
+            v = Put(table[u].name, table[u].value, attributes, cc);
             //writef("Put(%s,%.5g) = %x\n", *table[u].name, table[u].value, v);
         }
 

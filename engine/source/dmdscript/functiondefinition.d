@@ -218,12 +218,13 @@ class FunctionDefinition : TopStatement
                      Property.Attribute attributes)
     {
         // Instantiate all the Var's per 10.1.3
+        CallContext cc;
         foreach(Identifier* name; varnames)
         {
             // If name is already declared, don't override it
             actobj.Put(name.toString, vundefined,
                        Property.Attribute.Instantiate |
-                       Property.Attribute.DontOverride | attributes);
+                       Property.Attribute.DontOverride | attributes, cc);
         }
 
         // Instantiate the Function's per 10.1.3
@@ -236,7 +237,7 @@ class FunctionDefinition : TopStatement
             if(fd.name !is null && !fd.isliteral) // skip anonymous functions
             {
                 actobj.Put(fd.name.toString, fobject,
-                           Property.Attribute.Instantiate | attributes);
+                           Property.Attribute.Instantiate | attributes, cc);
             }
         }
     }

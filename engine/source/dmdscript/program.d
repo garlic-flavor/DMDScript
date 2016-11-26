@@ -185,11 +185,11 @@ class Program
         arguments = new Darray();
         dglobal.Put(Text.arguments, arguments,
                     Property.Attribute.DontDelete |
-                    Property.Attribute.DontEnum);
+                    Property.Attribute.DontEnum, *cc);
         arguments.length.putVnumber(args.length);
         for(int i = 0; i < args.length; i++)
         {
-            arguments.Put(i, args[i], Property.Attribute.DontEnum);
+            arguments.Put(i, args[i], Property.Attribute.DontEnum, *cc);
         }
 
         Value[] p1;

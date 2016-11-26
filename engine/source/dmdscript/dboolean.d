@@ -118,8 +118,9 @@ class DbooleanPrototype : Dboolean
         super(Dobject.getPrototype);
         //Dobject f = Dfunction_prototype;
 
+        CallContext cc;
         Put(Text.constructor, Dboolean.getConstructor,
-            Property.Attribute.DontEnum);
+            Property.Attribute.DontEnum, cc);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -166,10 +167,11 @@ static:
         _constructor = new DbooleanConstructor();
         _prototype = new DbooleanPrototype();
 
+        CallContext cc;
         _constructor.Put(Text.prototype, _prototype,
                          Property.Attribute.DontEnum |
                          Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly);
+                         Property.Attribute.ReadOnly, cc);
     }
 private:
     Dfunction _constructor;
