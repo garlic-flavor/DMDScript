@@ -56,52 +56,52 @@ class DregexpConstructor : Dfunction
         super(2, Dfunction.getPrototype);
 
         Value v;
-        v.putVstring(null);
+        v.put(Text.Empty);
 
         Value vb;
-        vb.putVboolean(false);
+        vb.put(false);
 
         Value vnm1;
-        vnm1.putVnumber(-1);
+        vnm1.put(-1);
 
         name = "RegExp";
 
         // Static properties
+        config(Text.input, v, Property.Attribute.DontDelete);
+        config(Text.multiline, vb, Property.Attribute.DontDelete);
+        config(Text.lastMatch, v,
+               Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.lastParen, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.leftContext, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.rightContext, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar1, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar2, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar3, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar4, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar5, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar6, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar7, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar8, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.dollar9, v,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+
+        config(Text.index, vnm1,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        config(Text.lastIndex, vnm1,
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+
         CallContext cc;
-        Put(Text.input, v, Property.Attribute.DontDelete, cc);
-        Put(Text.multiline, vb, Property.Attribute.DontDelete, cc);
-        Put(Text.lastMatch, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.lastParen, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.leftContext, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.rightContext, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar1, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar2, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar3, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar4, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar5, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar6, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar7, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar8, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.dollar9, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-
-        Put(Text.index, vnm1,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-        Put(Text.lastIndex, vnm1,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete, cc);
-
         input = Get(Text.input, cc);
         multiline = Get(Text.multiline, cc);
         lastMatch = Get(Text.lastMatch, cc);
@@ -182,7 +182,7 @@ class DregexpConstructor : Dfunction
         }
         else
         {
-            ret.putVobject(r);
+            ret.put(r);
             return null;
         }
     }
@@ -204,7 +204,7 @@ class DregexpConstructor : Dfunction
                    (arglist.length == 1 || arglist[1].isUndefined())
                    )
                 {
-                    ret.putVobject(o);
+                    ret.put(o);
                     return null;
                 }
             }
@@ -308,7 +308,7 @@ DError* Dregexp_prototype_toString(
         s ~= r.re.pattern;
         s ~= "/";
         s ~= r.re.flags;
-        ret.putVstring(s);
+        ret.put(s);
     }
     return null;
 }
@@ -377,9 +377,9 @@ DError* Dregexp_prototype_compile(
         catch(RegexException e)
         {
             // Affect source, global and ignoreCase properties
-            dr.source.putVstring(r.pattern);
-            dr.global.putVboolean(r.global);
-            dr.ignoreCase.putVboolean(r.ignoreCase);
+            dr.source.put(r.pattern);
+            dr.global.put(r.global);
+            dr.ignoreCase.put(r.ignoreCase);
         }
         //writef("r.attributes = x%x\n", r.attributes);
     }
@@ -403,8 +403,7 @@ class DregexpPrototype : Dregexp
             Property.Attribute.DontEnum;
         Dobject f = Dfunction.getPrototype;
 
-        CallContext cc;
-        Put(Text.constructor, Dregexp.getConstructor, attributes, cc);
+        config(Text.constructor, Dregexp.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -437,10 +436,10 @@ class Dregexp : Dobject
         super(getPrototype());
 
         Value v;
-        v.putVstring(null);
+        v.put(Text.Empty);
 
         Value vb;
-        vb.putVboolean(false);
+        vb.put(false);
 
         classname = Text.RegExp;
 
@@ -474,11 +473,11 @@ class Dregexp : Dobject
         re = new RegExp(pattern, attributes);
         if(re.errors == 0)
         {
-            source.putVstring(pattern);
+            source.put(pattern);
             //writef("source = '%s'\n", source.x.string.toDchars());
-            global.putVboolean(re.global);
-            ignoreCase.putVboolean(re.ignoreCase);
-            multiline.putVboolean(re.multiline);
+            global.put(re.global);
+            ignoreCase.put(re.ignoreCase);
+            multiline.put(re.multiline);
         }
         else
         {
@@ -491,10 +490,10 @@ class Dregexp : Dobject
         super(prototype);
 
         Value v;
-        v.putVstring(null);
+        v.put(Text.Empty);
 
         Value vb;
-        vb.putVboolean(false);
+        vb.put(false);
 
         classname = Text.RegExp;
 
@@ -598,19 +597,19 @@ static:
 
                 if(r.global && rettype != EXEC_INDEX)
                 {
-                    dr.lastIndex.putVnumber(r.lastIndex);
+                    dr.lastIndex.put(r.lastIndex);
                 }
 
-                dc.input.putVstring(r.input);
+                dc.input.put(r.input);
 
-                dc.lastMatch.putVstring(r.lastMatch);
+                dc.lastMatch.put(r.lastMatch);
 
-                dc.leftContext.putVstring(r.leftContext);
+                dc.leftContext.put(r.leftContext);
 
-                dc.rightContext.putVstring(r.rightContext);
+                dc.rightContext.put(r.rightContext);
 
-                dc.index.putVnumber(r.index);
-                dc.lastIndex.putVnumber(r.lastIndex);
+                dc.index.put(r.index);
+                dc.lastIndex.put(r.lastIndex);
 
                 // Fill in $1..$9
                 lastv = &vundefined;
@@ -626,7 +625,7 @@ static:
                     {
                         s = r.captures(n);
                         if (s !is null)
-                            dc.dollar[i].putVstring(s);
+                            dc.dollar[i].put(s);
                         else
                             dc.dollar[i].putVundefined;
                         lastv = dc.dollar[i];
@@ -639,7 +638,7 @@ static:
                 if(0 < nmatches)
                     *dc.lastParen = *lastv;
                 else
-                    dc.lastParen.putVstring(null);
+                    dc.lastParen.put(Text.Empty);
 
                 switch(rettype)
                 {
@@ -681,7 +680,7 @@ static:
                                   Property.Attribute.None, cc);
                         }
                     }
-                    ret.putVobject(a);
+                    ret.put(a);
                     break;
                 }
                 case EXEC_STRING:
@@ -689,11 +688,11 @@ static:
                     break;
 
                 case EXEC_BOOLEAN:
-                    ret.putVboolean(true);      // success
+                    ret.put(true);      // success
                     break;
 
                 case EXEC_INDEX:
-                    ret.putVnumber(r.index);
+                    ret.put(r.index);
                     break;
 
                 default:
@@ -708,21 +707,21 @@ static:
                 case EXEC_ARRAY:
                     //writef("memcpy\n");
                     ret.putVnull();         // Return null
-                    dr.lastIndex.putVnumber(0);
+                    dr.lastIndex.put(0);
                     break;
 
                 case EXEC_STRING:
-                    ret.putVstring(null);
-                    dr.lastIndex.putVnumber(0);
+                    ret.put(Text.Empty);
+                    dr.lastIndex.put(0);
                     break;
 
                 case EXEC_BOOLEAN:
-                    ret.putVboolean(false);
-                    dr.lastIndex.putVnumber(0);
+                    ret.put(false);
+                    dr.lastIndex.put(0);
                     break;
 
                 case EXEC_INDEX:
-                    ret.putVnumber(-1.0);
+                    ret.put(-1.0);
                     // Do not set lastIndex
                     break;
 
@@ -759,11 +758,10 @@ static:
                 writef("*p = %x, %x, %x, %x\n", p[0], p[1], p[2], p[3]);
         }
 
-        CallContext cc;
-        _constructor.Put(Text.prototype, _prototype,
-                         Property.Attribute.DontEnum |
-                         Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly, cc);
+        _constructor.config(Text.prototype, _prototype,
+                            Property.Attribute.DontEnum |
+                            Property.Attribute.DontDelete |
+                            Property.Attribute.ReadOnly);
     }
 private:
     Dfunction _constructor;

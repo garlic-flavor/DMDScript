@@ -213,6 +213,7 @@ class FunctionDefinition : TopStatement
         nlocals = irs.lvm.max;
     }
 
+    deprecated
     final
     void instantiate(Dobject[] scopex, Dobject actobj,
                      Property.Attribute attributes)

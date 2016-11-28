@@ -36,10 +36,10 @@ struct Property
         DontEnum       = 0x0002,
         DontDelete     = 0x0004,
         // Internal       = 0x0008,
-        Deleted        = 0x0010,
+        // Deleted        = 0x0010,
         // Locked         = 0x0020,
         DontOverride   = 0x0040, // pseudo for an argument of a setter method
-        KeyWord        = 0x0080,
+        // KeyWord        = 0x0080,
         // DebugFree      = 0x0100, // for debugging help
         Instantiate    = 0x0200, // For COM named item namespace support
 
@@ -66,15 +66,9 @@ struct Property
             ~Attribute.ReadOnly;
     }
 
-    @property @safe @nogc pure nothrow
-    Attribute attributes() const
-    {
-        return _attr;
-    }
-
     //
     @trusted @nogc pure nothrow
-    bool canExtendWith(ref Value v, ref Attribute a)
+    bool canBeData(ref Attribute a)
     {
         auto na = a & ~Attribute.Accessor & ~Attribute.DontOverride;
 
@@ -101,7 +95,7 @@ struct Property
 
     //
     @trusted @nogc pure nothrow
-    bool canExtendWith(Dfunction getter, Dfunction setter, ref Attribute a)
+    bool canBeAccessor(ref Attribute a)
     {
         auto na = a | Attribute.Accessor & ~Attribute.DontOverride &
             ~Attribute.ReadOnly;
@@ -129,9 +123,9 @@ struct Property
 
     //
     @trusted @nogc pure nothrow
-    bool extend(ref Value v, Attribute a)
+    bool config(ref Value v, Attribute a)
     {
-        if (canExtendWith(v, a))
+        if (canBeData(a))
         {
             _attr = a;
             _value = v;
@@ -142,10 +136,10 @@ struct Property
 
     //
     @trusted @nogc pure nothrow
-    bool extend(Dfunction getter, Dfunction setter, Attribute a)
+    bool config(Dfunction getter, Dfunction setter, Attribute a)
     {
         auto na = a;
-        if (canExtendWith(getter, setter, a))
+        if (canBeAccessor(a))
         {
             _attr = a;
             _Get = getter;
@@ -243,12 +237,22 @@ struct Property
         return 0 == (_attr & Attribute.Accessor);
     }
 
+    @property @safe @nogc pure nothrow
+    bool isNoneAttribute() const
+    {
+        return Attribute.None == _attr;
+    }
+
     //
+/* not used
+    deprecated
     @property @safe @nogc pure nothrow
     bool isKeyWord() const
     {
-        return 0 == (_attr & Attribute.KeyWord);
+        return false;
+        // return 0 == (_attr & Attribute.KeyWord);
     }
+*/
 
     //
     @property @safe @nogc pure nothrow
@@ -281,17 +285,21 @@ struct Property
         return 0 == (_attr & (Attribute.DontDelete | Attribute.DontConfig));
     }
 
+/* not used
+    //
+    deprecated
+    @property @safe @nogc pure nothrow
+    bool deleted() const
+    {
+        return false;
+        // return 0 != (_attr & Attribute.Deleted);
+    }
+*/
     //
     @property @safe @nogc pure nothrow
     bool configurable() const
     {
         return 0 == (_attr & Attribute.DontConfig);
-    }
-
-    deprecated @property
-    auto ref value() inout
-    {
-        return _value;
     }
 
 private:
@@ -391,35 +399,21 @@ final class PropTable
      * Return null if not found.
      */
     @safe
-    Property* getProperty(ref Value key)
+    Property* getProperty(in ref Value key, in size_t hash)
     {
-        return _getProperty(key, key.toHash);
-    }
-
-    Value* get(ref Value key, in size_t hash, ref CallContext cc, Dobject othis)
-    {
-        if (auto p = _getProperty(key, hash))
-            return p.get(cc, othis);
+        assert(Value.calcHash(key) == hash);
+        for (auto t = this; t !is null; t = t._previous)
+        {
+            if (auto p = t._table.findExistingAlt(key, hash))
+                return p;
+        }
         return null;
     }
 
-    Value* get(in d_uint32 index, ref CallContext cc, Dobject othis)
-    {
-        Value key;
-
-        key.putVnumber(index);
-        if (auto p = _getProperty(key, Value.calcHash(index)))
-            return p.get(cc, othis);
-        return null;
-    }
-
-    Value* get(in d_string name, in size_t hash, ref CallContext cc,
+    Value* get(in ref Value key, in size_t hash, ref CallContext cc,
                Dobject othis)
     {
-        Value key;
-
-        key.putVstring(name);
-        if (auto p = _getProperty(key, hash))
+        if (auto p = getProperty(key, hash))
             return p.get(cc, othis);
         return null;
     }
@@ -436,41 +430,39 @@ final class PropTable
         return false;
     }
 
-    @trusted
-    int hasproperty(in d_string name)
+    @safe
+    Property* hasproperty(in ref Value key, in size_t hash)
     {
-        Value key;
-        key.putVstring(name);
-        return _hasproperty(key, key.toHash) is null ? 0 : 1;
+        for (auto t = this; t !is null; t = t._previous)
+        {
+            if (auto p = t._table.findExistingAlt(key, hash))
+                return p;
+        }
+        return null;
     }
 
-    Value* put(ref Value key, size_t hash, ref Value value,
+    Value* put(in ref Value key, in size_t hash, ref Value value,
                in Property.Attribute attributes,
                ref CallContext cc, Dobject othis)
     {
-        assert(key.toHash == hash);
+        assert(Value.calcHash(key) == hash);
 
         if (auto p = _table.findExistingAlt(key, hash))
         {
             auto na = cast(Property.Attribute)attributes;
             if (!p.canSetValue(na))
             {
+/* not used?
                 if (p.isKeyWord)
                     return null;
+*/
                 return &vundefined;
             }
 
-            for (auto t = _previous; t !is null; t = t._previous)
+            if (!_canExtend(key, hash))
             {
-                if (auto p2 = t._table.findExistingAlt(key, hash))
-                {
-                    if (!p2.writable || (p2.isAccessor && !p2.configurable))
-                    {
-                        p.preventExtending;
-                        return &vundefined;
-                    }
-                    break;
-                }
+                p.preventExtending;
+                return &vundefined;
             }
 
             p.set(value, attributes, cc, othis);
@@ -479,16 +471,9 @@ final class PropTable
         }
         else
         {
-            for (auto t = _previous; t !is null; t = t._previous)
+            if (!_canExtend(key, hash))
             {
-                if (auto p2 = t._table.findExistingAlt(key, hash))
-                {
-                    if (!p2.writable || (p2.isAccessor && !p2.configurable))
-                    {
-                        return &vundefined;
-                    }
-                    break;
-                }
+                return &vundefined;
             }
 
             auto p = Property(value, attributes);
@@ -497,67 +482,71 @@ final class PropTable
         }
     }
 
-    @trusted
-    Value* put(in d_string name, ref Value value,
-               in Property.Attribute attributes,
-               ref CallContext cc, Dobject othis)
+    //
+    Value* config(in ref Value key, in size_t hash, ref Value value,
+                  in Property.Attribute attributes)
     {
-        Value key;
+        assert(Value.calcHash(key) == hash);
 
-        key.putVstring(name);
-        return put(key, Value.calcHash(name), value, attributes, cc, othis);
+        if (auto p = _table.findExistingAlt(key, hash))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canBeData(na))
+            {
+                return &vundefined;
+            }
+
+            if (!_canExtend(key, hash))
+            {
+                p.preventExtending;
+                return &vundefined;
+            }
+
+            *p = Property(value, na);
+
+            return null;
+        }
+        else
+        {
+            if (!_canExtend(key, hash))
+            {
+                return &vundefined;
+            }
+
+            auto p = Property(value, attributes);
+            _table.insertAlt(key, p, hash);
+            return null;
+        }
     }
 
-    @trusted
-    Value* put(in d_uint32 index, ref Value value,
-               in Property.Attribute attributes,
-               ref CallContext cc, Dobject othis)
+    @safe
+    bool canput(in ref Value key, in size_t hash)
     {
-        Value key;
-
-        key.putVnumber(index);
-        return put(key, Value.calcHash(index), value, attributes, cc, othis);
+        auto t = this;
+        do
+        {
+            if (auto p = t._table.findExistingAlt(key, hash))
+            {
+                if (p.isAccessor)
+                    return p.configurable;
+                else
+                    return p.writable;
+            }
+            t = t._previous;
+        } while(t !is null);
+        return true;                    // success
     }
 
-    @trusted
-    Value* put(in d_uint32 index, in d_string str,
-               in Property.Attribute attributes,
-               ref CallContext cc, Dobject othis)
+    @safe
+    int del(ref Value key)
     {
-        Value key;
-        Value value;
-
-        key.putVnumber(index);
-        value.putVstring(str);
-        return put(key, Value.calcHash(index), value, attributes, cc, othis);
-    }
-
-    @trusted
-    int canput(in d_string name)
-    {
-        Value v;
-
-        v.putVstring(name);
-
-        return _canput(v, v.toHash);
-    }
-
-    @trusted
-    int del(d_string name)
-    {
-        Value v;
-
-        v.putVstring(name);
-        return _del(v);
-    }
-
-    @trusted
-    int del(d_uint32 index)
-    {
-        Value v;
-
-        v.putVnumber(index);
-        return _del(v);
+        if(auto p = key in _table)
+        {
+            if(!p.deletable)
+                return false;
+            _table.remove(key);
+        }
+        return true;                    // not found
     }
 
     @property @safe pure nothrow
@@ -589,63 +578,20 @@ private:
     PropTable _previous;
 
     @safe
-    Property* _getProperty(ref Value key, in size_t hash)
+    bool _canExtend(in ref Value key, size_t hash)
     {
-        assert(key.toHash == hash);
-        for (auto t = this; t !is null; t = t._previous)
+        for (auto t = _previous; t !is null; t = t._previous)
         {
             if (auto p = t._table.findExistingAlt(key, hash))
-                return p;
-        }
-        return null;
-    }
-
-    @safe
-    Property* _hasproperty(ref Value key, in size_t hash)
-    {
-        for (auto t = this; t !is null; t = t._previous)
-        {
-            if (auto p = t._table.findExistingAlt(key, hash))
-                return p;
-        }
-        return null;
-    }
-
-    @safe
-    int _canput(ref Value key, size_t hash)
-    {
-        Property* p;
-        PropTable t;
-
-        t = this;
-        do
-        {
-            //p = *key in t.table;
-             p = t._table.findExistingAlt(key, hash);
-            if(p)
             {
-                return p.writable;
+                if (p.isAccessor)
+                    return p.configurable;
+                else
+                    return p.writable;
             }
-            t = t._previous;
-        } while(t);
-        return true;                    // success
-    }
-
-    @safe
-    int _del(ref Value key)
-    {
-        Property* p;
-
-        p = key in _table;
-        if(p)
-        {
-            if(!p.deletable)
-                return false;
-            _table.remove(key);
         }
-        return true;                    // not found
+        return true;
     }
-
 }
 
 

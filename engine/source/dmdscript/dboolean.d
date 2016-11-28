@@ -45,7 +45,7 @@ class DbooleanConstructor : Dfunction
 
         b = (arglist.length) ? arglist[0].toBoolean() : false;
         o = new Dboolean(b);
-        ret.putVobject(o);
+        ret.put(o);
         return null;
     }
 
@@ -56,7 +56,7 @@ class DbooleanConstructor : Dfunction
         d_boolean b;
 
         b = (arglist.length) ? arglist[0].toBoolean() : false;
-        ret.putVboolean(b);
+        ret.put(b);
         return null;
     }
 }
@@ -79,7 +79,7 @@ DError* Dboolean_prototype_toString(
         Value *v;
 
         v = &(cast(Dboolean)othis).value;
-        ret.putVstring(v.toString);
+        ret.put(v.toString);
     }
     return null;
 }
@@ -118,9 +118,8 @@ class DbooleanPrototype : Dboolean
         super(Dobject.getPrototype);
         //Dobject f = Dfunction_prototype;
 
-        CallContext cc;
-        Put(Text.constructor, Dboolean.getConstructor,
-            Property.Attribute.DontEnum, cc);
+        config(Text.constructor, Dboolean.getConstructor,
+               Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -140,14 +139,14 @@ class Dboolean : Dobject
     this(d_boolean b)
     {
         super(Dboolean.getPrototype());
-        value.putVboolean(b);
+        value.put(b);
         classname = Text.Boolean;
     }
 
     this(Dobject prototype)
     {
         super(prototype);
-        value.putVboolean(false);
+        value.put(false);
         classname = Text.Boolean;
     }
 
@@ -167,11 +166,10 @@ static:
         _constructor = new DbooleanConstructor();
         _prototype = new DbooleanPrototype();
 
-        CallContext cc;
-        _constructor.Put(Text.prototype, _prototype,
-                         Property.Attribute.DontEnum |
-                         Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly, cc);
+        _constructor.config(Text.prototype, _prototype,
+                            Property.Attribute.DontEnum |
+                            Property.Attribute.DontDelete |
+                            Property.Attribute.ReadOnly);
     }
 private:
     Dfunction _constructor;

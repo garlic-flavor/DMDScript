@@ -465,7 +465,7 @@ private:
                         stringtable[id] = Identifier.init;
                         i = id in stringtable;
                     }
-                    i.value.putVstring(id);
+                    i.value.put(id);
                     i.value.toHash();
                     t.ident = i;
                 }

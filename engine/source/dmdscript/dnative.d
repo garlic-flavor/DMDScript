@@ -70,13 +70,12 @@ class DnativeFunction : Dfunction
                            Property.Attribute attributes)
     {
         Dobject f = Dfunction.getPrototype();
-        CallContext cc;
         for(size_t i = 0; i < nfd.length; i++)
         {
             NativeFunctionData* n = &nfd[i];
 
-            o.Put(n.str, new DnativeFunction(n.pcall, n.str, n.length, f),
-                  attributes, cc);
+            o.config(n.str, new DnativeFunction(n.pcall, n.str, n.length, f),
+                     attributes);
         }
     }
 }

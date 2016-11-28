@@ -669,18 +669,18 @@ struct IR
                         if(v.isString())
                         {
                             s2 = v.toString() ~a.toString();
-                            a.putVstring(s2);
+                            a.put(s2);
                             *v = *a;
                         }
                         else if(a.isString())
                         {
                             s2 = v.toString() ~a.toString();
-                            a.putVstring(s2);
+                            a.put(s2);
                             *v = *a;
                         }
                         else
                         {
-                            a.putVnumber(a.toNumber() + v.toNumber());
+                            a.put(a.toNumber() + v.toNumber());
                             *v = *a;//full copy
                         }
                     }
@@ -754,7 +754,7 @@ struct IR
                     break;
 
                 case Opcode.String:              // a = "string"
-                    (locals + (code + 1).index).putVstring(
+                    (locals + (code + 1).index).put(
                         (code + 2).id.value.text);
                     code += IRTypes[Opcode.String].size;
                     break;
@@ -765,24 +765,24 @@ struct IR
                     fd = cast(FunctionDefinition)(code + 2).ptr;
                     Dfunction fobject = new DdeclaredFunction(fd);
                     fobject.scopex = scopex;
-                    (locals + (code + 1).index).putVobject(fobject);
+                    (locals + (code + 1).index).put(fobject);
                     code += IRTypes[Opcode.Object].size;
                     break;
                 }
                 case Opcode.This:                // a = this
-                    (locals + (code + 1).index).putVobject(othis);
+                    (locals + (code + 1).index).put(othis);
 
                     code += IRTypes[Opcode.This].size;
                     break;
 
                 case Opcode.Number:              // a = number
-                    (locals + (code + 1).index).putVnumber(
+                    (locals + (code + 1).index).put(
                         *cast(d_number*)(code + 2));
                     code += IRTypes[Opcode.Number].size;
                     break;
 
                 case Opcode.Boolean:             // a = boolean
-                    (locals + (code + 1).index).putVboolean((code + 2).boolean);
+                    (locals + (code + 1).index).put((code + 2).boolean);
                     code += IRTypes[Opcode.Boolean].size;
                     break;
 
@@ -808,27 +808,27 @@ struct IR
                 case Opcode.Neg:                 // a = -a
                     a = locals + (code + 1).index;
                     n = a.toNumber();
-                    a.putVnumber(-n);
+                    a.put(-n);
                     code += IRTypes[Opcode.Neg].size;
                     break;
 
                 case Opcode.Pos:                 // a = a
                     a = locals + (code + 1).index;
                     n = a.toNumber();
-                    a.putVnumber(n);
+                    a.put(n);
                     code += IRTypes[Opcode.Pos].size;
                     break;
 
                 case Opcode.Com:                 // a = ~a
                     a = locals + (code + 1).index;
                     i32 = a.toInt32();
-                    a.putVnumber(~i32);
+                    a.put(~i32);
                     code += IRTypes[Opcode.Com].size;
                     break;
 
                 case Opcode.Not:                 // a = !a
                     a = locals + (code + 1).index;
-                    a.putVboolean(!a.toBoolean());
+                    a.put(!a.toBoolean());
                     code += IRTypes[Opcode.Not].size;
                     break;
 
@@ -838,7 +838,7 @@ struct IR
                     // then the result is "undefined". I don't know
                     // what kind of script syntax will generate this.
                     a = locals + (code + 1).index;
-                    a.putVstring(a.getTypeof());
+                    a.put(a.getTypeof());
                     code += IRTypes[Opcode.Typeof].size;
                     break;
 
@@ -872,7 +872,7 @@ struct IR
                     if(b.vtype == Value.Type.Number &&
                        c.vtype == Value.Type.Number)
                     {
-                        a.putVnumber(b.number + c.number);
+                        a.put(b.number + c.number);
                     }
                     else
                     {
@@ -887,11 +887,11 @@ struct IR
                         if(vb.isString() || vc.isString())
                         {
                             s = vb.toString() ~vc.toString();
-                            a.putVstring(s);
+                            a.put(s);
                         }
                         else
                         {
-                            a.putVnumber(vb.toNumber() + vc.toNumber());
+                            a.put(vb.toNumber() + vc.toNumber());
                         }
                     }
 
@@ -902,7 +902,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.putVnumber(b.toNumber() - c.toNumber());
+                    a.put(b.toNumber() - c.toNumber());
                     code += 4;
                     break;
 
@@ -910,7 +910,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.putVnumber(b.toNumber() * c.toNumber());
+                    a.put(b.toNumber() * c.toNumber());
                     code += IRTypes[Opcode.Mul].size;
                     break;
 
@@ -919,7 +919,7 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
 
-                    a.putVnumber(b.toNumber() / c.toNumber());
+                    a.put(b.toNumber() / c.toNumber());
                     code += IRTypes[Opcode.Div].size;
                     break;
 
@@ -927,7 +927,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.putVnumber(b.toNumber() % c.toNumber());
+                    a.put(b.toNumber() % c.toNumber());
                     code += IRTypes[Opcode.Mod].size;
                     break;
 
@@ -938,7 +938,7 @@ struct IR
                     i32 = b.toInt32();
                     u32 = c.toUint32() & 0x1F;
                     i32 <<= u32;
-                    a.putVnumber(i32);
+                    a.put(i32);
                     code += IRTypes[Opcode.ShL].size;
                     break;
 
@@ -949,7 +949,7 @@ struct IR
                     i32 = b.toInt32();
                     u32 = c.toUint32() & 0x1F;
                     i32 >>= cast(d_int32)u32;
-                    a.putVnumber(i32);
+                    a.put(i32);
                     code += IRTypes[Opcode.ShR].size;
                     break;
 
@@ -960,7 +960,7 @@ struct IR
                     i32 = b.toUint32();
                     u32 = c.toUint32() & 0x1F;
                     u32 = (cast(d_uint32)i32) >> u32;
-                    a.putVnumber(u32);
+                    a.put(u32);
                     code += IRTypes[Opcode.UShR].size;
                     break;
 
@@ -968,7 +968,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.putVnumber(b.toInt32() & c.toInt32());
+                    a.put(b.toInt32() & c.toInt32());
                     code += IRTypes[Opcode.And].size;
                     break;
 
@@ -976,7 +976,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.putVnumber(b.toInt32() | c.toInt32());
+                    a.put(b.toInt32() | c.toInt32());
                     code += IRTypes[Opcode.Or].size;
                     break;
 
@@ -984,7 +984,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.putVnumber(b.toInt32() ^ c.toInt32());
+                    a.put(b.toInt32() ^ c.toInt32());
                     code += IRTypes[Opcode.Xor].size;
                     break;
                 case Opcode.In:          // a = b in c
@@ -996,7 +996,7 @@ struct IR
                     if(!o)
                         throw RhsMustBeObjectError.toThrow("in", c.toString);
 
-                    a.putVboolean(o.HasProperty(s));
+                    a.put(o.HasProperty(s));
                     code += IRTypes[Opcode.In].size;
                     break;
 
@@ -1017,7 +1017,7 @@ struct IR
                     if(!v)
                         v = &vundefined;
                     n = v.toNumber();
-                    a.putVnumber(n + inc);
+                    a.put(n + inc);
                     b.Put(s, *a, cc);
 
                     static assert(IRTypes[Opcode.PreInc].size
@@ -1041,8 +1041,8 @@ struct IR
                         {
                             v = scopecache[si].v;
                             n = v.toNumber() + inc;
-                            v.putVnumber(n);
-                            a.putVnumber(n);
+                            v.put(n);
+                            a.put(n);
                         }
                         else
                         {
@@ -1050,8 +1050,8 @@ struct IR
                             if(v)
                             {
                                 n = v.toNumber() + inc;
-                                v.putVnumber(n);
-                                a.putVnumber(n);
+                                v.put(n);
+                                a.put(n);
                             }
                             else
                             {
@@ -1068,7 +1068,7 @@ struct IR
                         if(v)
                         {
                             n = v.toNumber();
-                            v.putVnumber(n + inc);
+                            v.put(n + inc);
                             Value.copy(a, v);
                         }
                         else
@@ -1110,9 +1110,9 @@ struct IR
                     if(!v)
                         v = &vundefined;
                     n = v.toNumber();
-                    a.putVnumber(n + 1);
+                    a.put(n + 1);
                     b.Put(s, *a, cc);
-                    a.putVnumber(n);
+                    a.put(n);
 
                     static assert(IRTypes[Opcode.PostInc].size
                                   == IRTypes[Opcode.PostIncS].size);
@@ -1126,8 +1126,8 @@ struct IR
                     {
                         a = locals + (code + 1).index;
                         n = v.toNumber();
-                        v.putVnumber(n + 1);
-                        a.putVnumber(n);
+                        v.put(n + 1);
+                        a.put(n);
                     }
                     else
                     {
@@ -1152,9 +1152,9 @@ struct IR
                     if(!v)
                         v = &vundefined;
                     n = v.toNumber();
-                    a.putVnumber(n - 1);
+                    a.put(n - 1);
                     b.Put(s, *a, cc);
-                    a.putVnumber(n);
+                    a.put(n);
 
                     static assert(IRTypes[Opcode.PostDecS].size
                                   == IRTypes[Opcode.PostDec].size);
@@ -1168,8 +1168,8 @@ struct IR
                     {
                         n = v.toNumber();
                         a = locals + (code + 1).index;
-                        v.putVnumber(n - 1);
-                        a.putVnumber(n);
+                        v.put(n - 1);
+                        a.put(n);
                     }
                     else
                     {
@@ -1198,11 +1198,11 @@ struct IR
                             ? (locals + (code + 3).index).toString()
                             : (code + 3).id.value.text;
                         if(o.implementsDelete())
-                            bo = o.Delete(s);
+                            bo = !!o.Delete(s);
                         else
                             bo = !o.HasProperty(s);
                     }
-                    (locals + (code + 1).index).putVboolean(bo);
+                    (locals + (code + 1).index).put(bo);
 
                     static assert (IRTypes[Opcode.Del].size
                                    == IRTypes[Opcode.DelS].size);
@@ -1216,10 +1216,10 @@ struct IR
                     if(!scope_get(cc, scopex, id, o))
                         bo = true;
                     else if(o.implementsDelete())
-                        bo = o.Delete(s);
+                        bo = !!o.Delete(s);
                     else
                         bo = !o.HasProperty(s);
-                    (locals + (code + 1).index).putVboolean(bo);
+                    (locals + (code + 1).index).put(bo);
                     code += IRTypes[Opcode.DelScope].size;
                     break;
 
@@ -1249,7 +1249,7 @@ struct IR
                         else
                             res = b.toNumber() < c.toNumber();
                     }
-                    a.putVboolean(res);
+                    a.put(res);
                     code += IRTypes[Opcode.CLT].size;
                     break;
 
@@ -1274,7 +1274,7 @@ struct IR
                         else
                             res = b.toNumber() <= c.toNumber();
                     }
-                    a.putVboolean(res);
+                    a.put(res);
                     code += IRTypes[Opcode.CLE].size;
                     break;
 
@@ -1299,7 +1299,7 @@ struct IR
                         else
                             res = b.toNumber() > c.toNumber();
                     }
-                    a.putVboolean(res);
+                    a.put(res);
                     code += IRTypes[Opcode.CGT].size;
                     break;
 
@@ -1325,7 +1325,7 @@ struct IR
                         else
                             res = b.toNumber() >= c.toNumber();
                     }
-                    a.putVboolean(res);
+                    a.put(res);
                     code += IRTypes[Opcode.CGE].size;
                     break;
 
@@ -1369,23 +1369,23 @@ struct IR
                     else if(tx == Value.TypeName.Number &&
                             ty == Value.TypeName.String)
                     {
-                        c.putVnumber(c.toNumber());
+                        c.put(c.toNumber());
                         goto Lagain;
                     }
                     else if(tx == Value.TypeName.String &&
                             ty == Value.TypeName.Number)
                     {
-                        b.putVnumber(b.toNumber());
+                        b.put(b.toNumber());
                         goto Lagain;
                     }
                     else if(tx == Value.TypeName.Boolean)
                     {
-                        b.putVnumber(b.toNumber());
+                        b.put(b.toNumber());
                         goto Lagain;
                     }
                     else if(ty == Value.TypeName.Boolean)
                     {
-                        c.putVnumber(c.toNumber());
+                        c.put(c.toNumber());
                         goto Lagain;
                     }
                     else if(ty == Value.TypeName.Object)
@@ -1417,7 +1417,7 @@ struct IR
 
                     res ^= (code.opcode == Opcode.CNE);
                     //Lceq:
-                    a.putVboolean(res);
+                    a.put(res);
 
                     static assert (IRTypes[Opcode.CEq].size
                                    == IRTypes[Opcode.CNE].size);
@@ -1465,7 +1465,7 @@ struct IR
 
                     res ^= (code.opcode == Opcode.CNID);
                     Lcid:
-                    a.putVboolean(res);
+                    a.put(res);
 
                     static assert (IRTypes[Opcode.CID].size
                                    == IRTypes[Opcode.CNID].size);

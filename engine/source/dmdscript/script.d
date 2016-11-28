@@ -47,7 +47,8 @@ alias real_t = double;
 alias Loc = uint;                 // file location (line number)
 
 // Aliases for script primitive types
-alias d_boolean = uint;
+//alias d_boolean = uint;
+alias d_boolean = bool;
 alias d_number = double;
 alias d_int32 = int;
 alias d_uint32 = uint;
@@ -305,19 +306,44 @@ private:
 struct CallContext
 {
     Dobject[] scopex; // current scope chain
-    Dobject            variable;         // object for variable instantiation
-    Dobject            global;           // global object
+    Dobject            variable;         // object for variable instantiation (is scopex[scoperoot-1] is scopex[$-1])
+    Dobject            global;           // global object (is scopex[globalroot - 1])
     uint               scoperoot;        // number of entries in scope[] starting from 0
                                          // to copy onto new scopes
-    uint               globalroot;       // number of entries in scope[] starting from 0
+    const uint               globalroot;       // number of entries in scope[] starting from 0
                                          // that are in the "global" context. Always <= scoperoot
-    void*              lastnamedfunc;    // points to the last named function added as an event
+    // void*              lastnamedfunc;    // points to the last named function added as an event
     Program            prog;
     Dobject            callerothis;      // caller's othis
     Dobject            caller;           // caller function object
     FunctionDefinition callerf;
 
     int                Interrupt;  // !=0 if cancelled due to interrupt
+
+    @safe pure nothrow
+    this(Program prog, Dobject global)
+    {
+        scopex = [global];
+        variable = global;
+        this.global = global;
+        scoperoot = 1;
+        globalroot = 1;
+        this.prog = prog;
+    }
+
+    @safe pure nothrow
+    this(ref CallContext cc, Dobject variable, Dobject caller,
+         FunctionDefinition callerf)
+    {
+        scopex = cc.scopex ~ variable;
+        this.variable = variable;
+        global = cc.global;
+        scoperoot = cc.scoperoot + 1;
+        callerothis = cc.callerothis;
+        prog = cc.prog;
+        this.caller = caller;
+        this.callerf = callerf;
+    }
 }
 
 struct Global

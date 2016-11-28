@@ -171,7 +171,7 @@ Lsyntaxerror:
     ret.putVundefined();
     o = new syntaxerror.D0(exception);
     auto v2 = new DError;
-    v2.putVobject(o);
+    v2.put(o);
     return v2;
 }
 
@@ -298,7 +298,7 @@ DError* Dglobal_parseInt(
     }
 
     Lret:
-    ret.putVnumber(number);
+    ret.put(number);
     return null;
 }
 
@@ -315,7 +315,7 @@ DError* Dglobal_parseFloat(
     d_string str = arg0string(arglist);
     n = StringNumericLiteral(str, endidx, 1);
 
-    ret.putVnumber(n);
+    ret.put(n);
     return null;
 }
 
@@ -357,7 +357,7 @@ DError* Dglobal_escape(
     }
     if((escapes + unicodes) == 0)
     {
-        ret.putVstring(assumeUnique(s));
+        ret.put(assumeUnique(s));
         return null;
     }
     else
@@ -391,7 +391,7 @@ DError* Dglobal_escape(
             }
         }
         assert(r - R.ptr == R.length);
-        ret.putVstring(assumeUnique(R));
+        ret.put(assumeUnique(R));
         return null;
     }
 }
@@ -478,7 +478,7 @@ DError* Dglobal_unescape(
         ;
     }
 
-    ret.putVstring(R.assumeUnique);
+    ret.put(R.assumeUnique);
     return null;
 }
 
@@ -501,7 +501,7 @@ DError* Dglobal_isNaN(
         v = &vundefined;
     n = v.toNumber();
     b = isNaN(n) ? true : false;
-    ret.putVboolean(b);
+    ret.put(b);
     return null;
 }
 
@@ -524,7 +524,7 @@ DError* Dglobal_isFinite(
         v = &vundefined;
     n = v.toNumber();
     b = isFinite(n) ? true : false;
-    ret.putVboolean(b);
+    ret.put(b);
     return null;
 }
 
@@ -534,7 +534,7 @@ DError* URI_error(d_string s)
 {
     Dobject o = new urierror.D0(s ~ "() failure");
     auto v = new DError;
-    v.putVobject(o);
+    v.put(o);
     return v;
 }
 
@@ -556,7 +556,7 @@ DError* Dglobal_decodeURI(
         ret.putVundefined();
         return URI_error(Text.decodeURI);
     }
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -578,7 +578,7 @@ DError* Dglobal_decodeURIComponent(
         ret.putVundefined();
         return URI_error(Text.decodeURIComponent);
     }
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -601,7 +601,7 @@ DError* Dglobal_encodeURI(
         ret.putVundefined();
         return URI_error(Text.encodeURI);
     }
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -623,7 +623,7 @@ DError* Dglobal_encodeURIComponent(
         ret.putVundefined();
         return URI_error(Text.encodeURIComponent);
     }
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -722,7 +722,7 @@ DError* Dglobal_readln(
             break;
         encode(s, c);
     }
-    ret.putVstring(s.assumeUnique);
+    ret.put(s.assumeUnique);
     return null;
 }
 
@@ -743,7 +743,7 @@ DError* Dglobal_getenv(
         d_string s = arglist[0].toString();
         char* p = getenv(toStringz(s));
         if(p)
-            ret.putVstring(p[0 .. strlen(p)].idup);
+            ret.put(p[0 .. strlen(p)].idup);
         else
             ret.putVnull();
     }
@@ -757,7 +757,7 @@ DError* Dglobal_ScriptEngine(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    ret.putVstring(Text.DMDScript);
+    ret.put(Text.DMDScript);
     return null;
 }
 
@@ -765,7 +765,7 @@ DError* Dglobal_ScriptEngineBuildVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    ret.putVnumber(BUILD_VERSION);
+    ret.put(BUILD_VERSION);
     return null;
 }
 
@@ -773,7 +773,7 @@ DError* Dglobal_ScriptEngineMajorVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    ret.putVnumber(MAJOR_VERSION);
+    ret.put(MAJOR_VERSION);
     return null;
 }
 
@@ -781,7 +781,7 @@ DError* Dglobal_ScriptEngineMinorVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    ret.putVnumber(MINOR_VERSION);
+    ret.put(MINOR_VERSION);
     return null;
 }
 
@@ -804,16 +804,15 @@ class Dglobal : Dobject
 
         // Value properties
 
-        CallContext cc;
-        Put(Text.NaN, d_number.nan,
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete, cc);
-        Put(Text.Infinity, d_number.infinity,
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete, cc);
-        Put(Text.undefined, vundefined,
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete, cc);
+        config(Text.NaN, d_number.nan,
+               Property.Attribute.DontEnum |
+               Property.Attribute.DontDelete);
+        config(Text.Infinity, d_number.infinity,
+               Property.Attribute.DontEnum |
+               Property.Attribute.DontDelete);
+        config(Text.undefined, vundefined,
+               Property.Attribute.DontEnum |
+               Property.Attribute.DontDelete);
         static enum NativeFunctionData[] nfd =
         [
             // Function properties
@@ -849,56 +848,59 @@ class Dglobal : Dobject
 
         // Constructor properties
 
-        Put(Text.Object, Dobject.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(Text.Function, Dfunction.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(Text.Array, Darray.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(Text.String, Dstring.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(Text.Boolean, Dboolean.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(Text.Number, Dnumber.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(Text.Date, Ddate.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(Text.RegExp, Dregexp.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(Text.Error, Derror.getConstructor,
-            Property.Attribute.DontEnum, cc);
+        config(Text.Object, Dobject.getConstructor,
+            Property.Attribute.DontEnum);
+        config(Text.Function, Dfunction.getConstructor,
+            Property.Attribute.DontEnum);
+        config(Text.Array, Darray.getConstructor,
+            Property.Attribute.DontEnum);
+        config(Text.String, Dstring.getConstructor,
+            Property.Attribute.DontEnum);
+        config(Text.Boolean, Dboolean.getConstructor,
+            Property.Attribute.DontEnum);
+        config(Text.Number, Dnumber.getConstructor,
+            Property.Attribute.DontEnum);
+        config(Text.Date, Ddate.getConstructor,
+            Property.Attribute.DontEnum);
+        config(Text.RegExp, Dregexp.getConstructor,
+            Property.Attribute.DontEnum);
+        config(Text.Error, Derror.getConstructor,
+            Property.Attribute.DontEnum);
 
-        Put(syntaxerror.Text, syntaxerror.D0.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(evalerror.Text, evalerror.D0.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(referenceerror.Text, referenceerror.D0.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(rangeerror.Text, rangeerror.D0.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(typeerror.Text, typeerror.D0.getConstructor,
-            Property.Attribute.DontEnum, cc);
-        Put(urierror.Text, urierror.D0.getConstructor,
-            Property.Attribute.DontEnum, cc);
+        config(syntaxerror.Text, syntaxerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        config(evalerror.Text, evalerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        config(referenceerror.Text, referenceerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        config(rangeerror.Text, rangeerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        config(typeerror.Text, typeerror.D0.getConstructor,
+            Property.Attribute.DontEnum);
+        config(urierror.Text, urierror.D0.getConstructor,
+            Property.Attribute.DontEnum);
 
 
         // Other properties
 
         assert(Dmath.object);
-        Put(Text.Math, Dmath.object, Property.Attribute.DontEnum, cc);
+        config(Text.Math, Dmath.object, Property.Attribute.DontEnum);
 
         // Build an "arguments" property out of argv[],
         // and add it to the global object.
         Darray arguments;
 
         arguments = new Darray();
-        Put(Text.arguments, arguments, Property.Attribute.DontDelete, cc);
-        arguments.length.putVnumber(argv.length);
+        config(Text.arguments, arguments, Property.Attribute.DontDelete);
+        arguments.length.put(argv.length);
+        CallContext cc;
         for(int i = 0; i < argv.length; i++)
         {
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Where is this definition?
             arguments.Put(i, argv[i].idup, Property.Attribute.DontEnum, cc);
         }
-        arguments.Put(Text.callee, vnull, Property.Attribute.DontEnum, cc);
+        arguments.config(Text.callee, vnull, Property.Attribute.DontEnum);
     }
 }
 

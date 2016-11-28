@@ -57,7 +57,7 @@ class D0_constructor : Dfunction
         else
             s = m.toString();
         o = (*newD0)(s);
-        ret.putVobject(o);
+        ret.put(o);
         return null;
     }
 
@@ -119,13 +119,12 @@ template proto(alias TEXT_D1)
 
             d_string s;
 
-            CallContext cc;
-            Put(Text.constructor, _ctor, Property.Attribute.DontEnum, cc);
-            Put(Text.name, TEXT_D1, Property.Attribute.None, cc);
+            config(Text.constructor, _ctor, Property.Attribute.DontEnum);
+            config(Text.name, TEXT_D1, Property.Attribute.None);
             s = TEXT_D1 ~ ".prototype.message";
-            Put(Text.message, s, Property.Attribute.None, cc);
-            Put(Text.description, s, Property.Attribute.None, cc);
-            Put(Text.number, cast(d_number)0, Property.Attribute.None, cc);
+            config(Text.message, s, Property.Attribute.None);
+            config(Text.description, s, Property.Attribute.None);
+            config(Text.number, cast(d_number)0, Property.Attribute.None);
         }
     }
 
@@ -171,11 +170,10 @@ template proto(alias TEXT_D1)
             Dobject prototype = new D0_prototype();
             _prototype = prototype;
 
-            CallContext cc;
-            constructor.Put(Text.prototype, prototype,
-                            Property.Attribute.DontEnum |
-                            Property.Attribute.DontDelete |
-                            Property.Attribute.ReadOnly, cc);
+            constructor.config(Text.prototype, prototype,
+                               Property.Attribute.DontEnum |
+                               Property.Attribute.DontDelete |
+                               Property.Attribute.ReadOnly);
         }
     }
 }

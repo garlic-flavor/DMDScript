@@ -388,10 +388,10 @@ final class RegExpLiteral : Expression
 
 final class BooleanExpression : Expression
 {
-    private int boolean;
+    private d_boolean boolean;
 
     @safe @nogc pure nothrow
-    this(Loc loc, int boolean)
+    this(Loc loc, d_boolean boolean)
     {
         super(loc, Tok.Boolean);
         this.boolean = boolean;

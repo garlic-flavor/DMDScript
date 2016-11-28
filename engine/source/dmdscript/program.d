@@ -38,9 +38,9 @@ debug import std.stdio;
 class Program
 {
     uint errors;        // if any errors in file
-    CallContext* callcontext;
+    CallContext callcontext;
     FunctionDefinition globalfunction;
-    static Program program;//per thread global associated data
+    // static Program program;//per thread global associated data
 
     // Locale info
     uint lcid;          // current locale
@@ -48,15 +48,9 @@ class Program
 
     this()
     {
-        initContext();
-    }
-
-    void initContext()
-    {
-        //writefln("Program.initContext()");
-        if(callcontext)                 // if already done
-            return;
-
+        dobject_init();
+        callcontext = CallContext(this, new Dglobal(null));
+/*
         callcontext = new CallContext();
 
         CallContext* cc = callcontext;
@@ -77,6 +71,7 @@ class Program
         cc.scoperoot++;
         cc.globalroot++;
 
+*/
         assert(Ddate.getPrototype.proptable.length != 0);
     }
 
@@ -171,12 +166,12 @@ class Program
         //writef("Program.execute(argc = %d, argv = %p)\n", argc, argv);
         //writef("Program.execute()\n");
 
-        initContext();
+        // initContext();
 
         Value[] locals;
         Value ret;
         DError* result;
-        CallContext* cc = callcontext;
+        CallContext* cc = &callcontext;
         Darray arguments;
         Dobject dglobal = cc.global;
         //Program program_save;
@@ -186,7 +181,7 @@ class Program
         dglobal.Put(Text.arguments, arguments,
                     Property.Attribute.DontDelete |
                     Property.Attribute.DontEnum, *cc);
-        arguments.length.putVnumber(args.length);
+        arguments.length.put(args.length);
         for(int i = 0; i < args.length; i++)
         {
             arguments.Put(i, args[i], Property.Attribute.DontEnum, *cc);
@@ -221,7 +216,7 @@ class Program
         //printf("cc.scopex.ptr = %x, cc.scopex.length = %d\n", cc.scopex.ptr, cc.scopex.length);
         //program_save = getProgram();
 
-        setProgram(this);
+        // setProgram(this);
         ret.putVundefined();
         result = IR.call(*cc, cc.global, globalfunction.code, ret, locals.ptr);
         if(result)
@@ -254,14 +249,18 @@ class Program
      * global data - and this makes it thread local data.
      */
 
+/+
+deprecated
     static Program getProgram()
     {
         return program;
     }
 
+deprecated
     static void setProgram(Program p)
     {
         program = p;
     }
++/
 }
 

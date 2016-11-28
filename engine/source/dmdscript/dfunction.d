@@ -86,7 +86,7 @@ class DfunctionConstructor : Dfunction
             Dfunction fobj = new DdeclaredFunction(fd);
             assert(cc.scoperoot <= cc.scopex.length);
             fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
-            ret.putVobject(fobj);
+            ret.put(fobj);
         }
         else
             ret.putVundefined();
@@ -99,7 +99,7 @@ class DfunctionConstructor : Dfunction
         ret.putVundefined();
         o = new syntaxerror.D0(exception);
         auto v = new DError;
-        v.putVobject(o);
+        v.put(o);
         return v;
     }
 
@@ -139,7 +139,7 @@ DError* Dfunction_prototype_toString(
 
         f = cast(Dfunction)othis;
         s = f.toString();
-        ret.putVstring(s);
+        ret.put(s);
     }
     return null;
 }
@@ -271,8 +271,7 @@ class DfunctionPrototype : Dfunction
 
         classname = Text.Function;
         name = "prototype";
-        CallContext cc;
-        Put(Text.constructor, Dfunction.getConstructor, attributes, cc);
+        config(Text.constructor, Dfunction.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -364,11 +363,11 @@ class Dfunction : Dobject
         }
 
     Ltrue:
-        ret.putVboolean(true);
+        ret.put(true);
         return null;
 
     Lfalse:
-        ret.putVboolean(false);
+        ret.put(false);
         return null;
     }
 
@@ -406,11 +405,10 @@ static:
         _constructor = new DfunctionConstructor();
         _prototype = new DfunctionPrototype();
 
-        CallContext cc;
-        _constructor.Put(Text.prototype, _prototype,
-                         Property.Attribute.DontEnum |
-                         Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly, cc);
+        _constructor.config(Text.prototype, _prototype,
+                            Property.Attribute.DontEnum |
+                            Property.Attribute.DontDelete |
+                            Property.Attribute.ReadOnly);
 
         _constructor.Prototype = _prototype;
         _constructor.proptable.previous = _prototype.proptable;

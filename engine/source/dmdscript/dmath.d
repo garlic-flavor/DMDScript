@@ -43,7 +43,7 @@ DError* Dmath_abs(
     d_number result;
 
     result = fabs(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -55,7 +55,7 @@ DError* Dmath_acos(
     d_number result;
 
     result = acos(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -67,7 +67,7 @@ DError* Dmath_asin(
     d_number result;
 
     result = asin(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -79,7 +79,7 @@ DError* Dmath_atan(
     d_number result;
 
     result = atan(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -95,7 +95,7 @@ DError* Dmath_atan2(
     n1 = math_helper(arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
     result = atan2(n1, v2.toNumber());
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -107,7 +107,7 @@ DError* Dmath_ceil(
     d_number result;
 
     result = ceil(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -119,7 +119,7 @@ DError* Dmath_cos(
     d_number result;
 
     result = cos(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -131,7 +131,7 @@ DError* Dmath_exp(
     d_number result;
 
     result = std.math.exp(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -143,7 +143,7 @@ DError* Dmath_floor(
     d_number result;
 
     result = std.math.floor(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -155,7 +155,7 @@ DError* Dmath_log(
     d_number result;
 
     result = log(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -186,7 +186,7 @@ DError* Dmath_max(
         else if(n > result)
             result = n;
     }
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -217,7 +217,7 @@ DError* Dmath_min(
         else if(n < result)
             result = n;
     }
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -233,7 +233,7 @@ DError* Dmath_pow(
     n1 = math_helper(arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
     result = pow(n1, v2.toNumber());
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -263,7 +263,7 @@ DError* Dmath_random(
     //+++ patched random +++
     result = std.random.uniform(0.0, 1.0);
     assert(result >= 0 && result < 1.0);
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -277,7 +277,7 @@ DError* Dmath_round(
     result = math_helper(arglist);
     if(!isNaN(result))
         result = copysign(std.math.floor(result + .5), result);
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -289,7 +289,7 @@ DError* Dmath_sin(
     d_number result;
 
     result = sin(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -301,7 +301,7 @@ DError* Dmath_sqrt(
     d_number result;
 
     result = sqrt(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -313,7 +313,7 @@ DError* Dmath_tan(
     d_number result;
 
     result = tan(math_helper(arglist));
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -347,12 +347,11 @@ class Dmath : Dobject
             { Text.SQRT2, std.math.SQRT2 },
         ];
 
-        CallContext cc;
         for(size_t u = 0; u < table.length; u++)
         {
             DError* v;
 
-            v = Put(table[u].name, table[u].value, attributes, cc);
+            v = config(table[u].name, table[u].value, attributes);
             //writef("Put(%s,%.5g) = %x\n", *table[u].name, table[u].value, v);
         }
 

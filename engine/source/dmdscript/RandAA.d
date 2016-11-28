@@ -149,7 +149,7 @@ private:
         }
 
         @trusted
-        size_t findForInsert(ref K key, in size_t hashFull)
+        size_t findForInsert(in ref K key, in size_t hashFull)
         {
             size_t pos = hashFull & mask;
             static if(useRandom)
@@ -221,7 +221,7 @@ private:
             return (flag == USED) ? pos : size_t.max;
         }
 
-        size_t findForInsert(ref K key, in size_t hashFull) const
+        size_t findForInsert(in ref K key, in size_t hashFull) const
         {
             size_t pos = hashFull & mask;
             static if(useRandom)
@@ -256,7 +256,7 @@ private:
     }
 
     @trusted
-    void assignNoRehashCheck(ref K key, ref V val, size_t hashFull)
+    void assignNoRehashCheck(in ref K key, ref V val, in size_t hashFull)
     {
         size_t i = findForInsert(key, hashFull);
         vals[i] = val;
@@ -416,7 +416,7 @@ public:
 +/
     ///Hackery
     @trusted
-    V* findExistingAlt(ref K key, size_t hashFull)
+    V* findExistingAlt(in ref K key, in size_t hashFull)
     {
         size_t pos = hashFull & mask;
         static if(useRandom)
@@ -452,7 +452,7 @@ public:
     }
 
     @safe
-    void insertAlt(ref K key, ref V val, size_t hashFull)
+    void insertAlt(in ref K key, ref V val, size_t hashFull)
     {
         assignNoRehashCheck(key, val, hashFull);
         rehash();

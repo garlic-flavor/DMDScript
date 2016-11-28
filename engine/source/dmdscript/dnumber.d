@@ -41,13 +41,12 @@ class DnumberConstructor : Dfunction
             Property.Attribute.ReadOnly;
 
         name = Text.Number;
-        CallContext cc;
-        Put(Text.MAX_VALUE, d_number.max, attributes, cc);
-        Put(Text.MIN_VALUE, d_number.min_normal*d_number.epsilon,
-            attributes, cc);
-        Put(Text.NaN, d_number.nan, attributes, cc);
-        Put(Text.NEGATIVE_INFINITY, -d_number.infinity, attributes, cc);
-        Put(Text.POSITIVE_INFINITY, d_number.infinity, attributes, cc);
+        config(Text.MAX_VALUE, d_number.max, attributes);
+        config(Text.MIN_VALUE, d_number.min_normal*d_number.epsilon,
+            attributes);
+        config(Text.NaN, d_number.nan, attributes);
+        config(Text.NEGATIVE_INFINITY, -d_number.infinity, attributes);
+        config(Text.POSITIVE_INFINITY, d_number.infinity, attributes);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -59,7 +58,7 @@ class DnumberConstructor : Dfunction
 
         n = (arglist.length) ? arglist[0].toNumber() : 0;
         o = new Dnumber(n);
-        ret.putVobject(o);
+        ret.put(o);
         return null;
     }
 
@@ -70,7 +69,7 @@ class DnumberConstructor : Dfunction
         d_number n;
 
         n = (arglist.length) ? arglist[0].toNumber() : 0;
-        ret.putVnumber(n);
+        ret.put(n);
         return null;
     }
 }
@@ -118,7 +117,7 @@ DError* Dnumber_prototype_toString(
         }
         else
             s = v.toString();
-        ret.putVstring(s);
+        ret.put(s);
     }
     return null;
 }
@@ -145,7 +144,7 @@ DError* Dnumber_prototype_toLocaleString(
         v = &(cast(Dnumber)othis).value;
 
         s = v.toLocaleString();
-        ret.putVstring(s);
+        ret.put(s);
     }
     return null;
 }
@@ -262,8 +261,8 @@ DError* Dnumber_prototype_toFixed(
         if(x >= 1.0e+21)               // exponent must be FIXED_DIGITS+1
         {
             Value vn;
-            vn.putVnumber(x);
-            ret.putVstring(vn.toString());
+            vn.put(x);
+            ret.put(vn.toString());
             return null;
         }
         else
@@ -333,7 +332,7 @@ DError* Dnumber_prototype_toFixed(
     }
 
     Ldone:
-    ret.putVstring(result);
+    ret.put(result);
     return null;
 }
 
@@ -471,7 +470,7 @@ DError* Dnumber_prototype_toExponential(
         }
     }
 
-    ret.putVstring(result);
+    ret.put(result);
     return null;
 }
 
@@ -500,7 +499,7 @@ DError* Dnumber_prototype_toPrecision(
     {
         Value vn;
 
-        vn.putVnumber(x);
+        vn.put(x);
         result = vn.toString();
     }
     else
@@ -610,7 +609,7 @@ DError* Dnumber_prototype_toPrecision(
     }
 
     Ldone:
-    ret.putVstring(result);
+    ret.put(result);
     return null;
 }
 
@@ -625,8 +624,7 @@ class DnumberPrototype : Dnumber
 
         Dobject f = Dfunction.getPrototype;
 
-        CallContext cc;
-        Put(Text.constructor, Dnumber.getConstructor, attributes, cc);
+        config(Text.constructor, Dnumber.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -652,14 +650,14 @@ class Dnumber : Dobject
     {
         super(getPrototype());
         classname = Text.Number;
-        value.putVnumber(n);
+        value.put(n);
     }
 
     this(Dobject prototype)
     {
         super(prototype);
         classname = Text.Number;
-        value.putVnumber(0);
+        value.put(0);
     }
 
 static:
@@ -673,16 +671,15 @@ static:
         return _prototype;
     }
 
-     void initialize()
+    void initialize()
     {
         _constructor = new DnumberConstructor();
         _prototype = new DnumberPrototype();
 
-        CallContext cc;
-        _constructor.Put(Text.prototype, _prototype,
-                         Property.Attribute.DontEnum |
-                         Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly, cc);
+        _constructor.config(Text.prototype, _prototype,
+                            Property.Attribute.DontEnum |
+                            Property.Attribute.DontDelete |
+                            Property.Attribute.ReadOnly);
     }
 private:
     Dfunction _constructor;

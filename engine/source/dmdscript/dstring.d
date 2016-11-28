@@ -61,7 +61,7 @@ DError* Dstring_fromCharCode(
         encode(s, u);
         //writefln("s[0] = %x, s = '%s'", s[0], s);
     }
-    ret.putVstring(s.assumeUnique);
+    ret.put(s.assumeUnique);
     return null;
 }
 
@@ -91,7 +91,7 @@ class DstringConstructor : Dfunction
 
         s = (arglist.length) ? arglist[0].toString() : Text.Empty;
         o = new Dstring(s);
-        ret.putVobject(o);
+        ret.put(o);
         return null;
     }
 
@@ -102,7 +102,7 @@ class DstringConstructor : Dfunction
         d_string s;
 
         s = (arglist.length) ? arglist[0].toString() : Text.Empty;
-        ret.putVstring(s);
+        ret.put(s);
         return null;
     }
 }
@@ -196,7 +196,7 @@ DError* Dstring_prototype_charAt(
         }
     }
 
-    ret.putVstring(result);
+    ret.put(result);
     return null;
 }
 
@@ -243,7 +243,7 @@ DError* Dstring_prototype_charCodeAt(
         }
     }
 
-    ret.putVnumber(result);
+    ret.put(result);
     return null;
 }
 
@@ -262,7 +262,7 @@ DError* Dstring_prototype_concat(
     for(size_t a = 0; a < arglist.length; a++)
         s ~= arglist[a].toString();
 
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -289,7 +289,7 @@ DError* Dstring_prototype_indexOf(
     ptrdiff_t k;
 
     Value xx;
-    xx.putVobject(othis);
+    xx.put(othis);
     s = xx.toString();
     sUCSdim = toUCSindex(s, s.length);
 
@@ -314,7 +314,7 @@ DError* Dstring_prototype_indexOf(
             k = toUCSindex(s, pos + k);
     }
 
-    ret.putVnumber(k);
+    ret.put(k);
     return null;
 }
 
@@ -394,7 +394,7 @@ DError* Dstring_prototype_lastIndexOf(
         if(k != -1)
             k = toUCSindex(s, k);
     }
-    ret.putVnumber(k);
+    ret.put(k);
     return null;
 }
 
@@ -414,7 +414,7 @@ DError* Dstring_prototype_localeCompare(
     s1 = v.toString();
     s2 = arglist.length ? arglist[0].toString() : vundefined.toString();
     n = localeCompare(cc, s1, s2);
-    ret.putVnumber(n);
+    ret.put(n);
     return null;
 }
 
@@ -436,7 +436,7 @@ DError* Dstring_prototype_match(
     {
         Value regret;
 
-        regret.putVobject(null);
+        regret.put(cast(Dobject)null);
         Dregexp.getConstructor().Construct(cc, regret, arglist);
         o = regret.object;
     }
@@ -453,11 +453,11 @@ DError* Dstring_prototype_match(
         lasti = 0;
         for(n = 0;; n++)
         {
-            r.lastIndex.putVnumber(i);
+            r.lastIndex.put(cast(d_number)i);
             Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_STRING);
             if(!ret.text)             // if match failed
             {
-                r.lastIndex.putVnumber(i);
+                r.lastIndex.put(cast(d_number)i);
                 break;
             }
             lasti = i;
@@ -467,7 +467,7 @@ DError* Dstring_prototype_match(
 
             a.Put(n, ret, Property.Attribute.None, cc);           // a[n] = ret;
         }
-        ret.putVobject(a);
+        ret.put(a);
     }
     else
     {
@@ -518,7 +518,7 @@ DError* Dstring_prototype_replace(
         i = 0;
         result = str;
 
-        r.lastIndex.putVnumber(0);
+        r.lastIndex.put(cast(d_number)0);
         for(;; )
         {
             Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_STRING);
@@ -532,13 +532,13 @@ DError* Dstring_prototype_replace(
 
                 alist = cast(Value* )alloca((m + 3) * Value.sizeof);
                 assert(alist);
-                alist[0].putVstring(ret.text);
+                alist[0].put(ret.text);
                 for(i = 0; i < m; i++)
                 {
-                    alist[1 + i].putVstring(re.captures(1 + i));
+                    alist[1 + i].put(re.captures(1 + i));
                 }
-                alist[m + 1].putVnumber(re.index);
-                alist[m + 2].putVstring(str);
+                alist[m + 1].put(re.index);
+                alist[m + 2].put(str);
                 f.Call(cc, f, ret, alist[0 .. m + 3]);
                 replacement = ret.toString();
             }
@@ -563,7 +563,7 @@ DError* Dstring_prototype_replace(
                 if(i == lasti)
                 {
                     i++;
-                    r.lastIndex.putVnumber(i);
+                    r.lastIndex.put(i);
                 }
             }
             else
@@ -581,9 +581,9 @@ DError* Dstring_prototype_replace(
             {
                 Value[3] alist;
 
-                alist[0].putVstring(searchString);
-                alist[1].putVnumber(match);
-                alist[2].putVstring(str);
+                alist[0].put(searchString);
+                alist[1].put(match);
+                alist[2].put(str);
                 f.Call(cc, f, ret, alist);
                 replacement = ret.toString();
             }
@@ -602,7 +602,7 @@ DError* Dstring_prototype_replace(
         }
     }
 
-    ret.putVstring(result);
+    ret.put(result);
     return null;
 }
 
@@ -625,7 +625,7 @@ DError* Dstring_prototype_search(
     {
         Value regret;
 
-        regret.putVobject(null);
+        regret.put(cast(Dobject)null);
         Dregexp.getConstructor().Construct(cc, regret, arglist);
         o = regret.object;
     }
@@ -696,7 +696,7 @@ DError* Dstring_prototype_slice(
     end = toUTFindex(s, end);
     r = s[start .. end];
 
-    ret.putVstring(r);
+    ret.put(r);
     return null;
 }
 
@@ -849,7 +849,7 @@ DError* Dstring_prototype_split(
 
     A.Put(0u, S, Property.Attribute.None, cc);
     Lret:
-    ret.putVobject(A);
+    ret.put(A);
     return null;
 }
 
@@ -892,7 +892,7 @@ DError* dstring_substring(d_string s, size_t sUCSdim, d_number start,
     size_t en = toUTFindex(s, cast(size_t)end);
     sb = s[st .. en];
 
-    ret.putVstring(sb);
+    ret.put(sb);
     return null;
 }
 
@@ -997,7 +997,7 @@ DError* tocase(Dobject othis, out Value ret, CASE caseflag)
         assert(0);
     }
 
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -1075,7 +1075,7 @@ DError* dstring_anchor(
         tag     ~
         ">";
 
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -1135,7 +1135,7 @@ DError* dstring_bracket(Dobject othis, out Value ret, d_string tag)
         tag     ~
         ">";
 
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -1219,9 +1219,8 @@ class DstringPrototype : Dstring
     {
         super(Dobject.getPrototype);
 
-        CallContext cc;
-        Put(Text.constructor, Dstring.getConstructor,
-            Property.Attribute.DontEnum, cc);
+        config(Text.constructor, Dstring.getConstructor,
+               Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -1279,7 +1278,7 @@ class Dstring : Dobject
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly, cc);
-        value.putVstring(s);
+        value.put(s);
     }
 
     this(Dobject prototype)
@@ -1292,7 +1291,7 @@ class Dstring : Dobject
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly, cc);
-        value.putVstring(null);
+        value.put(Text.Empty);
     }
 
 static:
@@ -1310,11 +1309,10 @@ static:
         _constructor = new DstringConstructor();
         _prototype = new DstringPrototype();
 
-        CallContext cc;
-        _constructor.Put(Text.prototype, _prototype,
-                         Property.Attribute.DontEnum |
-                         Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly, cc);
+        _constructor.config(Text.prototype, _prototype,
+                            Property.Attribute.DontEnum |
+                            Property.Attribute.DontDelete |
+                            Property.Attribute.ReadOnly);
     }
 
 private:

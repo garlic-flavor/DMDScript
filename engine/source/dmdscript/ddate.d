@@ -276,7 +276,7 @@ class DdateConstructor : Dfunction
         }
         //writefln("\tn = %s", n);
         o = new Ddate(n);
-        ret.putVobject(o);
+        ret.put(o);
         return null;
     }
 
@@ -299,7 +299,7 @@ class DdateConstructor : Dfunction
             t = time();
             s = toString(t);
         }
-        ret.putVstring(s);
+        ret.put(s);
         return null;
     }
 }
@@ -358,7 +358,7 @@ DError* Ddate_prototype_toString(
         getThisTime(ret, othis, n);
         s = toString(n);
     }
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -383,7 +383,7 @@ DError* Ddate_prototype_toDateString(
         getThisTime(ret, othis, n);
         s = toDateString(n);
     }
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -409,7 +409,7 @@ DError* Ddate_prototype_toTimeString(
         s = toTimeString(n);
     }
     //s = toTimeString(n);
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -1460,7 +1460,7 @@ DError* Ddate_prototype_toLocaleString(
         t = 0;
 
     s = dateToString(cc, t, TIMEFORMAT.LocaleString);
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -1479,7 +1479,7 @@ DError* Ddate_prototype_toLocaleDateString(
         t = 0;
 
     s = dateToString(cc, t, TIMEFORMAT.LocaleDateString);
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -1497,7 +1497,7 @@ DError* Ddate_prototype_toLocaleTimeString(
     if(getThisLocalTime(ret, othis, t))
         t = 0;
     s = dateToString(cc, t, TIMEFORMAT.LocaleTimeString);
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -1515,7 +1515,7 @@ DError* Ddate_prototype_toUTCString(
     if(getThisTime(ret, othis, t))
         t = 0;
     s = dateToString(cc, t, TIMEFORMAT.UTCString);
-    ret.putVstring(s);
+    ret.put(s);
     return null;
 }
 
@@ -1529,9 +1529,8 @@ class DdatePrototype : Ddate
 
         Dobject f = Dfunction.getPrototype;
 
-        CallContext cc;
-        Put(Text.constructor, Ddate.getConstructor,
-            Property.Attribute.DontEnum, cc);
+        config(Text.constructor, Ddate.getConstructor,
+               Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -1588,7 +1587,10 @@ class DdatePrototype : Ddate
 
         debug
         {
-            assert(proptable.get("toString", Value.calcHash("toString"), cc,
+            CallContext cc;
+            Value key;
+            key.put(Text.toString);
+            assert(proptable.get(key, Value.calcHash(Text.toString), cc,
                                  null));
         }
     }
@@ -1603,7 +1605,7 @@ class Ddate : Dobject
     {
         super(_prototype);
         classname = Text.Date;
-        value.putVnumber(n);
+        value.put(n);
     }
 
     this(d_time n)
@@ -1617,7 +1619,7 @@ class Ddate : Dobject
     {
         super(prototype);
         classname = Text.Date;
-        value.putVnumber(d_number.nan);
+        value.put(d_number.nan);
     }
 
 static:
@@ -1626,11 +1628,10 @@ static:
         _constructor = new DdateConstructor();
         _prototype = new DdatePrototype();
 
-        CallContext cc;
-        _constructor.Put(Text.prototype, _prototype,
-                         Property.Attribute.DontEnum |
-                         Property.Attribute.DontDelete |
-                         Property.Attribute.ReadOnly, cc);
+        _constructor.config(Text.prototype, _prototype,
+                            Property.Attribute.DontEnum |
+                            Property.Attribute.DontDelete |
+                            Property.Attribute.ReadOnly);
 
         assert(_prototype.proptable.length != 0);
     }

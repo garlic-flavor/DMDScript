@@ -86,7 +86,7 @@ class DdeclaredFunction : Dfunction
         Value vtmp;//should not be referenced by the end of func
         if(fd.name)
         {
-           vtmp.putVobject(this);
+           vtmp.put(this);
            actobj.Put(*fd.name, vtmp, Property.Attribute.DontDelete, cc);
         }
         // Instantiate the parameters
@@ -193,7 +193,7 @@ class DdeclaredFunction : Dfunction
         if(!result)
         {
             if(ret.isPrimitive())
-                ret.putVobject(othis);
+                ret.put(othis);
         }
         return result;
     }

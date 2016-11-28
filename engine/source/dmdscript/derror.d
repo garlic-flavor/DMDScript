@@ -47,7 +47,7 @@ class DerrorConstructor : Dfunction
         Value* n;
         Value vemptystring;
 
-        vemptystring.putVstring(null);
+        vemptystring.put(Text.Empty);
         switch(arglist.length)
         {
         case 0:         // ECMA doesn't say what we do if m is undefined
@@ -70,7 +70,7 @@ class DerrorConstructor : Dfunction
             break;
         }
         o = new Derror(m, n);
-        ret.putVobject(o);
+        ret.put(o);
         return null;
     }
 
@@ -97,7 +97,7 @@ DError* Derror_prototype_toString(
     v = othis.Get(Text.message, cc);
     if(!v)
         v = &vundefined;
-    ret.putVstring(othis.Get(Text.name, cc).toString()~": "~v.toString());
+    ret.put(othis.Get(Text.name, cc).toString()~": "~v.toString());
     return null;
 }
 
@@ -111,9 +111,8 @@ class DerrorPrototype : Derror
         Dobject f = Dfunction.getPrototype;
         //d_string m = d_string_ctor(DTEXT("Error.prototype.message"));
 
-        CallContext cc;
-        Put(Text.constructor, Derror_constructor,
-            Property.Attribute.DontEnum, cc);
+        config(Text.constructor, Derror_constructor,
+               Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -122,11 +121,11 @@ class DerrorPrototype : Derror
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.None);
 
-        Put(Text.name, Text.Error, Property.Attribute.None, cc);
-        Put(Text.message, Text.Empty, Property.Attribute.None, cc);
-        Put(Text.description, Text.Empty, Property.Attribute.None, cc);
-        Put(Text.number, cast(d_number)(/*FACILITY |*/ 0),
-            Property.Attribute.None, cc);
+        config(Text.name, Text.Error, Property.Attribute.None);
+        config(Text.message, Text.Empty, Property.Attribute.None);
+        config(Text.description, Text.Empty, Property.Attribute.None);
+        config(Text.number, cast(d_number)(/*FACILITY |*/ 0),
+               Property.Attribute.None);
     }
 }
 
@@ -188,11 +187,10 @@ class Derror : Dobject
         Derror_constructor = new DerrorConstructor();
         Derror_prototype = new DerrorPrototype();
 
-        CallContext cc;
-        Derror_constructor.Put(Text.prototype, Derror_prototype,
-                               Property.Attribute.DontEnum |
-                               Property.Attribute.DontDelete |
-                               Property.Attribute.ReadOnly, cc);
+        Derror_constructor.config(Text.prototype, Derror_prototype,
+                                  Property.Attribute.DontEnum |
+                                  Property.Attribute.DontDelete |
+                                  Property.Attribute.ReadOnly);
     }
 }
 

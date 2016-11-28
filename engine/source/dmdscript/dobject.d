@@ -50,11 +50,10 @@ class DobjectConstructor : Dfunction
         super(1, Dfunction.getPrototype);
         if(Dobject.getPrototype)
         {
-            CallContext cc;
-            Put(Text.prototype, Dobject.getPrototype,
-                Property.Attribute.DontEnum |
-                Property.Attribute.DontDelete |
-                Property.Attribute.ReadOnly, cc);
+            config(Text.prototype, Dobject.getPrototype,
+                   Property.Attribute.DontEnum |
+                   Property.Attribute.DontDelete |
+                   Property.Attribute.ReadOnly);
         }
     }
 
@@ -85,7 +84,7 @@ class DobjectConstructor : Dfunction
                 o = v.toObject();
         }
 
-        ret.putVobject(o);
+        ret.put(o);
         return null;
     }
 
@@ -108,7 +107,7 @@ class DobjectConstructor : Dfunction
             else
             {
                 o = v.toObject;
-                ret.putVobject(o);
+                ret.put(o);
                 result = null;
             }
         }
@@ -138,7 +137,7 @@ DError* Dobject_prototype_toString(
     else
  +/
     str = format("[object %s]", s);
-    ret.putVstring(str);
+    ret.put(str);
     return null;
 }
 
@@ -174,7 +173,7 @@ DError* Dobject_prototype_valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    ret.putVobject(othis);
+    ret.put(othis);
     return null;
 }
 
@@ -191,19 +190,18 @@ DError* Dobject_prototype_toSource(
     any = 0;
     foreach(Value key, Property p; othis.proptable)
     {
-        if(!(p.attributes &
-             (Property.Attribute.DontEnum | Property.Attribute.Deleted)))
+        if (p.enumerable /*&& p.deleted /* not used?*/)
         {
             if(any)
                 buf ~= ',';
             any = 1;
             buf ~= key.toString();
             buf ~= ':';
-            buf ~= p.value.toSource();
+            buf ~= p.get(cc, othis).toSource(cc);
         }
     }
     buf ~= '}';
-    ret.putVstring(buf);
+    ret.put(buf);
     return null;
 }
 
@@ -217,7 +215,7 @@ DError* Dobject_prototype_hasOwnProperty(
     Value* v;
 
     v = arglist.length ? &arglist[0] : &vundefined;
-    ret.putVboolean(othis.proptable.hasownproperty(*v, 0));
+    ret.put(othis.proptable.hasownproperty(*v, 0));
     return null;
 }
 
@@ -249,7 +247,7 @@ DError* Dobject_prototype_isPrototypeOf(
         }
     }
 
-    ret.putVboolean(result);
+    ret.put(result);
     return null;
 }
 
@@ -263,7 +261,7 @@ DError* Dobject_prototype_propertyIsEnumerable(
     Value* v;
 
     v = arglist.length ? &arglist[0] : &vundefined;
-    ret.putVboolean(othis.proptable.hasownproperty(*v, 1));
+    ret.put(othis.proptable.hasownproperty(*v, 1));
     return null;
 }
 
@@ -294,7 +292,7 @@ class Dobject
         proptable = new PropTable;
         Prototype(prototype);
         classname = Text.Object;
-        value.putVobject(this);
+        value.put(this);
     }
 
     final @property @safe @nogc pure nothrow
@@ -341,14 +339,18 @@ class Dobject
 
     Value* Get(in d_string PropertyName, in size_t hash, ref CallContext cc)
     {
-        return proptable.get(PropertyName, hash, cc, this);
+        Value key;
+        key.put(PropertyName);
+        return proptable.get(key, hash, cc, this);
     }
 
     Value* Get(in d_uint32 index, ref CallContext cc)
     {
         Value* v;
 
-        v = proptable.get(index, cc, this);
+        Value key;
+        key.put(index);
+        v = proptable.get(key, Value.calcHash(index), cc, this);
         //    if (!v)
         //	v = &vundefined;
         return v;
@@ -363,7 +365,10 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        proptable.put(PropertyName, value, attributes, cc, this);
+        Value key;
+        key.put(PropertyName);
+        proptable.put(key, Value.calcHash(PropertyName), value, attributes,
+                      cc, this);
         return null;
     }
 
@@ -375,14 +380,16 @@ class Dobject
         return null;
     }
 
-    DError* Put(in d_string PropertyName, Dobject o,
-                in Property.Attribute attributes, ref CallContext cc)
+    DError* Put(in d_string name, Dobject value,
+                   in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
+        Value key;
+        key.put(name);
         Value v;
-        v.putVobject(o);
+        v.put(value);
 
-        proptable.put(PropertyName, v, attributes, cc, this);
+        proptable.put(key, Value.calcHash(name), v, attributes, cc, this);
         return null;
     }
 
@@ -390,10 +397,13 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
+        Value key;
+        key.put(PropertyName);
         Value v;
-        v.putVnumber(n);
+        v.put(n);
 
-        proptable.put(PropertyName, v, attributes, cc, this);
+        proptable.put(key, Value.calcHash(PropertyName), v, attributes,
+                      cc, this);
         return null;
     }
 
@@ -401,10 +411,13 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
+        Value key;
+        key.put(PropertyName);
         Value v;
-        v.putVstring(s);
+        v.put(s);
 
-        proptable.put(PropertyName, v, attributes, cc, this);
+        proptable.put(key, Value.calcHash(PropertyName), v, attributes,
+                      cc, this);
         return null;
     }
 
@@ -421,7 +434,9 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        proptable.put(index, value, attributes, cc, this);
+        Value key;
+        key.put(index);
+        proptable.put(key, Value.calcHash(index), value, attributes, cc, this);
         return null;
     }
 
@@ -437,16 +452,47 @@ class Dobject
         return FunctionNotLvalueError;
     }
 
+    //
+    DError* config(T : Value)(in d_string PropertyName, ref T value,
+                              in Property.Attribute attributes)
+    {
+        // ECMA 8.6.2.2
+        Value key;
+        key.put(PropertyName);
+        proptable.config(key, Value.calcHash(PropertyName), value, attributes);
+        return null;
+    }
+
+    //
+    DError* config(T)(in d_string PropertyName, T v,
+                      in Property.Attribute attributes)
+        if (is(T : Dobject) || is(T : d_number) || is(T : d_string))
+    {
+        // ECMA 8.6.2.2
+        Value value;
+        value.put(v);
+
+        Value key;
+        key.put(PropertyName);
+
+        proptable.config(key, Value.calcHash(PropertyName), value, attributes);
+        return null;
+    }
+
     int CanPut(in d_string PropertyName)
     {
         // ECMA 8.6.2.3
-        return proptable.canput(PropertyName);
+        Value key;
+        key.put(PropertyName);
+        return proptable.canput(key, Value.calcHash(PropertyName));
     }
 
-    int HasProperty(in d_string PropertyName)
+    int HasProperty(in d_string name)
     {
         // ECMA 8.6.2.4
-        return proptable.hasproperty(PropertyName);
+        Value key;
+        key.put(name);
+        return proptable.hasproperty(key, Value.calcHash(name)) !is null;
     }
 
     /***********************************
@@ -457,13 +503,17 @@ class Dobject
     int Delete(in d_string PropertyName)
     {
         // ECMA 8.6.2.5
-        return proptable.del(PropertyName);
+        Value key;
+        key.put(PropertyName);
+        return proptable.del(key);
     }
 
     int Delete(in d_uint32 index)
     {
         // ECMA 8.6.2.5
-        return proptable.del(index);
+        Value key;
+        key.put(index);
+        return proptable.del(key);
     }
 
     int implementsDelete()
@@ -506,11 +556,11 @@ class Dobject
             if(v && !v.isPrimitive())   // if it's an Object
             {
                 DError* a;
-                CallContext* cc2;
+                //CallContext* cc2;
 
                 o = v.object;
-                cc2 = Program.getProgram().callcontext;
-                a = o.Call(*cc2, this, ret, null);
+                //cc2 = &Program.getProgram().callcontext;
+                a = o.Call(cc, this, ret, null);
                 if(a)                   // if exception was thrown
                     return a;
                 if(ret.isPrimitive)
@@ -589,14 +639,14 @@ class Dobject
         auto i = new Iterator;
 
         i.ctor(this);
-        v.putViterator(i);
+        v.put(i);
         return null;
     }
 
     Property* getOwnProperty(ref Value key)
     {
         assert(proptable !is null);
-        return proptable.getProperty(key);
+        return proptable.getProperty(key, key.toHash);
     }
 
     @safe pure nothrow
@@ -620,7 +670,7 @@ class Dobject
         // }
         // else if (!isExtensible)
         // {
-            
+
         //     return false;
         // }
         // else
@@ -656,12 +706,14 @@ public static:
     @safe @nogc nothrow
     Dfunction getConstructor()
     {
+        assert(_constructor !is null);
         return _constructor;
     }
 
     @safe @nogc nothrow
     Dobject getPrototype()
     {
+        assert(_prototype !is null);
         return _prototype;
     }
 
@@ -674,9 +726,7 @@ public static:
         Dobject op = _prototype;
         Dobject f = Dfunction.getPrototype;
 
-        CallContext cc;
-        op.Put(Text.constructor, _constructor,
-               Property.Attribute.DontEnum, cc);
+        op.config(Text.constructor, _constructor, Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -693,7 +743,7 @@ public static:
         DnativeFunction.initialize(op, nfd, Property.Attribute.DontEnum);
     }
 
-private:
+private static:
     Dfunction _constructor;
     Dobject _prototype;
 }
@@ -704,7 +754,7 @@ private:
  */
 void dobject_init()
 {
-    if(Dobject.getPrototype !is null)
+    if(Dobject._prototype !is null)
         return;                 // already initialized for this thread
 
     Dobject.initialize();
@@ -718,17 +768,10 @@ void dobject_init()
     Derror.initialize();
 
 
-    syntaxerror.D0.init;
-    evalerror.D0.init;
-    referenceerror.D0.init;
-    rangeerror.D0.init;
-    typeerror.D0.init;
-    urierror.D0.init;
+    syntaxerror.D0.init();
+    evalerror.D0.init();
+    referenceerror.D0.init();
+    rangeerror.D0.init();
+    typeerror.D0.init();
+    urierror.D0.init();
 }
-/*Not used anyway
-void dobject_term()
-{
-
-    memset(&program, 0, ThreadContext.sizeof - Thread.sizeof);
-}
-*/

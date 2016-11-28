@@ -193,7 +193,7 @@ DError* Darray_prototype_toLocaleString(
         }
     }
 
-    ret.putVstring(r);
+    ret.put(r);
     return null;
 }
 
@@ -282,7 +282,7 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
             r ~= v.toString();
     }
 
-    ret.putVstring(r);
+    ret.put(r);
 }
 
 /* ===================== Darray_prototype_toSource ================= */
@@ -308,11 +308,11 @@ DError* Darray_prototype_toSource(
             r ~= separator;
         v = othis.Get(k, cc);
         if(v && !v.isUndefinedOrNull())
-            r ~= v.toSource();
+            r ~= v.toSource(cc);
     }
     r ~= "]";
 
-    ret.putVstring(r);
+    ret.put(r);
     return null;
 }
 
@@ -370,7 +370,7 @@ DError* Darray_prototype_push(
         othis.Put(u + a, arglist[a], Property.Attribute.None, cc);
     }
     othis.Put(Text.length, u + a,  Property.Attribute.DontEnum, cc);
-    ret.putVnumber(u + a);
+    ret.put(u + a);
     return null;
 }
 
@@ -704,7 +704,7 @@ DError* Darray_prototype_sort(
         parraydim = 0;
         foreach(ref Property p; othis.proptable)
         {
-            if(p.attributes == 0)       // don't count special properties
+            if(p.isNoneAttribute)       // don't count special properties
                 parraydim++;
         }
         if(parraydim > len)             // could theoretically happen
@@ -748,10 +748,10 @@ DError* Darray_prototype_sort(
     {
         d_uint32 index;
 
-        if(p.attributes == 0 && key.isArrayIndex(index))
+        if(p.isNoneAttribute && key.isArrayIndex(index))
         {
             pindices[nprops] = index;
-            pvalues[nprops] = p.value;
+            pvalues[nprops] = *p.get(cc, othis);
             nprops++;
         }
     }
@@ -789,7 +789,7 @@ DError* Darray_prototype_sort(
     delete p1;
     delete p2;
 
-    ret.putVobject(othis);
+    ret.put(othis);
     return null;
 }
 
@@ -983,7 +983,7 @@ DError* Darray_prototype_unshift(
     }
     othis.Put(Text.length, len + arglist.length,
               Property.Attribute.DontEnum, cc);
-    ret.putVnumber(len + arglist.length);
+    ret.put(len + arglist.length);
     return null;
 }
 
@@ -996,9 +996,8 @@ class DarrayPrototype : Darray
         super(Dobject.getPrototype);
         Dobject f = Dfunction.getPrototype;
 
-        CallContext cc;
-        Put(Text.constructor, Darray.getConstructor,
-            Property.Attribute.DontEnum, cc);
+        config(Text.constructor, Darray.getConstructor,
+               Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -1037,7 +1036,7 @@ class Darray : Dobject
     this(Dobject prototype)
     {
         super(prototype);
-        length.putVnumber(0);
+        length.put(0);
         ulength = 0;
         classname = Text.Array;
     }
@@ -1062,7 +1061,9 @@ class Darray : Dobject
         Value* result;
 
         // ECMA 15.4.5.1
-        result = proptable.put(name, v, attributes, cc, this);
+        Value key;
+        key.put(name, Value.calcHash(name));
+        result = proptable.put(key, key.toHash, v, attributes, cc, this);
         if(!result)
         {
             if(name == Text.length)
@@ -1085,14 +1086,16 @@ class Darray : Dobject
                         if(j >= i)
                             todelete ~= j;
                     }
+                    Value k;
                     foreach(d_uint32 j; todelete)
                     {
-                        proptable.del(j);
+                        k.put(j);
+                        proptable.del(k);
                     }
                 }
                 ulength = i;
                 length.number = i;
-                proptable.put(name, v,
+                proptable.put(key, key.toHash, v,
                               attributes | Property.Attribute.DontEnum,
                               cc, this);
             }
@@ -1140,7 +1143,7 @@ class Darray : Dobject
     {
         Value v;
 
-        v.putVnumber(n);
+        v.put(n);
         return Put(PropertyName, v, attributes, cc);
     }
 
@@ -1149,7 +1152,7 @@ class Darray : Dobject
     {
         Value v;
 
-        v.putVstring(str);
+        v.put(str);
         return Put(PropertyName, v, attributes, cc);
     }
 
@@ -1172,7 +1175,9 @@ class Darray : Dobject
             length.number = ulength;
         }
 
-        proptable.put(index, value, attributes, cc, this);
+        Value key;
+        key.put(index);
+        proptable.put(key, Value.calcHash(index), value, attributes, cc, this);
         return null;
     }
 
@@ -1185,7 +1190,10 @@ class Darray : Dobject
             length.number = ulength;
         }
 
-        proptable.put(index, str, attributes, cc, this);
+        Value key, value;
+        key.put(index);
+        value.put(str);
+        proptable.put(key, Value.calcHash(index), value, attributes, cc, this);
         return null;
     }
 
@@ -1219,7 +1227,9 @@ class Darray : Dobject
         Value* v;
 
         //writef("Darray.Get(%p, %d)\n", &proptable, index);
-        v = proptable.get(index, cc, this);
+        Value key;
+        key.put(index);
+        v = proptable.get(key, Value.calcHash(index), cc, this);
         return v;
     }
 
@@ -1240,13 +1250,19 @@ class Darray : Dobject
         if(PropertyName == Text.length)
             return 0;           // can't delete 'length' property
         else
-            return proptable.del(PropertyName);
+        {
+            Value key;
+            key.put(PropertyName);
+            return proptable.del(key);
+        }
     }
 
     override int Delete(in d_uint32 index)
     {
         // ECMA 8.6.2.5
-        return proptable.del(index);
+        Value key;
+        key.put(index);
+        return proptable.del(key);
     }
 
 
@@ -1266,10 +1282,9 @@ static:
         _constructor = new DarrayConstructor();
         _prototype = new DarrayPrototype();
 
-        CallContext cc;
-        _constructor.Put(Text.prototype, _prototype,
-                         Property.Attribute.DontEnum |
-                         Property.Attribute.ReadOnly, cc);
+        _constructor.config(Text.prototype, _prototype,
+                            Property.Attribute.DontEnum |
+                            Property.Attribute.ReadOnly);
     }
 private:
     Dfunction _constructor;

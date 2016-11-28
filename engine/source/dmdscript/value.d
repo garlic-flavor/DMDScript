@@ -111,19 +111,15 @@ struct Value
     }
 
     @trusted @nogc pure nothrow
-    void putVboolean(d_boolean b)
-    in
+    void put(T : d_boolean)(T b)
     {
         assert(b == 1 || b == 0);
-    }
-    body
-    {
         vtype = Type.Boolean;
         dbool = b;
     }
 
     @trusted @nogc pure nothrow
-    void putVnumber(d_number n)
+    void put(T : d_number)(T n)
     {
         vtype = Type.Number;
         number = n;
@@ -137,7 +133,7 @@ struct Value
     }
 
     @trusted @nogc pure nothrow
-    void putVstring(d_string s)
+    void put(T : d_string)(T s)
     {
         vtype = Type.String;
         hash = 0;
@@ -145,7 +141,7 @@ struct Value
     }
 
     @trusted @nogc pure nothrow
-    void putVstring(d_string s, uint hash)
+    void put(d_string s, size_t hash)
     {
         vtype = Type.String;
         this.hash = hash;
@@ -153,14 +149,14 @@ struct Value
     }
 
     @trusted @nogc pure nothrow
-    void putVobject(Dobject o)
+    void put(T : Dobject)(T o)
     {
         vtype = Type.Object;
         object = o;
     }
 
     @trusted @nogc pure nothrow
-    void putViterator(Iterator* i)
+    void put(T : Iterator*)(T i)
     {
         vtype = Type.Iter;
         iter = i;
@@ -618,7 +614,7 @@ struct Value
         }
     }
 
-    d_string toSource()
+    d_string toSource(ref CallContext cc)
     {
         switch(vtype)
         {
@@ -632,26 +628,26 @@ struct Value
         case Type.Object:
         {
             Value* v;
-            CallContext cc;
+//            CallContext cc;
 
             //writefln("Vobject.toSource()");
             v = Get(Text.toSource, cc);
             if(!v)
                 v = &vundefined;
             if(v.isPrimitive())
-                return v.toSource();
+                return v.toSource(cc);
             else          // it's an Object
             {
                 DError* a;
-                CallContext* pcc;
+                // CallContext* pcc;
                 Dobject o;
                 Value* ret;
                 Value val;
 
                 o = v.object;
-                pcc = Program.getProgram.callcontext;
+                // pcc = &Program.getProgram.callcontext;
                 ret = &val;
-                a = o.Call(*pcc, this.object, *ret, null);
+                a = o.Call(cc, this.object, *ret, null);
                 if(a)                             // if exception was thrown
                 {
                     /*return a;*/
@@ -1000,10 +996,37 @@ struct Value
         return calcHash(hash);
     }
 
-    static @safe
-    size_t calcHash(ref Value v)
+    // only calculation. not caching.
+    static @trusted
+    size_t calcHash(in ref Value v)
     {
-        return v.toHash;
+        final switch(v.vtype)
+        {
+        case Type.RefError:
+            v.throwRefError();
+            assert(0);
+        case Type.Undefined:
+        case Type.Null:
+            return 0;
+        case Type.Boolean:
+            return v.dbool ? 1 : 0;
+        case Type.Number:
+            return calcHash(v.number);
+        case Type.String:
+            // Since strings are immutable, if we've already
+            // computed the hash, use previous value
+            return calcHash(v.text);
+        case Type.Object:
+            /* Uses the address of the object as the hash.
+             * Since the object never moves, it will work
+             * as its hash.
+             * BUG: shouldn't do this.
+             */
+            return cast(uint)cast(void*)v.object;
+        case Type.Iter:
+            assert(0);
+        }
+        assert(0);
     }
 
     @trusted
@@ -1276,7 +1299,7 @@ DError* toDError(alias Proto = typeerror)(Throwable t)
     assert(exception !is null);
 
     auto v = new DError;
-    v.putVobject(new Proto.D0(exception));
+    v.put(new Proto.D0(exception));
     return v;
 }
 

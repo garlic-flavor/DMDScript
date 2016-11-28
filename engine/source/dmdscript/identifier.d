@@ -45,7 +45,7 @@ struct Identifier
     static Identifier* build(d_string s)
     {
         Identifier* id = new Identifier;
-        id.value.putVstring(s);
+        id.value.put(s);
         id.value.toHash();
         return id;
     }
