@@ -29,7 +29,7 @@ Dobject getPrototype(Dobject o)
 {
     version(all)
     {
-        return o.Prototype;    // use internal [[Prototype]]
+        return o.GetPrototypeOf;    // use internal [[Prototype]]
     }
     else
     {

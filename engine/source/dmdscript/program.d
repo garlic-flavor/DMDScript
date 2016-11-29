@@ -178,13 +178,13 @@ class Program
 
         // Set argv and argc for execute
         arguments = new Darray();
-        dglobal.Put(Text.arguments, arguments,
+        dglobal.Set(Text.arguments, arguments,
                     Property.Attribute.DontDelete |
                     Property.Attribute.DontEnum, *cc);
         arguments.length.put(args.length);
         for(int i = 0; i < args.length; i++)
         {
-            arguments.Put(i, args[i], Property.Attribute.DontEnum, *cc);
+            arguments.Set(i, args[i], Property.Attribute.DontEnum, *cc);
         }
 
         Value[] p1;
@@ -206,8 +206,9 @@ class Program
 
         // Instantiate global variables as properties of global
         // object with 0 attributes
-        globalfunction.instantiate(cc.scopex, cc.variable,
-                                   Property.Attribute.DontDelete);
+        globalfunction.instantiate(*cc, Property.Attribute.DontDelete);
+        // globalfunction.instantiate(cc.scopex, cc.variable,
+        //                            Property.Attribute.DontDelete);
 
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
 

@@ -271,7 +271,7 @@ class DfunctionPrototype : Dfunction
 
         classname = Text.Function;
         name = "prototype";
-        config(Text.constructor, Dfunction.getConstructor, attributes);
+        DefineOwnProperty(Text.constructor, Dfunction.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -311,11 +311,11 @@ class Dfunction : Dobject
       classname = Text.Function;
       name = Text.Function;
       CallContext cc;
-      Put(Text.length, length,
+      Set(Text.length, length,
           Property.Attribute.DontDelete |
           Property.Attribute.DontEnum |
           Property.Attribute.ReadOnly, cc);
-      Put(Text.arity, length,
+      Set(Text.arity, length,
           Property.Attribute.DontDelete |
           Property.Attribute.DontEnum |
           Property.Attribute.ReadOnly, cc);
@@ -355,7 +355,7 @@ class Dfunction : Dobject
         o = w.toObject();
         for(;; )
         {
-            V = V.Prototype;
+            V = V.GetPrototypeOf;
             if(!V)
                 goto Lfalse;
             if(o == V)
@@ -405,12 +405,12 @@ static:
         _constructor = new DfunctionConstructor();
         _prototype = new DfunctionPrototype();
 
-        _constructor.config(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Text.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);
 
-        _constructor.Prototype = _prototype;
+        _constructor.SetPrototypeOf = _prototype;
         _constructor.proptable.previous = _prototype.proptable;
     }
 private:

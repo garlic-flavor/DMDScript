@@ -41,12 +41,12 @@ class DnumberConstructor : Dfunction
             Property.Attribute.ReadOnly;
 
         name = Text.Number;
-        config(Text.MAX_VALUE, d_number.max, attributes);
-        config(Text.MIN_VALUE, d_number.min_normal*d_number.epsilon,
+        DefineOwnProperty(Text.MAX_VALUE, d_number.max, attributes);
+        DefineOwnProperty(Text.MIN_VALUE, d_number.min_normal*d_number.epsilon,
             attributes);
-        config(Text.NaN, d_number.nan, attributes);
-        config(Text.NEGATIVE_INFINITY, -d_number.infinity, attributes);
-        config(Text.POSITIVE_INFINITY, d_number.infinity, attributes);
+        DefineOwnProperty(Text.NaN, d_number.nan, attributes);
+        DefineOwnProperty(Text.NEGATIVE_INFINITY, -d_number.infinity, attributes);
+        DefineOwnProperty(Text.POSITIVE_INFINITY, d_number.infinity, attributes);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -624,7 +624,7 @@ class DnumberPrototype : Dnumber
 
         Dobject f = Dfunction.getPrototype;
 
-        config(Text.constructor, Dnumber.getConstructor, attributes);
+        DefineOwnProperty(Text.constructor, Dnumber.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -676,7 +676,7 @@ static:
         _constructor = new DnumberConstructor();
         _prototype = new DnumberPrototype();
 
-        _constructor.config(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Text.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

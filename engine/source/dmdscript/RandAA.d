@@ -416,7 +416,7 @@ public:
 +/
     ///Hackery
     @trusted
-    V* findExistingAlt(in ref K key, in size_t hashFull)
+    inout(V)* findExistingAlt(in ref K key, in size_t hashFull) inout
     {
         size_t pos = hashFull & mask;
         static if(useRandom)

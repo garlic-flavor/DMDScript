@@ -465,7 +465,7 @@ DError* Dstring_prototype_match(
             if(i == lasti)              // if no source was consumed
                 i++;                    // consume a character
 
-            a.Put(n, ret, Property.Attribute.None, cc);           // a[n] = ret;
+            a.Set(n, ret, Property.Attribute.None, cc);           // a[n] = ret;
         }
         ret.put(a);
     }
@@ -787,7 +787,7 @@ DError* Dstring_prototype_split(
                         if(e != p)
                         {
                             T = S[p .. q];
-                            A.Put(cast(uint)A.length.number, T,
+                            A.Set(cast(uint)A.length.number, T,
                                   Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
@@ -806,7 +806,7 @@ DError* Dstring_prototype_split(
                         {
                             T = S[p .. q];
                             //writefln("S = '%s', T = '%s', p = %d, q = %d, e = %d\n", S, T, p, q, e);
-                            A.Put(cast(uint)A.length.number, T,
+                            A.Set(cast(uint)A.length.number, T,
                                   Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
@@ -821,7 +821,7 @@ DError* Dstring_prototype_split(
                                     T = S[so .. eo];
                                 else
                                     T = null;
-                                A.Put(cast(uint)A.length.number, T,
+                                A.Set(cast(uint)A.length.number, T,
                                       Property.Attribute.None, cc);
                                 if(A.length.number == lim)
                                     goto Lret;
@@ -832,7 +832,7 @@ DError* Dstring_prototype_split(
                 }
             }
             T = S[p .. S.length];
-            A.Put(cast(uint)A.length.number, T, Property.Attribute.None, cc);
+            A.Set(cast(uint)A.length.number, T, Property.Attribute.None, cc);
             goto Lret;
         }
         if(str)                 // string
@@ -847,7 +847,7 @@ DError* Dstring_prototype_split(
         }
     }
 
-    A.Put(0u, S, Property.Attribute.None, cc);
+    A.Set(0u, S, Property.Attribute.None, cc);
     Lret:
     ret.put(A);
     return null;
@@ -1219,7 +1219,7 @@ class DstringPrototype : Dstring
     {
         super(Dobject.getPrototype);
 
-        config(Text.constructor, Dstring.getConstructor,
+        DefineOwnProperty(Text.constructor, Dstring.getConstructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
@@ -1274,7 +1274,7 @@ class Dstring : Dobject
         classname = Text.String;
 
         CallContext cc;
-        Put(Text.length, toUCSindex(s, s.length),
+        Set(Text.length, toUCSindex(s, s.length),
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly, cc);
@@ -1287,7 +1287,7 @@ class Dstring : Dobject
 
         classname = Text.String;
         CallContext cc;
-        Put(Text.length, 0,
+        Set(Text.length, 0,
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly, cc);
@@ -1309,7 +1309,7 @@ static:
         _constructor = new DstringConstructor();
         _prototype = new DstringPrototype();
 
-        _constructor.config(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Text.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

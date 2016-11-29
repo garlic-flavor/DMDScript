@@ -308,7 +308,7 @@ struct CallContext
     Dobject[] scopex; // current scope chain
     Dobject            variable;         // object for variable instantiation (is scopex[scoperoot-1] is scopex[$-1])
     Dobject            global;           // global object (is scopex[globalroot - 1])
-    uint               scoperoot;        // number of entries in scope[] starting from 0
+    const uint               scoperoot;        // number of entries in scope[] starting from 0
                                          // to copy onto new scopes
     const uint               globalroot;       // number of entries in scope[] starting from 0
                                          // that are in the "global" context. Always <= scoperoot
@@ -318,7 +318,7 @@ struct CallContext
     Dobject            caller;           // caller function object
     FunctionDefinition callerf;
 
-    int                Interrupt;  // !=0 if cancelled due to interrupt
+    bool                Interrupt;  // !=0 if cancelled due to interrupt
 
     @safe pure nothrow
     this(Program prog, Dobject global)

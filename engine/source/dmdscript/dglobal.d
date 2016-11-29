@@ -146,7 +146,9 @@ DError* Dglobal_eval(
         // Variable instantiation is performed using the calling
         // context's variable object and using empty
         // property attributes
-        fd.instantiate(cc.scopex, cc.variable, Property.Attribute.None);
+        fd.instantiate(cc, Property.Attribute.None);
+        // fd.instantiate(cc.scopex, cc.variable, Property.Attribute.None);
+
 
         // The this value is the same as the this value of the
         // calling context.
@@ -804,13 +806,13 @@ class Dglobal : Dobject
 
         // Value properties
 
-        config(Text.NaN, d_number.nan,
+        DefineOwnProperty(Text.NaN, d_number.nan,
                Property.Attribute.DontEnum |
                Property.Attribute.DontDelete);
-        config(Text.Infinity, d_number.infinity,
+        DefineOwnProperty(Text.Infinity, d_number.infinity,
                Property.Attribute.DontEnum |
                Property.Attribute.DontDelete);
-        config(Text.undefined, vundefined,
+        DefineOwnProperty(Text.undefined, vundefined,
                Property.Attribute.DontEnum |
                Property.Attribute.DontDelete);
         static enum NativeFunctionData[] nfd =
@@ -848,59 +850,59 @@ class Dglobal : Dobject
 
         // Constructor properties
 
-        config(Text.Object, Dobject.getConstructor,
+        DefineOwnProperty(Text.Object, Dobject.getConstructor,
             Property.Attribute.DontEnum);
-        config(Text.Function, Dfunction.getConstructor,
+        DefineOwnProperty(Text.Function, Dfunction.getConstructor,
             Property.Attribute.DontEnum);
-        config(Text.Array, Darray.getConstructor,
+        DefineOwnProperty(Text.Array, Darray.getConstructor,
             Property.Attribute.DontEnum);
-        config(Text.String, Dstring.getConstructor,
+        DefineOwnProperty(Text.String, Dstring.getConstructor,
             Property.Attribute.DontEnum);
-        config(Text.Boolean, Dboolean.getConstructor,
+        DefineOwnProperty(Text.Boolean, Dboolean.getConstructor,
             Property.Attribute.DontEnum);
-        config(Text.Number, Dnumber.getConstructor,
+        DefineOwnProperty(Text.Number, Dnumber.getConstructor,
             Property.Attribute.DontEnum);
-        config(Text.Date, Ddate.getConstructor,
+        DefineOwnProperty(Text.Date, Ddate.getConstructor,
             Property.Attribute.DontEnum);
-        config(Text.RegExp, Dregexp.getConstructor,
+        DefineOwnProperty(Text.RegExp, Dregexp.getConstructor,
             Property.Attribute.DontEnum);
-        config(Text.Error, Derror.getConstructor,
+        DefineOwnProperty(Text.Error, Derror.getConstructor,
             Property.Attribute.DontEnum);
 
-        config(syntaxerror.Text, syntaxerror.D0.getConstructor,
+        DefineOwnProperty(syntaxerror.Text, syntaxerror.D0.getConstructor,
             Property.Attribute.DontEnum);
-        config(evalerror.Text, evalerror.D0.getConstructor,
+        DefineOwnProperty(evalerror.Text, evalerror.D0.getConstructor,
             Property.Attribute.DontEnum);
-        config(referenceerror.Text, referenceerror.D0.getConstructor,
+        DefineOwnProperty(referenceerror.Text, referenceerror.D0.getConstructor,
             Property.Attribute.DontEnum);
-        config(rangeerror.Text, rangeerror.D0.getConstructor,
+        DefineOwnProperty(rangeerror.Text, rangeerror.D0.getConstructor,
             Property.Attribute.DontEnum);
-        config(typeerror.Text, typeerror.D0.getConstructor,
+        DefineOwnProperty(typeerror.Text, typeerror.D0.getConstructor,
             Property.Attribute.DontEnum);
-        config(urierror.Text, urierror.D0.getConstructor,
+        DefineOwnProperty(urierror.Text, urierror.D0.getConstructor,
             Property.Attribute.DontEnum);
 
 
         // Other properties
 
         assert(Dmath.object);
-        config(Text.Math, Dmath.object, Property.Attribute.DontEnum);
+        DefineOwnProperty(Text.Math, Dmath.object, Property.Attribute.DontEnum);
 
         // Build an "arguments" property out of argv[],
         // and add it to the global object.
         Darray arguments;
 
         arguments = new Darray();
-        config(Text.arguments, arguments, Property.Attribute.DontDelete);
+        DefineOwnProperty(Text.arguments, arguments, Property.Attribute.DontDelete);
         arguments.length.put(argv.length);
         CallContext cc;
         for(int i = 0; i < argv.length; i++)
         {
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Where is this definition?
-            arguments.Put(i, argv[i].idup, Property.Attribute.DontEnum, cc);
+            arguments.Set(i, argv[i].idup, Property.Attribute.DontEnum, cc);
         }
-        arguments.config(Text.callee, vnull, Property.Attribute.DontEnum);
+        arguments.DefineOwnProperty(Text.callee, vnull, Property.Attribute.DontEnum);
     }
 }
 

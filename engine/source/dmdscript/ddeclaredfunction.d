@@ -41,15 +41,15 @@ class DdeclaredFunction : Dfunction
     {
         super(cast(d_uint32)fd.parameters.length, Dfunction.getPrototype);
         assert(Dfunction.getPrototype);
-        assert(Prototype);
+        assert(GetPrototypeOf);
         this.fd = fd;
 
         // ECMA 3 13.2
         auto o = new Dobject(Dobject.getPrototype);        // step 9
         CallContext cc;
-        Put(Text.prototype, o, Property.Attribute.DontEnum, cc);  // step 11
+        Set(Text.prototype, o, Property.Attribute.DontEnum, cc);  // step 11
         // step 10
-        o.Put(Text.constructor, this, Property.Attribute.DontEnum, cc);
+        o.Set(Text.constructor, this, Property.Attribute.DontEnum, cc);
 
     }
 
@@ -87,7 +87,7 @@ class DdeclaredFunction : Dfunction
         if(fd.name)
         {
            vtmp.put(this);
-           actobj.Put(*fd.name, vtmp, Property.Attribute.DontDelete, cc);
+           actobj.Set(*fd.name, vtmp, Property.Attribute.DontDelete, cc);
         }
         // Instantiate the parameters
         {
@@ -95,7 +95,7 @@ class DdeclaredFunction : Dfunction
             foreach(Identifier* p; fd.parameters)
             {
                 Value* v = (a < arglist.length) ? &arglist[a++] : &vundefined;
-                actobj.Put(p.toString, *v, Property.Attribute.DontDelete, cc);
+                actobj.Set(p.toString, *v, Property.Attribute.DontDelete, cc);
             }
         }
 
@@ -103,7 +103,7 @@ class DdeclaredFunction : Dfunction
         // ECMA v3 10.1.8
         args = new Darguments(cc.caller, this, actobj, fd.parameters, arglist);
 
-        actobj.Put(Text.arguments, args, Property.Attribute.DontDelete, cc);
+        actobj.Set(Text.arguments, args, Property.Attribute.DontDelete, cc);
 
         // The following is not specified by ECMA, but seems to be supported
         // by jscript. The url www.grannymail.com has the following code
@@ -115,26 +115,28 @@ class DdeclaredFunction : Dfunction
         //		  this[i+1] = arguments[i]
         //	    }
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
-        Put(Text.arguments, args, Property.Attribute.DontDelete, cc);
+        Set(Text.arguments, args, Property.Attribute.DontDelete, cc);
         // make grannymail bug work
 
-        Dobject[] newScopex;
-        newScopex = this.scopex.dup;//copy this function object scope chain
-        assert(newScopex.length != 0);
-        newScopex ~= actobj;//and put activation object on top of it
+        auto newCC = CallContext(cc, actobj, this, fd);
+        // Dobject[] newScopex;
+        // newScopex = this.scopex.dup;//copy this function object scope chain
+        // assert(newScopex.length != 0);
+        // newScopex ~= actobj;//and put activation object on top of it
 
-        fd.instantiate(newScopex, actobj, Property.Attribute.DontDelete);
+        // fd.instantiate(newScopex, actobj, Property.Attribute.DontDelete);
+        fd.instantiate(newCC, Property.Attribute.DontDelete);
 
-        Dobject[] scopesave = cc.scopex;
-        cc.scopex = newScopex;
-        auto scoperootsave = cc.scoperoot;
-        cc.scoperoot++;//to accaunt extra activation object on scopex chain
-        Dobject variablesave = cc.variable;
-        cc.variable = actobj;
-        auto callersave = cc.caller;
-        cc.caller = this;
-        auto callerfsave = cc.callerf;
-        cc.callerf = fd;
+        // Dobject[] scopesave = cc.scopex;
+        // cc.scopex = newScopex;
+        // auto scoperootsave = cc.scoperoot;
+        // cc.scoperoot++;//to accaunt extra activation object on scopex chain
+        // Dobject variablesave = cc.variable;
+        // cc.variable = actobj;
+        // auto callersave = cc.caller;
+        // cc.caller = this;
+        // auto callerfsave = cc.callerf;
+        // cc.callerf = fd;
 
         Value[] p1;
         Value* v;
@@ -148,7 +150,9 @@ class DdeclaredFunction : Dfunction
             locals = p1;
         }
 
-        result = IR.call(cc, othis, fd.code, ret, locals.ptr);
+        // result = IR.call(cc, othis, fd.code, ret, locals.ptr);
+        result = IR.call(newCC, othis, fd.code, ret, locals.ptr);
+
         if (result !is null)
         {
             result.addTrace(fd.name !is null ?
@@ -158,17 +162,17 @@ class DdeclaredFunction : Dfunction
 
         delete p1;
 
-        cc.callerf = callerfsave;
-        cc.caller = callersave;
-        cc.variable = variablesave;
-        cc.scopex = scopesave;
-        cc.scoperoot = scoperootsave;
+        // cc.callerf = callerfsave;
+        // cc.caller = callersave;
+        // cc.variable = variablesave;
+        // cc.scopex = scopesave;
+        // cc.scoperoot = scoperootsave;
 
         // Remove the arguments object
         //Value* v;
         //v=Get(TEXT_arguments);
         //writef("1v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
-        Put(Text.arguments, vundefined, Property.Attribute.None, cc);
+        Set(Text.arguments, vundefined, Property.Attribute.None, cc);
         //actobj.Put(TEXT_arguments, &vundefined, 0);
 
         return result;

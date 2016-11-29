@@ -236,7 +236,7 @@ void PutValue(ref CallContext cc, in d_string s, Value* a)
     if(d == cc.globalroot)
     {
         o = scope_tos(cc.scopex);
-        o.Put(s, *a, Property.Attribute.None, cc);
+        o.Set(s, *a, Property.Attribute.None, cc);
         return;
     }
 
@@ -252,12 +252,12 @@ void PutValue(ref CallContext cc, in d_string s, Value* a)
         {
             // Overwrite existing property with new one
             v.checkReference();
-            o.Put(s, *a, Property.Attribute.None, cc);
+            o.Set(s, *a, Property.Attribute.None, cc);
             break;
         }
         if(d == cc.globalroot)
         {
-            o.Put(s, *a, Property.Attribute.None, cc);
+            o.Set(s, *a, Property.Attribute.None, cc);
             return;
         }
     }
@@ -296,7 +296,7 @@ void PutValue(ref CallContext cc, Identifier* id, Value* a)
                 break;
         }
     }
-    o.Put(*id, *a, Property.Attribute.None, cc);
+    o.Set(*id, *a, Property.Attribute.None, cc);
 }
 
 
@@ -411,7 +411,7 @@ struct IR
                     }
                     else
                     {
-                        o.Put(ca.name, err.entity,
+                        o.Set(ca.name, err.entity,
                               Property.Attribute.DontDelete, cc);
                     }
                     scopex ~= o;
@@ -529,7 +529,7 @@ struct IR
                        i32 >= 0)
                     {
                         if(b.vtype == Value.Type.Object)
-                            sta = b.object.Put(cast(d_uint32)i32, *c, *a,
+                            sta = b.object.Set(cast(d_uint32)i32, *c, *a,
                                                Property.Attribute.None, cc);
                         else
                             sta = b.Put(cast(d_uint32)i32, *c, *a, cc);
@@ -701,7 +701,7 @@ struct IR
                         sta = cannotConvert(b);
                         goto Lthrow;
                     }
-                    sta = o.Put((code + 3).id.value.text, *a,
+                    sta = o.Set((code + 3).id.value.text, *a,
                                 Property.Attribute.None, cc);
                     if(sta)
                         goto Lthrow;
@@ -735,11 +735,11 @@ struct IR
                     o = scope_tos(scopex);
                     assert(o);
                     if(o.HasProperty((code + 2).id.value.text))
-                        sta = o.Put((code+2).id.value.text,
+                        sta = o.Set((code+2).id.value.text,
                                     *(locals + (code + 1).index),
                                     Property.Attribute.DontDelete, cc);
                     else
-                        sta = cc.variable.Put((code + 2).id.value.text,
+                        sta = cc.variable.Set((code + 2).id.value.text,
                                               *(locals + (code + 1).index),
                                               Property.Attribute.DontDelete,
                                               cc);
@@ -1637,7 +1637,7 @@ struct IR
                     else
                     {
                         o = scope_tos(scopex);
-                        o.Put(s, *v, Property.Attribute.None, cc);
+                        o.Set(s, *v, Property.Attribute.None, cc);
                         code += IRTypes[Opcode.NextScope].size;
                     }
                     break;

@@ -84,9 +84,9 @@ package class D0base : Dobject
     {
         this(prototype);
         CallContext cc;
-        Put(Text.message, m, Property.Attribute.None, cc);
-        Put(Text.description, m, Property.Attribute.None, cc);
-        Put(Text.number, cast(d_number)0, Property.Attribute.None, cc);
+        Set(Text.message, m, Property.Attribute.None, cc);
+        Set(Text.description, m, Property.Attribute.None, cc);
+        Set(Text.number, cast(d_number)0, Property.Attribute.None, cc);
         exception = new ScriptException(m);
     }
 
@@ -96,9 +96,9 @@ package class D0base : Dobject
         assert(exception !is null);
         this.exception = exception;
         CallContext cc;
-        Put(Text.message, exception.msg, Property.Attribute.None, cc);
-        Put(Text.description, exception.toString, Property.Attribute.None, cc);
-        Put(Text.number, cast(d_number)exception.code,
+        Set(Text.message, exception.msg, Property.Attribute.None, cc);
+        Set(Text.description, exception.toString, Property.Attribute.None, cc);
+        Set(Text.number, cast(d_number)exception.code,
             Property.Attribute.None, cc);
     }
 }
@@ -119,12 +119,12 @@ template proto(alias TEXT_D1)
 
             d_string s;
 
-            config(Text.constructor, _ctor, Property.Attribute.DontEnum);
-            config(Text.name, TEXT_D1, Property.Attribute.None);
+            DefineOwnProperty(Text.constructor, _ctor, Property.Attribute.DontEnum);
+            DefineOwnProperty(Text.name, TEXT_D1, Property.Attribute.None);
             s = TEXT_D1 ~ ".prototype.message";
-            config(Text.message, s, Property.Attribute.None);
-            config(Text.description, s, Property.Attribute.None);
-            config(Text.number, cast(d_number)0, Property.Attribute.None);
+            DefineOwnProperty(Text.message, s, Property.Attribute.None);
+            DefineOwnProperty(Text.description, s, Property.Attribute.None);
+            DefineOwnProperty(Text.number, cast(d_number)0, Property.Attribute.None);
         }
     }
 
@@ -170,7 +170,7 @@ template proto(alias TEXT_D1)
             Dobject prototype = new D0_prototype();
             _prototype = prototype;
 
-            constructor.config(Text.prototype, prototype,
+            constructor.DefineOwnProperty(Text.prototype, prototype,
                                Property.Attribute.DontEnum |
                                Property.Attribute.DontDelete |
                                Property.Attribute.ReadOnly);

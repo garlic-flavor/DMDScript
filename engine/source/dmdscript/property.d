@@ -244,17 +244,6 @@ struct Property
     }
 
     //
-/* not used
-    deprecated
-    @property @safe @nogc pure nothrow
-    bool isKeyWord() const
-    {
-        return false;
-        // return 0 == (_attr & Attribute.KeyWord);
-    }
-*/
-
-    //
     @property @safe @nogc pure nothrow
     bool writable() const
     {
@@ -263,7 +252,7 @@ struct Property
 
     //
     @safe @nogc pure nothrow
-    void preventExtending()
+    void preventExtensions()
     {
         if (_attr & Attribute.Accessor)
             _attr |= Attribute.DontConfig;
@@ -285,16 +274,6 @@ struct Property
         return 0 == (_attr & (Attribute.DontDelete | Attribute.DontConfig));
     }
 
-/* not used
-    //
-    deprecated
-    @property @safe @nogc pure nothrow
-    bool deleted() const
-    {
-        return false;
-        // return 0 != (_attr & Attribute.Deleted);
-    }
-*/
     //
     @property @safe @nogc pure nothrow
     bool configurable() const
@@ -398,16 +377,22 @@ final class PropTable
      * Look up name and get its corresponding Property.
      * Return null if not found.
      */
-    @safe
+    @trusted
     Property* getProperty(in ref Value key, in size_t hash)
     {
         assert(Value.calcHash(key) == hash);
-        for (auto t = this; t !is null; t = t._previous)
+        for (auto t = cast(PropTable)this; t !is null; t = t._previous)
         {
             if (auto p = t._table.findExistingAlt(key, hash))
-                return p;
+                return cast(typeof(return))p;
         }
         return null;
+    }
+
+    @safe
+    Property* getOwnProperty(in ref Value key, in size_t hash)
+    {
+        return _table.findExistingAlt(key, hash);
     }
 
     Value* get(in ref Value key, in size_t hash, ref CallContext cc,
@@ -418,10 +403,12 @@ final class PropTable
         return null;
     }
 
+/+
     /*******************************
      * Determine if property exists for this object.
      * The enumerable flag means the DontEnum attribute cannot be set.
      */
+    deprecated
     @safe
     bool hasownproperty(ref Value key, in int enumerable)
     {
@@ -430,6 +417,7 @@ final class PropTable
         return false;
     }
 
+    deprecated
     @safe
     Property* hasproperty(in ref Value key, in size_t hash)
     {
@@ -440,8 +428,9 @@ final class PropTable
         }
         return null;
     }
++/
 
-    Value* put(in ref Value key, in size_t hash, ref Value value,
+    Value* set(in ref Value key, in size_t hash, ref Value value,
                in Property.Attribute attributes,
                ref CallContext cc, Dobject othis)
     {
@@ -461,7 +450,7 @@ final class PropTable
 
             if (!_canExtend(key, hash))
             {
-                p.preventExtending;
+                p.preventExtensions;
                 return &vundefined;
             }
 
@@ -498,7 +487,7 @@ final class PropTable
 
             if (!_canExtend(key, hash))
             {
-                p.preventExtending;
+                p.preventExtensions;
                 return &vundefined;
             }
 
@@ -520,7 +509,7 @@ final class PropTable
     }
 
     @safe
-    bool canput(in ref Value key, in size_t hash)
+    bool canset(in ref Value key, in size_t hash)
     {
         auto t = this;
         do
@@ -538,7 +527,7 @@ final class PropTable
     }
 
     @safe
-    int del(ref Value key)
+    bool del(ref Value key)
     {
         if(auto p = key in _table)
         {

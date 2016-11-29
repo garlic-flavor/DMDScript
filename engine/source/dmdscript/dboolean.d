@@ -118,7 +118,7 @@ class DbooleanPrototype : Dboolean
         super(Dobject.getPrototype);
         //Dobject f = Dfunction_prototype;
 
-        config(Text.constructor, Dboolean.getConstructor,
+        DefineOwnProperty(Text.constructor, Dboolean.getConstructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
@@ -166,7 +166,7 @@ static:
         _constructor = new DbooleanConstructor();
         _prototype = new DbooleanPrototype();
 
-        _constructor.config(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Text.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

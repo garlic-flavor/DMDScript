@@ -1073,7 +1073,7 @@ struct Value
     DError* Put(in d_string PropertyName, ref Value value, ref CallContext cc)
     {
         if(vtype == Type.Object)
-            return object.Put(PropertyName, value, Property.Attribute.None, cc);
+            return object.Set(PropertyName, value, Property.Attribute.None, cc);
         else
         {
             return CannotPutToPrimitiveError(
@@ -1085,7 +1085,7 @@ struct Value
                 ref CallContext cc)
     {
         if(vtype == Type.Object)
-            return object.Put(index, vindex, value,
+            return object.Set(index, vindex, value,
                               Property.Attribute.None, cc);
         else
         {

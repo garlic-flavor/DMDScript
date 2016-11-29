@@ -74,7 +74,7 @@ class DnativeFunction : Dfunction
         {
             NativeFunctionData* n = &nfd[i];
 
-            o.config(n.str, new DnativeFunction(n.pcall, n.str, n.length, f),
+            o.DefineOwnProperty(n.str, new DnativeFunction(n.pcall, n.str, n.length, f),
                      attributes);
         }
     }

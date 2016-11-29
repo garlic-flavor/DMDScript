@@ -1529,7 +1529,7 @@ class DdatePrototype : Ddate
 
         Dobject f = Dfunction.getPrototype;
 
-        config(Text.constructor, Ddate.getConstructor,
+        DefineOwnProperty(Text.constructor, Ddate.getConstructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
@@ -1628,7 +1628,7 @@ static:
         _constructor = new DdateConstructor();
         _prototype = new DdatePrototype();
 
-        _constructor.config(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Text.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

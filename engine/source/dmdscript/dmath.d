@@ -351,7 +351,7 @@ class Dmath : Dobject
         {
             DError* v;
 
-            v = config(table[u].name, table[u].value, attributes);
+            v = DefineOwnProperty(table[u].name, table[u].value, attributes);
             //writef("Put(%s,%.5g) = %x\n", *table[u].name, table[u].value, v);
         }
 
