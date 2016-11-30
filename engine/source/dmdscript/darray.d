@@ -36,12 +36,11 @@ import dmdscript.program;
 
 /* ===================== Darray_constructor ==================== */
 
-class DarrayConstructor : Dfunction
+class DarrayConstructor : Dconstructor
 {
     this()
     {
-        super(1, Dfunction.getPrototype);
-        name = "Array";
+        super(Text.Array, 1, Dfunction.getPrototype);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -64,7 +63,7 @@ class DarrayConstructor : Dfunction
             {
                 d_uint32 len;
 
-                len = v.toUint32();
+                len = v.toUint32(cc);
                 if(cast(double)len != v.number)
                 {
                     ret.putVundefined;
@@ -114,13 +113,6 @@ class DarrayConstructor : Dfunction
         //writef("Darray_constructor.Construct(): length = %g\n", a.length.number);
         return null;
     }
-
-    override DError* Call(
-        ref CallContext cc, Dobject othis, out Value ret, Value[] arglist)
-    {
-        // ECMA 15.4.1
-        return Construct(cc, ret, arglist);
-    }
 }
 
 
@@ -155,7 +147,7 @@ DError* Darray_prototype_toLocaleString(
     }
 
     v = othis.Get(Text.length, cc);
-    len = v ? v.toUint32() : 0;
+    len = v ? v.toUint32(cc) : 0;
 
     Program prog = cc.prog;
     if(!prog.slist)
@@ -267,7 +259,7 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
 
     //writef("array_join(othis = %p)\n", othis);
     v = othis.Get(Text.length, cc);
-    len = v ? v.toUint32() : 0;
+    len = v ? v.toUint32(cc) : 0;
     if(arglist.length == 0 || arglist[0].isUndefined())
         separator = Text.comma;
     else
@@ -298,7 +290,7 @@ DError* Darray_prototype_toSource(
     Value* v;
 
     v = othis.Get(Text.length, cc);
-    len = v ? v.toUint32() : 0;
+    len = v ? v.toUint32(cc) : 0;
     separator = ",";
 
     r = "[".idup;
@@ -331,7 +323,7 @@ DError* Darray_prototype_pop(
     v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
-    u = v.toUint32();
+    u = v.toUint32(cc);
     if(u == 0)
     {
         othis.Set(Text.length, 0.0, Property.Attribute.DontEnum, cc);
@@ -364,7 +356,7 @@ DError* Darray_prototype_push(
     v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
-    u = v.toUint32();
+    u = v.toUint32(cc);
     for(a = 0; a < arglist.length; a++)
     {
         othis.Set(u + a, arglist[a], Property.Attribute.None, cc);
@@ -391,7 +383,7 @@ DError* Darray_prototype_reverse(
     Value tmp;
 
     v = othis.Get(Text.length, cc);
-    len = v ? v.toUint32() : 0;
+    len = v ? v.toUint32(cc) : 0;
     pivot = len / 2;
     for(a = 0; a != pivot; a++)
     {
@@ -432,7 +424,7 @@ DError* Darray_prototype_shift(
     v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
-    len = v.toUint32();
+    len = v.toUint32(cc);
 
     if(len)
     {
@@ -479,7 +471,7 @@ DError* Darray_prototype_slice(
     v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
-    len = v.toUint32();
+    len = v.toUint32(cc);
 
 version(SliceSpliceExtension){
     d_number start;
@@ -487,24 +479,24 @@ version(SliceSpliceExtension){
     switch(arglist.length)
     {
     case 0:
-        start = vundefined.toNumber();
+        start = vundefined.toNumber(cc);
         end = len;
         break;
 
     case 1:
-        start = arglist[0].toNumber();
+        start = arglist[0].toNumber(cc);
         end = len;
         break;
 
     default:
-        start = arglist[0].toNumber();
+        start = arglist[0].toNumber(cc);
         if(arglist[1].isUndefined())
         {
             end = len;
         }
         else
         {
-            end = arglist[1].toNumber();
+            end = arglist[1].toNumber(cc);
         }
         break;
     }
@@ -647,7 +639,7 @@ extern (C) int compare_value(const void* x, const void* y)
             arglist[1] = *vy;
             ret.putVundefined();
             comparefn.Call(*comparecc, comparefn, ret, arglist);
-            n = ret.toNumber();
+            n = ret.toNumber(*comparecc);
             if(n < 0)
                 cmp = -1;
             else if(n > 0)
@@ -682,7 +674,7 @@ DError* Darray_prototype_sort(
 
     //writef("Array.prototype.sort()\n");
     v = othis.Get(Text.length, cc);
-    len = v ? v.toUint32() : 0;
+    len = v ? v.toUint32(cc) : 0;
 
     // This is not optimal, as isArrayIndex is done at least twice
     // for every array member. Additionally, the qsort() by index
@@ -748,7 +740,7 @@ DError* Darray_prototype_sort(
     {
         d_uint32 index;
 
-        if(p.isNoneAttribute && key.isArrayIndex(index))
+        if(p.isNoneAttribute && key.isArrayIndex(cc, index))
         {
             pindices[nprops] = index;
             pvalues[nprops] = *p.get(cc, othis);
@@ -813,7 +805,7 @@ DError* Darray_prototype_splice(
     v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
-    len = v.toUint32();
+    len = v.toUint32(cc);
 
 version(SliceSpliceExtension){
     d_number start;
@@ -822,18 +814,18 @@ version(SliceSpliceExtension){
     switch(arglist.length)
     {
     case 0:
-        start = vundefined.toNumber();
+        start = vundefined.toNumber(cc);
         deleteCount = 0;
         break;
 
     case 1:
-        start = arglist[0].toNumber();
-        deleteCount = vundefined.toNumber();
+        start = arglist[0].toNumber(cc);
+        deleteCount = vundefined.toNumber(cc);
         break;
 
     default:
-        start = arglist[0].toNumber();
-        deleteCount = arglist[1].toNumber();
+        start = arglist[0].toNumber(cc);
+        deleteCount = arglist[1].toNumber(cc);
         //checked later
         break;
     }
@@ -965,7 +957,7 @@ DError* Darray_prototype_unshift(
     v = othis.Get(Text.length, cc);
     if(!v)
         v = &vundefined;
-    len = v.toUint32();
+    len = v.toUint32(cc);
 
     for(k = len; k>0; k--)
     {
@@ -1068,8 +1060,8 @@ class Darray : Dobject
         {
             if(name == Text.length)
             {
-                i = v.toUint32();
-                if(i != v.toInteger())
+                i = v.toUint32(cc);
+                if(i != v.toInteger(cc))
                 {
                     return LengthIntError;
                 }
@@ -1082,7 +1074,7 @@ class Darray : Dobject
                     {
                         d_uint32 j;
 
-                        j = key.toUint32();
+                        j = key.toUint32(cc);
                         if(j >= i)
                             todelete ~= j;
                     }

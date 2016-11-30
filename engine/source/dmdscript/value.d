@@ -49,7 +49,7 @@ debug import std.stdio;
 
 struct Value
 {
-    uint  hash;               // cache 'hash' value
+    size_t  hash;               // cache 'hash' value
 
     enum Type : ubyte
     {
@@ -249,7 +249,7 @@ struct Value
     }
 
     @trusted
-    d_number toNumber()
+    d_number toNumber(ref CallContext cc)
     {
         final switch(vtype)
         {
@@ -290,7 +290,6 @@ struct Value
         case Type.Object:
         { Value val;
           Value* v;
-          CallContext cc;
           // void* a;
 
           //writefln("Vobject.toNumber()");
@@ -300,7 +299,7 @@ struct Value
           if(a)//rerr
                   return d_number.nan;*/
           if(v.isPrimitive)
-              return v.toNumber;
+              return v.toNumber(cc);
           else
               return d_number.nan;
         }
@@ -309,13 +308,13 @@ struct Value
     }
 
     @safe
-    d_time toDtime()
+    d_time toDtime(ref CallContext cc)
     {
-        return cast(d_time)toNumber();
+        return cast(d_time)toNumber(cc);
     }
 
     @safe
-    d_number toInteger()
+    d_number toInteger(ref CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -335,7 +334,7 @@ struct Value
         {
             d_number number;
 
-            number = toNumber;
+            number = toNumber(cc);
             if(number.isNaN)
                 number = 0;
             else if(number == 0 || isInfinity(number))
@@ -352,7 +351,7 @@ struct Value
     }
 
     @safe
-    d_int32 toInt32()
+    d_int32 toInt32(ref CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -373,7 +372,7 @@ struct Value
             d_number number;
             long ll;
 
-            number = toNumber();
+            number = toNumber(cc);
             if(isNaN(number))
                 int32 = 0;
             else if(number == 0 || isInfinity(number))
@@ -386,7 +385,7 @@ struct Value
                     number = -floor(-number);
 
                 ll = cast(long)number;
-                int32 = cast(int)ll;
+                int32 = cast(d_int32)ll;
             }
             return int32;
         }
@@ -395,7 +394,7 @@ struct Value
     }
 
     @safe
-    d_uint32 toUint32()
+    d_uint32 toUint32(ref CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -416,7 +415,7 @@ struct Value
             d_number number;
             long ll;
 
-            number = toNumber();
+            number = toNumber(cc);
             if(isNaN(number))
                 uint32 = 0;
             else if(number == 0 || isInfinity(number))
@@ -429,7 +428,7 @@ struct Value
                     number = -floor(-number);
 
                 ll = cast(long)number;
-                uint32 = cast(uint)ll;
+                uint32 = cast(d_uint32)ll;
             }
             return uint32;
         }
@@ -438,7 +437,48 @@ struct Value
     }
 
     @safe
-    d_uint16 toUint16()
+    d_int16 toInt16(ref CallContext cc)
+    {
+        import std.math : floor, isInfinity, isNaN;
+
+        final switch(vtype)
+        {
+        case Type.RefError:
+            throwRefError();
+            assert(0);
+        case Type.Undefined:
+        case Type.Null:
+            return 0;
+        case Type.Boolean:
+            return cast(d_int16)(dbool ? 1 : 0);
+
+        case Type.Number, Type.String, Type.Object, Type.Iter:
+        {
+            d_int16 int16;
+            d_number number;
+
+            number = toNumber(cc);
+            if(isNaN(number))
+                int16 = 0;
+            else if(number == 0 || isInfinity(number))
+                int16 = 0;
+            else
+            {
+                if(number > 0)
+                    number = floor(number);
+                else
+                    number = -floor(-number);
+
+                int16 = cast(d_int16)number;
+            }
+            return int16;
+        }
+        }
+        assert(0);
+    }
+
+    @safe
+    d_uint16 toUint16(ref CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -458,7 +498,7 @@ struct Value
             d_uint16 uint16;
             d_number number;
 
-            number = toNumber();
+            number = toNumber(cc);
             if(isNaN(number))
                 uint16 = 0;
             else if(number == 0 || isInfinity(number))
@@ -470,13 +510,135 @@ struct Value
                 else
                     number = -floor(-number);
 
-                uint16 = cast(ushort)number;
+                uint16 = cast(d_uint16)number;
             }
             return uint16;
         }
         }
         assert(0);
     }
+
+
+    @safe
+    d_int8 toInt8(ref CallContext cc)
+    {
+        import std.math : floor, isInfinity, isNaN;
+
+        final switch(vtype)
+        {
+        case Type.RefError:
+            throwRefError();
+            assert(0);
+        case Type.Undefined:
+        case Type.Null:
+            return 0;
+        case Type.Boolean:
+            return cast(d_int8)(dbool ? 1 : 0);
+
+        case Type.Number, Type.String, Type.Object, Type.Iter:
+        {
+            d_int8 int8;
+            d_number number;
+
+            number = toNumber(cc);
+            if(isNaN(number))
+                int8 = 0;
+            else if(number == 0 || isInfinity(number))
+                int8 = 0;
+            else
+            {
+                if(number > 0)
+                    number = floor(number);
+                else
+                    number = -floor(-number);
+
+                int8 = cast(d_int8)number;
+            }
+            return int8;
+        }
+        }
+        assert(0);
+    }
+
+    @safe
+    d_uint8 toUint8(ref CallContext cc)
+    {
+        import std.math : floor, isInfinity, isNaN;
+
+        final switch(vtype)
+        {
+        case Type.RefError:
+            throwRefError();
+            assert(0);
+        case Type.Undefined:
+        case Type.Null:
+            return 0;
+        case Type.Boolean:
+            return cast(d_uint8)(dbool ? 1 : 0);
+
+        case Type.Number, Type.String, Type.Object, Type.Iter:
+        {
+            d_uint8 uint8;
+            d_number number;
+
+            number = toNumber(cc);
+            if(isNaN(number))
+                uint8 = 0;
+            else if(number == 0 || isInfinity(number))
+                uint8 = 0;
+            else
+            {
+                if(number > 0)
+                    number = floor(number);
+                else
+                    number = -floor(-number);
+
+                uint8 = cast(d_uint8)number;
+            }
+            return uint8;
+        }
+        }
+        assert(0);
+    }
+
+    @safe
+    d_uint8 toUint8Clamp(ref CallContext cc)
+    {
+        import std.math : lrint, isInfinity, isNaN;
+
+        final switch(vtype)
+        {
+        case Type.RefError:
+            throwRefError();
+            assert(0);
+        case Type.Undefined:
+        case Type.Null:
+            return 0;
+        case Type.Boolean:
+            return cast(d_uint8)(dbool ? 1 : 0);
+
+        case Type.Number, Type.String, Type.Object, Type.Iter:
+        {
+            d_uint8 uint8;
+            d_number number;
+
+            number = toNumber(cc);
+            if      (isNaN(number))
+                uint8 = 0;
+            else if (number <= 0)
+                uint8 = 0;
+            else if (255 <= number)
+                uint8 = 255;
+            else if (isInfinity(number))
+                uint8 = d_uint8.max;
+            else
+                uint8 = cast(d_uint8)lrint(number);
+            return uint8;
+        }
+        }
+        assert(0);
+    }
+
 
     d_string toString()
     {
@@ -498,9 +660,9 @@ struct Value
         case Type.Number:
         {
             d_string str;
-            static enum d_string[10]  strs =
-                [   Text._0, Text._1, Text._2, Text._3, Text._4,
-                    Text._5, Text._6, Text._7, Text._8, Text._9 ];
+            enum d_string[10]  strs =
+                [ Text._0, Text._1, Text._2, Text._3, Text._4,
+                  Text._5, Text._6, Text._7, Text._8, Text._9 ];
 
             //writefln("Vnumber.tostr(%g)", number);
             if(isNaN(number))
@@ -692,6 +854,28 @@ struct Value
         assert(0);
     }
 
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // implement this.
+    @disable
+    d_string toPropertyKey()
+    {
+        return toString;
+    }
+
+    @disable
+    d_number toLength(ref CallContext cc)
+    {
+        import std.math : isInfinity;
+        enum MAX_LENGTH = (2UL ^^ 53) - 1;
+
+        auto len = toInteger(cc);
+        if      (len < 0) return 0;
+        else if (len.isInfinity) return MAX_LENGTH;
+        else if (MAX_LENGTH < len) return MAX_LENGTH;
+        else return len;
+    }
+
+
     @safe
     bool opEquals(in ref Value v) const
     {
@@ -703,7 +887,6 @@ struct Value
      * we don't care about lexicographic ordering.
      * This is faster.
      */
-
     static @trusted @nogc pure nothrow
     int stringcmp(in d_string s1, in d_string s2)
     {
@@ -787,6 +970,8 @@ struct Value
     }
 
 
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Is this needed?
     enum TypeName
     {
         Undefined = "Undefined",
@@ -826,12 +1011,12 @@ struct Value
         final switch(vtype)
         {
         case Type.RefError:
-        case Type.Undefined:   s = Text.undefined;     break;
-        case Type.Null:        s = Text.object;        break;
-        case Type.Boolean:     s = Text.boolean;       break;
-        case Type.Number:      s = Text.number;        break;
-        case Type.String:      s = Text.string;        break;
-        case Type.Object:      s = object.getTypeof(); break;
+        case Type.Undefined:   s = Text.undefined;   break;
+        case Type.Null:        s = Text.object;      break;
+        case Type.Boolean:     s = Text.boolean;     break;
+        case Type.Number:      s = Text.number;      break;
+        case Type.String:      s = Text.string;      break;
+        case Type.Object:      s = object.getTypeof; break;
         case Type.Iter:
             assert(0);
         }
@@ -892,12 +1077,12 @@ struct Value
     }
 
     @trusted
-    bool isArrayIndex(out d_uint32 index)
+    bool isArrayIndex(ref CallContext cc, out d_uint32 index)
     {
         switch(vtype)
         {
         case Type.Number:
-            index = toUint32();
+            index = toUint32(cc);
             return true;
         case Type.String:
             return StringToIndex(text, index);
@@ -908,11 +1093,118 @@ struct Value
         assert(0);
     }
 
+    @disable
+    bool isArray()
+    {
+        import dmdscript.darray : Darray;
+        if (vtype != Type.Object)
+            return false;
+        if (auto a = cast(Darray)object)
+            return true;
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// implement about Proxy exotic object
+        return false;
+    }
+
+    @disable
+    bool isCallable() const
+    {
+        import dmdscript.dfunction : Dfunction;
+        if (vtype != Type.Object)
+            return false;
+        return (cast(Dfunction)object) !is null;
+    }
+
+    @disable
+    bool isConstructor() const
+    {
+        import dmdscript.dfunction : Dconstructor;
+        if (vtype != Type.Object)
+            return false;
+        return (cast(Dconstructor)object) !is null;
+    }
+
+    @disable
+    bool isExtensible() const
+    {
+        if (vtype != Type.Object)
+            return false;
+        return object.IsExtensible;
+    }
+
+    @disable
+    bool isInteger() const
+    {
+        import std.math : floor, isInfinity;
+        if (vtype != Type.Number)
+            return false;
+        if (number.isInfinity)
+            return false;
+        return number.floor == number;
+    }
+
+
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    @disable
+    bool isPropertyKey() const
+    {
+        return vtype == Type.String;
+    }
+
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    @disable
+    bool isRegExp() const
+    {
+        import dmdscript.dregexp : Dregexp;
+        if (vtype != Type.Object)
+            return false;
+        return (cast(Dregexp)object) !is null;
+    }
+
+    @disable
+    bool SameValueZero(in ref Value r) const
+    {
+        import std.math : isNaN;
+        if (vtype != r.vtype)
+            return false;
+        if (vtype == Type.Number)
+        {
+            if (number.isNaN && r.number.isNaN)
+                return true;
+            return number == r.number;
+        }
+        else return SameValueNonNumber(r);
+    }
+
+    @disable
+    bool SameValueNonNumber(in ref Value r) const
+    {
+        assert(vtype == r.vtype);
+        final switch(vtype)
+        {
+        case Type.Undefined:
+        case Type.Null:
+            return true;
+        case Type.String:
+            return 0 == stringcmp(text, r.text);
+        case Type.Boolean:
+            return dbool == r.dbool;
+        case Type.Object:
+            return object is r.object;
+
+        case Type.RefError, Type.Number, Type.Iter:
+            assert(0);
+        }
+    }
+
+
     static @safe @nogc pure nothrow
     size_t calcHash(in size_t u)
     {
-        static if (size_t.sizeof == 4)
+        static if      (size_t.sizeof == 4)
             return u ^ 0x55555555;
+        else static if (size_t.sizeof == 8) // Is this OK?
+            return u ^ 0x5555555555555555;
         else static assert(0);
     }
 
@@ -1080,29 +1372,7 @@ struct Value
         return h;
     }
 
-    DError* Put(in d_string PropertyName, ref Value value, ref CallContext cc)
-    {
-        if(vtype == Type.Object)
-            return object.Set(PropertyName, value, Property.Attribute.None, cc);
-        else
-        {
-            return CannotPutToPrimitiveError(
-                PropertyName, value.toString, getType);
-        }
-    }
-
-    DError* Put(in d_uint32 index, ref Value vindex, ref Value value,
-                ref CallContext cc)
-    {
-        if(vtype == Type.Object)
-            return object.Set(index, vindex, value,
-                              Property.Attribute.None, cc);
-        else
-        {
-            return CannotPutIndexToPrimitiveError(
-                index, value.toString, getType);
-        }
-    }
+    //--------------------------------------------------------------------
 
     Value* Get(in d_string PropertyName, ref CallContext cc)
     {
@@ -1152,6 +1422,31 @@ struct Value
             //return &vundefined;
         }
     }
+
+    DError* Set(in d_string PropertyName, ref Value value, ref CallContext cc)
+    {
+        if(vtype == Type.Object)
+            return object.Set(PropertyName, value, Property.Attribute.None, cc);
+        else
+        {
+            return CannotPutToPrimitiveError(
+                PropertyName, value.toString, getType);
+        }
+    }
+
+    DError* Set(in d_uint32 index, ref Value vindex, ref Value value,
+                ref CallContext cc)
+    {
+        if(vtype == Type.Object)
+            return object.Set(index, vindex, value,
+                              Property.Attribute.None, cc);
+        else
+        {
+            return CannotPutIndexToPrimitiveError(
+                index, value.toString, getType);
+        }
+    }
+
 /+
     Value* Get(d_string PropertyName, uint hash)
     {
@@ -1245,6 +1540,35 @@ Value* signalingUndefined(in d_string id)
     p.putSignalingUndefined(id);
     return p;
 }
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// check this.
+@disable
+Value* CanonicalNumericIndexString(in d_string str)
+{
+    auto value = new Value;
+    if (str == "-0")
+    {
+        value.put(-0.0);
+    }
+    else
+    {
+        Value v;
+        CallContext cc;
+        v.put(str);
+        auto number = v.toNumber(cc);
+        debug
+        {
+            Value v2;
+            v2.put(number);
+            if(0 != Value.stringcmp(v2.toString, str))
+                return &vundefined;
+        }
+        value.put(number);
+    }
+    return value;
+}
+
 
 /* DError contains the ending status of a function.
 Mostly, this contains a ScriptException.

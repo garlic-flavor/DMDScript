@@ -532,12 +532,12 @@ struct IR
                             sta = b.object.Set(cast(d_uint32)i32, *c, *a,
                                                Property.Attribute.None, cc);
                         else
-                            sta = b.Put(cast(d_uint32)i32, *c, *a, cc);
+                            sta = b.Set(cast(d_uint32)i32, *c, *a, cc);
                     }
                     else
                     {
                         s = c.toString();
-                        sta = b.Put(s, *a, cc);
+                        sta = b.Set(s, *a, cc);
                     }
                     if(sta)
                         goto Lthrow;
@@ -680,7 +680,7 @@ struct IR
                         }
                         else
                         {
-                            a.put(a.toNumber() + v.toNumber());
+                            a.put(a.toNumber(cc) + v.toNumber(cc));
                             *v = *a;//full copy
                         }
                     }
@@ -807,21 +807,21 @@ struct IR
 
                 case Opcode.Neg:                 // a = -a
                     a = locals + (code + 1).index;
-                    n = a.toNumber();
+                    n = a.toNumber(cc);
                     a.put(-n);
                     code += IRTypes[Opcode.Neg].size;
                     break;
 
                 case Opcode.Pos:                 // a = a
                     a = locals + (code + 1).index;
-                    n = a.toNumber();
+                    n = a.toNumber(cc);
                     a.put(n);
                     code += IRTypes[Opcode.Pos].size;
                     break;
 
                 case Opcode.Com:                 // a = ~a
                     a = locals + (code + 1).index;
-                    i32 = a.toInt32();
+                    i32 = a.toInt32(cc);
                     a.put(~i32);
                     code += IRTypes[Opcode.Com].size;
                     break;
@@ -891,7 +891,7 @@ struct IR
                         }
                         else
                         {
-                            a.put(vb.toNumber() + vc.toNumber());
+                            a.put(vb.toNumber(cc) + vc.toNumber(cc));
                         }
                     }
 
@@ -902,7 +902,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toNumber() - c.toNumber());
+                    a.put(b.toNumber(cc) - c.toNumber(cc));
                     code += 4;
                     break;
 
@@ -910,7 +910,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toNumber() * c.toNumber());
+                    a.put(b.toNumber(cc) * c.toNumber(cc));
                     code += IRTypes[Opcode.Mul].size;
                     break;
 
@@ -919,7 +919,7 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
 
-                    a.put(b.toNumber() / c.toNumber());
+                    a.put(b.toNumber(cc) / c.toNumber(cc));
                     code += IRTypes[Opcode.Div].size;
                     break;
 
@@ -927,7 +927,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toNumber() % c.toNumber());
+                    a.put(b.toNumber(cc) % c.toNumber(cc));
                     code += IRTypes[Opcode.Mod].size;
                     break;
 
@@ -935,8 +935,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    i32 = b.toInt32();
-                    u32 = c.toUint32() & 0x1F;
+                    i32 = b.toInt32(cc);
+                    u32 = c.toUint32(cc) & 0x1F;
                     i32 <<= u32;
                     a.put(i32);
                     code += IRTypes[Opcode.ShL].size;
@@ -946,8 +946,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    i32 = b.toInt32();
-                    u32 = c.toUint32() & 0x1F;
+                    i32 = b.toInt32(cc);
+                    u32 = c.toUint32(cc) & 0x1F;
                     i32 >>= cast(d_int32)u32;
                     a.put(i32);
                     code += IRTypes[Opcode.ShR].size;
@@ -957,8 +957,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    i32 = b.toUint32();
-                    u32 = c.toUint32() & 0x1F;
+                    i32 = b.toUint32(cc);
+                    u32 = c.toUint32(cc) & 0x1F;
                     u32 = (cast(d_uint32)i32) >> u32;
                     a.put(u32);
                     code += IRTypes[Opcode.UShR].size;
@@ -968,7 +968,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toInt32() & c.toInt32());
+                    a.put(b.toInt32(cc) & c.toInt32(cc));
                     code += IRTypes[Opcode.And].size;
                     break;
 
@@ -976,7 +976,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toInt32() | c.toInt32());
+                    a.put(b.toInt32(cc) | c.toInt32(cc));
                     code += IRTypes[Opcode.Or].size;
                     break;
 
@@ -984,7 +984,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toInt32() ^ c.toInt32());
+                    a.put(b.toInt32(cc) ^ c.toInt32(cc));
                     code += IRTypes[Opcode.Xor].size;
                     break;
                 case Opcode.In:          // a = b in c
@@ -1016,9 +1016,9 @@ struct IR
                     v = b.Get(s, cc);
                     if(!v)
                         v = &vundefined;
-                    n = v.toNumber();
+                    n = v.toNumber(cc);
                     a.put(n + inc);
-                    b.Put(s, *a, cc);
+                    b.Set(s, *a, cc);
 
                     static assert(IRTypes[Opcode.PreInc].size
                                   == IRTypes[Opcode.PreIncS].size &&
@@ -1040,7 +1040,7 @@ struct IR
                         if(s is scopecache[si].s)
                         {
                             v = scopecache[si].v;
-                            n = v.toNumber() + inc;
+                            n = v.toNumber(cc) + inc;
                             v.put(n);
                             a.put(n);
                         }
@@ -1049,7 +1049,7 @@ struct IR
                             v = scope_get(cc, scopex, id, o);
                             if(v)
                             {
-                                n = v.toNumber() + inc;
+                                n = v.toNumber(cc) + inc;
                                 v.put(n);
                                 a.put(n);
                             }
@@ -1067,7 +1067,7 @@ struct IR
                         v = scope_get(scopex, id, o);
                         if(v)
                         {
-                            n = v.toNumber();
+                            n = v.toNumber(cc);
                             v.put(n + inc);
                             Value.copy(a, v);
                         }
@@ -1109,9 +1109,9 @@ struct IR
                     v = b.Get(s, cc);
                     if(!v)
                         v = &vundefined;
-                    n = v.toNumber();
+                    n = v.toNumber(cc);
                     a.put(n + 1);
-                    b.Put(s, *a, cc);
+                    b.Set(s, *a, cc);
                     a.put(n);
 
                     static assert(IRTypes[Opcode.PostInc].size
@@ -1125,7 +1125,7 @@ struct IR
                     if(v && v != &vundefined)
                     {
                         a = locals + (code + 1).index;
-                        n = v.toNumber();
+                        n = v.toNumber(cc);
                         v.put(n + 1);
                         a.put(n);
                     }
@@ -1151,9 +1151,9 @@ struct IR
                     v = b.Get(s, cc);
                     if(!v)
                         v = &vundefined;
-                    n = v.toNumber();
+                    n = v.toNumber(cc);
                     a.put(n - 1);
-                    b.Put(s, *a, cc);
+                    b.Set(s, *a, cc);
                     a.put(n);
 
                     static assert(IRTypes[Opcode.PostDecS].size
@@ -1166,7 +1166,7 @@ struct IR
                     v = scope_get(cc, scopex, id, o);
                     if(v && v != &vundefined)
                     {
-                        n = v.toNumber();
+                        n = v.toNumber(cc);
                         a = locals + (code + 1).index;
                         v.put(n - 1);
                         a.put(n);
@@ -1247,7 +1247,7 @@ struct IR
                             res = cmp(x, y) < 0;
                         }
                         else
-                            res = b.toNumber() < c.toNumber();
+                            res = b.toNumber(cc) < c.toNumber(cc);
                     }
                     a.put(res);
                     code += IRTypes[Opcode.CLT].size;
@@ -1272,7 +1272,7 @@ struct IR
                             res = cmp(x, y) <= 0;
                         }
                         else
-                            res = b.toNumber() <= c.toNumber();
+                            res = b.toNumber(cc) <= c.toNumber(cc);
                     }
                     a.put(res);
                     code += IRTypes[Opcode.CLE].size;
@@ -1297,7 +1297,7 @@ struct IR
                             res = cmp(x, y) > 0;
                         }
                         else
-                            res = b.toNumber() > c.toNumber();
+                            res = b.toNumber(cc) > c.toNumber(cc);
                     }
                     a.put(res);
                     code += IRTypes[Opcode.CGT].size;
@@ -1323,7 +1323,7 @@ struct IR
                             res = cmp(x, y) >= 0;
                         }
                         else
-                            res = b.toNumber() >= c.toNumber();
+                            res = b.toNumber(cc) >= c.toNumber(cc);
                     }
                     a.put(res);
                     code += IRTypes[Opcode.CGE].size;
@@ -1369,23 +1369,23 @@ struct IR
                     else if(tx == Value.TypeName.Number &&
                             ty == Value.TypeName.String)
                     {
-                        c.put(c.toNumber());
+                        c.put(c.toNumber(cc));
                         goto Lagain;
                     }
                     else if(tx == Value.TypeName.String &&
                             ty == Value.TypeName.Number)
                     {
-                        b.put(b.toNumber());
+                        b.put(b.toNumber(cc));
                         goto Lagain;
                     }
                     else if(tx == Value.TypeName.Boolean)
                     {
-                        b.put(b.toNumber());
+                        b.put(b.toNumber(cc));
                         goto Lagain;
                     }
                     else if(ty == Value.TypeName.Boolean)
                     {
-                        c.put(c.toNumber());
+                        c.put(c.toNumber(cc));
                         goto Lagain;
                     }
                     else if(ty == Value.TypeName.Object)
@@ -1532,7 +1532,7 @@ struct IR
                             res = cmp(x, y) < 0;
                         }
                         else
-                            res = b.toNumber() < c.toNumber();
+                            res = b.toNumber(cc) < c.toNumber(cc);
                     }
                     if(!res)
                         code += (code + 1).offset;
@@ -1564,7 +1564,7 @@ struct IR
                             res = cmp(x, y) <= 0;
                         }
                         else
-                            res = b.toNumber() <= c.toNumber();
+                            res = b.toNumber(cc) <= c.toNumber(cc);
                     }
                     if(!res)
                         code += (code + 1).offset;
@@ -1574,7 +1574,7 @@ struct IR
 
                 case Opcode.JLTC:        // if (b < constant) goto c
                     b = locals + (code + 2).index;
-                    res = (b.toNumber() < *cast(d_number *)(code + 3));
+                    res = (b.toNumber(cc) < *cast(d_number *)(code + 3));
                     if(!res)
                         code += (code + 1).offset;
                     else
@@ -1583,7 +1583,7 @@ struct IR
 
                 case Opcode.JLEC:        // if (b <= constant) goto c
                     b = locals + (code + 2).index;
-                    res = (b.toNumber() <= *cast(d_number *)(code + 3));
+                    res = (b.toNumber(cc) <= *cast(d_number *)(code + 3));
                     if(!res)
                         code += (code + 1).offset;
                     else
@@ -1620,7 +1620,7 @@ struct IR
                     else
                     {
                         b = locals + (code + 2).index;
-                        b.Put(s, *v, cc);
+                        b.Set(s, *v, cc);
 
                         static assert (IRTypes[Opcode.Next].size
                                        == IRTypes[Opcode.NextS].size);

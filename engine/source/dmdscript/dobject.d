@@ -19,7 +19,7 @@ module dmdscript.dobject;
 
 import dmdscript.script;
 import dmdscript.value : Value, DError, vundefined;
-import dmdscript.dfunction : Dfunction;
+import dmdscript.dfunction : Dfunction, Dconstructor;
 import dmdscript.dnative : DnativeFunction;
 import dmdscript.errmsgs;
 import dmdscript.text;
@@ -28,7 +28,7 @@ import dmdscript.text;
 
 /************************** Dobject_constructor *************************/
 
-class DobjectConstructor : Dfunction
+class DobjectConstructor : Dconstructor
 {
     this()
     {

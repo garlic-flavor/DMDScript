@@ -37,7 +37,7 @@ enum { EXEC_STRING, EXEC_ARRAY, EXEC_BOOLEAN, EXEC_INDEX };
 
 /* ===================== Dregexp_constructor ==================== */
 
-class DregexpConstructor : Dfunction
+class DregexpConstructor : Dconstructor
 {
     Value* input;
     Value* multiline;
@@ -53,7 +53,7 @@ class DregexpConstructor : Dfunction
 
     this()
     {
-        super(2, Dfunction.getPrototype);
+        super(Text.RegExp, 2, Dfunction.getPrototype);
 
         Value v;
         v.put(Text.Empty);
@@ -63,8 +63,6 @@ class DregexpConstructor : Dfunction
 
         Value vnm1;
         vnm1.put(-1);
-
-        name = "RegExp";
 
         // Static properties
         DefineOwnProperty(Text.input, v, Property.Attribute.DontDelete);
@@ -567,6 +565,7 @@ static:
             DregexpConstructor dc;
             uint i;
             d_int32 lasti;
+            CallContext cc;
 
             if(arglist.length)
                 s = arglist[0].toString();
@@ -586,7 +585,7 @@ static:
             r.multiline = 0 != dr.multiline.dbool;
 
             if(r.global && rettype != EXEC_INDEX)
-                lasti = cast(int)dr.lastIndex.toInteger();
+                lasti = cast(int)dr.lastIndex.toInteger(cc);
             else
                 lasti = 0;
 
@@ -646,7 +645,6 @@ static:
                 {
                     Darray a = new Darray();
 
-                    CallContext cc;
                     a.Set(Text.input, r.input, Property.Attribute.None, cc);
                     a.Set(Text.index, r.index, Property.Attribute.None, cc);
                     a.Set(Text.lastIndex, r.lastIndex,

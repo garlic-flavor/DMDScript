@@ -51,7 +51,7 @@ DError* Dstring_fromCharCode(
         uint u;
 
         v = &arglist[i];
-        u = v.toUint16();
+        u = v.toUint16(cc);
         //writef("string.fromCharCode(%x)", u);
         if(!isValidDchar(u))
         {
@@ -67,14 +67,13 @@ DError* Dstring_fromCharCode(
 
 /* ===================== Dstring_constructor ==================== */
 
-class DstringConstructor : Dfunction
+class DstringConstructor : Dconstructor
 {
     this()
     {
-        super(1, Dfunction.getPrototype);
-        name = "String";
+        super(Text.String, 1, Dfunction.getPrototype);
 
-        static enum NativeFunctionData[] nfd =
+        enum NativeFunctionData[] nfd =
         [
             { Text.fromCharCode, &Dstring_fromCharCode, 1 },
         ];
@@ -174,7 +173,7 @@ DError* Dstring_prototype_charAt(
     v = &othis.value;
     s = v.toString();
     v = arglist.length ? &arglist[0] : &vundefined;
-    pos = cast(int)v.toInteger();
+    pos = cast(int)v.toInteger(cc);
 
     result = Text.Empty;
 
@@ -220,7 +219,7 @@ DError* Dstring_prototype_charCodeAt(
     v = &othis.value;
     s = v.toString();
     v = arglist.length ? &arglist[0] : &vundefined;
-    pos = cast(int)v.toInteger();
+    pos = cast(int)v.toInteger(cc);
 
     result = d_number.nan;
 
@@ -297,7 +296,7 @@ DError* Dstring_prototype_indexOf(
     v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
 
     searchString = v1.toString();
-    pos = cast(int)v2.toInteger();
+    pos = cast(int)v2.toInteger(cc);
 
     if(pos < 0)
         pos = 0;
@@ -366,7 +365,7 @@ DError* Dstring_prototype_lastIndexOf(
         d_number n;
         Value* v = &arglist[1];
 
-        n = v.toNumber();
+        n = v.toNumber(cc);
         if(isNaN(n) || n > sUCSdim)
             pos = sUCSdim;
         else if(n < 0)
@@ -461,7 +460,7 @@ DError* Dstring_prototype_match(
                 break;
             }
             lasti = i;
-            i = cast(d_int32)r.lastIndex.toInt32();
+            i = cast(d_int32)r.lastIndex.toInt32(cc);
             if(i == lasti)              // if no source was consumed
                 i++;                    // consume a character
 
@@ -559,7 +558,7 @@ DError* Dstring_prototype_replace(
 
                 // If no source was consumed, consume a character
                 lasti = i;
-                i = cast(d_int32)r.lastIndex.toInt32();
+                i = cast(d_int32)r.lastIndex.toInt32(cc);
                 if(i == lasti)
                 {
                     i++;
@@ -661,13 +660,13 @@ DError* Dstring_prototype_slice(
         break;
 
     case 1:
-        start = arglist[0].toInt32();
+        start = arglist[0].toInt32(cc);
         end = sUCSdim;
         break;
 
     default:
-        start = arglist[0].toInt32();
-        end = arglist[1].toInt32();
+        start = arglist[0].toInt32(cc);
+        end = arglist[1].toInt32(cc);
         break;
     }
 
@@ -745,7 +744,7 @@ DError* Dstring_prototype_split(
     if(limit.isUndefined())
         lim = ~0u;
     else
-        lim = limit.toUint32();
+        lim = limit.toUint32(cc);
     p = 0;
     R = Dregexp.isRegExp(separator);
     if(R)       // regular expression
@@ -915,12 +914,12 @@ DError* Dstring_prototype_substr(
     length = 0;
     if(arglist.length >= 1)
     {
-        start = arglist[0].toInteger();
+        start = arglist[0].toInteger(cc);
         if(start < 0)
             start = sUCSdim + start;
         if(arglist.length >= 2)
         {
-            length = arglist[1].toInteger();
+            length = arglist[1].toInteger(cc);
             if(isNaN(length) || length < 0)
                 length = 0;
         }
@@ -953,9 +952,9 @@ DError* Dstring_prototype_substring(
     end = sUCSdim;
     if(arglist.length >= 1)
     {
-        start = arglist[0].toInteger();
+        start = arglist[0].toInteger(cc);
         if(arglist.length >= 2)
-            end = arglist[1].toInteger();
+            end = arglist[1].toInteger(cc);
         //writef("s = '%ls', start = %d, end = %d\n", s, start, end);
     }
 

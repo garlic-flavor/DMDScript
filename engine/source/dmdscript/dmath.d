@@ -27,12 +27,12 @@ import dmdscript.dnative;
 import dmdscript.text;
 import dmdscript.property;
 
-d_number math_helper(Value[] arglist)
+d_number math_helper(ref CallContext cc, Value[] arglist)
 {
     Value *v;
 
     v = arglist.length ? &arglist[0] : &vundefined;
-    return v.toNumber();
+    return v.toNumber(cc);
 }
 
 DError* Dmath_abs(
@@ -42,7 +42,7 @@ DError* Dmath_abs(
     // ECMA 15.8.2.1
     d_number result;
 
-    result = fabs(math_helper(arglist));
+    result = fabs(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -54,7 +54,7 @@ DError* Dmath_acos(
     // ECMA 15.8.2.2
     d_number result;
 
-    result = acos(math_helper(arglist));
+    result = acos(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -66,7 +66,7 @@ DError* Dmath_asin(
     // ECMA 15.8.2.3
     d_number result;
 
-    result = asin(math_helper(arglist));
+    result = asin(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -78,7 +78,7 @@ DError* Dmath_atan(
     // ECMA 15.8.2.4
     d_number result;
 
-    result = atan(math_helper(arglist));
+    result = atan(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -92,9 +92,9 @@ DError* Dmath_atan2(
     Value* v2;
     d_number result;
 
-    n1 = math_helper(arglist);
+    n1 = math_helper(cc, arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
-    result = atan2(n1, v2.toNumber());
+    result = atan2(n1, v2.toNumber(cc));
     ret.put(result);
     return null;
 }
@@ -106,7 +106,7 @@ DError* Dmath_ceil(
     // ECMA 15.8.2.6
     d_number result;
 
-    result = ceil(math_helper(arglist));
+    result = ceil(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -118,7 +118,7 @@ DError* Dmath_cos(
     // ECMA 15.8.2.7
     d_number result;
 
-    result = cos(math_helper(arglist));
+    result = cos(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -130,7 +130,7 @@ DError* Dmath_exp(
     // ECMA 15.8.2.8
     d_number result;
 
-    result = std.math.exp(math_helper(arglist));
+    result = std.math.exp(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -142,7 +142,7 @@ DError* Dmath_floor(
     // ECMA 15.8.2.9
     d_number result;
 
-    result = std.math.floor(math_helper(arglist));
+    result = std.math.floor(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -154,7 +154,7 @@ DError* Dmath_log(
     // ECMA 15.8.2.10
     d_number result;
 
-    result = log(math_helper(arglist));
+    result = log(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -171,7 +171,7 @@ DError* Dmath_max(
     result = -d_number.infinity;
     foreach(Value v; arglist)
     {
-        n = v.toNumber();
+        n = v.toNumber(cc);
         if(isNaN(n))
         {
             result = d_number.nan;
@@ -202,7 +202,7 @@ DError* Dmath_min(
     result = d_number.infinity;
     foreach(Value v; arglist)
     {
-        n = v.toNumber();
+        n = v.toNumber(cc);
         if(isNaN(n))
         {
             result = d_number.nan;
@@ -230,9 +230,9 @@ DError* Dmath_pow(
     Value *v2;
     d_number result;
 
-    n1 = math_helper(arglist);
+    n1 = math_helper(cc, arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
-    result = pow(n1, v2.toNumber());
+    result = pow(n1, v2.toNumber(cc));
     ret.put(result);
     return null;
 }
@@ -274,7 +274,7 @@ DError* Dmath_round(
     // ECMA 15.8.2.15
     d_number result;
 
-    result = math_helper(arglist);
+    result = math_helper(cc, arglist);
     if(!isNaN(result))
         result = copysign(std.math.floor(result + .5), result);
     ret.put(result);
@@ -288,7 +288,7 @@ DError* Dmath_sin(
     // ECMA 15.8.2.16
     d_number result;
 
-    result = sin(math_helper(arglist));
+    result = sin(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -300,7 +300,7 @@ DError* Dmath_sqrt(
     // ECMA 15.8.2.17
     d_number result;
 
-    result = sqrt(math_helper(arglist));
+    result = sqrt(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
@@ -312,7 +312,7 @@ DError* Dmath_tan(
     // ECMA 15.8.2.18
     d_number result;
 
-    result = tan(math_helper(arglist));
+    result = tan(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }

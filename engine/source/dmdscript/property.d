@@ -438,7 +438,7 @@ public static:
 final class PropTable
 {
     import dmdscript.dobject : Dobject;
-    import dmdscript.script : CallContext, d_uint32, d_string, vundefined;
+    import dmdscript.script : CallContext, d_uint32, d_string;
     import dmdscript.value : Value, DError;
     import dmdscript.RandAA : RandAA;
 
@@ -550,7 +550,7 @@ final class PropTable
         {
             if (!_canExtend(key, hash))
             {
-                return new DError(vundefined);
+                return CannotPutError;
             }
 
             auto p = Property(value, attributes);
@@ -653,7 +653,7 @@ private:
     PropTable _previous;
 
     @safe
-    bool _canExtend(in ref Value key, size_t hash)
+    bool _canExtend(in ref Value key, in size_t hash)
     {
         for (auto t = _previous; t !is null; t = t._previous)
         {

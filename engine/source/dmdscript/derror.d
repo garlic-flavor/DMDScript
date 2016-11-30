@@ -31,7 +31,7 @@ const uint FACILITY = 0x800A0000;
 
 /* ===================== Derror_constructor ==================== */
 
-class DerrorConstructor : Dfunction
+class DerrorConstructor : Dconstructor
 {
     this()
     {
@@ -72,13 +72,6 @@ class DerrorConstructor : Dfunction
         o = new Derror(m, n);
         ret.put(o);
         return null;
-    }
-
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
-                          Value[] arglist)
-    {
-        // ECMA v3 15.11.1
-        return Construct(cc, ret, arglist);
     }
 }
 
@@ -149,7 +142,7 @@ class Derror : Dobject
         }
         else if(m.isNumber())
         {
-            d_number n = m.toNumber();
+            d_number n = m.toNumber(cc);
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
             Set(Text.number, n, Property.Attribute.None, cc);
         }
@@ -160,7 +153,7 @@ class Derror : Dobject
         }
         else if(v2.isNumber())
         {
-            d_number n = v2.toNumber();
+            d_number n = v2.toNumber(cc);
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
             Set(Text.number, n, Property.Attribute.None, cc);
         }

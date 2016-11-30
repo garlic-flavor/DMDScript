@@ -28,12 +28,11 @@ import dmdscript.dnative;
 
 /* ===================== Dboolean_constructor ==================== */
 
-class DbooleanConstructor : Dfunction
+class DbooleanConstructor : Dconstructor
 {
     this()
     {
-        super(1, Dfunction.getPrototype);
-        name = "Boolean";
+        super(Text.Boolean, 1, Dfunction.getPrototype);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,

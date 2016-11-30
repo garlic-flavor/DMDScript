@@ -30,17 +30,16 @@ import dmdscript.dnative;
 
 /* ===================== Dnumber_constructor ==================== */
 
-class DnumberConstructor : Dfunction
+class DnumberConstructor : Dconstructor
 {
     this()
     {
-        super(1, Dfunction.getPrototype);
+        super(Text.Number, 1, Dfunction.getPrototype);
         auto attributes =
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly;
 
-        name = Text.Number;
         DefineOwnProperty(Text.MAX_VALUE, d_number.max, attributes);
         DefineOwnProperty(Text.MIN_VALUE, d_number.min_normal*d_number.epsilon,
             attributes);
@@ -56,7 +55,7 @@ class DnumberConstructor : Dfunction
         d_number n;
         Dobject o;
 
-        n = (arglist.length) ? arglist[0].toNumber() : 0;
+        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
         o = new Dnumber(n);
         ret.put(o);
         return null;
@@ -68,7 +67,7 @@ class DnumberConstructor : Dfunction
         // ECMA 15.7.1
         d_number n;
 
-        n = (arglist.length) ? arglist[0].toNumber() : 0;
+        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
         ret.put(n);
         return null;
     }
@@ -100,7 +99,7 @@ DError* Dnumber_prototype_toString(
         {
             d_number radix;
 
-            radix = arglist[0].toNumber();
+            radix = arglist[0].toNumber(cc);
             if(radix == 10.0 || arglist[0].isUndefined())
                 s = v.toString();
             else
@@ -232,7 +231,7 @@ DError* Dnumber_prototype_toFixed(
     if(arglist.length)
     {
         v = &arglist[0];
-        fractionDigits =  v.toInteger();
+        fractionDigits =  v.toInteger(cc);
     }
     else
         fractionDigits = 0;
@@ -242,7 +241,7 @@ DError* Dnumber_prototype_toFixed(
         return ValueOutOfRangeError(Text.toFixed, "fractonDigits");
     }
     v = &othis.value;
-    x = v.toNumber();
+    x = v.toNumber(cc);
     if(isNaN(x))
     {
         result = Text.NaN;              // return "NaN"
@@ -355,11 +354,11 @@ DError* Dnumber_prototype_toExponential(
     if(arglist.length)
     {
         varg = &arglist[0];
-        fractionDigits = varg.toInteger();
+        fractionDigits = varg.toInteger(cc);
     }else
         fractionDigits = FIXED_DIGITS;
     v = &othis.value;
-    x = v.toNumber();
+    x = v.toNumber(cc);
     if(isNaN(x))
     {
         result = Text.NaN;              // return "NaN"
@@ -491,7 +490,7 @@ DError* Dnumber_prototype_toPrecision(
     d_string result;
 
     v = &othis.value;
-    x = v.toNumber();
+    x = v.toNumber(cc);
 
     varg = (arglist.length == 0) ? &vundefined : &arglist[0];
 
@@ -529,7 +528,7 @@ DError* Dnumber_prototype_toPrecision(
                 goto Ldone;
             }
 
-            precision = varg.toInteger();
+            precision = varg.toInteger(cc);
             if(precision < 1 || precision > 21)
             {
                 ret.putVundefined();

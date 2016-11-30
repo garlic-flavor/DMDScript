@@ -33,7 +33,7 @@ debug import std.stdio;
 
 /* ========================== DdeclaredFunction ================== */
 
-class DdeclaredFunction : Dfunction
+class DdeclaredFunction : Dconstructor
 {
     FunctionDefinition fd;
 

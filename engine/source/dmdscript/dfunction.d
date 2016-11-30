@@ -33,7 +33,7 @@ import dmdscript.ddeclaredfunction;
 
 /* ===================== Dfunction_constructor ==================== */
 
-class DfunctionConstructor : Dfunction
+class DfunctionConstructor : Dconstructor
 {
     this()
     {
@@ -101,13 +101,6 @@ class DfunctionConstructor : Dfunction
         auto v = new DError;
         v.put(o);
         return v;
-    }
-
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
-                          Value[] arglist)
-    {
-        // ECMA 15.3.1
-        return Construct(cc, ret, arglist);
     }
 }
 
@@ -204,7 +197,7 @@ DError* Dfunction_prototype_apply(
         Value* x;
 
         x = a.Get(Text.length, cc);
-        len = x ? x.toUint32() : 0;
+        len = x ? x.toUint32(cc) : 0;
 
         Value[] p1;
         Value* v1;
@@ -296,36 +289,21 @@ class DfunctionPrototype : Dfunction
 
 /* ===================== Dfunction ==================== */
 
-class Dfunction : Dobject
-{ const (char)[] name;
-  Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
+abstract class Dfunction : Dobject
+{
+    Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
 
-  this(d_uint32 length)
-  {
-      this(length, Dfunction.getPrototype());
-  }
+    override abstract
+    DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                 Value[] arglist);
 
-  this(d_uint32 length, Dobject prototype)
-  {
-      super(prototype);
-      classname = Text.Function;
-      name = Text.Function;
-      CallContext cc;
-      Set(Text.length, length,
-          Property.Attribute.DontDelete |
-          Property.Attribute.DontEnum |
-          Property.Attribute.ReadOnly, cc);
-      Set(Text.arity, length,
-          Property.Attribute.DontDelete |
-          Property.Attribute.DontEnum |
-          Property.Attribute.ReadOnly, cc);
-  }
+    //
+    override immutable(char)[] getTypeof()
+    {     // ECMA 11.4.3
+        return Text._function;
+    }
 
-  override immutable(char)[] getTypeof()
-  {     // ECMA 11.4.3
-      return Text._function;
-  }
-
+    //
     override string toString()
     {
         import std.string : format;
@@ -337,6 +315,7 @@ class Dfunction : Dobject
         return s;
     }
 
+    //
     override DError* HasInstance(ref CallContext cc, out Value ret, ref Value v)
     {
         // ECMA v3 15.3.5.3
@@ -371,7 +350,41 @@ class Dfunction : Dobject
         return null;
     }
 
-static:
+protected:
+    const(tchar)[] name;
+
+    //
+    this(d_uint32 length)
+    {
+        this(length, Dfunction.getPrototype());
+    }
+
+    //
+    this(d_uint32 length, Dobject prototype)
+    {
+        this(Text.Function, length, prototype);
+    }
+
+    //
+    this(d_string name, d_uint32 length, Dobject prototype)
+    {
+        super(prototype);
+        classname = Text.Function;
+        this.name = name;
+        CallContext cc;
+        Set(Text.length, length,
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum |
+            Property.Attribute.ReadOnly, cc);
+        Set(Text.arity, length,
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum |
+            Property.Attribute.ReadOnly, cc);
+    }
+
+
+public static:
+    //
     Dfunction isFunction(Value* v)
     {
         Dfunction r;
@@ -387,19 +400,21 @@ static:
         return r;
     }
 
-
+    //
     @safe @nogc nothrow
     Dfunction getConstructor()
     {
         return _constructor;
     }
 
+    //
     @safe @nogc nothrow
     Dobject getPrototype()
     {
         return _prototype;
     }
 
+    //
     void initialize()
     {
         _constructor = new DfunctionConstructor();
@@ -413,8 +428,37 @@ static:
         _constructor.SetPrototypeOf = _prototype;
         _constructor.proptable.previous = _prototype.proptable;
     }
-private:
+private static:
     Dfunction _constructor;
     Dobject _prototype;
 }
 
+//
+abstract class Dconstructor : Dfunction
+{
+    //
+    abstract override
+    DError* Construct(ref CallContext cc, out Value ret, Value[] arglist);
+
+
+    //
+    override
+    DError* Call(ref CallContext cc, Dobject, out Value ret, Value[] arglist)
+    {
+        // ECMA 15.3.1
+        return Construct(cc, ret, arglist);
+    }
+
+protected:
+    //
+    this(d_uint32 length, Dobject prototype)
+    {
+        super(length, prototype);
+    }
+
+    //
+    this(d_string name, d_uint32 length, Dobject prototype)
+    {
+        super(name, length, prototype);
+    }
+}

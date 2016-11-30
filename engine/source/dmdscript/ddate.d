@@ -145,26 +145,26 @@ DError* Ddate_UTC(
     {
     default:
     case 7:
-        ms = arglist[6].toDtime();
+        ms = arglist[6].toDtime(cc);
         goto case;
     case 6:
-        seconds = arglist[5].toDtime();
+        seconds = arglist[5].toDtime(cc);
         goto case;
     case 5:
-        minutes = arglist[4].toDtime();
+        minutes = arglist[4].toDtime(cc);
         goto case;
     case 4:
-        hours = arglist[3].toDtime();
+        hours = arglist[3].toDtime(cc);
         time = makeTime(hours, minutes, seconds, ms);
         goto case;
     case 3:
-        date = arglist[2].toDtime();
+        date = arglist[2].toDtime(cc);
         goto case;
     case 2:
-        month = arglist[1].toDtime();
+        month = arglist[1].toDtime(cc);
         goto case;
     case 1:
-        year = arglist[0].toDtime();
+        year = arglist[0].toDtime(cc);
 
         if(year != d_time_nan && year >= 0 && year <= 99)
             year += 1900;
@@ -182,12 +182,11 @@ DError* Ddate_UTC(
 
 /* ===================== Ddate_constructor ==================== */
 
-class DdateConstructor : Dfunction
+class DdateConstructor : Dconstructor
 {
     this()
     {
-        super(7, Dfunction.getPrototype);
-        name = "Date";
+        super(Text.Date, 7, Dfunction.getPrototype);
 
         static enum NativeFunctionData[] nfd =
         [
@@ -228,28 +227,28 @@ class DdateConstructor : Dfunction
         {
         default:
         case 7:
-            ms = arglist[6].toDtime();
+            ms = arglist[6].toDtime(cc);
             mixin (breakOnNan("ms"));
             goto case;
         case 6:
-            seconds = arglist[5].toDtime();
+            seconds = arglist[5].toDtime(cc);
             mixin (breakOnNan("seconds"));
             goto case;
         case 5:
-            minutes = arglist[4].toDtime();
+            minutes = arglist[4].toDtime(cc);
             mixin (breakOnNan("minutes"));
             goto case;
         case 4:
-            hours = arglist[3].toDtime();
+            hours = arglist[3].toDtime(cc);
             mixin (breakOnNan("hours"));
             time = makeTime(hours, minutes, seconds, ms);
             goto case;
         case 3:
-            date = arglist[2].toDtime();
+            date = arglist[2].toDtime(cc);
             goto case;
         case 2:
-            month = arglist[1].toDtime();
-            year = arglist[0].toDtime();
+            month = arglist[1].toDtime(cc);
+            year = arglist[0].toDtime(cc);
 
             if(year != d_time_nan && year >= 0 && year <= 99)
                 year += 1900;
@@ -265,7 +264,7 @@ class DdateConstructor : Dfunction
             }
             else
             {
-                n = ret.toDtime();
+                n = ret.toDtime(cc);
                 n = timeClip(n);
             }
             break;
@@ -786,7 +785,7 @@ DError* Ddate_prototype_setTime(
     if(!arglist.length)
         n = d_time_nan;
     else
-        n = arglist[0].toDtime();
+        n = arglist[0].toDtime(cc);
     n = timeClip(n);
     othis.value.putVtime(n);
     ret.putVtime(n);
@@ -812,7 +811,7 @@ DError* Ddate_prototype_setMilliseconds(
         if(!arglist.length)
             ms = d_time_nan;
         else
-            ms = arglist[0].toDtime();
+            ms = arglist[0].toDtime(cc);
         time = makeTime(hourFromTime(t), minFromTime(t), secFromTime(t), ms);
         n = timeClip(localTimetoUTC(makeDate(day(t), time)));
         othis.value.putVtime(n);
@@ -839,7 +838,7 @@ DError* Ddate_prototype_setUTCMilliseconds(
         if(!arglist.length)
             ms = d_time_nan;
         else
-            ms = arglist[0].toDtime();
+            ms = arglist[0].toDtime(cc);
         time = makeTime(hourFromTime(t), minFromTime(t), secFromTime(t), ms);
         n = timeClip(makeDate(day(t), time));
         othis.value.putVtime(n);
@@ -868,13 +867,13 @@ DError* Ddate_prototype_setSeconds(
         {
         default:
         case 2:
-            ms = arglist[1].toDtime();
-            seconds = arglist[0].toDtime();
+            ms = arglist[1].toDtime(cc);
+            seconds = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
-            seconds = arglist[0].toDtime();
+            seconds = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -910,13 +909,13 @@ DError* Ddate_prototype_setUTCSeconds(
         {
         default:
         case 2:
-            ms = arglist[1].toDtime();
-            seconds = arglist[0].toDtime();
+            ms = arglist[1].toDtime(cc);
+            seconds = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
-            seconds = arglist[0].toDtime();
+            seconds = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -953,21 +952,21 @@ DError* Ddate_prototype_setMinutes(
         {
         default:
         case 3:
-            ms = arglist[2].toDtime();
-            seconds = arglist[1].toDtime();
-            minutes = arglist[0].toDtime();
+            ms = arglist[2].toDtime(cc);
+            seconds = arglist[1].toDtime(cc);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 2:
             ms = msFromTime(t);
-            seconds = arglist[1].toDtime();
-            minutes = arglist[0].toDtime();
+            seconds = arglist[1].toDtime(cc);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[0].toDtime();
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -1005,21 +1004,21 @@ DError* Ddate_prototype_setUTCMinutes(
         {
         default:
         case 3:
-            ms = arglist[2].toDtime();
-            seconds = arglist[1].toDtime();
-            minutes = arglist[0].toDtime();
+            ms = arglist[2].toDtime(cc);
+            seconds = arglist[1].toDtime(cc);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 2:
             ms = msFromTime(t);
-            seconds = arglist[1].toDtime();
-            minutes = arglist[0].toDtime();
+            seconds = arglist[1].toDtime(cc);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[0].toDtime();
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -1058,31 +1057,31 @@ DError* Ddate_prototype_setHours(
         {
         default:
         case 4:
-            ms = arglist[3].toDtime();
-            seconds = arglist[2].toDtime();
-            minutes = arglist[1].toDtime();
-            hours = arglist[0].toDtime();
+            ms = arglist[3].toDtime(cc);
+            seconds = arglist[2].toDtime(cc);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 3:
             ms = msFromTime(t);
-            seconds = arglist[2].toDtime();
-            minutes = arglist[1].toDtime();
-            hours = arglist[0].toDtime();
+            seconds = arglist[2].toDtime(cc);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 2:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[1].toDtime();
-            hours = arglist[0].toDtime();
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
             minutes = minFromTime(t);
-            hours = arglist[0].toDtime();
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -1122,31 +1121,31 @@ DError* Ddate_prototype_setUTCHours(
         {
         default:
         case 4:
-            ms = arglist[3].toDtime();
-            seconds = arglist[2].toDtime();
-            minutes = arglist[1].toDtime();
-            hours = arglist[0].toDtime();
+            ms = arglist[3].toDtime(cc);
+            seconds = arglist[2].toDtime(cc);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 3:
             ms = msFromTime(t);
-            seconds = arglist[2].toDtime();
-            minutes = arglist[1].toDtime();
-            hours = arglist[0].toDtime();
+            seconds = arglist[2].toDtime(cc);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 2:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[1].toDtime();
-            hours = arglist[0].toDtime();
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
             minutes = minFromTime(t);
-            hours = arglist[0].toDtime();
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -1182,7 +1181,7 @@ DError* Ddate_prototype_setDate(
         if(!arglist.length)
             date = d_time_nan;
         else
-            date = arglist[0].toDtime();
+            date = arglist[0].toDtime(cc);
         day = makeDay(yearFromTime(t), monthFromTime(t), date);
         n = timeClip(localTimetoUTC(makeDate(day, timeWithinDay(t))));
         othis.value.putVtime(n);
@@ -1209,7 +1208,7 @@ DError* Ddate_prototype_setUTCDate(
         if(!arglist.length)
             date = d_time_nan;
         else
-            date = arglist[0].toDtime();
+            date = arglist[0].toDtime(cc);
         day = makeDay(yearFromTime(t), monthFromTime(t), date);
         n = timeClip(makeDate(day, timeWithinDay(t)));
         othis.value.putVtime(n);
@@ -1238,12 +1237,12 @@ DError* Ddate_prototype_setMonth(
         {
         default:
         case 2:
-            month = arglist[0].toDtime();
-            date = arglist[1].toDtime();
+            month = arglist[0].toDtime(cc);
+            date = arglist[1].toDtime(cc);
             break;
 
         case 1:
-            month = arglist[0].toDtime();
+            month = arglist[0].toDtime(cc);
             date = dateFromTime(t);
             break;
 
@@ -1280,12 +1279,12 @@ DError* Ddate_prototype_setUTCMonth(
         {
         default:
         case 2:
-            month = arglist[0].toDtime();
-            date = arglist[1].toDtime();
+            month = arglist[0].toDtime(cc);
+            date = arglist[1].toDtime(cc);
             break;
 
         case 1:
-            month = arglist[0].toDtime();
+            month = arglist[0].toDtime(cc);
             date = dateFromTime(t);
             break;
 
@@ -1324,21 +1323,21 @@ DError* Ddate_prototype_setFullYear(
     {
     default:
     case 3:
-        date = arglist[2].toDtime();
-        month = arglist[1].toDtime();
-        year = arglist[0].toDtime();
+        date = arglist[2].toDtime(cc);
+        month = arglist[1].toDtime(cc);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 2:
         date = dateFromTime(t);
-        month = arglist[1].toDtime();
-        year = arglist[0].toDtime();
+        month = arglist[1].toDtime(cc);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 1:
         date = dateFromTime(t);
         month = monthFromTime(t);
-        year = arglist[0].toDtime();
+        year = arglist[0].toDtime(cc);
         break;
 
     case 0:
@@ -1376,21 +1375,21 @@ DError* Ddate_prototype_setUTCFullYear(
     {
     default:
     case 3:
-        month = arglist[2].toDtime();
-        date = arglist[1].toDtime();
-        year = arglist[0].toDtime();
+        month = arglist[2].toDtime(cc);
+        date = arglist[1].toDtime(cc);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 2:
         month = monthFromTime(t);
-        date = arglist[1].toDtime();
-        year = arglist[0].toDtime();
+        date = arglist[1].toDtime(cc);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 1:
         month = monthFromTime(t);
         date = dateFromTime(t);
-        year = arglist[0].toDtime();
+        year = arglist[0].toDtime(cc);
         break;
 
     case 0:
@@ -1429,7 +1428,7 @@ DError* Ddate_prototype_setYear(
     case 1:
         month = monthFromTime(t);
         date = dateFromTime(t);
-        year = arglist[0].toDtime();
+        year = arglist[0].toDtime(cc);
         if(0 <= year && year <= 99)
             year += 1900;
         day = makeDay(year, month, date);

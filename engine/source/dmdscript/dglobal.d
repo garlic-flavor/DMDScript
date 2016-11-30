@@ -229,7 +229,7 @@ DError* Dglobal_parseInt(
     if(arglist.length >= 2)
     {
         v2 = &arglist[1];
-        radix = v2.toInt32();
+        radix = v2.toInt32(cc);
     }
 
     if(radix)
@@ -501,7 +501,7 @@ DError* Dglobal_isNaN(
         v = &arglist[0];
     else
         v = &vundefined;
-    n = v.toNumber();
+    n = v.toNumber(cc);
     b = isNaN(n) ? true : false;
     ret.put(b);
     return null;
@@ -524,7 +524,7 @@ DError* Dglobal_isFinite(
         v = &arglist[0];
     else
         v = &vundefined;
-    n = v.toNumber();
+    n = v.toNumber(cc);
     b = isFinite(n) ? true : false;
     ret.put(b);
     return null;
