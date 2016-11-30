@@ -287,3 +287,7 @@ enum NoDefaultValueError = err!typeerror
 
 enum ReferenceError = err!(referenceerror, d_string)
     ("%s");
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// needs more proper implementation.
+enum CannotPutError = err!(typeerror)("Cannot put error");

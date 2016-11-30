@@ -18,7 +18,7 @@
 module dmdscript.dobject;
 
 import dmdscript.script;
-import dmdscript.value : Value, DError;
+import dmdscript.value : Value, DError, vundefined;
 import dmdscript.dfunction : Dfunction;
 import dmdscript.dnative : DnativeFunction;
 import dmdscript.errmsgs;
@@ -200,8 +200,6 @@ DError* Dobject_prototype_hasOwnProperty(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.value : vundefined;
-
     // ECMA v3 15.2.4.5
     Value* v;
 
@@ -216,8 +214,6 @@ DError* Dobject_prototype_isPrototypeOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.value : vundefined;
-
     // ECMA v3 15.2.4.6
     d_boolean result = false;
     Value* v;
@@ -250,8 +246,6 @@ DError* Dobject_prototype_propertyIsEnumerable(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.value : vundefined;
-
     // ECMA v3 15.2.4.7
     Value* v;
 
@@ -297,7 +291,9 @@ class Dobject
         value.put(this);
     }
 
-    // See_Also: Ecma-262-v7/6.1.7.2/Table 5
+    //
+    // See_Also: Ecma-262-v7/6.1.7.2 - 6.1.7.3
+    //
 
     //
     final @property @safe @nogc pure nothrow
@@ -400,9 +396,8 @@ class Dobject
         // ECMA 8.6.2.2
         Value key;
         key.put(PropertyName);
-        proptable.set(key, Value.calcHash(PropertyName), value, attributes,
-                      cc, this);
-        return null;
+        return proptable.set(key, Value.calcHash(PropertyName), value,
+                             attributes, cc, this);
     }
 
     //
@@ -410,13 +405,13 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        proptable.set(key.value, key.value.hash, value, attributes, cc, this);
-        return null;
+        return proptable.set(key.value, key.value.hash, value, attributes,
+                             cc, this);
     }
 
     //
     DError* Set(in d_string name, Dobject value,
-                   in Property.Attribute attributes, ref CallContext cc)
+                in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
         Value key;
@@ -424,8 +419,8 @@ class Dobject
         Value v;
         v.put(value);
 
-        proptable.set(key, Value.calcHash(name), v, attributes, cc, this);
-        return null;
+        return proptable.set(key, Value.calcHash(name), v, attributes,
+                             cc, this);
     }
 
     //
@@ -438,9 +433,8 @@ class Dobject
         Value v;
         v.put(n);
 
-        proptable.set(key, Value.calcHash(PropertyName), v, attributes,
-                      cc, this);
-        return null;
+        return proptable.set(key, Value.calcHash(PropertyName), v, attributes,
+                             cc, this);
     }
 
     //
@@ -453,9 +447,8 @@ class Dobject
         Value v;
         v.put(s);
 
-        proptable.set(key, Value.calcHash(PropertyName), v, attributes,
-                      cc, this);
-        return null;
+        return proptable.set(key, Value.calcHash(PropertyName), v, attributes,
+                             cc, this);
     }
 
     //
@@ -463,9 +456,8 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        proptable.set(vindex, Value.calcHash(index), value, attributes,
-                      cc, this);
-        return null;
+        return proptable.set(vindex, Value.calcHash(index), value, attributes,
+                             cc, this);
     }
 
     //
@@ -475,8 +467,8 @@ class Dobject
         // ECMA 8.6.2.2
         Value key;
         key.put(index);
-        proptable.set(key, Value.calcHash(index), value, attributes, cc, this);
-        return null;
+        return proptable.set(key, Value.calcHash(index), value, attributes,
+                             cc, this);
     }
 
     //--------------------------------------------------------------------
@@ -506,29 +498,45 @@ class Dobject
 
     //--------------------------------------------------------------------
     //
-    DError* DefineOwnProperty(T : Value)(in d_string PropertyName, ref T value,
-                                         in Property.Attribute attributes)
+    bool DefineOwnProperty(T : Value)(in d_string PropertyName, ref T value,
+                                      in Property.Attribute attributes)
     {
-        // ECMA 8.6.2.2
+        if (!_extensible)
+            return false;
         Value key;
         key.put(PropertyName);
-        proptable.config(key, Value.calcHash(PropertyName), value, attributes);
-        return null;
+        return proptable.config(key, Value.calcHash(PropertyName), value,
+                                attributes);
     }
 
     //
-    DError* DefineOwnProperty(T)(in d_string PropertyName, T v,
-                                 in Property.Attribute attributes)
+    bool DefineOwnProperty(T : Value)(
+        in d_string PropertyName, in size_t hash, ref T value,
+        in Property.Attribute attributes)
+    {
+        if (!_extensible)
+            return false;
+        Value key;
+        key.put(PropertyName);
+        return proptable.config(key, hash, value, attributes);
+    }
+
+    //
+    bool DefineOwnProperty(T)(in d_string PropertyName, T v,
+                              in Property.Attribute attributes)
         if (is(T : Dobject) || is(T : d_number) || is(T : d_string))
     {
+        if (!_extensible)
+            return false;
+
         Value value;
         value.put(v);
 
         Value key;
         key.put(PropertyName);
 
-        proptable.config(key, Value.calcHash(PropertyName), value, attributes);
-        return null;
+        return proptable.config(key, Value.calcHash(PropertyName), value,
+                                attributes);
     }
 
     //

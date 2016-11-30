@@ -20,7 +20,8 @@ module dmdscript.property;
 
 debug import std.stdio;
 
-// See_Also: Ecma-262-v7:6.1.7.1 Property Attributes
+// See_Also: Ecma-262-v7/6.1.7.1/Property Attributes
+//                      /6.2.4
 struct Property
 {
     import dmdscript.dfunction : Dfunction;
@@ -65,6 +66,70 @@ struct Property
         _attr = a | Attribute.Accessor & ~Attribute.DontOverride &
             ~Attribute.ReadOnly;
     }
+
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // implement this.
+    // See_Also: Ecma-262-v7/6.2.4.5
+    @disable
+    this(ref CallContext cc, Dobject obj)
+    {
+        import dmdscript.text : Text;
+        import dmdscript.errmsgs;
+        bool valueOrWritable = false;
+
+        assert(obj);
+        if (auto v = obj.Get(Text.enumerable, Text.enumerable.hash, cc))
+        {
+            if (!v.toBoolean)
+                _attr |= Attribute.DontEnum;
+        }
+        else
+            _attr |= Attribute.DontEnum;
+
+        if (auto v = obj.Get(Text.configurable, Text.configurable.hash, cc))
+        {
+            if (!v.toBoolean)
+                _attr |= Attribute.DontConfig;
+        }
+        else
+            _attr |= Attribute.DontConfig;
+
+        if (auto v = obj.Get(Text.value, Text.value.hash, cc))
+        {
+            _value = *v;
+            valueOrWritable = true;
+        }
+
+        if (auto v = obj.Get(Text.writable, Text.writable.hash, cc))
+        {
+            if (!v.toBoolean)
+                _attr |= Attribute.ReadOnly;
+            valueOrWritable = true;
+        }
+        else
+            _attr |= Attribute.ReadOnly;
+
+        if (auto v = obj.Get(Text.get, Text.get.hash, cc))
+        {
+            if (valueOrWritable)
+                throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
+            _attr |= Attribute.Accessor;
+            _Get = cast(Dfunction)v.toObject;
+            if (_Get is null)
+                throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
+        }
+
+        if (auto v = obj.Get(Text.set, Text.set.hash, cc))
+        {
+            if (valueOrWritable)
+                throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
+            _attr |= Attribute.Accessor;
+            _Set = cast(Dfunction)v.toObject;
+            if (_Set is null)
+                throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
+        }
+    }
+
 
     //
     @trusted @nogc pure nothrow
@@ -281,6 +346,69 @@ struct Property
         return 0 == (_attr & Attribute.DontConfig);
     }
 
+    // See_Also: Ecma-262-v7/6.2.4.1
+    @property @trusted @nogc pure nothrow
+    bool isAccessorDescriptor() const
+    {
+        if (0 == (_attr & Attribute.Accessor))
+            return false;
+        if (_Get is null && _Set is null)
+            return false;
+        return true;
+    }
+
+    // See_Also: Ecma-262-v7/6.2.4.2
+    @property @trusted @nogc pure nothrow
+    bool isDataDescriptor() const
+    {
+        if (_attr & Attribute.Accessor)
+            return false;
+        if (_value.isEmpty && (_attr & Attribute.ReadOnly))
+            return false;
+        return true;
+    }
+
+    // See_Also: Ecma-262-v7/6.2.4.3
+    @property @safe @nogc pure nothrow
+    bool isGenericDescriptor() const
+    {
+        return !isAccessorDescriptor && !isDataDescriptor;
+    }
+
+    // See_Also: Ecma-262-v7/6.2.4.4
+    Dobject toObject()
+    {
+        import std.exception : enforce;
+        import dmdscript.text : Text;
+        enum Attr = Attribute.None;
+
+        auto obj = new Dobject(Dobject.getPrototype);
+        Value tmp;
+        bool r;
+        if (_attr & Attribute.Accessor)
+        {
+            tmp.put(_Get);
+            obj.DefineOwnProperty(Text.get, Text.get.hash, tmp, Attr).enforce;
+            tmp.put(_Set);
+            obj.DefineOwnProperty(Text.set, Text.get.hash, tmp, Attr).enforce;
+        }
+        else
+        {
+            obj.DefineOwnProperty(Text.value, Text.value.hash, _value, Attr)
+                .enforce;
+            tmp.put(0 == (_attr & Attribute.ReadOnly));
+            obj.DefineOwnProperty(Text.writable, Text.writable.hash, tmp, Attr)
+                .enforce;
+        }
+        tmp.put(0 == (_attr & Attribute.DontEnum));
+        obj.DefineOwnProperty(Text.enumerable, Text.enumerable.hash, tmp, Attr)
+            .enforce;
+        tmp.put(0 == (_attr & Attribute.DontConfig));
+        obj.DefineOwnProperty(Text.configurable, Text.configurable.hash, tmp,
+                              Attr).enforce;
+        return obj;
+    }
+
 private:
     union
     {
@@ -293,65 +421,25 @@ private:
     }
 
     Attribute  _attr;
+
+
+public static:
+
+    // See_Also: Ecma-262-v7/6.2.4.6
+    @disable
+    Property* CompletePropertyDescriptor(Property* desc)
+    {
+        assert(desc);
+        return desc;
+    }
 }
 
-// See_Also: Ecma-262-v7:6.2.4 The Property Descriptor Specification Type
-/+
-@safe @nogc pure nothrow
-bool isAccessorDescriptor(in Property* desc)
-{
-    if (desc is null) return false;
-    if (desc.Get is null && desc.Set is null) return false;
-    return true;
-}
-@safe @nogc pure nothrow
-bool isDataDescriptor(in Property* desc)
-{
-    if (desc is null) return false;
-    if (desc.value.isUndefined && !desc.writable) return false;
-    return true;
-}
-@safe @nogc pure nothrow
-bool isGenericDescriptor(in Property* desc)
-{
-    if (desc is null) return false;
-    if (!isAccessorDescriptor(desc) && !isDataDescriptor(desc)) return true;
-    return false;
-}
-
-Dobject toObject(Property* desc)
-{
-    if (desc is null) return null;
-
-    auto obj = new Dobject(Dobject.getPrototype);
-    assert(obj !is null);
-
-    obj.Put("value", &(desc.value), Property.Attribute.None);
-
-    Value v;
-    v.putVboolean(desc.writable ? d_true : d_false);
-    obj.Put("writable", &v, Property.Attribute.None);
-
-    if (desc.Get !is null)
-        obj.Put("get", desc.Get, Property.Attribute.None);
-    if (desc.Set !is null)
-        obj.Put("set", desc.Set, Property.Attribute.None);
-
-    v.putVboolean(desc.enumerable ? d_true : d_false);
-    obj.Put("enumerable", &v, Property.Attribute.None);
-
-    v.putVboolean(desc.configurable ? d_true : d_false);
-    obj.Put("configurable", &v, Property.Attribute.None);
-
-    return obj;
-}
-+/
 /*********************************** PropTable *********************/
 final class PropTable
 {
     import dmdscript.dobject : Dobject;
     import dmdscript.script : CallContext, d_uint32, d_string, vundefined;
-    import dmdscript.value : Value;
+    import dmdscript.value : Value, DError;
     import dmdscript.RandAA : RandAA;
 
     //
@@ -430,10 +518,12 @@ final class PropTable
     }
 +/
 
-    Value* set(in ref Value key, in size_t hash, ref Value value,
-               in Property.Attribute attributes,
-               ref CallContext cc, Dobject othis)
+    DError* set(in ref Value key, in size_t hash, ref Value value,
+                in Property.Attribute attributes,
+                ref CallContext cc, Dobject othis)
     {
+        import dmdscript.errmsgs;
+
         assert(Value.calcHash(key) == hash);
 
         if (auto p = _table.findExistingAlt(key, hash))
@@ -445,24 +535,22 @@ final class PropTable
                 if (p.isKeyWord)
                     return null;
 */
-                return &vundefined;
+                return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
             if (!_canExtend(key, hash))
             {
                 p.preventExtensions;
-                return &vundefined;
+                return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
-            p.set(value, attributes, cc, othis);
-
-            return null;
+            return p.set(value, attributes, cc, othis);
         }
         else
         {
             if (!_canExtend(key, hash))
             {
-                return &vundefined;
+                return new DError(vundefined);
             }
 
             auto p = Property(value, attributes);
@@ -472,7 +560,7 @@ final class PropTable
     }
 
     //
-    Value* config(in ref Value key, in size_t hash, ref Value value,
+    bool config(in ref Value key, in size_t hash, ref Value value,
                   in Property.Attribute attributes)
     {
         assert(Value.calcHash(key) == hash);
@@ -482,30 +570,28 @@ final class PropTable
             auto na = cast(Property.Attribute)attributes;
             if (!p.canBeData(na))
             {
-                return &vundefined;
+                return false;
             }
 
             if (!_canExtend(key, hash))
             {
                 p.preventExtensions;
-                return &vundefined;
+                return false;
             }
 
             *p = Property(value, na);
-
-            return null;
         }
         else
         {
             if (!_canExtend(key, hash))
             {
-                return &vundefined;
+                return false;
             }
 
             auto p = Property(value, attributes);
             _table.insertAlt(key, p, hash);
-            return null;
         }
+        return true;
     }
 
     @safe

@@ -917,9 +917,9 @@ struct Value
     }
 
     static @safe @nogc pure nothrow
-    uint calcHash(in double d)
+    size_t calcHash(in double d)
     {
-        return calcHash(cast(uint)d);
+        return calcHash(cast(size_t)d);
     }
 
     static @trusted @nogc pure nothrow
@@ -970,18 +970,28 @@ struct Value
 
                     case 2:
                         hash *= 9;
-                        hash += *cast(ushort*)str;
+                        if (__ctfe)
+                            hash += str[0..2].toNative!ushort;
+                        else
+                            hash += *cast(ushort*)str;
                         break;
 
                     case 3:
                         hash *= 9;
-                        hash += (*cast(ushort*)str << 8) +
-                            (cast(ubyte *)str)[2];
+                        if (__ctfe)
+                            hash += (str[0..2].toNative!ushort << 8) +
+                                (cast(ubyte*)str)[2];
+                        else
+                            hash += (*cast(ushort*)str << 8) +
+                                (cast(ubyte*)str)[2];
                         break;
 
                     default:
                         hash *= 9;
-                        hash += *cast(uint*)str;
+                        if (__ctfe)
+                            hash += str[0..4].toNative!uint;
+                        else
+                            hash += *cast(uint*)str;
                         str += 4;
                         len -= 4;
                         continue;
@@ -1303,3 +1313,57 @@ DError* toDError(alias Proto = typeerror)(Throwable t)
     return v;
 }
 
+
+// for Value.calcHash at CTFE.
+private @safe @nogc pure nothrow
+T toNative(T, size_t N = T.sizeof)(in ubyte[] buf)
+{
+    assert(N <= buf.length);
+    static if      (N == 1)
+        return buf[0];
+    else static if (N == 2)
+    {
+        version      (BigEndian)
+            return ((cast(ushort)buf[0]) << 8) | (cast(ushort)buf[1]);
+        else version (LittleEndian)
+            return (cast(ushort)buf[0]) | ((cast(ushort)buf[1]) << 8);
+        else static assert(0);
+    }
+    else static if (N == 4)
+    {
+        version      (BigEndian)
+            return ((cast(uint)buf[0]) << 24) |
+                   ((cast(uint)buf[1]) << 16) |
+                   ((cast(uint)buf[2]) << 8) |
+                   (cast(uint)buf[3]);
+        else version (LittleEndian)
+            return (cast(uint)buf[0]) |
+                   ((cast(uint)buf[1]) << 8) |
+                   ((cast(uint)buf[2]) << 16) |
+                   ((cast(uint)buf[3]) << 24);
+        else static assert(0);
+    }
+    else static if (N == 8)
+    {
+        version      (BigEndian)
+            return ((cast(ulong)buf[0]) << 56) |
+                   ((cast(ulong)buf[1]) << 48) |
+                   ((cast(ulong)buf[2]) << 40) |
+                   ((cast(ulong)buf[3]) << 32) |
+                   ((cast(ulong)buf[4]) << 24) |
+                   ((cast(ulong)buf[5]) << 16) |
+                   ((cast(ulong)buf[6]) << 8) |
+                   (cast(ulong)buf[7]);
+        else version (LittleEndian)
+            return (cast(ulong)buf[0]) |
+                   ((cast(ulong)buf[1]) << 8) |
+                   ((cast(ulong)buf[2]) << 16) |
+                   ((cast(ulong)buf[3]) << 24) |
+                   ((cast(ulong)buf[4]) << 32) |
+                   ((cast(ulong)buf[5]) << 40) |
+                   ((cast(ulong)buf[6]) << 48) |
+                   ((cast(ulong)buf[7]) << 56);
+        else static assert(0);
+    }
+    else static assert(0);
+}

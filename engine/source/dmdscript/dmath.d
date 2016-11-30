@@ -349,9 +349,9 @@ class Dmath : Dobject
 
         for(size_t u = 0; u < table.length; u++)
         {
-            DError* v;
+            // DError* v;
 
-            v = DefineOwnProperty(table[u].name, table[u].value, attributes);
+            /*v =*/ DefineOwnProperty(table[u].name, table[u].value, attributes);
             //writef("Put(%s,%.5g) = %x\n", *table[u].name, table[u].value, v);
         }
 

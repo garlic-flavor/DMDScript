@@ -1058,7 +1058,7 @@ class Darray : Dobject
     {
         d_uint32 i;
         uint c;
-        Value* result;
+        DError* result;
 
         // ECMA 15.4.5.1
         Value key;
@@ -1139,7 +1139,7 @@ class Darray : Dobject
     }
 
     override DError* Set(in d_string PropertyName, in d_number n,
-                         in Property.Attribute attributes, ref CallContext cc)
+                        in Property.Attribute attributes, ref CallContext cc)
     {
         Value v;
 
@@ -1148,7 +1148,7 @@ class Darray : Dobject
     }
 
     override DError* Set(in d_string PropertyName, in d_string str,
-                         in Property.Attribute attributes, ref CallContext cc)
+                       in Property.Attribute attributes, ref CallContext cc)
     {
         Value v;
 

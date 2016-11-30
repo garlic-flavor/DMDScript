@@ -90,7 +90,7 @@ class Darguments : Dobject
 
     override
     DError* Set(in d_string PropertyName, ref Value value,
-                in Property.Attribute attributes, ref CallContext cc)
+               in Property.Attribute attributes, ref CallContext cc)
     {
         d_uint32 index;
 
