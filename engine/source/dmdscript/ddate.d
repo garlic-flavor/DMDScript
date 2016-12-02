@@ -1587,10 +1587,8 @@ class DdatePrototype : Ddate
         debug
         {
             CallContext cc;
-            Value key;
-            key.put(Text.toString);
-            assert(proptable.get(key, Value.calcHash(Text.toString), cc,
-                                 null));
+            auto key = PropertyKey(Text.toString);
+            assert(proptable.get(key, cc, null));
         }
     }
 }

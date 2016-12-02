@@ -17,7 +17,7 @@
 module dmdscript.text;
 
 //
-private struct _TextImpl
+struct _TextImpl
 {
     import dmdscript.script : d_string;
     const d_string entity;

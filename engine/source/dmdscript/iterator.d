@@ -18,12 +18,7 @@
 
 module dmdscript.iterator;
 
-import std.algorithm.sorting : sort;
-
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.value;
-import dmdscript.property;
+import dmdscript.dobject : Dobject;
 
 Dobject getPrototype(Dobject o)
 {
@@ -46,7 +41,9 @@ Dobject getPrototype(Dobject o)
 
 struct Iterator
 {
-    Value[] keys;
+    //import dmdscript.property; // causes infinity loop at compiling.
+
+    dmdscript.property.PropertyKey[] keys;
     size_t  keyindex;
     Dobject o;
     Dobject ostart;
@@ -64,6 +61,8 @@ struct Iterator
 
     void ctor(Dobject o)
     {
+        import std.algorithm.sorting : sort;
+
         debug foo = ITERATOR_VALUE;
         //writef("Iterator: o = %p, p = %p\n", o, p);
         ostart = o;
@@ -72,8 +71,11 @@ struct Iterator
         keyindex = 0;
     }
 
-    Value* next()
+    dmdscript.property.PropertyKey* next()
     {
+        import std.algorithm.sorting : sort;
+        import dmdscript.property : Property;
+
         Property* p;
 
         //writef("Iterator::done() p = %p\n", p);
@@ -89,7 +91,7 @@ struct Iterator
                 keys = o.proptable.keys.sort().release;
                 keyindex = 0;
             }
-            Value* key = &keys[keyindex];
+            dmdscript.property.PropertyKey* key = &keys[keyindex];
             p = *key in o.proptable;
             if(!p)                      // if no longer in property table
                 continue;

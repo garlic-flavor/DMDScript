@@ -47,7 +47,7 @@ private template shouldStoreHash(K)
 {
     import std.traits : isFloatingPoint, isIntegral;
 
-    enum bool shouldStoreHash = !isFloatingPoint !K && !isIntegral !K;
+    enum bool shouldStoreHash = !isFloatingPoint!K && !isIntegral!K;
 }
 
 /**An associative array class that uses randomized probing and open
@@ -57,7 +57,7 @@ private template shouldStoreHash(K)
  * default, the hash is stored unless the array is an array of floating point
  * or integer types.
  */
-final class RandAA(K, V, bool storeHash = shouldStoreHash!(K),
+final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
                    bool useRandom = false)
 {
 private:
@@ -115,6 +115,42 @@ private:
         size_t findExisting(ref K key)  const
         {
             immutable hashFull = getHash(key);
+            size_t pos = hashFull & mask;
+            static if(useRandom)
+                size_t rand = hashFull + 1;
+            else // static if (P == "perturb")
+            {
+                size_t perturb = hashFull;
+                size_t i = pos;
+            }
+
+            uint flag = void;
+            while(true)
+            {
+                flag = flags[pos];
+                if(flag == EMPTY || (hashFull == hashes[pos] &&
+                                     key == _keys[pos] && flag != EMPTY))
+                {
+                    break;
+                }
+                static if(useRandom)
+                {
+                    rand = rand * mul + add;
+                    pos = (rand + hashFull) & mask;
+                }
+                else // static if (P == "perturb")
+                {
+                    i = (i * 5 + perturb + 1);
+                    perturb /= PERTURB_SHIFT;
+                    pos = i & mask;
+                }
+            }
+            return (flag == USED) ? pos : size_t.max;
+        }
+
+        @trusted
+        size_t findExisting(in ref K key, in size_t hashFull)  const
+        {
             size_t pos = hashFull & mask;
             static if(useRandom)
                 size_t rand = hashFull + 1;
@@ -220,6 +256,41 @@ private:
             }
             return (flag == USED) ? pos : size_t.max;
         }
+
+        size_t findExisting(in ref K key, in size_t hashFull) const
+        {
+            size_t pos = hashFull & mask;
+            static if(useRandom)
+                size_t rand = hashFull + 1;
+            else //static if (P == "perturb")
+            {
+                size_t perturb = hashFull;
+                size_t i = pos;
+            }
+
+            uint flag = void;
+            while(true)
+            {
+                flag = flags[pos];
+                if(flag == EMPTY || (_keys[pos] == key && flag != EMPTY))
+                {
+                    break;
+                }
+                static if(useRandom)
+                {
+                    rand = rand * mul + add;
+                    pos = (rand + hashFull) & mask;
+                }
+                else // static if (P == "perturb")
+                {
+                    i = (i * 5 + perturb + 1);
+                    perturb /= PERTURB_SHIFT;
+                    pos = i & mask;
+                }
+            }
+            return (flag == USED) ? pos : size_t.max;
+        }
+
 
         size_t findForInsert(in ref K key, in size_t hashFull) const
         {
@@ -452,7 +523,7 @@ public:
     }
 
     @safe
-    void insertAlt(in ref K key, ref V val, size_t hashFull)
+    void insertAlt(in ref K key, ref V val, in size_t hashFull)
     {
         assignNoRehashCheck(key, val, hashFull);
         rehash();
@@ -559,6 +630,25 @@ public:
         import std.conv : text;
 
         size_t i = findExisting(index);
+        if(i == size_t.max)
+        {
+            throw new Exception(text("Could not find key ", index));
+        }
+        else
+        {
+            _length--;
+            nDead++;
+            flags[i] = REMOVED;
+            return vals[i];
+        }
+    }
+
+    @trusted
+    V remove(in ref K index, in size_t hash)
+    {
+        import std.conv : text;
+
+        size_t i = findExisting(index, hash);
         if(i == size_t.max)
         {
             throw new Exception(text("Could not find key ", index));

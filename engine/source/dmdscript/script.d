@@ -17,13 +17,6 @@
 
 module dmdscript.script;
 
-import dmdscript.value;
-import dmdscript.dobject;
-import dmdscript.program;
-import dmdscript.text;
-import dmdscript.functiondefinition;
-import dmdscript.opcodes;
-
 debug import std.stdio;
 /* =================== Configuration ======================= */
 
@@ -65,6 +58,8 @@ enum d_boolean d_false = 0;
 //
 class ScriptException : Exception
 {
+    import dmdscript.opcodes : IR;
+
     int code; // for what?
 
     @nogc @safe pure nothrow
@@ -308,6 +303,10 @@ private:
 //
 struct CallContext
 {
+    import dmdscript.dobject : Dobject;
+    import dmdscript.program : Program;
+    import dmdscript.functiondefinition : FunctionDefinition;
+
     Dobject[] scopex; // current scope chain
     Dobject            variable;         // object for variable instantiation (is scopex[scoperoot-1] is scopex[$-1])
     Dobject            global;           // global object (is scopex[globalroot - 1])
@@ -446,6 +445,7 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
 {
     import std.string : toStringz;
     import core.sys.posix.stdlib : strtod;
+    import dmdscript.text : Text;
 
     // Convert StringNumericLiteral using ECMA 9.3.1
     d_number number;

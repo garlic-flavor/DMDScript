@@ -354,6 +354,7 @@ struct IR
         Value* b;
         Value* c;
         Value* v;
+        PropertyKey* pk;
         DError* sta;
         Iterator* iter;
         Identifier* id;
@@ -503,7 +504,7 @@ struct IR
                         goto Lthrow;
                     }
                     c = locals + (code + 3).index;
-                    if(c.vtype == Value.Type.Number &&
+                    if(c.type == Value.Type.Number &&
                        (i32 = cast(d_int32)c.number) == c.number &&
                        i32 >= 0)
                     {
@@ -524,11 +525,11 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    if(c.vtype == Value.Type.Number &&
+                    if(c.type == Value.Type.Number &&
                        (i32 = cast(d_int32)c.number) == c.number &&
                        i32 >= 0)
                     {
-                        if(b.vtype == Value.Type.Object)
+                        if(b.type == Value.Type.Object)
                             sta = b.object.Set(cast(d_uint32)i32, *c, *a,
                                                Property.Attribute.None, cc);
                         else
@@ -656,8 +657,8 @@ struct IR
                                             }
                          +/
                     }
-                    else if(a.vtype == Value.Type.Number &&
-                            v.vtype == Value.Type.Number)
+                    else if(a.type == Value.Type.Number &&
+                            v.type == Value.Type.Number)
                     {
                         a.number += v.number;
                         v.number = a.number;
@@ -869,8 +870,8 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
 
-                    if(b.vtype == Value.Type.Number &&
-                       c.vtype == Value.Type.Number)
+                    if(b.type == Value.Type.Number &&
+                       c.type == Value.Type.Number)
                     {
                         a.put(b.number + c.number);
                     }
@@ -1232,8 +1233,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    if(b.vtype == Value.Type.Number &&
-                       c.vtype == Value.Type.Number)
+                    if(b.type == Value.Type.Number &&
+                       c.type == Value.Type.Number)
                         res = (b.number < c.number);
                     else
                     {
@@ -1257,8 +1258,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    if(b.vtype == Value.Type.Number &&
-                       c.vtype == Value.Type.Number)
+                    if(b.type == Value.Type.Number &&
+                       c.type == Value.Type.Number)
                         res = (b.number <= c.number);
                     else
                     {
@@ -1282,8 +1283,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    if(b.vtype == Value.Type.Number &&
-                       c.vtype == Value.Type.Number)
+                    if(b.type == Value.Type.Number &&
+                       c.type == Value.Type.Number)
                         res = (b.number > c.number);
                     else
                     {
@@ -1308,8 +1309,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    if(b.vtype == Value.Type.Number &&
-                       c.vtype == Value.Type.Number)
+                    if(b.type == Value.Type.Number &&
+                       c.type == Value.Type.Number)
                         res = (b.number >= c.number);
                     else
                     {
@@ -1511,8 +1512,8 @@ struct IR
                 case Opcode.JLT:         // if (b <   c) goto c
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    if(b.vtype == Value.Type.Number &&
-                       c.vtype == Value.Type.Number)
+                    if(b.type == Value.Type.Number &&
+                       c.type == Value.Type.Number)
                     {
                         if(b.number < c.number)
                             code += 4;
@@ -1543,8 +1544,8 @@ struct IR
                 case Opcode.JLE:         // if (b <=  c) goto c
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    if(b.vtype == Value.Type.Number &&
-                       c.vtype == Value.Type.Number)
+                    if(b.type == Value.Type.Number &&
+                       c.type == Value.Type.Number)
                     {
                         if(b.number <= c.number)
                             code += IRTypes[Opcode.JLE].size;
@@ -1614,13 +1615,13 @@ struct IR
                     s = (code + 3).id.value.text;
                     case_next:
                     iter = (locals + (code + 4).index).iter;
-                    v = iter.next();
-                    if(!v)
+                    pk = iter.next();
+                    if(!pk)
                         code += (code + 1).offset;
                     else
                     {
                         b = locals + (code + 2).index;
-                        b.Set(s, *v, cc);
+                        b.Set(s, pk.value, cc);
 
                         static assert (IRTypes[Opcode.Next].size
                                        == IRTypes[Opcode.NextS].size);
@@ -1631,13 +1632,13 @@ struct IR
                 case Opcode.NextScope:   // a, s, iter
                     s = (code + 2).id.value.text;
                     iter = (locals + (code + 3).index).iter;
-                    v = iter.next();
-                    if(!v)
+                    pk = iter.next();
+                    if(!pk)
                         code += (code + 1).offset;
                     else
                     {
                         o = scope_tos(scopex);
-                        o.Set(s, *v, Property.Attribute.None, cc);
+                        o.Set(s, pk.value, Property.Attribute.None, cc);
                         code += IRTypes[Opcode.NextScope].size;
                     }
                     break;

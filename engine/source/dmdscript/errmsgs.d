@@ -14,8 +14,12 @@ private struct err(alias Proto, ARGS...)
     d_string fmt;
 
     @safe @nogc pure nothrow
-    this(d_string fmt) { this.fmt = fmt; }
+    this(d_string fmt)
+    {
+        this.fmt = fmt;
+    }
 
+    @safe
     DError* opCall(ARGS args, string file = __FILE__,
                    size_t line = __LINE__) const
     {
@@ -291,3 +295,9 @@ enum ReferenceError = err!(referenceerror, d_string)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // needs more proper implementation.
 enum CannotPutError = err!(typeerror)("Cannot put error");
+enum CreateDataPropertyError = err!(typeerror)("Cannot create a property");
+enum CreateMethodPropertyError = err!(typeerror)("Cannot create a method property");
+enum NotCallableError = err!(typeerror, d_string)
+    ("%s is not callable");
+enum CantDeleteError = err!(typeerror, d_string)
+    ("fail to delete %s.");

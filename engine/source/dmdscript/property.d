@@ -20,6 +20,64 @@ module dmdscript.property;
 
 debug import std.stdio;
 
+//
+struct PropertyKey
+{
+    import dmdscript.value : Value;
+    import dmdscript.identifier : Identifier;
+
+    Value value;
+    alias value this;
+
+    @safe @nogc pure nothrow
+    this(T)(T arg) if (Value.CanContain!T)
+    {
+        value.put(arg, Value.calcHash(arg));
+    }
+
+    @safe @nogc pure nothrow
+    this(T)(T arg, in size_t h) if (Value.CanContain!T)
+    {
+        value.put(arg, h);
+    }
+
+    @safe @nogc pure nothrow
+    this(T : Identifier)(ref T arg)
+    {
+        value = arg.value;
+    }
+
+    @safe
+    this(T : Value)(ref T arg)
+    {
+        value.put(arg, arg.toHash);
+    }
+
+    @safe @nogc pure nothrow
+    this(T : Value)(ref T arg, in size_t hash)
+    {
+        value.put(arg, hash);
+    }
+
+    @safe @nogc pure nothrow
+    void put(T)(T arg) if (Value.CanContain!T)
+    {
+        value.put(arg, Value.calcHash(arg));
+    }
+
+    @safe @nogc pure nothrow
+    void put(T)(T arg, size_t h) if (Value.CanContain!T)
+    {
+        value.put(arg, h);
+    }
+
+    @safe @nogc pure nothrow
+    size_t toHash() const
+    {
+        return value.hash;
+    }
+}
+
 // See_Also: Ecma-262-v7/6.1.7.1/Property Attributes
 //                      /6.2.4
 struct Property
@@ -130,7 +188,6 @@ struct Property
         }
     }
 
-
     //
     @trusted @nogc pure nothrow
     bool canBeData(ref Attribute a)
@@ -185,6 +242,29 @@ struct Property
         return true;
     }
 
+
+    //
+    @safe @nogc pure nothrow
+    bool config(Attribute a)
+    {
+        if (_attr & Attribute.Accessor)
+        {
+            if (canBeAccessor(a))
+            {
+                _attr = a;
+                return true;
+            }
+        }
+        else
+        {
+            if (canBeData(a))
+            {
+                _attr = a;
+                return true;
+            }
+        }
+        return false;
+    }
 
     //
     @trusted @nogc pure nothrow
@@ -434,7 +514,7 @@ public static:
     }
 }
 
-/*********************************** PropTable *********************/
+//
 final class PropTable
 {
     import dmdscript.dobject : Dobject;
@@ -446,7 +526,7 @@ final class PropTable
     @safe pure nothrow
     this()
     {
-        _table = new RandAA!(Value, Property);
+        _table = new RandAA!(PropertyKey, Property);
     }
 
     //
@@ -456,7 +536,7 @@ final class PropTable
     }
 
     //
-    int opApply(scope int delegate(ref Value, ref Property) dg)
+    int opApply(scope int delegate(ref PropertyKey, ref Property) dg)
     {
         return _table.opApply(dg);
     }
@@ -466,27 +546,26 @@ final class PropTable
      * Return null if not found.
      */
     @trusted
-    Property* getProperty(in ref Value key, in size_t hash)
+    Property* getProperty(in ref PropertyKey key)
     {
-        assert(Value.calcHash(key) == hash);
         for (auto t = cast(PropTable)this; t !is null; t = t._previous)
         {
-            if (auto p = t._table.findExistingAlt(key, hash))
+            if (auto p = t._table.findExistingAlt(key, key.hash))
                 return cast(typeof(return))p;
         }
         return null;
     }
 
+    //
     @safe
-    Property* getOwnProperty(in ref Value key, in size_t hash)
+    Property* getOwnProperty(in ref PropertyKey key)
     {
-        return _table.findExistingAlt(key, hash);
+        return _table.findExistingAlt(key, key.hash);
     }
 
-    Value* get(in ref Value key, in size_t hash, ref CallContext cc,
-               Dobject othis)
+    Value* get(in ref PropertyKey key, ref CallContext cc, Dobject othis)
     {
-        if (auto p = getProperty(key, hash))
+        if (auto p = getProperty(key))
             return p.get(cc, othis);
         return null;
     }
@@ -518,15 +597,14 @@ final class PropTable
     }
 +/
 
-    DError* set(in ref Value key, in size_t hash, ref Value value,
+    //
+    DError* set(in ref PropertyKey key, ref Value value,
                 in Property.Attribute attributes,
                 ref CallContext cc, Dobject othis)
     {
         import dmdscript.errmsgs;
 
-        assert(Value.calcHash(key) == hash);
-
-        if (auto p = _table.findExistingAlt(key, hash))
+        if (auto p = _table.findExistingAlt(key, key.hash))
         {
             auto na = cast(Property.Attribute)attributes;
             if (!p.canSetValue(na))
@@ -538,7 +616,7 @@ final class PropTable
                 return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
-            if (!_canExtend(key, hash))
+            if (!_canExtend(key))
             {
                 p.preventExtensions;
                 return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -548,24 +626,46 @@ final class PropTable
         }
         else
         {
-            if (!_canExtend(key, hash))
+            if (!_canExtend(key))
             {
                 return CannotPutError;
             }
 
             auto p = Property(value, attributes);
-            _table.insertAlt(key, p, hash);
+            _table.insertAlt(key, p, key.hash);
             return null;
         }
     }
 
     //
-    bool config(in ref Value key, in size_t hash, ref Value value,
-                  in Property.Attribute attributes)
+    @safe
+    bool config(in ref PropertyKey key, in Property.Attribute attributes)
     {
-        assert(Value.calcHash(key) == hash);
+        import dmdscript.value : vundefined;
 
-        if (auto p = _table.findExistingAlt(key, hash))
+        if (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            return p.config(attributes);
+        }
+        else
+        {
+            if (!_canExtend(key))
+            {
+                return false;
+            }
+
+            auto p = Property(vundefined, attributes);
+            _table.insertAlt(key, p, key.hash);
+        }
+        return true;
+    }
+
+    //
+    @safe
+    bool config(in ref PropertyKey key, ref Value value,
+                in Property.Attribute attributes)
+    {
+        if (auto p = _table.findExistingAlt(key, key.hash))
         {
             auto na = cast(Property.Attribute)attributes;
             if (!p.canBeData(na))
@@ -573,7 +673,7 @@ final class PropTable
                 return false;
             }
 
-            if (!_canExtend(key, hash))
+            if (!_canExtend(key))
             {
                 p.preventExtensions;
                 return false;
@@ -583,24 +683,25 @@ final class PropTable
         }
         else
         {
-            if (!_canExtend(key, hash))
+            if (!_canExtend(key))
             {
                 return false;
             }
 
             auto p = Property(value, attributes);
-            _table.insertAlt(key, p, hash);
+            _table.insertAlt(key, p, key.hash);
         }
         return true;
     }
 
-    @safe
-    bool canset(in ref Value key, in size_t hash)
+    //
+    @trusted
+    bool canset(in ref PropertyKey key) const
     {
-        auto t = this;
+        auto t = cast(PropTable)this;
         do
         {
-            if (auto p = t._table.findExistingAlt(key, hash))
+            if (auto p = t._table.findExistingAlt(key, key.hash))
             {
                 if (p.isAccessor)
                     return p.configurable;
@@ -613,19 +714,19 @@ final class PropTable
     }
 
     @safe
-    bool del(ref Value key)
+    bool del(ref PropertyKey key)
     {
-        if(auto p = key in _table)
+        if(auto p = _table.findExistingAlt(key, key.hash))
         {
             if(!p.deletable)
                 return false;
-            _table.remove(key);
+            _table.remove(key, key.hash);
         }
         return true;                    // not found
     }
 
     @property @safe pure nothrow
-    Value[] keys()
+    PropertyKey[] keys()
     {
         return _table.keys;
     }
@@ -643,21 +744,21 @@ final class PropTable
     }
 
     @safe
-    Property* opBinaryRight(string OP : "in")(auto ref Value index)
+    Property* opBinaryRight(string OP : "in")(auto ref PropertyKey index)
     {
-        return index in _table;
+        return _table.findExistingAlt(index, index.hash);
     }
 
 private:
-    RandAA!(Value, Property) _table;
+    RandAA!(PropertyKey, Property) _table;
     PropTable _previous;
 
-    @safe
-    bool _canExtend(in ref Value key, in size_t hash)
+    @trusted
+    bool _canExtend(in ref PropertyKey key) const
     {
-        for (auto t = _previous; t !is null; t = t._previous)
+        for (auto t = cast(PropTable)_previous; t !is null; t = t._previous)
         {
-            if (auto p = t._table.findExistingAlt(key, hash))
+            if (auto p = t._table.findExistingAlt(key, key.hash))
             {
                 if (p.isAccessor)
                     return p.configurable;

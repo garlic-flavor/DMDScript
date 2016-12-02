@@ -22,7 +22,7 @@ import dmdscript.value : Value, DError, vundefined;
 import dmdscript.dfunction : Dfunction, Dconstructor;
 import dmdscript.dnative : DnativeFunction;
 import dmdscript.errmsgs;
-import dmdscript.text;
+import dmdscript.text : Text;
 
 //debug = LOG;
 
@@ -170,14 +170,14 @@ DError* Dobject_prototype_toSource(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.property : Property;
+    import dmdscript.property : Property, PropertyKey;
 
     d_string buf;
     int any;
 
     buf = "{";
     any = 0;
-    foreach(Value key, Property p; othis.proptable)
+    foreach(PropertyKey key, Property p; othis.proptable)
     {
         if (p.enumerable /*&& p.deleted /* not used?*/)
         {
@@ -200,11 +200,11 @@ DError* Dobject_prototype_hasOwnProperty(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    // ECMA v3 15.2.4.5
-    Value* v;
+    import dmdscript.property : PropertyKey;
 
-    v = arglist.length ? &arglist[0] : &vundefined;
-    ret.put(othis.proptable.getOwnProperty(*v, 0) !is null);
+    // ECMA v3 15.2.4.5
+    auto key = PropertyKey(arglist.length ? arglist[0] : vundefined);
+    ret.put(othis.proptable.getOwnProperty(key) !is null);
     return null;
 }
 
@@ -246,11 +246,10 @@ DError* Dobject_prototype_propertyIsEnumerable(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.property : PropertyKey;
     // ECMA v3 15.2.4.7
-    Value* v;
-
-    v = arglist.length ? &arglist[0] : &vundefined;
-    if (auto p = othis.proptable.getOwnProperty(*v, v.toHash))
+    auto key = PropertyKey(arglist.length ? arglist[0] : vundefined);
+    if (auto p = othis.proptable.getOwnProperty(key))
         ret.put(p.enumerable);
     else
         ret.put(false);
@@ -272,7 +271,7 @@ class DobjectPrototype : Dobject
 
 class Dobject
 {
-    import dmdscript.property : Property, PropTable;
+    import dmdscript.property : PropertyKey, Property, PropTable;
     import dmdscript.identifier : Identifier;
 
     PropTable proptable;
@@ -334,18 +333,18 @@ class Dobject
 
     //
     @safe
-    Property* GetOwnProperty(ref Value key)
+    Property* GetOwnProperty(in d_string PropertyName)
     {
-        return proptable.getOwnProperty(key, key.toHash);
+        auto key = PropertyKey(PropertyName);
+        return proptable.getOwnProperty(key);
     }
 
     //
     bool HasProperty(in d_string name)
     {
         // ECMA 8.6.2.4
-        Value key;
-        key.put(name);
-        return proptable.getProperty(key, Value.calcHash(name)) !is null;
+        auto key = PropertyKey(name);
+        return proptable.getProperty(key) !is null;
     }
 
     //--------------------------------------------------------------------
@@ -358,15 +357,15 @@ class Dobject
     //
     Value* Get(ref Identifier id, ref CallContext cc)
     {
-        return proptable.get(id.value, id.value.hash, cc, this);
+        auto key = PropertyKey(id);
+        return proptable.get(key, cc, this);
     }
 
     //
     Value* Get(in d_string PropertyName, in size_t hash, ref CallContext cc)
     {
-        Value key;
-        key.put(PropertyName);
-        return proptable.get(key, hash, cc, this);
+        auto key = PropertyKey(PropertyName, hash);
+        return proptable.get(key, cc, this);
     }
 
     //
@@ -374,9 +373,8 @@ class Dobject
     {
         Value* v;
 
-        Value key;
-        key.put(index);
-        v = proptable.get(key, Value.calcHash(index), cc, this);
+        auto key = PropertyKey(index);
+        v = proptable.get(key, cc, this);
         //    if (!v)
         //	v = &vundefined;
         return v;
@@ -385,7 +383,8 @@ class Dobject
     //
     Value* Get(in d_uint32 index, ref Value vindex, ref CallContext cc)
     {
-        return proptable.get(vindex, Value.calcHash(index), cc, this);
+        auto key = PropertyKey(vindex, Value.calcHash(index));
+        return proptable.get(key, cc, this);
     }
 
     //--------------------------------------------------------------------
@@ -394,10 +393,8 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        Value key;
-        key.put(PropertyName);
-        return proptable.set(key, Value.calcHash(PropertyName), value,
-                             attributes, cc, this);
+        auto key = PropertyKey(PropertyName);
+        return proptable.set(key, value, attributes, cc, this);
     }
 
     //
@@ -405,8 +402,8 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        return proptable.set(key.value, key.value.hash, value, attributes,
-                             cc, this);
+        auto pk = PropertyKey(key);
+        return proptable.set(pk, value, attributes, cc, this);
     }
 
     //
@@ -414,13 +411,9 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        Value key;
-        key.put(name);
-        Value v;
-        v.put(value);
-
-        return proptable.set(key, Value.calcHash(name), v, attributes,
-                             cc, this);
+        auto key = PropertyKey(name);
+        auto v = Value(value);
+        return proptable.set(key, v, attributes, cc, this);
     }
 
     //
@@ -428,13 +421,10 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        Value key;
-        key.put(PropertyName);
-        Value v;
-        v.put(n);
+        auto key = PropertyKey(PropertyName);
+        auto v = Value(n);
 
-        return proptable.set(key, Value.calcHash(PropertyName), v, attributes,
-                             cc, this);
+        return proptable.set(key, v, attributes, cc, this);
     }
 
     //
@@ -442,13 +432,10 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        Value key;
-        key.put(PropertyName);
-        Value v;
-        v.put(s);
+        auto key = PropertyKey(PropertyName);
+        auto v = Value(s);
 
-        return proptable.set(key, Value.calcHash(PropertyName), v, attributes,
-                             cc, this);
+        return proptable.set(key, v, attributes, cc, this);
     }
 
     //
@@ -456,8 +443,8 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        return proptable.set(vindex, Value.calcHash(index), value, attributes,
-                             cc, this);
+        auto key = PropertyKey(vindex, Value.calcHash(index));
+        return proptable.set(key, value, attributes, cc, this);
     }
 
     //
@@ -465,10 +452,8 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        Value key;
-        key.put(index);
-        return proptable.set(key, Value.calcHash(index), value, attributes,
-                             cc, this);
+        auto key = PropertyKey(index);
+        return proptable.set(key, value, attributes, cc, this);
     }
 
     //--------------------------------------------------------------------
@@ -481,8 +466,7 @@ class Dobject
     bool Delete(in d_string PropertyName)
     {
         // ECMA 8.6.2.5
-        Value key;
-        key.put(PropertyName);
+        auto key = PropertyKey(PropertyName);
         return proptable.del(key);
     }
 
@@ -490,23 +474,28 @@ class Dobject
     bool Delete(in d_uint32 index)
     {
         // ECMA 8.6.2.5
-        Value key;
-        key.put(index);
+        auto key = PropertyKey(index);
         return proptable.del(key);
     }
 
 
     //--------------------------------------------------------------------
     //
+    bool DefineOwnProperty(in d_string PropertyName,
+                           in Property.Attribute attributes)
+    {
+        auto key = PropertyKey(PropertyName);
+        return proptable.config(key, attributes);
+    }
+
+    //
     bool DefineOwnProperty(T : Value)(in d_string PropertyName, ref T value,
                                       in Property.Attribute attributes)
     {
         if (!_extensible)
             return false;
-        Value key;
-        key.put(PropertyName);
-        return proptable.config(key, Value.calcHash(PropertyName), value,
-                                attributes);
+        auto key = PropertyKey(PropertyName);
+        return proptable.config(key, value, attributes);
     }
 
     //
@@ -516,9 +505,8 @@ class Dobject
     {
         if (!_extensible)
             return false;
-        Value key;
-        key.put(PropertyName);
-        return proptable.config(key, hash, value, attributes);
+        auto key = PropertyKey(PropertyName, hash);
+        return proptable.config(key, value, attributes);
     }
 
     //
@@ -529,19 +517,14 @@ class Dobject
         if (!_extensible)
             return false;
 
-        Value value;
-        value.put(v);
-
-        Value key;
-        key.put(PropertyName);
-
-        return proptable.config(key, Value.calcHash(PropertyName), value,
-                                attributes);
+        auto value = Value(v);
+        auto key = PropertyKey(PropertyName);
+        return proptable.config(key, value, attributes);
     }
 
     //
     @safe pure nothrow
-    Value[] OwnPropertyKeys()
+    PropertyKey[] OwnPropertyKeys()
     {
         return proptable.keys;
     }
@@ -574,9 +557,8 @@ class Dobject
     int CanPut(in d_string PropertyName)
     {
         // ECMA 8.6.2.3
-        Value key;
-        key.put(PropertyName);
-        return proptable.canset(key, Value.calcHash(PropertyName));
+        auto key = PropertyKey(PropertyName);
+        return proptable.canset(key);
     }
 
     int implementsDelete()
@@ -721,6 +703,112 @@ class Dobject
         return false;
     }
 
+    //
+    @disable
+    DError* CreateDataProperty(in d_string PropertyName, ref Value value)
+    {
+        if (DefineOwnProperty(PropertyName, value, Property.Attribute.None))
+            return null;
+        else
+            return CreateDataPropertyError;
+    }
+
+    //
+    @disable
+    DError* CreateMethodProperty(in d_string PropertyName, ref Value value)
+    {
+        if (DefineOwnProperty(PropertyName, value, Property.Attribute.DontEnum))
+            return null;
+        else
+            return CreateMethodPropertyError;
+    }
+
+    @disable
+    void CreateDataPropertyOrThrow(in d_string PropertyName, ref Value value)
+    {
+        if (!DefineOwnProperty(PropertyName, value, Property.Attribute.None))
+            throw CreateDataPropertyError.toThrow;
+    }
+
+    @disable
+    void DefinePropertyOrThrow(in d_string PropertyName, ref Value value,
+                               in Property.Attribute attr)
+    {
+        if (!DefineOwnProperty(PropertyName, value, attr))
+            throw CreateMethodPropertyError.toThrow;
+    }
+
+    @disable
+    void DefinePropertyOrThrow(in d_string PropertyName,
+                               in Property.Attribute attr)
+    {
+        if (!DefineOwnProperty(PropertyName, attr))
+            throw CreateMethodPropertyError.toThrow;
+    }
+
+    @disable
+    void DeletePropertyOrThrow(in d_string PropertyName)
+    {
+        if (!Delete(PropertyName))
+            throw CantDeleteError.toThrow(PropertyName);
+    }
+
+
+    @disable
+    bool HasOwnProperty(in d_string PropertyName)
+    {
+        return GetOwnProperty(PropertyName) !is null;
+    }
+
+
+    enum IntegrityLevel
+    {
+        zero, sealed, frozen,
+    }
+
+/+
+    @disable
+    bool SetIntegrityLevel(in IntegrityLevel il)
+    {
+        if (!preventExtensions)
+            return false;
+        auto keys = OwnPropertyKeys;
+        if      (il == IntegrityLevel.sealed)
+        {
+            foreach(ref one; keys)
+                DefinePropertyOrThrow(one, Property.Attribute.DontConfig);
+        }
+        else if (il == IntegrityLevel.flozen)
+        {
+            foreach(ref one; keys)
+            {
+                if (auto desc = GetOwnProperty(one))
+                {
+                    if (desc.isAccessorDescriptor)
+                    {
+                        DefinePropertyOrThrow(one,
+                                              Property.Attribute.DontConfig);
+                    }
+                    else
+                    {
+                        DefinePropertyOrThrow(one,
+                                              Property.Attribute.DontConfig |
+                                              Property.Attribute.ReadOnly);
+                    }
+                }
+            }
+        }
+        return true;
+    }
++/
+
+    @disable
+    bool TestIntegrityLevel(in IntegrityLevel il)
+    {
+        return false;
+    }
+
+
 private:
     Dobject internal_prototype;
     bool _extensible = true;
@@ -770,7 +858,8 @@ public static:
         Dobject op = _prototype;
         Dobject f = Dfunction.getPrototype;
 
-        op.DefineOwnProperty(Text.constructor, _constructor, Property.Attribute.DontEnum);
+        op.DefineOwnProperty(Text.constructor, _constructor,
+                             Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [

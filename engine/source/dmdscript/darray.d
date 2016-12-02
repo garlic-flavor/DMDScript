@@ -736,7 +736,7 @@ DError* Darray_prototype_sort(
 
     // Now fill it with all the Property's that are array indices
     nprops = 0;
-    foreach(Value key, ref Property p; othis.proptable)
+    foreach(ref PropertyKey key, ref Property p; othis.proptable)
     {
         d_uint32 index;
 
@@ -1037,8 +1037,8 @@ class Darray : Dobject
     DError* Set(ref Identifier key, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
-        auto result = proptable.set(key.value, key.value.hash, value,
-                                    attributes, cc, this);
+        auto pk = PropertyKey(key);
+        auto result = proptable.set(pk, value, attributes, cc, this);
         if(!result)
             Set(key.value.text, value, attributes, cc);
         return null;
@@ -1053,9 +1053,8 @@ class Darray : Dobject
         DError* result;
 
         // ECMA 15.4.5.1
-        Value key;
-        key.put(name, Value.calcHash(name));
-        result = proptable.set(key, key.toHash, v, attributes, cc, this);
+        auto key = PropertyKey(name);
+        result = proptable.set(key, v, attributes, cc, this);
         if(!result)
         {
             if(name == Text.length)
@@ -1070,7 +1069,7 @@ class Darray : Dobject
                     // delete all properties with keys >= i
                     d_uint32[] todelete;
 
-                    foreach(Value key, ref Property p; proptable)
+                    foreach(PropertyKey key, ref Property p; proptable)
                     {
                         d_uint32 j;
 
@@ -1078,7 +1077,7 @@ class Darray : Dobject
                         if(j >= i)
                             todelete ~= j;
                     }
-                    Value k;
+                    PropertyKey k;
                     foreach(d_uint32 j; todelete)
                     {
                         k.put(j);
@@ -1087,8 +1086,7 @@ class Darray : Dobject
                 }
                 ulength = i;
                 length.number = i;
-                proptable.set(key, key.toHash, v,
-                              attributes | Property.Attribute.DontEnum,
+                proptable.set(key, v, attributes | Property.Attribute.DontEnum,
                               cc, this);
             }
 
@@ -1154,7 +1152,11 @@ class Darray : Dobject
         if(index >= ulength)
             ulength = index + 1;
 
-        proptable.set(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/, value, attributes, cc, this);
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // Why is a magic number used?
+        auto key = PropertyKey(vindex, index ^ 0x55555555);
+        proptable.set(key, value, attributes, cc, this);
+        // proptable.set(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/, value, attributes, cc, this);
         return null;
     }
 
@@ -1167,9 +1169,8 @@ class Darray : Dobject
             length.number = ulength;
         }
 
-        Value key;
-        key.put(index);
-        proptable.set(key, Value.calcHash(index), value, attributes, cc, this);
+        auto key = PropertyKey(index);
+        proptable.set(key, value, attributes, cc, this);
         return null;
     }
 
@@ -1182,10 +1183,10 @@ class Darray : Dobject
             length.number = ulength;
         }
 
-        Value key, value;
-        key.put(index);
+        Value value;
+        auto key = PropertyKey(index);
         value.put(str);
-        proptable.set(key, Value.calcHash(index), value, attributes, cc, this);
+        proptable.set(key, value, attributes, cc, this);
         return null;
     }
 
@@ -1211,7 +1212,9 @@ class Darray : Dobject
             return &length;
         }
         else
+        {
             return Dobject.Get(PropertyName, hash, cc);
+        }
     }
 
     override Value* Get(in d_uint32 index, ref CallContext cc)
@@ -1219,9 +1222,8 @@ class Darray : Dobject
         Value* v;
 
         //writef("Darray.Get(%p, %d)\n", &proptable, index);
-        Value key;
-        key.put(index);
-        v = proptable.get(key, Value.calcHash(index), cc, this);
+        auto key = PropertyKey(index);
+        v = proptable.get(key, cc, this);
         return v;
     }
 
@@ -1230,8 +1232,13 @@ class Darray : Dobject
         Value* v;
 
         //writef("Darray.Get(%p, %d)\n", &proptable, index);
-        v = proptable.get(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/,
-                          cc, this);
+        auto key = PropertyKey(vindex, index ^ 0x55555555);
+        v = proptable.get(key, cc, this);
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // Why is a magic number used?
+        // v = proptable.get(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/,
+        //                   cc, this);
         return v;
     }
 
@@ -1243,8 +1250,7 @@ class Darray : Dobject
             return 0;           // can't delete 'length' property
         else
         {
-            Value key;
-            key.put(PropertyName);
+            auto key = PropertyKey(PropertyName);
             return proptable.del(key);
         }
     }
@@ -1252,8 +1258,7 @@ class Darray : Dobject
     override bool Delete(in d_uint32 index)
     {
         // ECMA 8.6.2.5
-        Value key;
-        key.put(index);
+        auto key = PropertyKey(index);
         return proptable.del(key);
     }
 
