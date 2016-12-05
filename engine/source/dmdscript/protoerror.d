@@ -76,17 +76,16 @@ package class D0base : Dobject
 
     protected this(Dobject prototype)
     {
-        super(prototype);
-        classname = Text.Error;
+        super(prototype, Key.Error);
     }
 
     protected this(Dobject prototype, d_string m)
     {
         this(prototype);
         CallContext cc;
-        Set(Text.message, m, Property.Attribute.None, cc);
-        Set(Text.description, m, Property.Attribute.None, cc);
-        Set(Text.number, cast(d_number)0, Property.Attribute.None, cc);
+        Set(Key.message, m, Property.Attribute.None, cc);
+        Set(Key.description, m, Property.Attribute.None, cc);
+        Set(Key.number, cast(d_number)0, Property.Attribute.None, cc);
         exception = new ScriptException(m);
     }
 
@@ -96,9 +95,9 @@ package class D0base : Dobject
         assert(exception !is null);
         this.exception = exception;
         CallContext cc;
-        Set(Text.message, exception.msg, Property.Attribute.None, cc);
-        Set(Text.description, exception.toString, Property.Attribute.None, cc);
-        Set(Text.number, cast(d_number)exception.code,
+        Set(Key.message, exception.msg, Property.Attribute.None, cc);
+        Set(Key.description, exception.toString, Property.Attribute.None, cc);
+        Set(Key.number, cast(d_number)exception.code,
             Property.Attribute.None, cc);
     }
 }
@@ -119,12 +118,12 @@ template proto(alias TEXT_D1)
 
             d_string s;
 
-            DefineOwnProperty(Text.constructor, _ctor, Property.Attribute.DontEnum);
-            DefineOwnProperty(Text.name, TEXT_D1, Property.Attribute.None);
+            DefineOwnProperty(Key.constructor, _ctor, Property.Attribute.DontEnum);
+            DefineOwnProperty(Key.name, TEXT_D1, Property.Attribute.None);
             s = TEXT_D1 ~ ".prototype.message";
-            DefineOwnProperty(Text.message, s, Property.Attribute.None);
-            DefineOwnProperty(Text.description, s, Property.Attribute.None);
-            DefineOwnProperty(Text.number, cast(d_number)0, Property.Attribute.None);
+            DefineOwnProperty(Key.message, s, Property.Attribute.None);
+            DefineOwnProperty(Key.description, s, Property.Attribute.None);
+            DefineOwnProperty(Key.number, cast(d_number)0, Property.Attribute.None);
         }
     }
 
@@ -170,7 +169,7 @@ template proto(alias TEXT_D1)
             Dobject prototype = new D0_prototype();
             _prototype = prototype;
 
-            constructor.DefineOwnProperty(Text.prototype, prototype,
+            constructor.DefineOwnProperty(Key.prototype, prototype,
                                Property.Attribute.DontEnum |
                                Property.Attribute.DontDelete |
                                Property.Attribute.ReadOnly);
@@ -178,10 +177,10 @@ template proto(alias TEXT_D1)
     }
 }
 
-alias proto!(Text.SyntaxError) syntaxerror;
-alias proto!(Text.EvalError) evalerror;
-alias proto!(Text.ReferenceError) referenceerror;
-alias proto!(Text.RangeError) rangeerror;
-alias proto!(Text.TypeError) typeerror;
-alias proto!(Text.URIError) urierror;
+alias proto!(Key.SyntaxError) syntaxerror;
+alias proto!(Key.EvalError) evalerror;
+alias proto!(Key.ReferenceError) referenceerror;
+alias proto!(Key.RangeError) rangeerror;
+alias proto!(Key.TypeError) typeerror;
+alias proto!(Key.URIError) urierror;
 

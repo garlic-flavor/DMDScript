@@ -178,7 +178,7 @@ class Program
 
         // Set argv and argc for execute
         arguments = new Darray();
-        dglobal.Set(Text.arguments, arguments,
+        dglobal.Set(Key.arguments, arguments,
                     Property.Attribute.DontDelete |
                     Property.Attribute.DontEnum, *cc);
         arguments.length.put(args.length);

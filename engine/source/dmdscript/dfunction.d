@@ -111,17 +111,8 @@ DError* Dfunction_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    immutable(char)[] s;
-    Dfunction f;
-
-    //writef("function.prototype.toString()\n");
     // othis must be a Function
-    if(!othis.isClass(Text.Function))
-    {
-        ret.putVundefined();
-        return TsNotTransferrableError;
-    }
-    else
+    if (auto f = cast(Dfunction)othis)
     {
         // Generate string that looks like a FunctionDeclaration
         // FunctionDeclaration:
@@ -130,9 +121,13 @@ DError* Dfunction_prototype_toString(
         // If anonymous function, the name should be "anonymous"
         // per ECMA 15.3.2.1.19
 
-        f = cast(Dfunction)othis;
-        s = f.toString();
+        auto s = f.toString;
         ret.put(s);
+    }
+    else
+    {
+        ret.putVundefined();
+        return TsNotTransferrableError;
     }
     return null;
 }
@@ -146,6 +141,8 @@ DError* Dfunction_prototype_apply(
     // ECMA v3 15.3.4.3
 
     import core.sys.posix.stdlib : alloca;
+    import dmdscript.darray : Darray;
+    import dmdscript.darguments : Darguments;
 
     Value* thisArg;
     Value* argArray;
@@ -188,7 +185,7 @@ DError* Dfunction_prototype_apply(
         a = argArray.toObject();
 
         // Must be array or arguments object
-        if(!a.isDarray() && !a.isDarguments())
+        if(((cast(Darray)a) is null) && ((cast(Darguments)a) is null))
             goto Ltypeerror;
 
         uint len;
@@ -196,7 +193,7 @@ DError* Dfunction_prototype_apply(
         Value[] alist;
         Value* x;
 
-        x = a.Get(Text.length, cc);
+        x = a.Get(Key.length, cc);
         len = x ? x.toUint32(cc) : 0;
 
         Value[] p1;
@@ -262,15 +259,14 @@ class DfunctionPrototype : Dfunction
 
         auto attributes = Property.Attribute.DontEnum;
 
-        classname = Text.Function;
         name = "prototype";
-        DefineOwnProperty(Text.constructor, Dfunction.getConstructor, attributes);
+        DefineOwnProperty(Key.constructor, Dfunction.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.toString, &Dfunction_prototype_toString, 0 },
-            { Text.apply, &Dfunction_prototype_apply, 2 },
-            { Text.call, &Dfunction_prototype_call, 1 },
+            { Key.toString, &Dfunction_prototype_toString, 0 },
+            { Key.apply, &Dfunction_prototype_apply, 2 },
+            { Key.call, &Dfunction_prototype_call, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, attributes);
@@ -318,6 +314,8 @@ abstract class Dfunction : Dobject
     //
     override DError* HasInstance(ref CallContext cc, out Value ret, ref Value v)
     {
+        import std.conv : to;
+
         // ECMA v3 15.3.5.3
         Dobject V;
         Value* w;
@@ -326,10 +324,10 @@ abstract class Dfunction : Dobject
         if(v.isPrimitive())
             goto Lfalse;
         V = v.toObject();
-        w = Get(Text.prototype, cc);
+        w = Get(Key.prototype, cc);
         if(w.isPrimitive())
         {
-            return MustBeObjectError(w.getType);
+            return MustBeObjectError(w.type.to!d_string);
         }
         o = w.toObject();
         for(;; )
@@ -362,21 +360,20 @@ protected:
     //
     this(d_uint32 length, Dobject prototype)
     {
-        this(Text.Function, length, prototype);
+        this(Key.Function, length, prototype);
     }
 
     //
     this(d_string name, d_uint32 length, Dobject prototype)
     {
-        super(prototype);
-        classname = Text.Function;
+        super(prototype, Key.Function);
         this.name = name;
         CallContext cc;
-        Set(Text.length, length,
+        Set(Key.length, length,
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum |
             Property.Attribute.ReadOnly, cc);
-        Set(Text.arity, length,
+        Set(Key.arity, length,
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum |
             Property.Attribute.ReadOnly, cc);
@@ -387,17 +384,10 @@ public static:
     //
     Dfunction isFunction(Value* v)
     {
-        Dfunction r;
-        Dobject o;
-
-        r = null;
-        if(!v.isPrimitive())
-        {
-            o = v.toObject();
-            if(o.isClass(Text.Function))
-                r = cast(Dfunction)o;
-        }
-        return r;
+        if (v.isPrimitive)
+            return null;
+        else
+            return cast(Dfunction)v.toObject;
     }
 
     //
@@ -420,7 +410,7 @@ public static:
         _constructor = new DfunctionConstructor();
         _prototype = new DfunctionPrototype();
 
-        _constructor.DefineOwnProperty(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Key.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

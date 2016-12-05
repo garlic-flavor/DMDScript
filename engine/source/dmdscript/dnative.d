@@ -18,11 +18,10 @@
 
 module dmdscript.dnative;
 
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.dfunction;
-import dmdscript.value;
-import dmdscript.property;
+import dmdscript.script : CallContext;
+import dmdscript.dobject : Dobject;
+import dmdscript.dfunction : Dfunction;
+import dmdscript.value : Value, DError;
 
 /******************* DnativeFunction ****************************/
 
@@ -32,13 +31,19 @@ alias PCall = DError* function(
 
 struct NativeFunctionData
 {
-    d_string str;
+    import dmdscript.script : d_string, d_uint32;
+    import dmdscript.property : StringKey;
+
+    StringKey str;
     PCall     pcall;
     d_uint32  length;
 }
 
 class DnativeFunction : Dfunction
 {
+    import dmdscript.script : d_string, d_uint32;
+    import dmdscript.property : Property;
+
     PCall pcall;
 
     this(PCall func, d_string name, d_uint32 length)

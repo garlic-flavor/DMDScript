@@ -34,18 +34,18 @@ class DnumberConstructor : Dconstructor
 {
     this()
     {
-        super(Text.Number, 1, Dfunction.getPrototype);
+        super(Key.Number, 1, Dfunction.getPrototype);
         auto attributes =
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly;
 
-        DefineOwnProperty(Text.MAX_VALUE, d_number.max, attributes);
-        DefineOwnProperty(Text.MIN_VALUE, d_number.min_normal*d_number.epsilon,
+        DefineOwnProperty(Key.MAX_VALUE, d_number.max, attributes);
+        DefineOwnProperty(Key.MIN_VALUE, d_number.min_normal*d_number.epsilon,
             attributes);
-        DefineOwnProperty(Text.NaN, d_number.nan, attributes);
-        DefineOwnProperty(Text.NEGATIVE_INFINITY, -d_number.infinity, attributes);
-        DefineOwnProperty(Text.POSITIVE_INFINITY, d_number.infinity, attributes);
+        DefineOwnProperty(Key.NaN, d_number.nan, attributes);
+        DefineOwnProperty(Key.NEGATIVE_INFINITY, -d_number.infinity, attributes);
+        DefineOwnProperty(Key.POSITIVE_INFINITY, d_number.infinity, attributes);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -84,16 +84,11 @@ DError* Dnumber_prototype_toString(
     d_string s;
 
     // othis must be a Number
-    if(!othis.isClass(Text.Number))
-    {
-        ret.putVundefined();
-        return FunctionWantsNumberError(Text.toString, othis.classname);
-    }
-    else
+    if (auto dn = cast(Dnumber)othis)
     {
         Value* v;
 
-        v = &(cast(Dnumber)othis).value;
+        v = &dn.value;
 
         if(arglist.length)
         {
@@ -118,6 +113,11 @@ DError* Dnumber_prototype_toString(
             s = v.toString();
         ret.put(s);
     }
+    else
+    {
+        ret.putVundefined();
+        return FunctionWantsNumberError(Key.toString, othis.classname);
+    }
     return null;
 }
 
@@ -128,22 +128,16 @@ DError* Dnumber_prototype_toLocaleString(
     Value[] arglist)
 {
     // ECMA v3 15.7.4.3
-    d_string s;
 
     // othis must be a Number
-    if(!othis.isClass(Text.Number))
+    if (auto dn = cast(Dnumber)othis)
     {
-        ret.putVundefined();
-        return FunctionWantsNumberError(Text.toLocaleString, othis.classname);
+        ret.put(dn.value.toLocaleString);
     }
     else
     {
-        Value* v;
-
-        v = &(cast(Dnumber)othis).value;
-
-        s = v.toLocaleString();
-        ret.put(s);
+        ret.putVundefined();
+        return FunctionWantsNumberError(Key.toLocaleString, othis.classname);
     }
     return null;
 }
@@ -155,17 +149,14 @@ DError* Dnumber_prototype_valueOf(
     Value[] arglist)
 {
     // othis must be a Number
-    if(!othis.isClass(Text.Number))
+    if (auto dn = cast(Dnumber)othis)
     {
-        ret.putVundefined();
-        return FunctionWantsNumberError(Text.valueOf, othis.classname);
+        ret = dn.value;
     }
     else
     {
-        Value* v;
-
-        v = &(cast(Dnumber)othis).value;
-        ret = *v;
+        ret.putVundefined();
+        return FunctionWantsNumberError(Key.valueOf, othis.classname);
     }
     return null;
 }
@@ -238,13 +229,13 @@ DError* Dnumber_prototype_toFixed(
     if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
     {
         ret.putVundefined();
-        return ValueOutOfRangeError(Text.toFixed, "fractonDigits");
+        return ValueOutOfRangeError(Key.toFixed, "fractonDigits");
     }
     v = &othis.value;
     x = v.toNumber(cc);
     if(isNaN(x))
     {
-        result = Text.NaN;              // return "NaN"
+        result = Key.NaN;              // return "NaN"
     }
     else
     {
@@ -361,7 +352,7 @@ DError* Dnumber_prototype_toExponential(
     x = v.toNumber(cc);
     if(isNaN(x))
     {
-        result = Text.NaN;              // return "NaN"
+        result = Key.NaN;              // return "NaN"
     }
     else
     {
@@ -375,7 +366,7 @@ DError* Dnumber_prototype_toExponential(
         }
         if(std.math.isInfinity(x))
         {
-            result = sign ? Text.negInfinity : Text.Infinity;
+            result = sign ? Text.negInfinity : Key.Infinity;
         }
         else
         {
@@ -389,7 +380,7 @@ DError* Dnumber_prototype_toExponential(
             if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
             {
                 ret.putVundefined();
-                return ValueOutOfRangeError(Text.toExponential,
+                return ValueOutOfRangeError(Key.toExponential,
                                             "fractionDigits");
             }
 
@@ -504,7 +495,7 @@ DError* Dnumber_prototype_toPrecision(
     else
     {
         if(isNaN(x))
-            result = Text.NaN;
+            result = Key.NaN;
         else
         {
             int sign;
@@ -524,7 +515,7 @@ DError* Dnumber_prototype_toPrecision(
 
             if(std.math.isInfinity(x))
             {
-                result = sign ? Text.negInfinity : Text.Infinity;
+                result = sign ? Text.negInfinity : Key.Infinity;
                 goto Ldone;
             }
 
@@ -532,7 +523,7 @@ DError* Dnumber_prototype_toPrecision(
             if(precision < 1 || precision > 21)
             {
                 ret.putVundefined();
-                return ValueOutOfRangeError(Text.toPrecision, "precision");
+                return ValueOutOfRangeError(Key.toPrecision, "precision");
             }
 
             p = cast(int)precision;
@@ -623,17 +614,17 @@ class DnumberPrototype : Dnumber
 
         Dobject f = Dfunction.getPrototype;
 
-        DefineOwnProperty(Text.constructor, Dnumber.getConstructor, attributes);
+        DefineOwnProperty(Key.constructor, Dnumber.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.toString, &Dnumber_prototype_toString, 1 },
+            { Key.toString, &Dnumber_prototype_toString, 1 },
             // Permissible to use toString()
-            { Text.toLocaleString, &Dnumber_prototype_toLocaleString, 1 },
-            { Text.valueOf, &Dnumber_prototype_valueOf, 0 },
-            { Text.toFixed, &Dnumber_prototype_toFixed, 1 },
-            { Text.toExponential, &Dnumber_prototype_toExponential, 1 },
-            { Text.toPrecision, &Dnumber_prototype_toPrecision, 1 },
+            { Key.toLocaleString, &Dnumber_prototype_toLocaleString, 1 },
+            { Key.valueOf, &Dnumber_prototype_valueOf, 0 },
+            { Key.toFixed, &Dnumber_prototype_toFixed, 1 },
+            { Key.toExponential, &Dnumber_prototype_toExponential, 1 },
+            { Key.toPrecision, &Dnumber_prototype_toPrecision, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, attributes);
@@ -647,15 +638,13 @@ class Dnumber : Dobject
 {
     this(d_number n)
     {
-        super(getPrototype());
-        classname = Text.Number;
+        super(getPrototype, Key.Number);
         value.put(n);
     }
 
     this(Dobject prototype)
     {
-        super(prototype);
-        classname = Text.Number;
+        super(prototype, Key.Number);
         value.put(0);
     }
 
@@ -675,7 +664,7 @@ static:
         _constructor = new DnumberConstructor();
         _prototype = new DnumberPrototype();
 
-        _constructor.DefineOwnProperty(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Key.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

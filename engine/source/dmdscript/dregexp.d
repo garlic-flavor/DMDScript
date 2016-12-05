@@ -53,7 +53,7 @@ class DregexpConstructor : Dconstructor
 
     this()
     {
-        super(Text.RegExp, 2, Dfunction.getPrototype);
+        super(Key.RegExp, 2, Dfunction.getPrototype);
 
         Value v;
         v.put(Text.Empty);
@@ -65,60 +65,60 @@ class DregexpConstructor : Dconstructor
         vnm1.put(-1);
 
         // Static properties
-        DefineOwnProperty(Text.input, v, Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.multiline, vb, Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.lastMatch, v,
+        DefineOwnProperty(Key.input, v, Property.Attribute.DontDelete);
+        DefineOwnProperty(Key.multiline, vb, Property.Attribute.DontDelete);
+        DefineOwnProperty(Key.lastMatch, v,
                Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.lastParen, v,
+        DefineOwnProperty(Key.lastParen, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.leftContext, v,
+        DefineOwnProperty(Key.leftContext, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.rightContext, v,
+        DefineOwnProperty(Key.rightContext, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar1, v,
+        DefineOwnProperty(Key.dollar1, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar2, v,
+        DefineOwnProperty(Key.dollar2, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar3, v,
+        DefineOwnProperty(Key.dollar3, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar4, v,
+        DefineOwnProperty(Key.dollar4, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar5, v,
+        DefineOwnProperty(Key.dollar5, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar6, v,
+        DefineOwnProperty(Key.dollar6, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar7, v,
+        DefineOwnProperty(Key.dollar7, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar8, v,
+        DefineOwnProperty(Key.dollar8, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.dollar9, v,
+        DefineOwnProperty(Key.dollar9, v,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
 
-        DefineOwnProperty(Text.index, vnm1,
+        DefineOwnProperty(Key.index, vnm1,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.lastIndex, vnm1,
+        DefineOwnProperty(Key.lastIndex, vnm1,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
 
         CallContext cc;
-        input = Get(Text.input, cc);
-        multiline = Get(Text.multiline, cc);
-        lastMatch = Get(Text.lastMatch, cc);
-        lastParen = Get(Text.lastParen, cc);
-        leftContext = Get(Text.leftContext, cc);
-        rightContext = Get(Text.rightContext, cc);
+        input = Get(Key.input, cc);
+        multiline = Get(Key.multiline, cc);
+        lastMatch = Get(Key.lastMatch, cc);
+        lastParen = Get(Key.lastParen, cc);
+        leftContext = Get(Key.leftContext, cc);
+        rightContext = Get(Key.rightContext, cc);
         dollar[0] = lastMatch;
-        dollar[1] = Get(Text.dollar1, cc);
-        dollar[2] = Get(Text.dollar2, cc);
-        dollar[3] = Get(Text.dollar3, cc);
-        dollar[4] = Get(Text.dollar4, cc);
-        dollar[5] = Get(Text.dollar5, cc);
-        dollar[6] = Get(Text.dollar6, cc);
-        dollar[7] = Get(Text.dollar7, cc);
-        dollar[8] = Get(Text.dollar8, cc);
-        dollar[9] = Get(Text.dollar9, cc);
+        dollar[1] = Get(Key.dollar1, cc);
+        dollar[2] = Get(Key.dollar2, cc);
+        dollar[3] = Get(Key.dollar3, cc);
+        dollar[4] = Get(Key.dollar4, cc);
+        dollar[5] = Get(Key.dollar5, cc);
+        dollar[6] = Get(Key.dollar6, cc);
+        dollar[7] = Get(Key.dollar7, cc);
+        dollar[8] = Get(Key.dollar8, cc);
+        dollar[9] = Get(Key.dollar9, cc);
 
-        index = Get(Text.index, cc);
-        lastIndex = Get(Text.lastIndex, cc);
+        index = Get(Key.index, cc);
+        lastIndex = Get(Key.lastIndex, cc);
 
         // Should lastMatch be an alias for dollar[nparens],
         // or should it be a separate property?
@@ -192,18 +192,17 @@ class DregexpConstructor : Dconstructor
         if(arglist.length >= 1)
         {
             Value* pattern;
-            Dobject o;
 
             pattern = &arglist[0];
             if(!pattern.isPrimitive())
             {
-                o = pattern.object;
-                if(o.isDregexp() &&
-                   (arglist.length == 1 || arglist[1].isUndefined())
-                   )
+                if (auto reg = cast(Dregexp)pattern.object)
                 {
-                    ret.put(o);
-                    return null;
+                    if (arglist.length == 1 || arglist[1].isUndefined)
+                    {
+                        ret.put(reg);
+                        return null;
+                    }
                 }
             }
         }
@@ -211,30 +210,21 @@ class DregexpConstructor : Dconstructor
     }
 
 
-    override Value* Get(in d_string PropertyName, ref CallContext cc)
+    alias GetImpl = Dobject.GetImpl;
+
+    override Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
     {
-        return Dfunction.Get(perlAlias(PropertyName), cc);
+        auto sk = StringKey(perlAlias(PropertyName));
+        return super.GetImpl(sk, cc);
     }
 
+    alias SetImpl = super.SetImpl;
     override
-    DError* Set(in d_string PropertyName, ref Value value,
+    DError* SetImpl(in ref StringKey PropertyName, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
-        return Dfunction.Set(perlAlias(PropertyName), value, attributes, cc);
-    }
-
-    override
-    DError* Set(in d_string PropertyName, Dobject o,
-                in Property.Attribute attributes, ref CallContext cc)
-    {
-        return Dfunction.Set(perlAlias(PropertyName), o, attributes, cc);
-    }
-
-    override
-    DError* Set(in d_string PropertyName, in d_number n,
-                in Property.Attribute attributes, ref CallContext cc)
-    {
-        return Dfunction.Set(perlAlias(PropertyName), n, attributes, cc);
+        auto sk = StringKey(perlAlias(PropertyName));
+        return Dfunction.SetImpl(sk, value, attributes, cc);
     }
 
     override int CanPut(in d_string PropertyName)
@@ -247,9 +237,9 @@ class DregexpConstructor : Dconstructor
         return Dfunction.HasProperty(perlAlias(PropertyName));
     }
 
-    override bool Delete(in d_string PropertyName)
+    override bool Delete(in StringKey PropertyName)
     {
-        return Dfunction.Delete(perlAlias(PropertyName));
+        return Dfunction.Delete(StringKey(perlAlias(PropertyName)));
     }
 
     // Translate Perl property names to script property names
@@ -261,12 +251,12 @@ class DregexpConstructor : Dconstructor
         static immutable tchar[] from = "_*&+`'";
         static enum d_string[] to =
         [
-            Text.input,
-            Text.multiline,
-            Text.lastMatch,
-            Text.lastParen,
-            Text.leftContext,
-            Text.rightContext,
+            Key.input,
+            Key.multiline,
+            Key.lastMatch,
+            Key.lastParen,
+            Key.leftContext,
+            Key.rightContext,
         ];
 
         t = s;
@@ -290,23 +280,20 @@ DError* Dregexp_prototype_toString(
     Value[] arglist)
 {
     // othis must be a RegExp
-    Dregexp r;
-
-    if(!othis.isDregexp())
-    {
-        ret.putVundefined();
-        return NotTransferrableError("RegExp.prototype.toString()");
-    }
-    else
+    if (auto r = cast(Dregexp)othis)
     {
         d_string s;
 
-        r = cast(Dregexp)(othis);
         s = "/";
         s ~= r.re.pattern;
         s ~= "/";
         s ~= r.re.flags;
         ret.put(s);
+    }
+    else
+    {
+        ret.putVundefined();
+        return NotTransferrableError("RegExp.prototype.toString()");
     }
     return null;
 }
@@ -341,19 +328,12 @@ DError* Dregexp_prototype_compile(
     // RegExp.prototype.compile(pattern, attributes)
 
     // othis must be a RegExp
-    if(!othis.isClass(Text.RegExp))
-    {
-        ret.putVundefined();
-        return NotTransferrableError("RegExp.prototype.compile()");
-    }
-    else
+    if (auto dr = cast(Dregexp)othis)
     {
         d_string pattern;
         d_string attributes;
-        Dregexp dr;
         RegExp r;
 
-        dr = cast(Dregexp)othis;
         switch(arglist.length)
         {
         case 0:
@@ -381,6 +361,12 @@ DError* Dregexp_prototype_compile(
         }
         //writef("r.attributes = x%x\n", r.attributes);
     }
+    else
+    {
+        ret.putVundefined();
+        return NotTransferrableError("RegExp.prototype.compile()");
+    }
+
     // Documentation says nothing about a return value,
     // so let's use "undefined"
     ret.putVundefined();
@@ -393,22 +379,21 @@ class DregexpPrototype : Dregexp
 {
     this()
     {
-        super(Dobject.getPrototype);
-        classname = Text.Object;
+        super(Dobject.getPrototype, Key.Object);
         auto attributes =
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum;
         Dobject f = Dfunction.getPrototype;
 
-        DefineOwnProperty(Text.constructor, Dregexp.getConstructor, attributes);
+        DefineOwnProperty(Key.constructor, Dregexp.getConstructor, attributes);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.toString, &Dregexp_prototype_toString, 0 },
-            { Text.compile, &Dregexp_prototype_compile, 2 },
-            { Text.exec, &Dregexp_prototype_exec, 1 },
-            { Text.test, &Dregexp_prototype_test, 1 },
+            { Key.toString, &Dregexp_prototype_toString, 0 },
+            { Key.compile, &Dregexp_prototype_compile, 2 },
+            { Key.exec, &Dregexp_prototype_exec, 1 },
+            { Key.test, &Dregexp_prototype_test, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, attributes);
@@ -431,7 +416,7 @@ class Dregexp : Dobject
 
     this(d_string pattern, d_string attributes)
     {
-        super(getPrototype());
+        super(getPrototype, Key.RegExp);
 
         Value v;
         v.put(Text.Empty);
@@ -439,34 +424,32 @@ class Dregexp : Dobject
         Value vb;
         vb.put(false);
 
-        classname = Text.RegExp;
-
         CallContext cc;
-        Set(Text.source, v,
+        Set(Key.source, v,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Text.global, vb,
+        Set(Key.global, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Text.ignoreCase, vb,
+        Set(Key.ignoreCase, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Text.multiline, vb,
+        Set(Key.multiline, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Text.lastIndex, 0.0,
+        Set(Key.lastIndex, 0.0,
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
 
-        source = Get(Text.source, cc);
-        global = Get(Text.global, cc);
-        ignoreCase = Get(Text.ignoreCase, cc);
-        multiline = Get(Text.multiline, cc);
-        lastIndex = Get(Text.lastIndex, cc);
+        source = Get(Key.source, cc);
+        global = Get(Key.global, cc);
+        ignoreCase = Get(Key.ignoreCase, cc);
+        multiline = Get(Key.multiline, cc);
+        lastIndex = Get(Key.lastIndex, cc);
 
         re = new RegExp(pattern, attributes);
         if(re.errors == 0)
@@ -483,9 +466,9 @@ class Dregexp : Dobject
         }
     }
 
-    this(Dobject prototype)
+    this(Dobject prototype, d_string cname = Key.RegExp)
     {
-        super(prototype);
+        super(prototype, cname);
 
         Value v;
         v.put(Text.Empty);
@@ -493,34 +476,32 @@ class Dregexp : Dobject
         Value vb;
         vb.put(false);
 
-        classname = Text.RegExp;
-
         CallContext cc;
-        Set(Text.source, v,
+        Set(Key.source, v,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Text.global, vb,
+        Set(Key.global, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Text.ignoreCase, vb,
+        Set(Key.ignoreCase, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Text.multiline, vb,
+        Set(Key.multiline, vb,
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Text.lastIndex, 0.0,
+        Set(Key.lastIndex, 0.0,
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
 
-        source = Get(Text.source, cc);
-        global = Get(Text.global, cc);
-        ignoreCase = Get(Text.ignoreCase, cc);
-        multiline = Get(Text.multiline, cc);
-        lastIndex = Get(Text.lastIndex, cc);
+        source = Get(Key.source, cc);
+        global = Get(Key.global, cc);
+        ignoreCase = Get(Key.ignoreCase, cc);
+        multiline = Get(Key.multiline, cc);
+        lastIndex = Get(Key.lastIndex, cc);
 
         re = new RegExp(null, null);
     }
@@ -531,20 +512,17 @@ class Dregexp : Dobject
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
 
-        v = Get(Text.exec, cc);
+        v = Get(Key.exec, cc);
         return v.toObject().Call(cc, this, ret, arglist);
     }
 
 static:
     Dregexp isRegExp(Value* v)
     {
-        Dregexp r;
-
-        if(!v.isPrimitive() && v.toObject().isDregexp())
-        {
-            r = cast(Dregexp)(v.toObject());
-        }
-        return r;
+        if      (v.isPrimitive)
+            return null;
+        else
+            return cast(Dregexp)v.toObject;
     }
 
     DError* exec(Dobject othis, out Value ret, Value[] arglist, int rettype)
@@ -552,15 +530,9 @@ static:
         //writef("Dregexp.exec(arglist.length = %d, rettype = %d)\n", arglist.length, rettype);
 
         // othis must be a RegExp
-        if(!othis.isClass(Text.RegExp))
-        {
-            ret.putVundefined();
-            return NotTransferrableError("RegExp.prototype.exec()");
-        }
-        else
+        if (auto dr = cast(Dregexp)othis)
         {
             d_string s;
-            Dregexp dr;
             RegExp r;
             DregexpConstructor dc;
             uint i;
@@ -577,7 +549,6 @@ static:
                 s = (cast(DregexpConstructor)df).input.text;
             }
 
-            dr = cast(Dregexp)othis;
             r = dr.re;
             dc = cast(DregexpConstructor)Dregexp.getConstructor();
 
@@ -645,9 +616,9 @@ static:
                 {
                     Darray a = new Darray();
 
-                    a.Set(Text.input, r.input, Property.Attribute.None, cc);
-                    a.Set(Text.index, r.index, Property.Attribute.None, cc);
-                    a.Set(Text.lastIndex, r.lastIndex,
+                    a.Set(Key.input, r.input, Property.Attribute.None, cc);
+                    a.Set(Key.index, r.index, Property.Attribute.None, cc);
+                    a.Set(Key.lastIndex, r.lastIndex,
                           Property.Attribute.None, cc);
 
                     a.Set(cast(d_uint32)0, *dc.lastMatch,
@@ -728,6 +699,12 @@ static:
                 }
             }
         }
+        else
+        {
+            ret.putVundefined();
+            return NotTransferrableError("RegExp.prototype.exec()");
+        }
+
         return null;
     }
 
@@ -756,7 +733,7 @@ static:
                 writef("*p = %x, %x, %x, %x\n", p[0], p[1], p[2], p[3]);
         }
 
-        _constructor.DefineOwnProperty(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Key.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

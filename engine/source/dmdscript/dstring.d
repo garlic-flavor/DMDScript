@@ -71,11 +71,11 @@ class DstringConstructor : Dconstructor
 {
     this()
     {
-        super(Text.String, 1, Dfunction.getPrototype);
+        super(Key.String, 1, Dfunction.getPrototype);
 
         enum NativeFunctionData[] nfd =
         [
-            { Text.fromCharCode, &Dstring_fromCharCode, 1 },
+            { Key.fromCharCode, &Dstring_fromCharCode, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.None);
@@ -115,17 +115,14 @@ DError* Dstring_prototype_toString(
 {
     //writef("Dstring.prototype.toString()\n");
     // othis must be a String
-    if(!othis.isClass(Text.String))
+    if (auto ds = cast(Dstring)othis)
     {
-        ret.putVundefined();
-        return FunctionWantsStringError(Text.toString, othis.classname);
+        ret = ds.value;
     }
     else
     {
-        Value* v;
-
-        v = &(cast(Dstring)othis).value;
-        ret = *v;
+        ret.putVundefined();
+        return FunctionWantsStringError(Key.toString, othis.classname);
     }
     return null;
 }
@@ -140,17 +137,14 @@ DError* Dstring_prototype_valueOf(
 
     //writef("string.prototype.valueOf()\n");
     // othis must be a String
-    if(!othis.isClass(Text.String))
+    if (auto ds = cast(Dstring)othis)
     {
-        ret.putVundefined();
-        return FunctionWantsStringError(Text.valueOf, othis.classname);
+        ret = ds.value;
     }
     else
     {
-        Value* v;
-
-        v = &(cast(Dstring)othis).value;
-        ret = *v;
+        ret.putVundefined();
+        return FunctionWantsStringError(Key.valueOf, othis.classname);
     }
     return null;
 }
@@ -344,7 +338,7 @@ DError* Dstring_prototype_lastIndexOf(
             // This is the 'transferable' version
             Value* v;
             DError* a;
-            v = othis.Get(Text.toString, cc);
+            v = othis.Get(Key.toString, cc);
             a = v.Call(cc, othis, ret, null);
             if(a)                       // if exception was thrown
                 return a;
@@ -425,22 +419,19 @@ DError* Dstring_prototype_match(
 {
     // ECMA v3 15.5.4.10
     Dregexp r;
-    Dobject o;
 
-    if(arglist.length && !arglist[0].isPrimitive() &&
-       (o = arglist[0].toObject()).isDregexp())
-    {
-    }
-    else
+    if (0 < arglist.length && !arglist[0].isPrimitive)
+        r = cast(Dregexp)arglist[0].toObject;
+
+    if (r is null)
     {
         Value regret;
 
         regret.put(cast(Dobject)null);
         Dregexp.getConstructor().Construct(cc, regret, arglist);
-        o = regret.object;
+        r = cast(Dregexp)regret.object;
     }
 
-    r = cast(Dregexp)o;
     if(r.global.dbool)
     {
         Darray a = new Darray;
@@ -613,23 +604,20 @@ DError* Dstring_prototype_search(
 {
     // ECMA v3 15.5.4.12
     Dregexp r;
-    Dobject o;
 
     //writef("String.prototype.search()\n");
-    if(arglist.length && !arglist[0].isPrimitive() &&
-       (o = arglist[0].toObject()).isDregexp())
-    {
-    }
-    else
+    if (0 < arglist.length && !arglist[0].isPrimitive)
+        r = cast(Dregexp)arglist[0].toObject;
+
+    if (r is null)
     {
         Value regret;
 
         regret.put(cast(Dobject)null);
         Dregexp.getConstructor().Construct(cc, regret, arglist);
-        o = regret.object;
+        r = cast(Dregexp)regret.object;
     }
 
-    r = cast(Dregexp)o;
     Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_INDEX);
     return null;
 }
@@ -1218,43 +1206,43 @@ class DstringPrototype : Dstring
     {
         super(Dobject.getPrototype);
 
-        DefineOwnProperty(Text.constructor, Dstring.getConstructor,
+        DefineOwnProperty(Key.constructor, Dstring.getConstructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.toString, &Dstring_prototype_toString, 0 },
-            { Text.valueOf, &Dstring_prototype_valueOf, 0 },
-            { Text.charAt, &Dstring_prototype_charAt, 1 },
-            { Text.charCodeAt, &Dstring_prototype_charCodeAt, 1 },
-            { Text.concat, &Dstring_prototype_concat, 1 },
-            { Text.indexOf, &Dstring_prototype_indexOf, 1 },
-            { Text.lastIndexOf, &Dstring_prototype_lastIndexOf, 1 },
-            { Text.localeCompare, &Dstring_prototype_localeCompare, 1 },
-            { Text.match, &Dstring_prototype_match, 1 },
-            { Text.replace, &Dstring_prototype_replace, 2 },
-            { Text.search, &Dstring_prototype_search, 1 },
-            { Text.slice, &Dstring_prototype_slice, 2 },
-            { Text.split, &Dstring_prototype_split, 2 },
-            { Text.substr, &Dstring_prototype_substr, 2 },
-            { Text.substring, &Dstring_prototype_substring, 2 },
-            { Text.toLowerCase, &Dstring_prototype_toLowerCase, 0 },
-            { Text.toLocaleLowerCase, &Dstring_prototype_toLocaleLowerCase, 0 },
-            { Text.toUpperCase, &Dstring_prototype_toUpperCase, 0 },
-            { Text.toLocaleUpperCase, &Dstring_prototype_toLocaleUpperCase, 0 },
-            { Text.anchor, &Dstring_prototype_anchor, 1 },
-            { Text.fontcolor, &Dstring_prototype_fontcolor, 1 },
-            { Text.fontsize, &Dstring_prototype_fontsize, 1 },
-            { Text.link, &Dstring_prototype_link, 1 },
-            { Text.big, &Dstring_prototype_big, 0 },
-            { Text.blink, &Dstring_prototype_blink, 0 },
-            { Text.bold, &Dstring_prototype_bold, 0 },
-            { Text.fixed, &Dstring_prototype_fixed, 0 },
-            { Text.italics, &Dstring_prototype_italics, 0 },
-            { Text.small, &Dstring_prototype_small, 0 },
-            { Text.strike, &Dstring_prototype_strike, 0 },
-            { Text.sub, &Dstring_prototype_sub, 0 },
-            { Text.sup, &Dstring_prototype_sup, 0 },
+            { Key.toString, &Dstring_prototype_toString, 0 },
+            { Key.valueOf, &Dstring_prototype_valueOf, 0 },
+            { Key.charAt, &Dstring_prototype_charAt, 1 },
+            { Key.charCodeAt, &Dstring_prototype_charCodeAt, 1 },
+            { Key.concat, &Dstring_prototype_concat, 1 },
+            { Key.indexOf, &Dstring_prototype_indexOf, 1 },
+            { Key.lastIndexOf, &Dstring_prototype_lastIndexOf, 1 },
+            { Key.localeCompare, &Dstring_prototype_localeCompare, 1 },
+            { Key.match, &Dstring_prototype_match, 1 },
+            { Key.replace, &Dstring_prototype_replace, 2 },
+            { Key.search, &Dstring_prototype_search, 1 },
+            { Key.slice, &Dstring_prototype_slice, 2 },
+            { Key.split, &Dstring_prototype_split, 2 },
+            { Key.substr, &Dstring_prototype_substr, 2 },
+            { Key.substring, &Dstring_prototype_substring, 2 },
+            { Key.toLowerCase, &Dstring_prototype_toLowerCase, 0 },
+            { Key.toLocaleLowerCase, &Dstring_prototype_toLocaleLowerCase, 0 },
+            { Key.toUpperCase, &Dstring_prototype_toUpperCase, 0 },
+            { Key.toLocaleUpperCase, &Dstring_prototype_toLocaleUpperCase, 0 },
+            { Key.anchor, &Dstring_prototype_anchor, 1 },
+            { Key.fontcolor, &Dstring_prototype_fontcolor, 1 },
+            { Key.fontsize, &Dstring_prototype_fontsize, 1 },
+            { Key.link, &Dstring_prototype_link, 1 },
+            { Key.big, &Dstring_prototype_big, 0 },
+            { Key.blink, &Dstring_prototype_blink, 0 },
+            { Key.bold, &Dstring_prototype_bold, 0 },
+            { Key.fixed, &Dstring_prototype_fixed, 0 },
+            { Key.italics, &Dstring_prototype_italics, 0 },
+            { Key.small, &Dstring_prototype_small, 0 },
+            { Key.strike, &Dstring_prototype_strike, 0 },
+            { Key.sub, &Dstring_prototype_sub, 0 },
+            { Key.sup, &Dstring_prototype_sup, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
@@ -1269,11 +1257,10 @@ class Dstring : Dobject
     {
         import std.utf : toUCSindex;
 
-        super(getPrototype());
-        classname = Text.String;
+        super(getPrototype, Key.String);
 
         CallContext cc;
-        Set(Text.length, toUCSindex(s, s.length),
+        Set(Key.length, toUCSindex(s, s.length),
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly, cc);
@@ -1282,11 +1269,10 @@ class Dstring : Dobject
 
     this(Dobject prototype)
     {
-        super(prototype);
+        super(prototype, Key.String);
 
-        classname = Text.String;
         CallContext cc;
-        Set(Text.length, 0,
+        Set(Key.length, 0,
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly, cc);
@@ -1308,7 +1294,7 @@ static:
         _constructor = new DstringConstructor();
         _prototype = new DstringPrototype();
 
-        _constructor.DefineOwnProperty(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Key.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

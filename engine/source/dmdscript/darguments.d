@@ -36,11 +36,6 @@ class Darguments : Dobject
     Dobject actobj;             // activation object
     Identifier*[] parameters;
 
-    override int isDarguments() const
-    {
-        return true;
-    }
-
     this(Dobject caller, Dobject callee, Dobject actobj,
          Identifier*[] parameters, Value[] arglist)
 
@@ -52,12 +47,12 @@ class Darguments : Dobject
 
         CallContext cc;
         if(caller)
-            Set(Text.caller, caller, Property.Attribute.DontEnum, cc);
+            Set(Key.caller, caller, Property.Attribute.DontEnum, cc);
         else
-            Set(Text.caller, vnull, Property.Attribute.DontEnum, cc);
+            Set(Key.caller, vnull, Property.Attribute.DontEnum, cc);
 
-        Set(Text.callee, callee, Property.Attribute.DontEnum, cc);
-        Set(Text.length, arglist.length, Property.Attribute.DontEnum, cc);
+        Set(Key.callee, callee, Property.Attribute.DontEnum, cc);
+        Set(Key.length, arglist.length, Property.Attribute.DontEnum, cc);
 
         for(uint a = 0; a < arglist.length; a++)
         {
@@ -65,95 +60,46 @@ class Darguments : Dobject
         }
     }
 
-    override Value* Get(in d_string PropertyName, ref CallContext cc)
+    alias GetImpl = Dobject.GetImpl;
+
+    override protected
+    Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
     {
         d_uint32 index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
-            ? actobj.Get(index, cc)
-            : Dobject.Get(PropertyName, cc);
+            ? actobj.GetImpl(index, cc)
+            : super.GetImpl(PropertyName, cc);
     }
 
-    override Value* Get(in d_uint32 index, ref CallContext cc)
+    override Value* GetImpl(in d_uint32 index, ref CallContext cc)
     {
         return (index < parameters.length)
-            ? actobj.Get(index, cc)
-            : Dobject.Get(index, cc);
+            ? actobj.GetImpl(index, cc)
+            : super.GetImpl(index, cc);
     }
 
-    override Value* Get(in d_uint32 index, ref Value vindex, ref CallContext cc)
-    {
-        return (index < parameters.length)
-            ? actobj.Get(index, vindex, cc)
-            : Dobject.Get(index, vindex, cc);
-    }
-
+    alias SetImpl = super.SetImpl;
     override
-    DError* Set(in d_string PropertyName, ref Value value,
-               in Property.Attribute attributes, ref CallContext cc)
+    DError* SetImpl(in ref StringKey PropertyName, ref Value value,
+                    in Property.Attribute attributes, ref CallContext cc)
     {
         d_uint32 index;
 
         if(StringToIndex(PropertyName, index) && index < parameters.length)
-            return actobj.Set(PropertyName, value, attributes, cc);
+            return actobj.SetImpl(PropertyName, value, attributes, cc);
         else
-            return Dobject.Set(PropertyName, value, attributes, cc);
+            return Dobject.SetImpl(PropertyName, value, attributes, cc);
     }
 
     override
-    DError* Set(ref Identifier key, ref Value value,
-                in Property.Attribute attributes, ref CallContext cc)
-    {
-        d_uint32 index;
-
-        if(StringToIndex(key.value.text, index) && index < parameters.length)
-            return actobj.Set(key, value, attributes, cc);
-        else
-            return Dobject.Set(key, value, attributes, cc);
-    }
-
-    override
-    DError* Set(in d_string PropertyName, Dobject o,
-                in Property.Attribute attributes, ref CallContext cc)
-    {
-        d_uint32 index;
-
-        if(StringToIndex(PropertyName, index) && index < parameters.length)
-            return actobj.Set(PropertyName, o, attributes, cc);
-        else
-            return Dobject.Set(PropertyName, o, attributes, cc);
-    }
-
-    override
-    DError* Set(in d_string PropertyName, in d_number n,
-                in Property.Attribute attributes, ref CallContext cc)
-    {
-        d_uint32 index;
-
-        if(StringToIndex(PropertyName, index) && index < parameters.length)
-            return actobj.Set(PropertyName, n, attributes, cc);
-        else
-            return Dobject.Set(PropertyName, n, attributes, cc);
-    }
-
-    override
-    DError* Set(in d_uint32 index, ref Value vindex, ref Value value,
+    DError* SetImpl(in d_uint32 index, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
         if(index < parameters.length)
-            return actobj.Set(index, vindex, value, attributes, cc);
+            return actobj.SetImpl(index, value, attributes, cc);
         else
-            return Dobject.Set(index, vindex, value, attributes, cc);
-    }
-
-    override
-    DError* Set(in d_uint32 index, ref Value value,
-                in Property.Attribute attributes, ref CallContext cc)
-    {
-        if(index < parameters.length)
-            return actobj.Set(index, value, attributes, cc);
-        else
-            return Dobject.Set(index, value, attributes, cc);
+            return Dobject.SetImpl(index, value, attributes, cc);
     }
 
     override int CanPut(in d_string PropertyName)
@@ -174,7 +120,7 @@ class Darguments : Dobject
                : Dobject.HasProperty(PropertyName);
     }
 
-    override bool Delete(in d_string PropertyName)
+    override bool Delete(in StringKey PropertyName)
     {
         d_uint32 index;
 

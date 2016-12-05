@@ -366,7 +366,7 @@ final class RegExpLiteral : Expression
         // Generate new Regexp(pattern [, attribute])
 
         b = irs.alloc(1);
-        auto re = Identifier.build(Text.RegExp);
+        auto re = Identifier.build(Key.RegExp);
         irs.gen!(Opcode.GetScope)(loc, b[0], re);
         argv = irs.alloc(argc);
         irs.gen!(Opcode.String)(loc, argv[0], Identifier.build(pattern));
@@ -446,7 +446,7 @@ final class ArrayLiteral : Expression
         b = irs.alloc(1);
         static Identifier* ar;
         if(!ar)
-            ar = Identifier.build(Text.Array);
+            ar = Identifier.build(Key.Array);
         irs.gen!(Opcode.GetScope)(loc, b[0], ar);
         if(elements.length)
         {
@@ -557,7 +557,7 @@ final class ObjectLiteral : Expression
 
         b = irs.alloc(1);
         //irs.gen2(loc, IRstring, b, Text.Object);
-        irs.gen!(Opcode.GetScope)(loc, b[0], Identifier.build(Text.Object));
+        irs.gen!(Opcode.GetScope)(loc, b[0], Identifier.build(Key.Object));
         // Generate new Object()
         irs.gen!(Opcode.New)(loc, ret, b[0], 0, 0);
         if(fields.length)

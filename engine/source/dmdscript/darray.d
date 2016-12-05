@@ -40,7 +40,7 @@ class DarrayConstructor : Dconstructor
 {
     this()
     {
-        super(Text.Array, 1, Dfunction.getPrototype);
+        super(Key.Array, 1, Dfunction.getPrototype);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -140,13 +140,13 @@ DError* Darray_prototype_toLocaleString(
     d_uint32 k;
     Value* v;
 
-    if(!othis.isClass(Text.Array))
+    if ((cast(Darray)othis) is null)
     {
         ret.putVundefined();
         return TlsNotTransferrableError;
     }
 
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     len = v ? v.toUint32(cc) : 0;
 
     Program prog = cc.prog;
@@ -168,7 +168,7 @@ DError* Darray_prototype_toLocaleString(
             Dobject ot;
 
             ot = v.toObject();
-            v = ot.Get(Text.toLocaleString, cc);
+            v = ot.Get(Key.toLocaleString, cc);
             if(v && !v.isPrimitive())   // if it's an Object
             {
                 DError* a;
@@ -208,11 +208,10 @@ DError* Darray_prototype_concat(
     v = &othis.value;
     for(a = 0;; a++)
     {
-        if(!v.isPrimitive() && v.object.isDarray())
+        if(!v.isPrimitive() && (E = (cast(Darray)v.object)) !is null)
         {
             d_uint32 len;
 
-            E = cast(Darray)v.object;
             len = E.ulength;
             for(k = 0; k != len; k++)
             {
@@ -232,7 +231,7 @@ DError* Darray_prototype_concat(
         v = &arglist[a];
     }
 
-    A.Set(Text.length, n, Property.Attribute.DontEnum, cc);
+    A.Set(Key.length, n, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -258,7 +257,7 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
     Value* v;
 
     //writef("array_join(othis = %p)\n", othis);
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     len = v ? v.toUint32(cc) : 0;
     if(arglist.length == 0 || arglist[0].isUndefined())
         separator = Text.comma;
@@ -289,7 +288,7 @@ DError* Darray_prototype_toSource(
     d_uint32 k;
     Value* v;
 
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     len = v ? v.toUint32(cc) : 0;
     separator = ",";
 
@@ -320,13 +319,13 @@ DError* Darray_prototype_pop(
     d_uint32 u;
 
     // If othis is a Darray, then we can optimize this significantly
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &vundefined;
     u = v.toUint32(cc);
     if(u == 0)
     {
-        othis.Set(Text.length, 0.0, Property.Attribute.DontEnum, cc);
+        othis.Set(Key.length, 0.0, Property.Attribute.DontEnum, cc);
         ret.putVundefined();
     }
     else
@@ -336,7 +335,7 @@ DError* Darray_prototype_pop(
             v = &vundefined;
         ret = *v;
         othis.Delete(u - 1);
-        othis.Set(Text.length, u - 1, Property.Attribute.DontEnum, cc);
+        othis.Set(Key.length, u - 1, Property.Attribute.DontEnum, cc);
     }
     return null;
 }
@@ -353,7 +352,7 @@ DError* Darray_prototype_push(
     d_uint32 a;
 
     // If othis is a Darray, then we can optimize this significantly
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &vundefined;
     u = v.toUint32(cc);
@@ -361,7 +360,7 @@ DError* Darray_prototype_push(
     {
         othis.Set(u + a, arglist[a], Property.Attribute.None, cc);
     }
-    othis.Set(Text.length, u + a,  Property.Attribute.DontEnum, cc);
+    othis.Set(Key.length, u + a,  Property.Attribute.DontEnum, cc);
     ret.put(u + a);
     return null;
 }
@@ -382,7 +381,7 @@ DError* Darray_prototype_reverse(
     d_uint32 len;
     Value tmp;
 
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     len = v ? v.toUint32(cc) : 0;
     pivot = len / 2;
     for(a = 0; a != pivot; a++)
@@ -421,7 +420,7 @@ DError* Darray_prototype_shift(
 
     // If othis is a Darray, then we can optimize this significantly
     //writef("shift(othis = %p)\n", othis);
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &vundefined;
     len = v.toUint32(cc);
@@ -448,7 +447,7 @@ DError* Darray_prototype_shift(
     else
         ret = vundefined;
 
-    othis.Set(Text.length, len, Property.Attribute.DontEnum, cc);
+    othis.Set(Key.length, len, Property.Attribute.DontEnum, cc);
     return null;
 }
 
@@ -468,7 +467,7 @@ DError* Darray_prototype_slice(
     Value* v;
     Darray A;
 
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &vundefined;
     len = v.toUint32(cc);
@@ -599,7 +598,7 @@ else
         n++;
     }
 
-    A.Set(Text.length, n, Property.Attribute.DontEnum, cc);
+    A.Set(Key.length, n, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -673,7 +672,7 @@ DError* Darray_prototype_sort(
     uint u;
 
     //writef("Array.prototype.sort()\n");
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     len = v ? v.toUint32(cc) : 0;
 
     // This is not optimal, as isArrayIndex is done at least twice
@@ -802,7 +801,7 @@ DError* Darray_prototype_splice(
     d_uint32 inscnt;
     d_uint32 startidx;
 
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &vundefined;
     len = v.toUint32(cc);
@@ -899,7 +898,7 @@ else
             A.Set(k, *v, Property.Attribute.None, cc);
     }
 
-    A.Set(Text.length, delcnt, Property.Attribute.DontEnum, cc);
+    A.Set(Key.length, delcnt, Property.Attribute.DontEnum, cc);
     inscnt = (arglist.length > 2) ? cast(uint)arglist.length - 2 : 0;
     if(inscnt != delcnt)
     {
@@ -937,7 +936,7 @@ else
         k++;
     }
 
-    othis.Set(Text.length, len - delcnt + inscnt,
+    othis.Set(Key.length, len - delcnt + inscnt,
               Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
@@ -954,7 +953,7 @@ DError* Darray_prototype_unshift(
     d_uint32 len;
     d_uint32 k;
 
-    v = othis.Get(Text.length, cc);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &vundefined;
     len = v.toUint32(cc);
@@ -973,7 +972,7 @@ DError* Darray_prototype_unshift(
     {
         othis.Set(k, arglist[k], Property.Attribute.None, cc);
     }
-    othis.Set(Text.length, len + arglist.length,
+    othis.Set(Key.length, len + arglist.length,
               Property.Attribute.DontEnum, cc);
     ret.put(len + arglist.length);
     return null;
@@ -988,24 +987,24 @@ class DarrayPrototype : Darray
         super(Dobject.getPrototype);
         Dobject f = Dfunction.getPrototype;
 
-        DefineOwnProperty(Text.constructor, Darray.getConstructor,
+        DefineOwnProperty(Key.constructor, Darray.getConstructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.toString, &Darray_prototype_toString, 0 },
-            { Text.toLocaleString, &Darray_prototype_toLocaleString, 0 },
-            { Text.toSource, &Darray_prototype_toSource, 0 },
-            { Text.concat, &Darray_prototype_concat, 1 },
-            { Text.join, &Darray_prototype_join, 1 },
-            { Text.pop, &Darray_prototype_pop, 0 },
-            { Text.push, &Darray_prototype_push, 1 },
-            { Text.reverse, &Darray_prototype_reverse, 0 },
-            { Text.shift, &Darray_prototype_shift, 0, },
-            { Text.slice, &Darray_prototype_slice, 2 },
-            { Text.sort, &Darray_prototype_sort, 1 },
-            { Text.splice, &Darray_prototype_splice, 2 },
-            { Text.unshift, &Darray_prototype_unshift, 1 },
+            { Key.toString, &Darray_prototype_toString, 0 },
+            { Key.toLocaleString, &Darray_prototype_toLocaleString, 0 },
+            { Key.toSource, &Darray_prototype_toSource, 0 },
+            { Key.concat, &Darray_prototype_concat, 1 },
+            { Key.join, &Darray_prototype_join, 1 },
+            { Key.pop, &Darray_prototype_pop, 0 },
+            { Key.push, &Darray_prototype_push, 1 },
+            { Key.reverse, &Darray_prototype_reverse, 0 },
+            { Key.shift, &Darray_prototype_shift, 0, },
+            { Key.slice, &Darray_prototype_slice, 2 },
+            { Key.sort, &Darray_prototype_sort, 1 },
+            { Key.splice, &Darray_prototype_splice, 2 },
+            { Key.unshift, &Darray_prototype_unshift, 1 },
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
@@ -1022,31 +1021,19 @@ class Darray : Dobject
 
     this()
     {
-        this(getPrototype());
+        this(getPrototype);
     }
 
     this(Dobject prototype)
     {
-        super(prototype);
+        super(prototype, Key.Array);
         length.put(0);
         ulength = 0;
-        classname = Text.Array;
     }
 
     override
-    DError* Set(ref Identifier key, ref Value value,
-                in Property.Attribute attributes, ref CallContext cc)
-    {
-        auto pk = PropertyKey(key);
-        auto result = proptable.set(pk, value, attributes, cc, this);
-        if(!result)
-            Set(key.value.text, value, attributes, cc);
-        return null;
-    }
-
-    override
-    DError* Set(in d_string name, ref Value v,
-                in Property.Attribute attributes, ref CallContext cc)
+    DError* SetImpl(in ref StringKey name, ref Value v,
+                    in Property.Attribute attributes, ref CallContext cc)
     {
         d_uint32 i;
         uint c;
@@ -1057,7 +1044,7 @@ class Darray : Dobject
         result = proptable.set(key, v, attributes, cc, this);
         if(!result)
         {
-            if(name == Text.length)
+            if(name == Key.length)
             {
                 i = v.toUint32(cc);
                 if(i != v.toInteger(cc))
@@ -1122,46 +1109,9 @@ class Darray : Dobject
         return null;
     }
 
-    override DError* Set(in d_string name, Dobject o,
-                         in Property.Attribute attributes, ref CallContext cc)
-    {
-        return Set(name, o.value, attributes, cc);
-    }
-
-    override DError* Set(in d_string PropertyName, in d_number n,
-                        in Property.Attribute attributes, ref CallContext cc)
-    {
-        Value v;
-
-        v.put(n);
-        return Set(PropertyName, v, attributes, cc);
-    }
-
-    override DError* Set(in d_string PropertyName, in d_string str,
-                       in Property.Attribute attributes, ref CallContext cc)
-    {
-        Value v;
-
-        v.put(str);
-        return Set(PropertyName, v, attributes, cc);
-    }
-
-    override DError* Set(in d_uint32 index, ref Value vindex, ref Value value,
-                         in Property.Attribute attributes, ref CallContext cc)
-    {
-        if(index >= ulength)
-            ulength = index + 1;
-
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // Why is a magic number used?
-        auto key = PropertyKey(vindex, index ^ 0x55555555);
-        proptable.set(key, value, attributes, cc, this);
-        // proptable.set(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/, value, attributes, cc, this);
-        return null;
-    }
-
-    override DError* Set(in d_uint32 index, ref Value value,
-                         in Property.Attribute attributes, ref CallContext cc)
+    override
+    DError* SetImpl(in d_uint32 index, ref Value value,
+                    in Property.Attribute attributes, ref CallContext cc)
     {
         if(index >= ulength)
         {
@@ -1174,50 +1124,22 @@ class Darray : Dobject
         return null;
     }
 
-    final DError* Set(d_uint32 index, d_string str,
-                      Property.Attribute attributes, ref CallContext cc)
-    {
-        if(index >= ulength)
-        {
-            ulength = index + 1;
-            length.number = ulength;
-        }
-
-        Value value;
-        auto key = PropertyKey(index);
-        value.put(str);
-        proptable.set(key, value, attributes, cc, this);
-        return null;
-    }
-
-    override Value* Get(ref Identifier id, ref CallContext cc)
+    alias GetImpl = Dobject.GetImpl;
+    override Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
-        if(id.value.text == Text.length)
-        {
-            length.number = ulength;
-            return &length;
-        }
-        else
-            return Dobject.Get(id, cc);
-    }
-
-    override Value* Get(in d_string PropertyName, in size_t hash,
-                        ref CallContext cc)
-    {
-        //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
-        if(PropertyName == Text.length)
+        if(PropertyName == Key.length)
         {
             length.number = ulength;
             return &length;
         }
         else
         {
-            return Dobject.Get(PropertyName, hash, cc);
+            return Dobject.GetImpl(PropertyName, cc);
         }
     }
 
-    override Value* Get(in d_uint32 index, ref CallContext cc)
+    override Value* GetImpl(in d_uint32 index, ref CallContext cc)
     {
         Value* v;
 
@@ -1227,26 +1149,11 @@ class Darray : Dobject
         return v;
     }
 
-    override Value* Get(in d_uint32 index, ref Value vindex, ref CallContext cc)
-    {
-        Value* v;
-
-        //writef("Darray.Get(%p, %d)\n", &proptable, index);
-        auto key = PropertyKey(vindex, index ^ 0x55555555);
-        v = proptable.get(key, cc, this);
-
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // Why is a magic number used?
-        // v = proptable.get(vindex, index ^ 0x55555555 /*Value.calcHash(index)*/,
-        //                   cc, this);
-        return v;
-    }
-
-    override bool Delete(in d_string PropertyName)
+    override bool Delete(in StringKey PropertyName)
     {
         // ECMA 8.6.2.5
         //writef("Darray.Delete('%ls')\n", d_string_ptr(PropertyName));
-        if(PropertyName == Text.length)
+        if(PropertyName == Key.length)
             return 0;           // can't delete 'length' property
         else
         {
@@ -1279,7 +1186,7 @@ static:
         _constructor = new DarrayConstructor();
         _prototype = new DarrayPrototype();
 
-        _constructor.DefineOwnProperty(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Key.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.ReadOnly);
     }

@@ -32,7 +32,7 @@ class DbooleanConstructor : Dconstructor
 {
     this()
     {
-        super(Text.Boolean, 1, Dfunction.getPrototype);
+        super(Key.Boolean, 1, Dfunction.getPrototype);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -68,17 +68,14 @@ DError* Dboolean_prototype_toString(
     Value[] arglist)
 {
     // othis must be a Boolean
-    if(!othis.isClass(Text.Boolean))
+    if (auto db = cast(Dboolean)othis)
     {
-        ret.putVundefined;
-        return FunctionWantsBoolError(Text.toString, othis.classname);
+        ret.put(db.value.toString);
     }
     else
     {
-        Value *v;
-
-        v = &(cast(Dboolean)othis).value;
-        ret.put(v.toString);
+        ret.putVundefined;
+        return FunctionWantsBoolError(Key.toString, othis.classname);
     }
     return null;
 }
@@ -93,17 +90,14 @@ DError* Dboolean_prototype_valueOf(
     //logflag = 1;
 
     // othis must be a Boolean
-    if(!othis.isClass(Text.Boolean))
+    if (auto db = cast(Dboolean)othis)
     {
-        ret.putVundefined;
-        return FunctionWantsBoolError(Text.valueOf, othis.classname);
+        ret = db.value;
     }
     else
     {
-        Value *v;
-
-        v = &(cast(Dboolean)othis).value;
-        ret = *v;
+        ret.putVundefined;
+        return FunctionWantsBoolError(Key.valueOf, othis.classname);
     }
     return null;
 }
@@ -117,13 +111,13 @@ class DbooleanPrototype : Dboolean
         super(Dobject.getPrototype);
         //Dobject f = Dfunction_prototype;
 
-        DefineOwnProperty(Text.constructor, Dboolean.getConstructor,
+        DefineOwnProperty(Key.constructor, Dboolean.getConstructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.toString, &Dboolean_prototype_toString, 0 },
-            { Text.valueOf, &Dboolean_prototype_valueOf, 0 },
+            { Key.toString, &Dboolean_prototype_toString, 0 },
+            { Key.valueOf, &Dboolean_prototype_valueOf, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
@@ -137,16 +131,14 @@ class Dboolean : Dobject
 {
     this(d_boolean b)
     {
-        super(Dboolean.getPrototype());
+        super(Dboolean.getPrototype, Key.Boolean);
         value.put(b);
-        classname = Text.Boolean;
     }
 
     this(Dobject prototype)
     {
-        super(prototype);
+        super(prototype, Key.Boolean);
         value.put(false);
-        classname = Text.Boolean;
     }
 
 static:
@@ -165,7 +157,7 @@ static:
         _constructor = new DbooleanConstructor();
         _prototype = new DbooleanPrototype();
 
-        _constructor.DefineOwnProperty(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Key.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

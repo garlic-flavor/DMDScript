@@ -64,7 +64,7 @@ DError* Dglobal_eval(
     //FuncLog funclog(L"Global.eval()");
 
     v = arglist.length ? &arglist[0] : &vundefined;
-    if(v.getType() != Value.TypeName.String)
+    if(v.type != Value.Type.String)
     {
         ret = *v;
         return null;
@@ -556,7 +556,7 @@ DError* Dglobal_decodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(Text.decodeURI);
+        return URI_error(Key.decodeURI);
     }
     ret.put(s);
     return null;
@@ -578,7 +578,7 @@ DError* Dglobal_decodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(Text.decodeURIComponent);
+        return URI_error(Key.decodeURIComponent);
     }
     ret.put(s);
     return null;
@@ -601,7 +601,7 @@ DError* Dglobal_encodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(Text.encodeURI);
+        return URI_error(Key.encodeURI);
     }
     ret.put(s);
     return null;
@@ -623,7 +623,7 @@ DError* Dglobal_encodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(Text.encodeURIComponent);
+        return URI_error(Key.encodeURIComponent);
     }
     ret.put(s);
     return null;
@@ -793,54 +793,52 @@ class Dglobal : Dobject
 {
     this(tchar[][] argv)
     {
-        super(Dobject.getPrototype());  // Dglobal.prototype is implementation-dependent
+        super(Dobject.getPrototype, Key.global);  // Dglobal.prototype is implementation-dependent
 
         //writef("Dglobal.Dglobal(%x)\n", this);
 
         Dobject f = Dfunction.getPrototype();
-
-        classname = Text.global;
 
         // ECMA 15.1
         // Add in built-in objects which have attribute { DontEnum }
 
         // Value properties
 
-        DefineOwnProperty(Text.NaN, d_number.nan,
+        DefineOwnProperty(Key.NaN, d_number.nan,
                Property.Attribute.DontEnum |
                Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.Infinity, d_number.infinity,
+        DefineOwnProperty(Key.Infinity, d_number.infinity,
                Property.Attribute.DontEnum |
                Property.Attribute.DontDelete);
-        DefineOwnProperty(Text.undefined, vundefined,
+        DefineOwnProperty(Key.undefined, vundefined,
                Property.Attribute.DontEnum |
                Property.Attribute.DontDelete);
         static enum NativeFunctionData[] nfd =
         [
             // Function properties
-            { Text.eval, &Dglobal_eval, 1 },
-            { Text.parseInt, &Dglobal_parseInt, 2 },
-            { Text.parseFloat, &Dglobal_parseFloat, 1 },
-            { Text.escape, &Dglobal_escape, 1 },
-            { Text.unescape, &Dglobal_unescape, 1 },
-            { Text.isNaN, &Dglobal_isNaN, 1 },
-            { Text.isFinite, &Dglobal_isFinite, 1 },
-            { Text.decodeURI, &Dglobal_decodeURI, 1 },
-            { Text.decodeURIComponent, &Dglobal_decodeURIComponent, 1 },
-            { Text.encodeURI, &Dglobal_encodeURI, 1 },
-            { Text.encodeURIComponent, &Dglobal_encodeURIComponent, 1 },
+            { Key.eval, &Dglobal_eval, 1 },
+            { Key.parseInt, &Dglobal_parseInt, 2 },
+            { Key.parseFloat, &Dglobal_parseFloat, 1 },
+            { Key.escape, &Dglobal_escape, 1 },
+            { Key.unescape, &Dglobal_unescape, 1 },
+            { Key.isNaN, &Dglobal_isNaN, 1 },
+            { Key.isFinite, &Dglobal_isFinite, 1 },
+            { Key.decodeURI, &Dglobal_decodeURI, 1 },
+            { Key.decodeURIComponent, &Dglobal_decodeURIComponent, 1 },
+            { Key.encodeURI, &Dglobal_encodeURI, 1 },
+            { Key.encodeURIComponent, &Dglobal_encodeURIComponent, 1 },
 
             // Dscript unique function properties
-            { Text.print, &Dglobal_print, 1 },
-            { Text.println, &Dglobal_println, 1 },
-            { Text.readln, &Dglobal_readln, 0 },
-            { Text.getenv, &Dglobal_getenv, 1 },
+            { Key.print, &Dglobal_print, 1 },
+            { Key.println, &Dglobal_println, 1 },
+            { Key.readln, &Dglobal_readln, 0 },
+            { Key.getenv, &Dglobal_getenv, 1 },
 
             // Jscript compatible extensions
-            { Text.ScriptEngine, &Dglobal_ScriptEngine, 0 },
-            { Text.ScriptEngineBuildVersion, &Dglobal_ScriptEngineBuildVersion, 0 },
-            { Text.ScriptEngineMajorVersion, &Dglobal_ScriptEngineMajorVersion, 0 },
-            { Text.ScriptEngineMinorVersion, &Dglobal_ScriptEngineMinorVersion, 0 },
+            { Key.ScriptEngine, &Dglobal_ScriptEngine, 0 },
+            { Key.ScriptEngineBuildVersion, &Dglobal_ScriptEngineBuildVersion, 0 },
+            { Key.ScriptEngineMajorVersion, &Dglobal_ScriptEngineMajorVersion, 0 },
+            { Key.ScriptEngineMinorVersion, &Dglobal_ScriptEngineMinorVersion, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
@@ -850,23 +848,23 @@ class Dglobal : Dobject
 
         // Constructor properties
 
-        DefineOwnProperty(Text.Object, Dobject.getConstructor,
+        DefineOwnProperty(Key.Object, Dobject.getConstructor,
             Property.Attribute.DontEnum);
-        DefineOwnProperty(Text.Function, Dfunction.getConstructor,
+        DefineOwnProperty(Key.Function, Dfunction.getConstructor,
             Property.Attribute.DontEnum);
-        DefineOwnProperty(Text.Array, Darray.getConstructor,
+        DefineOwnProperty(Key.Array, Darray.getConstructor,
             Property.Attribute.DontEnum);
-        DefineOwnProperty(Text.String, Dstring.getConstructor,
+        DefineOwnProperty(Key.String, Dstring.getConstructor,
             Property.Attribute.DontEnum);
-        DefineOwnProperty(Text.Boolean, Dboolean.getConstructor,
+        DefineOwnProperty(Key.Boolean, Dboolean.getConstructor,
             Property.Attribute.DontEnum);
-        DefineOwnProperty(Text.Number, Dnumber.getConstructor,
+        DefineOwnProperty(Key.Number, Dnumber.getConstructor,
             Property.Attribute.DontEnum);
-        DefineOwnProperty(Text.Date, Ddate.getConstructor,
+        DefineOwnProperty(Key.Date, Ddate.getConstructor,
             Property.Attribute.DontEnum);
-        DefineOwnProperty(Text.RegExp, Dregexp.getConstructor,
+        DefineOwnProperty(Key.RegExp, Dregexp.getConstructor,
             Property.Attribute.DontEnum);
-        DefineOwnProperty(Text.Error, Derror.getConstructor,
+        DefineOwnProperty(Key.Error, Derror.getConstructor,
             Property.Attribute.DontEnum);
 
         DefineOwnProperty(syntaxerror.Text, syntaxerror.D0.getConstructor,
@@ -886,14 +884,14 @@ class Dglobal : Dobject
         // Other properties
 
         assert(Dmath.object);
-        DefineOwnProperty(Text.Math, Dmath.object, Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.Math, Dmath.object, Property.Attribute.DontEnum);
 
         // Build an "arguments" property out of argv[],
         // and add it to the global object.
         Darray arguments;
 
         arguments = new Darray();
-        DefineOwnProperty(Text.arguments, arguments, Property.Attribute.DontDelete);
+        DefineOwnProperty(Key.arguments, arguments, Property.Attribute.DontDelete);
         arguments.length.put(argv.length);
         CallContext cc;
         for(int i = 0; i < argv.length; i++)
@@ -902,7 +900,7 @@ class Dglobal : Dobject
 // Where is this definition?
             arguments.Set(i, argv[i].idup, Property.Attribute.DontEnum, cc);
         }
-        arguments.DefineOwnProperty(Text.callee, vnull, Property.Attribute.DontEnum);
+        arguments.DefineOwnProperty(Key.callee, vnull, Property.Attribute.DontEnum);
     }
 }
 

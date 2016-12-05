@@ -186,12 +186,12 @@ class DdateConstructor : Dconstructor
 {
     this()
     {
-        super(Text.Date, 7, Dfunction.getPrototype);
+        super(Key.Date, 7, Dfunction.getPrototype);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.parse, &Ddate_parse, 1 },
-            { Text.UTC, &Ddate_UTC, 7 },
+            { Key.parse, &Ddate_parse, 1 },
+            { Key.UTC, &Ddate_UTC, 7 },
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
@@ -257,8 +257,8 @@ class DdateConstructor : Dconstructor
             break;
 
         case 1:
-            arglist[0].toPrimitive(cc, ret, null);
-            if(ret.getType() == Value.TypeName.String)
+            arglist[0].toPrimitive(cc, ret);
+            if(ret.type == Value.Type.String)
             {
                 n = parseDateString(cc, ret.text);
             }
@@ -344,8 +344,8 @@ DError* Ddate_prototype_toString(
     immutable(char)[] s;
 
     //writefln("Ddate_prototype_toString()");
-    if(!othis.isDdate())
-        return checkdate(ret, Text.toString, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.toString, othis);
 
     version(DATETOSTRING)
     {
@@ -369,8 +369,8 @@ DError* Ddate_prototype_toDateString(
     d_time n;
     immutable(char)[] s;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.toDateString, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.toDateString, othis);
 
     version(DATETOSTRING)
     {
@@ -394,8 +394,8 @@ DError* Ddate_prototype_toTimeString(
     d_time n;
     immutable(char)[] s;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.toTimeString, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.toTimeString, othis);
 
     version(DATETOSTRING)
     {
@@ -419,8 +419,8 @@ DError* Ddate_prototype_valueOf(
     // ECMA 15.9.5.3
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.valueOf, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.valueOf, othis);
     getThisTime(ret, othis, n);
     return null;
 }
@@ -432,8 +432,8 @@ DError* Ddate_prototype_getTime(
     // ECMA 15.9.5.4
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getTime, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getTime, othis);
     getThisTime(ret, othis, n);
     return null;
 }
@@ -445,8 +445,8 @@ DError* Ddate_prototype_getYear(
     // ECMA 15.9.5.5
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getYear, othis);
+    if ((cast(Ddate)othis))
+        return checkdate(ret, Key.getYear, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -472,8 +472,8 @@ DError* Ddate_prototype_getFullYear(
     // ECMA 15.9.5.6
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getFullYear, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getFullYear, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -490,8 +490,8 @@ DError* Ddate_prototype_getUTCFullYear(
     // ECMA 15.9.5.7
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getUTCFullYear, othis);
+    if ((cast(Ddate)othis))
+        return checkdate(ret, Key.getUTCFullYear, othis);
     if(getThisTime(ret, othis, n) == 0)
     {
         n = yearFromTime(n);
@@ -507,8 +507,8 @@ DError* Ddate_prototype_getMonth(
     // ECMA 15.9.5.8
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getMonth, othis);
+    if ((cast(Ddate)othis))
+        return checkdate(ret, Key.getMonth, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -525,8 +525,8 @@ DError* Ddate_prototype_getUTCMonth(
     // ECMA 15.9.5.9
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getUTCMonth, othis);
+    if ((cast(Ddate)othis))
+        return checkdate(ret, Key.getUTCMonth, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -543,8 +543,8 @@ DError* Ddate_prototype_getDate(
     // ECMA 15.9.5.10
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getDate, othis);
+    if ((cast(Ddate)othis))
+        return checkdate(ret, Key.getDate, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -563,8 +563,8 @@ DError* Ddate_prototype_getUTCDate(
     // ECMA 15.9.5.11
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getUTCDate, othis);
+    if ((cast(Ddate)othis))
+        return checkdate(ret, Key.getUTCDate, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -581,8 +581,8 @@ DError* Ddate_prototype_getDay(
     // ECMA 15.9.5.12
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getDay, othis);
+    if ((cast(Ddate)othis))
+        return checkdate(ret, Key.getDay, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -599,8 +599,8 @@ DError* Ddate_prototype_getUTCDay(
     // ECMA 15.9.5.13
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getUTCDay, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getUTCDay, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -617,8 +617,8 @@ DError* Ddate_prototype_getHours(
     // ECMA 15.9.5.14
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getHours, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getHours, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -635,8 +635,8 @@ DError* Ddate_prototype_getUTCHours(
     // ECMA 15.9.5.15
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getUTCHours, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getUTCHours, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -653,8 +653,8 @@ DError* Ddate_prototype_getMinutes(
     // ECMA 15.9.5.16
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getMinutes, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getMinutes, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -671,8 +671,8 @@ DError* Ddate_prototype_getUTCMinutes(
     // ECMA 15.9.5.17
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getUTCMinutes, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getUTCMinutes, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -689,8 +689,8 @@ DError* Ddate_prototype_getSeconds(
     // ECMA 15.9.5.18
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getSeconds, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getSeconds, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -707,8 +707,8 @@ DError* Ddate_prototype_getUTCSeconds(
     // ECMA 15.9.5.19
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getUTCSeconds, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getUTCSeconds, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -725,8 +725,8 @@ DError* Ddate_prototype_getMilliseconds(
     // ECMA 15.9.5.20
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getMilliseconds, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getMilliseconds, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -743,8 +743,8 @@ DError* Ddate_prototype_getUTCMilliseconds(
     // ECMA 15.9.5.21
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getUTCMilliseconds, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getUTCMilliseconds, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -761,8 +761,8 @@ DError* Ddate_prototype_getTimezoneOffset(
     // ECMA 15.9.5.22
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.getTimezoneOffset, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.getTimezoneOffset, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -779,8 +779,8 @@ DError* Ddate_prototype_setTime(
     // ECMA 15.9.5.23
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setTime, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setTime, othis);
 
     if(!arglist.length)
         n = d_time_nan;
@@ -803,8 +803,8 @@ DError* Ddate_prototype_setMilliseconds(
     d_time time;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setMilliseconds, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setMilliseconds, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -830,8 +830,8 @@ DError* Ddate_prototype_setUTCMilliseconds(
     d_time time;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setUTCMilliseconds, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setUTCMilliseconds, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -858,8 +858,8 @@ DError* Ddate_prototype_setSeconds(
     d_time time;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setSeconds, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setSeconds, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -900,8 +900,8 @@ DError* Ddate_prototype_setUTCSeconds(
     d_time time;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setUTCSeconds, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setUTCSeconds, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -943,8 +943,8 @@ DError* Ddate_prototype_setMinutes(
     d_time time;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setMinutes, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setMinutes, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -995,8 +995,8 @@ DError* Ddate_prototype_setUTCMinutes(
     d_time time;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setUTCMinutes, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setUTCMinutes, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1048,8 +1048,8 @@ DError* Ddate_prototype_setHours(
     d_time time;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setHours, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setHours, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1112,8 +1112,8 @@ DError* Ddate_prototype_setUTCHours(
     d_time time;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setUTCHours, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setUTCHours, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1173,8 +1173,8 @@ DError* Ddate_prototype_setDate(
     d_time day;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setDate, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setDate, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1200,8 +1200,8 @@ DError* Ddate_prototype_setUTCDate(
     d_time day;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setUTCDate, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setUTCDate, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1228,8 +1228,8 @@ DError* Ddate_prototype_setMonth(
     d_time day;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setMonth, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setMonth, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1270,8 +1270,8 @@ DError* Ddate_prototype_setUTCMonth(
     d_time day;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setUTCMonth, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setUTCMonth, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1313,8 +1313,8 @@ DError* Ddate_prototype_setFullYear(
     d_time day;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setFullYear, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setFullYear, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1365,8 +1365,8 @@ DError* Ddate_prototype_setUTCFullYear(
     d_time day;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setUTCFullYear, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setUTCFullYear, othis);
 
     getThisTime(ret, othis, t);
     if(t == d_time_nan)
@@ -1417,8 +1417,8 @@ DError* Ddate_prototype_setYear(
     d_time day;
     d_time n;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.setYear, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.setYear, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1452,8 +1452,8 @@ DError* Ddate_prototype_toLocaleString(
     immutable(char)[] s;
     d_time t;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.toLocaleString, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.toLocaleString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1471,8 +1471,8 @@ DError* Ddate_prototype_toLocaleDateString(
     immutable(char)[] s;
     d_time t;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.toLocaleDateString, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.toLocaleDateString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1490,8 +1490,8 @@ DError* Ddate_prototype_toLocaleTimeString(
     immutable(char)[] s;
     d_time t;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.toLocaleTimeString, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.toLocaleTimeString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1508,8 +1508,8 @@ DError* Ddate_prototype_toUTCString(
     immutable(char)[] s;
     d_time t;
 
-    if(!othis.isDdate())
-        return checkdate(ret, Text.toUTCString, othis);
+    if ((cast(Ddate)othis) is null)
+        return checkdate(ret, Key.toUTCString, othis);
 
     if(getThisTime(ret, othis, t))
         t = 0;
@@ -1528,58 +1528,58 @@ class DdatePrototype : Ddate
 
         Dobject f = Dfunction.getPrototype;
 
-        DefineOwnProperty(Text.constructor, Ddate.getConstructor,
+        DefineOwnProperty(Key.constructor, Ddate.getConstructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.toString, &Ddate_prototype_toString, 0 },
-            { Text.toDateString, &Ddate_prototype_toDateString, 0 },
-            { Text.toTimeString, &Ddate_prototype_toTimeString, 0 },
-            { Text.valueOf, &Ddate_prototype_valueOf, 0 },
-            { Text.getTime, &Ddate_prototype_getTime, 0 },
+            { Key.toString, &Ddate_prototype_toString, 0 },
+            { Key.toDateString, &Ddate_prototype_toDateString, 0 },
+            { Key.toTimeString, &Ddate_prototype_toTimeString, 0 },
+            { Key.valueOf, &Ddate_prototype_valueOf, 0 },
+            { Key.getTime, &Ddate_prototype_getTime, 0 },
             //{	Text.getVarDate, &Ddate_prototype_getVarDate, 0 },
-            { Text.getYear, &Ddate_prototype_getYear, 0 },
-            { Text.getFullYear, &Ddate_prototype_getFullYear, 0 },
-            { Text.getUTCFullYear, &Ddate_prototype_getUTCFullYear, 0 },
-            { Text.getMonth, &Ddate_prototype_getMonth, 0 },
-            { Text.getUTCMonth, &Ddate_prototype_getUTCMonth, 0 },
-            { Text.getDate, &Ddate_prototype_getDate, 0 },
-            { Text.getUTCDate, &Ddate_prototype_getUTCDate, 0 },
-            { Text.getDay, &Ddate_prototype_getDay, 0 },
-            { Text.getUTCDay, &Ddate_prototype_getUTCDay, 0 },
-            { Text.getHours, &Ddate_prototype_getHours, 0 },
-            { Text.getUTCHours, &Ddate_prototype_getUTCHours, 0 },
-            { Text.getMinutes, &Ddate_prototype_getMinutes, 0 },
-            { Text.getUTCMinutes, &Ddate_prototype_getUTCMinutes, 0 },
-            { Text.getSeconds, &Ddate_prototype_getSeconds, 0 },
-            { Text.getUTCSeconds, &Ddate_prototype_getUTCSeconds, 0 },
-            { Text.getMilliseconds, &Ddate_prototype_getMilliseconds, 0 },
-            { Text.getUTCMilliseconds, &Ddate_prototype_getUTCMilliseconds, 0 },
-            { Text.getTimezoneOffset, &Ddate_prototype_getTimezoneOffset, 0 },
-            { Text.setTime, &Ddate_prototype_setTime, 1 },
-            { Text.setMilliseconds, &Ddate_prototype_setMilliseconds, 1 },
-            { Text.setUTCMilliseconds, &Ddate_prototype_setUTCMilliseconds, 1 },
-            { Text.setSeconds, &Ddate_prototype_setSeconds, 2 },
-            { Text.setUTCSeconds, &Ddate_prototype_setUTCSeconds, 2 },
-            { Text.setMinutes, &Ddate_prototype_setMinutes, 3 },
-            { Text.setUTCMinutes, &Ddate_prototype_setUTCMinutes, 3 },
-            { Text.setHours, &Ddate_prototype_setHours, 4 },
-            { Text.setUTCHours, &Ddate_prototype_setUTCHours, 4 },
-            { Text.setDate, &Ddate_prototype_setDate, 1 },
-            { Text.setUTCDate, &Ddate_prototype_setUTCDate, 1 },
-            { Text.setMonth, &Ddate_prototype_setMonth, 2 },
-            { Text.setUTCMonth, &Ddate_prototype_setUTCMonth, 2 },
-            { Text.setFullYear, &Ddate_prototype_setFullYear, 3 },
-            { Text.setUTCFullYear, &Ddate_prototype_setUTCFullYear, 3 },
-            { Text.setYear, &Ddate_prototype_setYear, 1 },
-            { Text.toLocaleString, &Ddate_prototype_toLocaleString, 0 },
-            { Text.toLocaleDateString, &Ddate_prototype_toLocaleDateString, 0 },
-            { Text.toLocaleTimeString, &Ddate_prototype_toLocaleTimeString, 0 },
-            { Text.toUTCString, &Ddate_prototype_toUTCString, 0 },
+            { Key.getYear, &Ddate_prototype_getYear, 0 },
+            { Key.getFullYear, &Ddate_prototype_getFullYear, 0 },
+            { Key.getUTCFullYear, &Ddate_prototype_getUTCFullYear, 0 },
+            { Key.getMonth, &Ddate_prototype_getMonth, 0 },
+            { Key.getUTCMonth, &Ddate_prototype_getUTCMonth, 0 },
+            { Key.getDate, &Ddate_prototype_getDate, 0 },
+            { Key.getUTCDate, &Ddate_prototype_getUTCDate, 0 },
+            { Key.getDay, &Ddate_prototype_getDay, 0 },
+            { Key.getUTCDay, &Ddate_prototype_getUTCDay, 0 },
+            { Key.getHours, &Ddate_prototype_getHours, 0 },
+            { Key.getUTCHours, &Ddate_prototype_getUTCHours, 0 },
+            { Key.getMinutes, &Ddate_prototype_getMinutes, 0 },
+            { Key.getUTCMinutes, &Ddate_prototype_getUTCMinutes, 0 },
+            { Key.getSeconds, &Ddate_prototype_getSeconds, 0 },
+            { Key.getUTCSeconds, &Ddate_prototype_getUTCSeconds, 0 },
+            { Key.getMilliseconds, &Ddate_prototype_getMilliseconds, 0 },
+            { Key.getUTCMilliseconds, &Ddate_prototype_getUTCMilliseconds, 0 },
+            { Key.getTimezoneOffset, &Ddate_prototype_getTimezoneOffset, 0 },
+            { Key.setTime, &Ddate_prototype_setTime, 1 },
+            { Key.setMilliseconds, &Ddate_prototype_setMilliseconds, 1 },
+            { Key.setUTCMilliseconds, &Ddate_prototype_setUTCMilliseconds, 1 },
+            { Key.setSeconds, &Ddate_prototype_setSeconds, 2 },
+            { Key.setUTCSeconds, &Ddate_prototype_setUTCSeconds, 2 },
+            { Key.setMinutes, &Ddate_prototype_setMinutes, 3 },
+            { Key.setUTCMinutes, &Ddate_prototype_setUTCMinutes, 3 },
+            { Key.setHours, &Ddate_prototype_setHours, 4 },
+            { Key.setUTCHours, &Ddate_prototype_setUTCHours, 4 },
+            { Key.setDate, &Ddate_prototype_setDate, 1 },
+            { Key.setUTCDate, &Ddate_prototype_setUTCDate, 1 },
+            { Key.setMonth, &Ddate_prototype_setMonth, 2 },
+            { Key.setUTCMonth, &Ddate_prototype_setUTCMonth, 2 },
+            { Key.setFullYear, &Ddate_prototype_setFullYear, 3 },
+            { Key.setUTCFullYear, &Ddate_prototype_setUTCFullYear, 3 },
+            { Key.setYear, &Ddate_prototype_setYear, 1 },
+            { Key.toLocaleString, &Ddate_prototype_toLocaleString, 0 },
+            { Key.toLocaleDateString, &Ddate_prototype_toLocaleDateString, 0 },
+            { Key.toLocaleTimeString, &Ddate_prototype_toLocaleTimeString, 0 },
+            { Key.toUTCString, &Ddate_prototype_toUTCString, 0 },
 
             // Map toGMTString() onto toUTCString(), per ECMA 15.9.5.41
-            { Text.toGMTString, &Ddate_prototype_toUTCString, 0 },
+            { Key.toGMTString, &Ddate_prototype_toUTCString, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
@@ -1587,7 +1587,7 @@ class DdatePrototype : Ddate
         debug
         {
             CallContext cc;
-            auto key = PropertyKey(Text.toString);
+            auto key = PropertyKey(Key.toString);
             assert(proptable.get(key, cc, null));
         }
     }
@@ -1600,22 +1600,19 @@ class Ddate : Dobject
 {
     this(d_number n)
     {
-        super(_prototype);
-        classname = Text.Date;
+        super(_prototype, Key.Date);
         value.put(n);
     }
 
     this(d_time n)
     {
-        super(_prototype);
-        classname = Text.Date;
+        super(_prototype, Key.Date);
         value.putVtime(n);
     }
 
     this(Dobject prototype)
     {
-        super(prototype);
-        classname = Text.Date;
+        super(prototype, Key.Date);
         value.put(d_number.nan);
     }
 
@@ -1625,7 +1622,7 @@ static:
         _constructor = new DdateConstructor();
         _prototype = new DdatePrototype();
 
-        _constructor.DefineOwnProperty(Text.prototype, _prototype,
+        _constructor.DefineOwnProperty(Key.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);

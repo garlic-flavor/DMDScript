@@ -18,33 +18,30 @@
 
 module dmdscript.property;
 
+import dmdscript.value : Value, DError, vundefined;
+
 debug import std.stdio;
 
-//
+//==============================================================================
+// PropertyKey must have a pre-calculated hash value.
 struct PropertyKey
 {
-    import dmdscript.value : Value;
     import dmdscript.identifier : Identifier;
+    import dmdscript.script : d_number, tchar, d_string;
 
     Value value;
     alias value this;
 
     @safe @nogc pure nothrow
-    this(T)(T arg) if (Value.CanContain!T)
+    this(T)(in auto ref T arg) if (CanCalcHash!T && !is(T == Value))
     {
-        value.put(arg, Value.calcHash(arg));
+        value.put(arg, calcHash(arg));
     }
 
     @safe @nogc pure nothrow
-    this(T)(T arg, in size_t h) if (Value.CanContain!T)
+    this(T)(in ref auto T arg, in size_t hash) if (CanCalcHash!T)
     {
-        value.put(arg, h);
-    }
-
-    @safe @nogc pure nothrow
-    this(T : Identifier)(ref T arg)
-    {
-        value = arg.value;
+        value.put(arg, hash);
     }
 
     @safe
@@ -54,19 +51,13 @@ struct PropertyKey
     }
 
     @safe @nogc pure nothrow
-    this(T : Value)(ref T arg, in size_t hash)
+    void put(T)(T arg) if (Value.IsPrimitiveType!T)
     {
-        value.put(arg, hash);
+        value.put(arg, calcHash(arg));
     }
 
     @safe @nogc pure nothrow
-    void put(T)(T arg) if (Value.CanContain!T)
-    {
-        value.put(arg, Value.calcHash(arg));
-    }
-
-    @safe @nogc pure nothrow
-    void put(T)(T arg, size_t h) if (Value.CanContain!T)
+    void put(T)(T arg, size_t h) if (Value.IsPrimitiveType!T)
     {
         value.put(arg, h);
     }
@@ -76,8 +67,200 @@ struct PropertyKey
     {
         return value.hash;
     }
+
+    @safe
+    bool opEquals(in ref PropertyKey rvalue) const
+    {
+        return hash == rvalue.hash && value == rvalue.value;
+    }
+
+static:
+
+    template CanCalcHash(T)
+    {
+        enum CanCalcHash = Value.IsPrimitiveType!T ||
+            is(T == Value) || is(T == StringKey);
+    }
+
+    @safe @nogc pure nothrow
+    size_t calcHash(in size_t u)
+    {
+        static if      (size_t.sizeof == 4)
+            return u ^ 0x55555555;
+        else static if (size_t.sizeof == 8) // Is this OK?
+            return u ^ 0x5555555555555555;
+        else static assert(0);
+    }
+
+    @safe @nogc pure nothrow
+    size_t calcHash(in d_number d)
+    {
+        return calcHash(cast(size_t)d);
+    }
+
+    static @trusted @nogc pure nothrow
+    size_t calcHash(in d_string s)
+    {
+        size_t hash;
+
+        /* If it looks like an array index, hash it to the
+         * same value as if it was an array index.
+         * This means that "1234" hashes to the same value as 1234.
+         */
+        hash = 0;
+        foreach(tchar c; s)
+        {
+            switch(c)
+            {
+            case '0':       hash *= 10;             break;
+            case '1':       hash = hash * 10 + 1;   break;
+
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                hash = hash * 10 + (c - '0');
+                break;
+
+            default:
+            {
+                uint len = s.length;
+                ubyte* str = cast(ubyte*)s.ptr;
+
+                hash = 0;
+                while(1)
+                {
+                    switch(len)
+                    {
+                    case 0:
+                        break;
+
+                    case 1:
+                        hash *= 9;
+                        hash += *cast(ubyte*)str;
+                        break;
+
+                    case 2:
+                        hash *= 9;
+                        if (__ctfe)
+                            hash += str[0..2].toNative!ushort;
+                        else
+                            hash += *cast(ushort*)str;
+                        break;
+
+                    case 3:
+                        hash *= 9;
+                        if (__ctfe)
+                            hash += (str[0..2].toNative!ushort << 8) +
+                                (cast(ubyte*)str)[2];
+                        else
+                            hash += (*cast(ushort*)str << 8) +
+                                (cast(ubyte*)str)[2];
+                        break;
+
+                    default:
+                        hash *= 9;
+                        if (__ctfe)
+                            hash += str[0..4].toNative!uint;
+                        else
+                            hash += *cast(uint*)str;
+                        str += 4;
+                        len -= 4;
+                        continue;
+                    }
+                    break;
+                }
+                break;
+            }
+            // return s.hash;
+            }
+        }
+        return calcHash(hash);
+    }
+
+    @safe @nogc pure nothrow
+    size_t calcHash(inout ref StringKey key)
+    {
+        return key.hash;
+    }
+
+    alias calcHash = Value.calcHash;
 }
 
+//==============================================================================
+struct StringKey
+{
+    import dmdscript.script : d_string;
+    import dmdscript.identifier : Identifier;
+
+    d_string entity;
+    alias entity this;
+
+    @safe @nogc pure nothrow
+    this(d_string str)
+    {
+        entity = str;
+        if (__ctfe)
+            _hash = PropertyKey.calcHash(entity);
+    }
+
+    @safe @nogc pure nothrow
+    this(d_string str, size_t h)
+    {
+        entity = str;
+        _hash = h;
+    }
+
+    @safe @nogc pure nothrow
+    this(in ref PropertyKey pk)
+    {
+        entity = pk.text;
+        _hash = pk.toHash;
+    }
+
+    @property @safe @nogc pure nothrow
+    size_t hash() const
+    {
+        if (0 < _hash)
+            return _hash;
+        return PropertyKey.calcHash(entity);
+    }
+
+    @property @safe @nogc pure nothrow
+    size_t hash()
+    {
+        if (0 == _hash)
+            _hash = PropertyKey.calcHash(entity);
+        return _hash;
+    }
+
+    @property @safe @nogc pure nothrow
+    size_t calculatedHash() const
+    {
+        return _hash;
+    }
+
+    @safe @nogc pure nothrow
+    bool opEquals(in ref StringKey rvalue) const
+    {
+        return entity == rvalue.entity;
+    }
+
+    @safe @nogc pure nothrow
+    bool opEquals(in d_string rvalue) const
+    {
+        return entity == rvalue;
+    }
+
+private:
+    size_t _hash;
+}
+
+//==============================================================================
 // See_Also: Ecma-262-v7/6.1.7.1/Property Attributes
 //                      /6.2.4
 struct Property
@@ -85,7 +268,6 @@ struct Property
     import dmdscript.dfunction : Dfunction;
     import dmdscript.dobject : Dobject;
     import dmdscript.script : CallContext;
-    import dmdscript.value : Value, DError;
 
     // attribute flags
     enum Attribute : uint
@@ -131,12 +313,12 @@ struct Property
     @disable
     this(ref CallContext cc, Dobject obj)
     {
-        import dmdscript.text : Text;
+        import dmdscript.text : Key;
         import dmdscript.errmsgs;
         bool valueOrWritable = false;
 
         assert(obj);
-        if (auto v = obj.Get(Text.enumerable, Text.enumerable.hash, cc))
+        if (auto v = obj.Get(Key.enumerable, cc))
         {
             if (!v.toBoolean)
                 _attr |= Attribute.DontEnum;
@@ -144,7 +326,7 @@ struct Property
         else
             _attr |= Attribute.DontEnum;
 
-        if (auto v = obj.Get(Text.configurable, Text.configurable.hash, cc))
+        if (auto v = obj.Get(Key.configurable, cc))
         {
             if (!v.toBoolean)
                 _attr |= Attribute.DontConfig;
@@ -152,13 +334,13 @@ struct Property
         else
             _attr |= Attribute.DontConfig;
 
-        if (auto v = obj.Get(Text.value, Text.value.hash, cc))
+        if (auto v = obj.Get(Key.value, cc))
         {
             _value = *v;
             valueOrWritable = true;
         }
 
-        if (auto v = obj.Get(Text.writable, Text.writable.hash, cc))
+        if (auto v = obj.Get(Key.writable, cc))
         {
             if (!v.toBoolean)
                 _attr |= Attribute.ReadOnly;
@@ -167,7 +349,7 @@ struct Property
         else
             _attr |= Attribute.ReadOnly;
 
-        if (auto v = obj.Get(Text.get, Text.get.hash, cc))
+        if (auto v = obj.Get(Key.get, cc))
         {
             if (valueOrWritable)
                 throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
@@ -177,7 +359,7 @@ struct Property
                 throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
         }
 
-        if (auto v = obj.Get(Text.set, Text.set.hash, cc))
+        if (auto v = obj.Get(Key.set, cc))
         {
             if (valueOrWritable)
                 throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
@@ -459,7 +641,7 @@ struct Property
     Dobject toObject()
     {
         import std.exception : enforce;
-        import dmdscript.text : Text;
+        import dmdscript.text : Key;
         enum Attr = Attribute.None;
 
         auto obj = new Dobject(Dobject.getPrototype);
@@ -468,24 +650,23 @@ struct Property
         if (_attr & Attribute.Accessor)
         {
             tmp.put(_Get);
-            obj.DefineOwnProperty(Text.get, Text.get.hash, tmp, Attr).enforce;
+            obj.DefineOwnProperty(Key.get, tmp, Attr).enforce;
             tmp.put(_Set);
-            obj.DefineOwnProperty(Text.set, Text.get.hash, tmp, Attr).enforce;
+            obj.DefineOwnProperty(Key.set, tmp, Attr).enforce;
         }
         else
         {
-            obj.DefineOwnProperty(Text.value, Text.value.hash, _value, Attr)
+            obj.DefineOwnProperty(Key.value, _value, Attr)
                 .enforce;
             tmp.put(0 == (_attr & Attribute.ReadOnly));
-            obj.DefineOwnProperty(Text.writable, Text.writable.hash, tmp, Attr)
+            obj.DefineOwnProperty(Key.writable, tmp, Attr)
                 .enforce;
         }
         tmp.put(0 == (_attr & Attribute.DontEnum));
-        obj.DefineOwnProperty(Text.enumerable, Text.enumerable.hash, tmp, Attr)
+        obj.DefineOwnProperty(Key.enumerable, tmp, Attr)
             .enforce;
         tmp.put(0 == (_attr & Attribute.DontConfig));
-        obj.DefineOwnProperty(Text.configurable, Text.configurable.hash, tmp,
-                              Attr).enforce;
+        obj.DefineOwnProperty(Key.configurable, tmp, Attr).enforce;
         return obj;
     }
 
@@ -519,7 +700,6 @@ final class PropTable
 {
     import dmdscript.dobject : Dobject;
     import dmdscript.script : CallContext, d_uint32, d_string;
-    import dmdscript.value : Value, DError;
     import dmdscript.RandAA : RandAA;
 
     //
@@ -641,8 +821,6 @@ final class PropTable
     @safe
     bool config(in ref PropertyKey key, in Property.Attribute attributes)
     {
-        import dmdscript.value : vundefined;
-
         if (auto p = _table.findExistingAlt(key, key.hash))
         {
             return p.config(attributes);
@@ -772,3 +950,57 @@ private:
 
 
 
+private:
+// for Value.calcHash at CTFE.
+@safe @nogc pure nothrow
+T toNative(T, size_t N = T.sizeof)(in ubyte[] buf)
+{
+    assert(N <= buf.length);
+    static if      (N == 1)
+        return buf[0];
+    else static if (N == 2)
+    {
+        version      (BigEndian)
+            return ((cast(ushort)buf[0]) << 8) | (cast(ushort)buf[1]);
+        else version (LittleEndian)
+            return (cast(ushort)buf[0]) | ((cast(ushort)buf[1]) << 8);
+        else static assert(0);
+    }
+    else static if (N == 4)
+    {
+        version      (BigEndian)
+            return ((cast(uint)buf[0]) << 24) |
+                   ((cast(uint)buf[1]) << 16) |
+                   ((cast(uint)buf[2]) << 8) |
+                   (cast(uint)buf[3]);
+        else version (LittleEndian)
+            return (cast(uint)buf[0]) |
+                   ((cast(uint)buf[1]) << 8) |
+                   ((cast(uint)buf[2]) << 16) |
+                   ((cast(uint)buf[3]) << 24);
+        else static assert(0);
+    }
+    else static if (N == 8)
+    {
+        version      (BigEndian)
+            return ((cast(ulong)buf[0]) << 56) |
+                   ((cast(ulong)buf[1]) << 48) |
+                   ((cast(ulong)buf[2]) << 40) |
+                   ((cast(ulong)buf[3]) << 32) |
+                   ((cast(ulong)buf[4]) << 24) |
+                   ((cast(ulong)buf[5]) << 16) |
+                   ((cast(ulong)buf[6]) << 8) |
+                   (cast(ulong)buf[7]);
+        else version (LittleEndian)
+            return (cast(ulong)buf[0]) |
+                   ((cast(ulong)buf[1]) << 8) |
+                   ((cast(ulong)buf[2]) << 16) |
+                   ((cast(ulong)buf[3]) << 24) |
+                   ((cast(ulong)buf[4]) << 32) |
+                   ((cast(ulong)buf[5]) << 40) |
+                   ((cast(ulong)buf[6]) << 48) |
+                   ((cast(ulong)buf[7]) << 56);
+        else static assert(0);
+    }
+    else static assert(0);
+}

@@ -87,10 +87,10 @@ DError* Derror_prototype_toString(
     Value* v;
 
     //writef("Error.prototype.toString()\n");
-    v = othis.Get(Text.message, cc);
+    v = othis.Get(Key.message, cc);
     if(!v)
         v = &vundefined;
-    ret.put(othis.Get(Text.name, cc).toString()~": "~v.toString());
+    ret.put(othis.Get(Key.name, cc).toString()~": "~v.toString());
     return null;
 }
 
@@ -104,20 +104,20 @@ class DerrorPrototype : Derror
         Dobject f = Dfunction.getPrototype;
         //d_string m = d_string_ctor(DTEXT("Error.prototype.message"));
 
-        DefineOwnProperty(Text.constructor, Derror_constructor,
+        DefineOwnProperty(Key.constructor, Derror_constructor,
                Property.Attribute.DontEnum);
 
         static enum NativeFunctionData[] nfd =
         [
-            { Text.toString, &Derror_prototype_toString, 0 },
+            { Key.toString, &Derror_prototype_toString, 0 },
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.None);
 
-        DefineOwnProperty(Text.name, Text.Error, Property.Attribute.None);
-        DefineOwnProperty(Text.message, Text.Empty, Property.Attribute.None);
-        DefineOwnProperty(Text.description, Text.Empty, Property.Attribute.None);
-        DefineOwnProperty(Text.number, cast(d_number)(/*FACILITY |*/ 0),
+        DefineOwnProperty(Key.name, Key.Error, Property.Attribute.None);
+        DefineOwnProperty(Key.message, Text.Empty, Property.Attribute.None);
+        DefineOwnProperty(Key.description, Text.Empty, Property.Attribute.None);
+        DefineOwnProperty(Key.number, cast(d_number)(/*FACILITY |*/ 0),
                Property.Attribute.None);
     }
 }
@@ -129,14 +129,13 @@ class Derror : Dobject
 {
     this(Value * m, Value * v2)
     {
-        super(getPrototype());
-        classname = Text.Error;
+        super(getPrototype, Key.Error);
 
         immutable(char)[] msg;
         msg = m.toString();
         CallContext cc;
-        Set(Text.message, msg, Property.Attribute.None, cc);
-        Set(Text.description, msg, Property.Attribute.None, cc);
+        Set(Key.message, msg, Property.Attribute.None, cc);
+        Set(Key.description, msg, Property.Attribute.None, cc);
         if(m.isString())
         {
         }
@@ -144,25 +143,24 @@ class Derror : Dobject
         {
             d_number n = m.toNumber(cc);
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
-            Set(Text.number, n, Property.Attribute.None, cc);
+            Set(Key.number, n, Property.Attribute.None, cc);
         }
         if(v2.isString())
         {
-            Set(Text.description, v2.toString, Property.Attribute.None, cc);
-            Set(Text.message, v2.toString, Property.Attribute.None, cc);
+            Set(Key.description, v2.toString, Property.Attribute.None, cc);
+            Set(Key.message, v2.toString, Property.Attribute.None, cc);
         }
         else if(v2.isNumber())
         {
             d_number n = v2.toNumber(cc);
             n = cast(d_number)(/*FACILITY |*/ cast(int)n);
-            Set(Text.number, n, Property.Attribute.None, cc);
+            Set(Key.number, n, Property.Attribute.None, cc);
         }
     }
 
     this(Dobject prototype)
     {
-        super(prototype);
-        classname = Text.Error;
+        super(prototype, Key.Error);
     }
 
     static Dfunction getConstructor()
@@ -180,7 +178,7 @@ class Derror : Dobject
         Derror_constructor = new DerrorConstructor();
         Derror_prototype = new DerrorPrototype();
 
-        Derror_constructor.DefineOwnProperty(Text.prototype, Derror_prototype,
+        Derror_constructor.DefineOwnProperty(Key.prototype, Derror_prototype,
                                   Property.Attribute.DontEnum |
                                   Property.Attribute.DontDelete |
                                   Property.Attribute.ReadOnly);

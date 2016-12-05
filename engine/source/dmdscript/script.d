@@ -445,7 +445,7 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
 {
     import std.string : toStringz;
     import core.sys.posix.stdlib : strtod;
-    import dmdscript.text : Text;
+    import dmdscript.text : Key;
 
     // Convert StringNumericLiteral using ECMA 9.3.1
     d_number number;
@@ -490,9 +490,9 @@ d_number StringNumericLiteral(d_string str, out size_t endidx, int parsefloat)
         }
     }
 
-    size_t inflen = (cast(string)(Text.Infinity)).length;
+    size_t inflen = (cast(string)(Key.Infinity)).length;
     if(len - i >= inflen &&
-       str[i .. i + inflen] == Text.Infinity)
+       str[i .. i + inflen] == Key.Infinity)
     {
         number = sign ? -d_number.infinity : d_number.infinity;
         endidx = eoff + i + inflen;

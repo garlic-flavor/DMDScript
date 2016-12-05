@@ -45,15 +45,16 @@ version = SCOPECACHING;         // turn scope caching on
 
 class Catch : Dobject
 {
+    alias GetImpl = Dobject.GetImpl;
     // This is so scope_get() will skip over these objects
-    override Value* Get(in d_string, ref CallContext) const
+    override Value* GetImpl(in ref StringKey, ref CallContext) const
     {
         return null;
     }
-    override Value* Get(in d_string, in uint, ref CallContext) const
-    {
-        return null;
-    }
+    // override Value* Get(in d_string, in uint, ref CallContext) const
+    // {
+    //     return null;
+    // }
 
     // This is so we can distinguish between a real Dobject
     // and these fakers
@@ -71,23 +72,19 @@ class Catch : Dobject
         this.offset = offset;
         this.name = name;
     }
-
-    override int isCatch() const
-    {
-        return true;
-    }
 }
 
 class Finally : Dobject
 {
-    override Value* Get(in d_string, ref CallContext) const
+    alias GetImpl = Dobject.GetImpl;
+    override Value* GetImpl(in ref StringKey, ref CallContext) const
     {
         return null;
     }
-    override Value* Get(in d_string, in uint, ref CallContext) const
-    {
-        return null;
-    }
+    // override Value* Get(in d_string, in uint, ref CallContext) const
+    // {
+    //     return null;
+    // }
     override d_string getTypeof()
     {
         return null;
@@ -99,11 +96,6 @@ class Finally : Dobject
     {
         super(null);
         this.finallyblock = finallyblock;
-    }
-
-    override int isFinally() const
-    {
-        return true;
     }
 }
 
@@ -120,6 +112,7 @@ Value* scope_get(ref CallContext cc, Dobject[] scopex, Identifier* id,
     Value* v;
 
     d = scopex.length;
+    auto key = PropertyKey(id.value);
     for(;; )
     {
         if(!d)
@@ -130,7 +123,7 @@ Value* scope_get(ref CallContext cc, Dobject[] scopex, Identifier* id,
         }
         d--;
         o = scopex[d];
-        v = o.Get(*id, cc);
+        v = o.Get(key, cc);
         if(v)
         {
             pthis = o;
@@ -148,6 +141,7 @@ Value* scope_get_lambda(ref CallContext cc, Dobject[] scopex, Identifier* id,
     Value* v;
 
     d = scopex.length;
+    auto key = PropertyKey(id.value);
     for(;; )
     {
         if(!d)
@@ -159,7 +153,7 @@ Value* scope_get_lambda(ref CallContext cc, Dobject[] scopex, Identifier* id,
         d--;
         o = scopex[d];
         //v = o.GetLambda(s, hash);
-        v = o.Get(*id, cc);
+        v = o.Get(key, cc);
         if(v)
         {
             pthis = o;
@@ -176,10 +170,11 @@ Value* scope_get(ref CallContext cc, Dobject[] scopex, Identifier* id)
     Value* v;
 
     d = scopex.length;
+    auto key = PropertyKey(id.value);
     // 1 is most common case for d
     if(d == 1)
     {
-        return scopex[0].Get(*id, cc);
+        return scopex[0].Get(key, cc);
     }
     for(;; )
     {
@@ -191,7 +186,7 @@ Value* scope_get(ref CallContext cc, Dobject[] scopex, Identifier* id)
         d--;
         o = scopex[d];
 
-        v = o.Get(*id, cc);
+        v = o.Get(key, cc);
         if(v)
             break;
     }
@@ -228,7 +223,7 @@ void PutValue(ref CallContext cc, in d_string s, Value* a)
     // If we don't find it, put it into the global object
 
     uint d;
-    uint hash;
+    // uint hash;
     Value* v;
     Dobject o;
     //a.checkReference();
@@ -240,14 +235,15 @@ void PutValue(ref CallContext cc, in d_string s, Value* a)
         return;
     }
 
-    hash = Value.calcHash(s);
+    // hash = Value.calcHash(s);
+    auto key = PropertyKey(s);
 
     for(;; d--)
     {
         assert(d > 0);
         o = cc.scopex[d - 1];
 
-        v = o.Get(s, hash, cc);
+        v = o.Get(key, cc);
         if(v)
         {
             // Overwrite existing property with new one
@@ -276,6 +272,7 @@ void PutValue(ref CallContext cc, Identifier* id, Value* a)
     Dobject o;
     //a.checkReference();
     d = cc.scopex.length;
+    auto key = PropertyKey(id.value);
     if(d == cc.globalroot)
     {
         o = scope_tos(cc.scopex);
@@ -286,7 +283,7 @@ void PutValue(ref CallContext cc, Identifier* id, Value* a)
         {
             assert(d > 0);
             o = cc.scopex[d - 1];
-            v = o.Get(*id, cc);
+            v = o.Get(key, cc);
             if(v)
             {
                 v.checkReference();
@@ -296,7 +293,7 @@ void PutValue(ref CallContext cc, Identifier* id, Value* a)
                 break;
         }
     }
-    o.Set(*id, *a, Property.Attribute.None, cc);
+    o.Set(key, *a, Property.Attribute.None, cc);
 }
 
 
@@ -306,15 +303,16 @@ void PutValue(ref CallContext cc, Identifier* id, Value* a)
 
 DError* cannotConvert(Value* b)
 {
+    import std.conv : to;
     DError* sta;
 
     if(b.isUndefinedOrNull)
     {
-        sta = CannotConvertToObject4Error(b.getType);
+        sta = CannotConvertToObject4Error(b.type.to!d_string);
     }
     else
     {
-        sta = CannotConvertToObject2Error(b.getType, b.toString);
+        sta = CannotConvertToObject2Error(b.type.to!d_string, b.toString);
     }
     return sta;
 }
@@ -354,7 +352,7 @@ struct IR
         Value* b;
         Value* c;
         Value* v;
-        PropertyKey* pk;
+        PropertyKey* ppk;
         DError* sta;
         Iterator* iter;
         Identifier* id;
@@ -365,8 +363,8 @@ struct IR
         d_int32 i32;
         d_uint32 u32;
         d_boolean res;
-        d_string tx;
-        d_string ty;
+        Value.Type tx;
+        Value.Type ty;
         Dobject o;
         Dobject[] scopex;
         uint dimsave;
@@ -402,9 +400,8 @@ struct IR
                 o = scopex[$ - 1];
                 scopex = scopex[0 .. $ - 1]; // pop entry off scope chain
 
-                if(o.isCatch)
+                if(auto ca = cast(Catch)o)
                 {
-                    ca = cast(Catch)o;
                     o = new Dobject(Dobject.getPrototype);
                     version(JSCRIPT_CATCH_BUG)
                     {
@@ -422,10 +419,9 @@ struct IR
                 }
                 else
                 {
-                    if(o.isFinally())
+                    if(auto fin = cast(Finally)o)
                     {
-                        f = cast(Finally)o;
-                        callFinally(f);
+                        callFinally(fin);
                         break;
                     }
                 }
@@ -508,12 +504,11 @@ struct IR
                        (i32 = cast(d_int32)c.number) == c.number &&
                        i32 >= 0)
                     {
-                        v = o.Get(cast(d_uint32)i32, *c, cc);
+                        v = o.Get(cast(d_uint32)i32/*, *c*/, cc);
                     }
                     else
                     {
-                        s = c.toString();
-                        v = o.Get(s, cc);
+                        v = o.Get(c.toString, cc);
                     }
                     if(!v)
                         v = &vundefined;
@@ -530,10 +525,10 @@ struct IR
                        i32 >= 0)
                     {
                         if(b.type == Value.Type.Object)
-                            sta = b.object.Set(cast(d_uint32)i32, *c, *a,
+                            sta = b.object.Set(cast(d_uint32)i32/*, *c*/, *a,
                                                Property.Attribute.None, cc);
                         else
-                            sta = b.Set(cast(d_uint32)i32, *c, *a, cc);
+                            sta = b.Set(cast(d_uint32)i32/*, *c*/, *a, cc);
                     }
                     else
                     {
@@ -553,7 +548,7 @@ struct IR
                     if(!o)
                     {
                         sta = CannotConvertToObject3Error(
-                            b.getType, b.toString, s);
+                            b.type.to!d_string, b.toString, s);
                         goto Lthrow;
                     }
                     v = o.Get(s, cc);
@@ -665,8 +660,8 @@ struct IR
                     }
                     else
                     {
-                        v.toPrimitive(cc, *v, null);
-                        a.toPrimitive(cc, *a, null);
+                        v.toPrimitive(cc, *v);
+                        a.toPrimitive(cc, *a);
                         if(v.isString())
                         {
                             s2 = v.toString() ~a.toString();
@@ -722,7 +717,8 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = CannotAssignError(a.getType, b.getType);
+                        sta = CannotAssignError(a.type.to!d_string,
+                                                b.type.to!d_string);
                         goto Lthrow;
                     }
                     sta = o.PutDefault(*a);
@@ -854,7 +850,8 @@ struct IR
                     c = locals + (code + 3).index;
                     if(c.isPrimitive())
                     {
-                        sta = RhsMustBeObjectError("instanceof", c.getType);
+                        sta = RhsMustBeObjectError("instanceof",
+                                                   c.type.to!d_string);
                         goto Lthrow;
                     }
                     co = c.toObject();
@@ -882,8 +879,8 @@ struct IR
                         char[Value.sizeof] vtmpc;
                         Value* vc = cast(Value*)vtmpc;
 
-                        b.toPrimitive(cc, *vb, null);
-                        c.toPrimitive(cc, *vc, null);
+                        b.toPrimitive(cc, *vb);
+                        c.toPrimitive(cc, *vc);
 
                         if(vb.isString() || vc.isString())
                         {
@@ -1199,7 +1196,7 @@ struct IR
                             ? (locals + (code + 3).index).toString()
                             : (code + 3).id.value.text;
                         if(o.implementsDelete())
-                            bo = !!o.Delete(s);
+                            bo = !!o.Delete(StringKey(s));
                         else
                             bo = !o.HasProperty(s);
                     }
@@ -1217,7 +1214,7 @@ struct IR
                     if(!scope_get(cc, scopex, id, o))
                         bo = true;
                     else if(o.implementsDelete())
-                        bo = !!o.Delete(s);
+                        bo = !!o.Delete(StringKey(s));
                     else
                         bo = !o.HasProperty(s);
                     (locals + (code + 1).index).put(bo);
@@ -1238,8 +1235,8 @@ struct IR
                         res = (b.number < c.number);
                     else
                     {
-                        b.toPrimitive(cc, *b, Value.TypeName.Number);
-                        c.toPrimitive(cc, *c, Value.TypeName.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
                             d_string x = b.toString();
@@ -1263,8 +1260,8 @@ struct IR
                         res = (b.number <= c.number);
                     else
                     {
-                        b.toPrimitive(cc, *b, Value.TypeName.Number);
-                        c.toPrimitive(cc, *c, Value.TypeName.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
                             d_string x = b.toString();
@@ -1288,8 +1285,8 @@ struct IR
                         res = (b.number > c.number);
                     else
                     {
-                        b.toPrimitive(cc, *b, Value.TypeName.Number);
-                        c.toPrimitive(cc, *c, Value.TypeName.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
                             d_string x = b.toString();
@@ -1314,8 +1311,8 @@ struct IR
                         res = (b.number >= c.number);
                     else
                     {
-                        b.toPrimitive(cc, *b, Value.TypeName.Number);
-                        c.toPrimitive(cc, *c, Value.TypeName.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
                             d_string x = b.toString();
@@ -1336,62 +1333,62 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
                     Lagain:
-                    tx = b.getType();
-                    ty = c.getType();
-                    if(tx == ty)
+                    tx = b.type;
+                    ty = c.type;
+                    if      (tx == ty)
                     {
-                        if(tx == Value.TypeName.Undefined ||
-                           tx == Value.TypeName.Null)
+                        if      (tx == Value.Type.Undefined ||
+                                 tx == Value.Type.Null)
                             res = true;
-                        else if(tx == Value.TypeName.Number)
+                        else if (tx == Value.Type.Number)
                         {
                             d_number x = b.number;
                             d_number y = c.number;
 
                             res = (x == y);
                         }
-                        else if(tx == Value.TypeName.String)
+                        else if (tx == Value.Type.String)
                         {
                             res = (b.text == c.text);
                         }
-                        else if(tx == Value.TypeName.Boolean)
+                        else if (tx == Value.Type.Boolean)
                             res = (b.dbool == c.dbool);
                         else // TypeObject
                         {
                             res = b.object == c.object;
                         }
                     }
-                    else if(tx == Value.TypeName.Null &&
-                            ty == Value.TypeName.Undefined)
+                    else if (tx == Value.Type.Null &&
+                             ty == Value.Type.Undefined)
                         res = true;
-                    else if(tx == Value.TypeName.Undefined &&
-                            ty == Value.TypeName.Null)
+                    else if (tx == Value.Type.Undefined &&
+                             ty == Value.Type.Null)
                         res = true;
-                    else if(tx == Value.TypeName.Number &&
-                            ty == Value.TypeName.String)
+                    else if (tx == Value.Type.Number &&
+                             ty == Value.Type.String)
                     {
                         c.put(c.toNumber(cc));
                         goto Lagain;
                     }
-                    else if(tx == Value.TypeName.String &&
-                            ty == Value.TypeName.Number)
+                    else if (tx == Value.Type.String &&
+                             ty == Value.Type.Number)
                     {
                         b.put(b.toNumber(cc));
                         goto Lagain;
                     }
-                    else if(tx == Value.TypeName.Boolean)
+                    else if (tx == Value.Type.Boolean)
                     {
                         b.put(b.toNumber(cc));
                         goto Lagain;
                     }
-                    else if(ty == Value.TypeName.Boolean)
+                    else if (ty == Value.Type.Boolean)
                     {
                         c.put(c.toNumber(cc));
                         goto Lagain;
                     }
-                    else if(ty == Value.TypeName.Object)
+                    else if (ty == Value.Type.Object)
                     {
-                        c.toPrimitive(cc, *c, null);
+                        c.toPrimitive(cc, *c);
                         // v = cast(Value*)c.toPrimitive(c, null);
                         // if(v)
                         // {
@@ -1400,9 +1397,9 @@ struct IR
                         // }
                         goto Lagain;
                     }
-                    else if(tx == Value.TypeName.Object)
+                    else if (tx == Value.Type.Object)
                     {
-                        b.toPrimitive(cc, *b, null);
+                        b.toPrimitive(cc, *b);
                         // v = cast(Value*)b.toPrimitive(b, null);
                         // if(v)
                         // {
@@ -1431,14 +1428,14 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
 
-                    tx = b.getType();
-                    ty = c.getType();
-                    if(tx == ty)
+                    tx = b.type;
+                    ty = c.type;
+                    if      (tx == ty)
                     {
-                        if(tx == Value.TypeName.Undefined ||
-                           tx == Value.TypeName.Null)
+                        if      (tx == Value.Type.Undefined ||
+                                 tx == Value.Type.Null)
                             res = true;
-                        else if(tx == Value.TypeName.Number)
+                        else if (tx == Value.Type.Number)
                         {
                             d_number x = b.number;
                             d_number y = c.number;
@@ -1450,9 +1447,9 @@ struct IR
                                 res = (x != y);
                             goto Lcid;
                         }
-                        else if(tx == Value.TypeName.String)
+                        else if (tx == Value.Type.String)
                             res = (b.text == c.text);
-                        else if(tx == Value.TypeName.Boolean)
+                        else if (tx == Value.Type.Boolean)
                             res = (b.dbool == c.dbool);
                         else // TypeObject
                         {
@@ -1523,8 +1520,8 @@ struct IR
                     }
                     else
                     {
-                        b.toPrimitive(cc, *b, Value.TypeName.Number);
-                        c.toPrimitive(cc, *c, Value.TypeName.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
                             d_string x = b.toString();
@@ -1555,8 +1552,8 @@ struct IR
                     }
                     else
                     {
-                        b.toPrimitive(cc, *b, Value.TypeName.Number);
-                        c.toPrimitive(cc, *c, Value.TypeName.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
                             d_string x = b.toString();
@@ -1615,13 +1612,13 @@ struct IR
                     s = (code + 3).id.value.text;
                     case_next:
                     iter = (locals + (code + 4).index).iter;
-                    pk = iter.next();
-                    if(!pk)
+                    ppk = iter.next();
+                    if(!ppk)
                         code += (code + 1).offset;
                     else
                     {
                         b = locals + (code + 2).index;
-                        b.Set(s, pk.value, cc);
+                        b.Set(s, ppk.value, cc);
 
                         static assert (IRTypes[Opcode.Next].size
                                        == IRTypes[Opcode.NextS].size);
@@ -1632,13 +1629,13 @@ struct IR
                 case Opcode.NextScope:   // a, s, iter
                     s = (code + 2).id.value.text;
                     iter = (locals + (code + 3).index).iter;
-                    pk = iter.next();
-                    if(!pk)
+                    ppk = iter.next();
+                    if(!ppk)
                         code += (code + 1).offset;
                     else
                     {
                         o = scope_tos(scopex);
-                        o.Set(s, pk.value, Property.Attribute.None, cc);
+                        o.Set(s, ppk.value, Property.Attribute.None, cc);
                         code += IRTypes[Opcode.NextScope].size;
                     }
                     break;
@@ -1681,7 +1678,8 @@ struct IR
 
                     Lcallerror:
                     {
-                        sta = UndefinedNoCall3Error(b.getType, b.toString, s);
+                        sta = UndefinedNoCall3Error(b.type.to!d_string,
+                                                    b.toString, s);
                         goto Lthrow;
                     }
 
@@ -1716,7 +1714,8 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = UndefinedNoCall2Error(b.getType, b.toString);
+                        sta = UndefinedNoCall2Error(b.type.to!d_string,
+                                                    b.toString);
                         goto Lthrow;
                     }
                     cc.callerothis = othis;        // pass othis to eval()
@@ -1742,14 +1741,14 @@ struct IR
                     if(!o)
                         goto Lcallerror;
                     //v = o.GetLambda(s, Value.calcHash(s));
-                    v = o.Get(s, Value.calcHash(s), cc);
+                    v = o.Get(s, cc);
                     if(!v)
                         goto Lcallerror;
                     //writef("calling... '%s'\n", v.toString());
                     o = v.toObject();
                     if(!o)
                     {
-                        sta = CannotAssignTo2Error(b.getType, s);
+                        sta = CannotAssignTo2Error(b.type.to!d_string, s);
                         goto Lthrow;
                     }
                     sta = o.put_Value(*a, (locals + (code + 5).index)[0 .. (code + 4).argc]);
@@ -1788,7 +1787,8 @@ struct IR
                     if(!o)
                     {
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
-                        sta = UndefinedNoCall2Error(b.getType, b.toString);
+                        sta = UndefinedNoCall2Error(b.type.to!d_string,
+                                                    b.toString);
                         goto Lthrow;
                     }
                     sta = o.put_Value(*(locals + (code + 1).index), (locals + (code + 4).index)[0 .. (code + 3).index]);
@@ -1832,10 +1832,9 @@ struct IR
                     // the finally block
                     code += IRTypes[Opcode.Pop].size;
 
-                    if(o.isFinally())   // test could be eliminated with virtual func
+                    if(auto fin = cast(Finally)o) // test could be eliminated with virtual func
                     {
-                        f = cast(Finally)o;
-                        callFinally(f);
+                        callFinally(fin);
                         debug(VERIFY)
                             assert(checksum == IR.verify(__LINE__, codestart));
                     }

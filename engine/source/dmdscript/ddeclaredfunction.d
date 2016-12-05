@@ -47,9 +47,9 @@ class DdeclaredFunction : Dconstructor
         // ECMA 3 13.2
         auto o = new Dobject(Dobject.getPrototype);        // step 9
         CallContext cc;
-        Set(Text.prototype, o, Property.Attribute.DontEnum, cc);  // step 11
+        Set(Key.prototype, o, Property.Attribute.DontEnum, cc);  // step 11
         // step 10
-        o.Set(Text.constructor, this, Property.Attribute.DontEnum, cc);
+        o.Set(Key.constructor, this, Property.Attribute.DontEnum, cc);
 
     }
 
@@ -87,7 +87,8 @@ class DdeclaredFunction : Dconstructor
         if(fd.name)
         {
            vtmp.put(this);
-           actobj.Set(*fd.name, vtmp, Property.Attribute.DontDelete, cc);
+           auto key = PropertyKey(fd.name.value);
+           actobj.Set(key, vtmp, Property.Attribute.DontDelete, cc);
         }
         // Instantiate the parameters
         {
@@ -103,7 +104,7 @@ class DdeclaredFunction : Dconstructor
         // ECMA v3 10.1.8
         args = new Darguments(cc.caller, this, actobj, fd.parameters, arglist);
 
-        actobj.Set(Text.arguments, args, Property.Attribute.DontDelete, cc);
+        actobj.Set(Key.arguments, args, Property.Attribute.DontDelete, cc);
 
         // The following is not specified by ECMA, but seems to be supported
         // by jscript. The url www.grannymail.com has the following code
@@ -115,7 +116,7 @@ class DdeclaredFunction : Dconstructor
         //		  this[i+1] = arguments[i]
         //	    }
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
-        Set(Text.arguments, args, Property.Attribute.DontDelete, cc);
+        Set(Key.arguments, args, Property.Attribute.DontDelete, cc);
         // make grannymail bug work
 
         auto newCC = CallContext(cc, actobj, this, fd);
@@ -172,7 +173,7 @@ class DdeclaredFunction : Dconstructor
         //Value* v;
         //v=Get(TEXT_arguments);
         //writef("1v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
-        Set(Text.arguments, vundefined, Property.Attribute.None, cc);
+        Set(Key.arguments, vundefined, Property.Attribute.None, cc);
         //actobj.Put(TEXT_arguments, &vundefined, 0);
 
         return result;
@@ -187,7 +188,7 @@ class DdeclaredFunction : Dconstructor
         Value* v;
         DError* result;
 
-        v = Get(Text.prototype, cc);
+        v = Get(Key.prototype, cc);
         if(v.isPrimitive())
             proto = Dobject.getPrototype;
         else

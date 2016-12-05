@@ -19,6 +19,7 @@ module dmdscript.value;
 
 import dmdscript.script;
 import dmdscript.errmsgs;
+import dmdscript.property : Property, PropertyKey;
 
 debug import std.stdio;
 
@@ -42,7 +43,7 @@ struct Value
 {
     import dmdscript.dobject : Dobject;
     import dmdscript.identifier : Identifier;
-    import dmdscript.text : Text;
+    import dmdscript.text : Text, Key;
     import dmdscript.iterator : Iterator;
 
     //
@@ -58,14 +59,14 @@ struct Value
         Iter      = 7,
     }
 
-    template CanContain(T)
+    template IsPrimitiveType(T)
     {
-        enum CanContain = is(T == d_boolean) || is(T : d_number) ||
+        enum IsPrimitiveType = is(T == d_boolean) || is(T : d_number) ||
             is(T : d_string) || is(T : Dobject) || is(T == Iterator*);
     }
 
     //
-    this(T)(T arg) if (CanContain!T || is(T == Type))
+    this(T)(T arg) if (IsPrimitiveType!T || is(T == Type))
     {
         static if (is(T == Type))
             _type = arg;
@@ -74,7 +75,7 @@ struct Value
     }
 
     //
-    this(T)(T arg, size_t h) if (CanContain!T)
+    this(T)(T arg, size_t h) if (IsPrimitiveType!T)
     {
         put(arg, h);
     }
@@ -158,7 +159,7 @@ struct Value
 
     //
     @trusted @nogc pure nothrow
-    void put(T)(T t) if (CanContain!T)
+    void put(T)(T t) if (IsPrimitiveType!T)
     {
         static if      (is(T == d_boolean))
         {
@@ -191,9 +192,9 @@ struct Value
 
     //
     @trusted @nogc pure nothrow
-    void put(T)(T t, size_t h) if (CanContain!T)
+    void put(T)(T t, size_t h) if (IsPrimitiveType!T)
     {
-        assert(Value.calcHash(t) == h);
+        assert(PropertyKey.calcHash(t) == h);
         static if      (is(T == d_boolean))
         {
             _type = Type.Boolean;
@@ -230,9 +231,9 @@ struct Value
         _hash = h;
     }
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Is PreferredType must string?
-    void toPrimitive(ref CallContext cc, out Value v, in d_string PreferredType)
+    //
+    void toPrimitive(ref CallContext cc, out Value v,
+                     in Type PreferredType = Type.RefError)
     {
         if(_type == Type.Object)
         {
@@ -335,7 +336,7 @@ struct Value
             // void* a;
 
             v = &val;
-            toPrimitive(cc, *v, TypeName.Number);
+            toPrimitive(cc, *v, Type.Number);
             /*a = toPrimitive(v, TypeNumber);
               if(a)//rerr
               return d_number.nan;*/
@@ -701,7 +702,7 @@ struct Value
             throwRefError();
             assert(0);
         case Type.Undefined:
-            return Text.undefined;
+            return Key.undefined;
         case Type.Null:
             return Text._null;
         case Type.Boolean:
@@ -715,7 +716,7 @@ struct Value
 
             //writefln("Vnumber.tostr(%g)", number);
             if(isNaN(_number))
-                str = Text.NaN;
+                str = Key.NaN;
             else if(_number >= 0 && _number <= 9 && _number == cast(int)_number)
                 str = strs[cast(int)_number];
             else if(isInfinity(_number))
@@ -723,7 +724,7 @@ struct Value
                 if(_number < 0)
                     str = Text.negInfinity;
                 else
-                    str = Text.Infinity;
+                    str = Key.Infinity;
             }
             else
             {
@@ -789,7 +790,7 @@ struct Value
             // void* a;
 
             //writef("Vobject.toString()\n");
-            toPrimitive(cc, *v, TypeName.String);
+            toPrimitive(cc, *v, Type.String);
             //assert(!a);
             if(v.isPrimitive)
                 return v.toString;
@@ -846,7 +847,7 @@ struct Value
 //            CallContext cc;
 
             //writefln("Vobject.toSource()");
-            v = Get(Text.toSource, cc);
+            v = Get(Key.toSource, cc);
             if(!v)
                 v = &vundefined;
             if(v.isPrimitive())
@@ -871,7 +872,7 @@ struct Value
                 else if(ret.isPrimitive())
                     return ret.toString();
             }
-            return Text.undefined;
+            return Key.undefined;
         }
         default:
             return toString();
@@ -1009,40 +1010,6 @@ struct Value
         return -1;
     }
 
-
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Is this needed?
-    enum TypeName
-    {
-        Undefined = "Undefined",
-        Null = "Null",
-        Boolean = "Boolean",
-        Number = "Number",
-        String = "String",
-        Object = "Object",
-
-        Iterator = "Iterator",
-    }
-
-    @safe @nogc nothrow
-    d_string getType() const
-    {
-        d_string s;
-
-        final switch(_type)
-        {
-        case Type.RefError:
-        case Type.Undefined:   s = TypeName.Undefined; break;
-        case Type.Null:        s = TypeName.Null;      break;
-        case Type.Boolean:     s = TypeName.Boolean;   break;
-        case Type.Number:      s = TypeName.Number;    break;
-        case Type.String:      s = TypeName.String;    break;
-        case Type.Object:      s = TypeName.Object;    break;
-        case Type.Iter:        s = TypeName.Iterator;  break;
-        }
-        return s;
-    }
-
     @trusted
     d_string getTypeof()
     {
@@ -1051,10 +1018,10 @@ struct Value
         final switch(_type)
         {
         case Type.RefError:
-        case Type.Undefined:   s = Text.undefined;   break;
+        case Type.Undefined:   s = Key.undefined;   break;
         case Type.Null:        s = Text.object;      break;
         case Type.Boolean:     s = Text.boolean;     break;
-        case Type.Number:      s = Text.number;      break;
+        case Type.Number:      s = Key.number;      break;
         case Type.String:      s = Text.string;      break;
         case Type.Object:      s = _object.getTypeof; break;
         case Type.Iter:
@@ -1238,107 +1205,6 @@ struct Value
         }
     }
 
-
-    static @safe @nogc pure nothrow
-    size_t calcHash(in size_t u)
-    {
-        static if      (size_t.sizeof == 4)
-            return u ^ 0x55555555;
-        else static if (size_t.sizeof == 8) // Is this OK?
-            return u ^ 0x5555555555555555;
-        else static assert(0);
-    }
-
-    static @safe @nogc pure nothrow
-    size_t calcHash(in double d)
-    {
-        return calcHash(cast(size_t)d);
-    }
-
-    static @trusted @nogc pure nothrow
-    size_t calcHash(in d_string s)
-    {
-        size_t hash;
-
-        /* If it looks like an array index, hash it to the
-         * same value as if it was an array index.
-         * This means that "1234" hashes to the same value as 1234.
-         */
-        hash = 0;
-        foreach(tchar c; s)
-        {
-            switch(c)
-            {
-            case '0':       hash *= 10;             break;
-            case '1':       hash = hash * 10 + 1;   break;
-
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                hash = hash * 10 + (c - '0');
-                break;
-
-            default:
-            {
-                uint len = s.length;
-                ubyte* str = cast(ubyte*)s.ptr;
-
-                hash = 0;
-                while(1)
-                {
-                    switch(len)
-                    {
-                    case 0:
-                        break;
-
-                    case 1:
-                        hash *= 9;
-                        hash += *cast(ubyte*)str;
-                        break;
-
-                    case 2:
-                        hash *= 9;
-                        if (__ctfe)
-                            hash += str[0..2].toNative!ushort;
-                        else
-                            hash += *cast(ushort*)str;
-                        break;
-
-                    case 3:
-                        hash *= 9;
-                        if (__ctfe)
-                            hash += (str[0..2].toNative!ushort << 8) +
-                                (cast(ubyte*)str)[2];
-                        else
-                            hash += (*cast(ushort*)str << 8) +
-                                (cast(ubyte*)str)[2];
-                        break;
-
-                    default:
-                        hash *= 9;
-                        if (__ctfe)
-                            hash += str[0..4].toNative!uint;
-                        else
-                            hash += *cast(uint*)str;
-                        str += 4;
-                        len -= 4;
-                        continue;
-                    }
-                    break;
-                }
-                break;
-            }
-            // return s.hash;
-            }
-        }
-        return calcHash(hash);
-    }
-
     // only calculation. not caching.
     static @trusted
     size_t calcHash(in ref Value v)
@@ -1354,11 +1220,9 @@ struct Value
         case Type.Boolean:
             return v._dbool ? 1 : 0;
         case Type.Number:
-            return calcHash(v._number);
+            return PropertyKey.calcHash(v._number);
         case Type.String:
-            // Since strings are immutable, if we've already
-            // computed the hash, use previous value
-            return calcHash(v._text);
+            return PropertyKey.calcHash(v._text);
         case Type.Object:
             /* Uses the address of the object as the hash.
              * Since the object never moves, it will work
@@ -1370,6 +1234,13 @@ struct Value
             assert(0);
         }
         assert(0);
+    }
+
+    // only calculation. not caching.
+    static @safe
+    size_t calcHash(ref Value v)
+    {
+        return v.toHash;
     }
 
     @trusted
@@ -1390,13 +1261,13 @@ struct Value
             h = _dbool ? 1 : 0;
             break;
         case Type.Number:
-            h = calcHash(_number);
+            h = PropertyKey.calcHash(_number);
             break;
         case Type.String:
             // Since strings are immutable, if we've already
             // computed the hash, use previous value
             if(!_hash)
-                _hash = calcHash(_text);
+                _hash = PropertyKey.calcHash(_text);
             h = _hash;
             break;
         case Type.Object:
@@ -1417,7 +1288,7 @@ struct Value
 
     Value* Get(in d_string PropertyName, ref CallContext cc)
     {
-        import std.format : format;
+        import std.conv : to;
 
         if(_type == Type.Object)
             return _object.Get(PropertyName, cc);
@@ -1425,14 +1296,14 @@ struct Value
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetFromPrimitiveError
-                .toThrow(PropertyName, getType, toString);
+                .toThrow(PropertyName, _type.to!d_string, toString);
             //return &vundefined;
         }
     }
 
     Value* Get(in d_uint32 index, ref CallContext cc)
     {
-        import std.format : format;
+        import std.conv : to;
 
         if(_type == Type.Object)
             return _object.Get(index, cc);
@@ -1440,77 +1311,45 @@ struct Value
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetIndexFromPrimitiveError
-                .toThrow(index, getType, toString);
+                .toThrow(index, _type.to!d_string, toString);
             //return &vundefined;
         }
     }
 
-    Value* Get(ref Identifier id, ref CallContext cc)
+    //
+    DError* Set(K, V)(in auto ref K name, auto ref V value, ref CallContext cc)
+        if (Dobject.IsKeyValue!(K, V))
+
     {
-        import std.format : format;
+        import std.conv : to;
 
         if(_type == Type.Object)
-            return _object.Get(id, cc);
-        else if(_type == Type.RefError){
-            throwRefError();
-            assert(0);
+        {
+            return _object.Set(name, value, Property.Attribute.None, cc);
         }
         else
         {
-            // Should we generate the error, or just return undefined?
-            throw CannotGetFromPrimitiveError
-                .toThrow(id.toString, getType, toString);
-            //return &vundefined;
+            static if      (is(K == PropertyKey))
+            {
+                auto pk = cast(PropertyKey)name;
+                return CannotPutToPrimitiveError(
+                    pk.toString, value.toString, getType);
+            }
+            else static if (is(K : d_uint32))
+            {
+                return CannotPutIndexToPrimitiveError(
+                    name, value.toString, _type.to!d_string);
+            }
+            else
+            {
+                return CannotPutToPrimitiveError(name, value.toString,
+                                                 _type.to!d_string);
+            }
         }
     }
-
-    DError* Set(in d_string PropertyName, ref Value value, ref CallContext cc)
-    {
-        import dmdscript.property : Property;
-        if(_type == Type.Object)
-            return _object.Set(PropertyName, value, Property.Attribute.None, cc);
-        else
-        {
-            return CannotPutToPrimitiveError(
-                PropertyName, value.toString, getType);
-        }
-    }
-
-    DError* Set(in d_uint32 index, ref Value vindex, ref Value value,
-                ref CallContext cc)
-    {
-        import dmdscript.property : Property;
-        if(_type == Type.Object)
-            return _object.Set(index, vindex, value,
-                              Property.Attribute.None, cc);
-        else
-        {
-            return CannotPutIndexToPrimitiveError(
-                index, value.toString, getType);
-        }
-    }
-
-/+
-    Value* Get(d_string PropertyName, uint hash)
-    {
-        if (_type == V_OBJECT)
-            return object.Get(PropertyName, hash);
-        else
-        {
-            // Should we generate the error, or just return undefined?
-            tchar[] msg;
-
-            msg = std.string.format(errmsgtbl[ERR_CANNOT_GET_FROM_PRIMITIVE],
-                PropertyName, getType(), toString());
-            throw new ScriptException(msg);
-            //return &vundefined;
-        }
-    }
- +/
-
 
     @disable
-    Value* GetV(in d_string PropertyName, ref CallContext cc)
+    Value* GetV(in ref PropertyKey PropertyName, ref CallContext cc)
     {
         if (auto obj = toObject)
             return obj.Get(PropertyName, cc);
@@ -1519,14 +1358,17 @@ struct Value
     }
 
     @disable
-    Value* GetMethod(in d_string PropertyName, ref CallContext cc)
+    Value* GetMethod(in ref PropertyKey PropertyName, ref CallContext cc)
     {
         if (auto func = GetV(PropertyName, cc))
         {
             if (func.isCallable)
                 return func;
             else
-                throw NotCallableError.toThrow(PropertyName);
+            {
+                auto pk = cast(PropertyKey)PropertyName;
+                throw NotCallableError.toThrow(pk.toString);
+            }
         }
         else
             return null;
@@ -1536,6 +1378,8 @@ struct Value
     DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                  Value[] arglist)
     {
+        import std.conv : to;
+
         if(_type == Type.Object)
         {
             DError* a;
@@ -1552,12 +1396,13 @@ struct Value
         {
             //PRINTF("Call method not implemented for primitive %p (%s)\n", this, d_string_ptr(toString()));
             ret.putVundefined();
-            return PrimitiveNoCallError(getType);
+            return PrimitiveNoCallError(_type.to!d_string);
         }
     }
 
     DError* Construct(ref CallContext cc, out Value ret, Value[] arglist)
     {
+        import std.conv : to;
         if(_type == Type.Object)
             return _object.Construct(cc, ret, arglist);
         else if(_type == Type.RefError){
@@ -1567,7 +1412,7 @@ struct Value
         else
         {
             ret.putVundefined();
-            return PrimitiveNoConstructError(getType);
+            return PrimitiveNoConstructError(_type.to!d_string);
         }
     }
 
@@ -1753,56 +1598,3 @@ int stringcmp(in d_string s1, in d_string s2)
     return c;
 }
 
-// for Value.calcHash at CTFE.
-@safe @nogc pure nothrow
-T toNative(T, size_t N = T.sizeof)(in ubyte[] buf)
-{
-    assert(N <= buf.length);
-    static if      (N == 1)
-        return buf[0];
-    else static if (N == 2)
-    {
-        version      (BigEndian)
-            return ((cast(ushort)buf[0]) << 8) | (cast(ushort)buf[1]);
-        else version (LittleEndian)
-            return (cast(ushort)buf[0]) | ((cast(ushort)buf[1]) << 8);
-        else static assert(0);
-    }
-    else static if (N == 4)
-    {
-        version      (BigEndian)
-            return ((cast(uint)buf[0]) << 24) |
-                   ((cast(uint)buf[1]) << 16) |
-                   ((cast(uint)buf[2]) << 8) |
-                   (cast(uint)buf[3]);
-        else version (LittleEndian)
-            return (cast(uint)buf[0]) |
-                   ((cast(uint)buf[1]) << 8) |
-                   ((cast(uint)buf[2]) << 16) |
-                   ((cast(uint)buf[3]) << 24);
-        else static assert(0);
-    }
-    else static if (N == 8)
-    {
-        version      (BigEndian)
-            return ((cast(ulong)buf[0]) << 56) |
-                   ((cast(ulong)buf[1]) << 48) |
-                   ((cast(ulong)buf[2]) << 40) |
-                   ((cast(ulong)buf[3]) << 32) |
-                   ((cast(ulong)buf[4]) << 24) |
-                   ((cast(ulong)buf[5]) << 16) |
-                   ((cast(ulong)buf[6]) << 8) |
-                   (cast(ulong)buf[7]);
-        else version (LittleEndian)
-            return (cast(ulong)buf[0]) |
-                   ((cast(ulong)buf[1]) << 8) |
-                   ((cast(ulong)buf[2]) << 16) |
-                   ((cast(ulong)buf[3]) << 24) |
-                   ((cast(ulong)buf[4]) << 32) |
-                   ((cast(ulong)buf[5]) << 40) |
-                   ((cast(ulong)buf[6]) << 48) |
-                   ((cast(ulong)buf[7]) << 56);
-        else static assert(0);
-    }
-    else static assert(0);
-}
