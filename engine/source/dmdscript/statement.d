@@ -17,6 +17,8 @@
 
 module dmdscript.statement;
 
+import dmdscript.primitive;
+import dmdscript.exception;
 import dmdscript.script;
 import dmdscript.value;
 import dmdscript.scopex;
@@ -54,14 +56,14 @@ class TopStatement
     enum uint TOPSTATEMENT_SIGNATURE = 0xBA3FE1F3;
     uint signature = TOPSTATEMENT_SIGNATURE;
 
-    Loc loc;
+    line_number loc;
     Progress done;      // 0: parsed
                         // 1: semantic
                         // 2: toIR
     StatementType st;
 
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         this.loc = loc;
         this.done = Progress.Parsed;
@@ -101,7 +103,7 @@ class TopStatement
 
         if (sc.exception is null)
         {
-            d_string sourcename;
+            tstring sourcename;
             if (sc.funcdef !is null)
             {
                 if      (sc.funcdef.isAnonymous)
@@ -125,7 +127,7 @@ class Statement : TopStatement
     protected LabelSymbol* label;
 
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         super(loc);
         this.loc = loc;
@@ -178,7 +180,7 @@ class Statement : TopStatement
 final class EmptyStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         super(loc);
         this.loc = loc;
@@ -207,7 +209,7 @@ class ExpStatement : Statement
     protected Expression exp;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Expression exp)
+    this(line_number loc, Expression exp)
     {
         //writef("ExpStatement.ExpStatement(this = %x, exp = %x)\n", this, exp);
         super(loc);
@@ -254,12 +256,12 @@ class ExpStatement : Statement
 
 final class VarDeclaration
 {
-    Loc loc;
+    line_number loc;
     Identifier* name;
     Expression init;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Identifier* name, Expression init)
+    this(line_number loc, Identifier* name, Expression init)
     {
         this.loc = loc;
         this.init = init;
@@ -274,7 +276,7 @@ final class VarStatement : Statement
     VarDeclaration[] vardecls;
 
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         super(loc);
         st = StatementType.VarStatement;
@@ -359,7 +361,7 @@ final class BlockStatement : Statement
     TopStatement[] statements;
 
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         super(loc);
     }
@@ -416,7 +418,7 @@ final class BlockStatement : Statement
 final class LabelStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Identifier* ident, Statement statement)
+    this(line_number loc, Identifier* ident, Statement statement)
     {
         super(loc);
         this.ident = ident;
@@ -508,7 +510,7 @@ private:
 final class IfStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression condition, Statement ifbody, Statement elsebody)
+    this(line_number loc, Expression condition, Statement ifbody, Statement elsebody)
     {
         super(loc);
         this.condition = condition;
@@ -582,7 +584,7 @@ private:
 final class SwitchStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression c, Statement b)
+    this(line_number loc, Expression c, Statement b)
     {
         super(loc);
         condition = c;
@@ -704,7 +706,7 @@ private:
 final class CaseStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression exp)
+    this(line_number loc, Expression exp)
     {
         super(loc);
         this.exp = exp;
@@ -758,7 +760,7 @@ private:
 final class DefaultStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         super(loc);
         defaultIP = ~0u;
@@ -799,7 +801,7 @@ private:
 final class DoStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Statement b, Expression c)
+    this(line_number loc, Statement b, Expression c)
     {
         super(loc);
         bdy = b;
@@ -894,7 +896,7 @@ private:
 final class WhileStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression c, Statement b)
+    this(line_number loc, Expression c, Statement b)
     {
         super(loc);
         condition = c;
@@ -994,7 +996,7 @@ private:
 final class ForStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Statement init, Expression condition, Expression increment,
+    this(line_number loc, Statement init, Expression condition, Expression increment,
          Statement bdy)
     {
         super(loc);
@@ -1154,7 +1156,7 @@ private:
 final class ForInStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Statement init, Expression inexp, Statement bdy)
+    this(line_number loc, Statement init, Expression inexp, Statement bdy)
     {
         super(loc);
         this.init = init;
@@ -1313,7 +1315,7 @@ private:
 class ScopeStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         super(loc);
         enclosingScope = null;
@@ -1332,7 +1334,7 @@ protected:
 final class WithStatement : ScopeStatement
 {
     @nogc pure nothrow
-    this(Loc loc, Expression exp, Statement bdy)
+    this(line_number loc, Expression exp, Statement bdy)
     {
         super(loc);
         this.exp = exp;
@@ -1399,7 +1401,7 @@ private:
 final class ContinueStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Identifier* ident)
+    this(line_number loc, Identifier* ident)
     {
         super(loc);
         this.ident = ident;
@@ -1464,7 +1466,7 @@ private:
 final class BreakStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Identifier* ident)
+    this(line_number loc, Identifier* ident)
     {
         super(loc);
         this.ident = ident;
@@ -1541,7 +1543,7 @@ private:
 final class GotoStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Identifier * ident)
+    this(line_number loc, Identifier * ident)
     {
         super(loc);
         this.ident = ident;
@@ -1603,7 +1605,7 @@ private:
 final class ReturnStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression exp)
+    this(line_number loc, Expression exp)
     {
         super(loc);
         this.exp = exp;
@@ -1677,7 +1679,7 @@ private:
 final class ImpliedReturnStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression exp)
+    this(line_number loc, Expression exp)
     {
         super(loc);
         this.exp = exp;
@@ -1720,7 +1722,7 @@ private:
 final class ThrowStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression exp)
+    this(line_number loc, Expression exp)
     {
         super(loc);
         this.exp = exp;
@@ -1767,7 +1769,7 @@ private:
 final class TryStatement : ScopeStatement
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Statement bdy, Identifier* catchident, Statement catchbdy,
+    this(line_number loc, Statement bdy, Identifier* catchident, Statement catchbdy,
          Statement finalbdy)
     {
         super(loc);

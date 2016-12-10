@@ -17,6 +17,7 @@
 
 module dmdscript.ddeclaredfunction;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.dfunction;
@@ -26,7 +27,7 @@ import dmdscript.ir;
 import dmdscript.identifier;
 import dmdscript.value;
 import dmdscript.functiondefinition;
-import dmdscript.text;
+import dmdscript.key;
 import dmdscript.property;
 
 debug import std.stdio;
@@ -39,7 +40,7 @@ class DdeclaredFunction : Dconstructor
 
     this(FunctionDefinition fd)
     {
-        super(cast(d_uint32)fd.parameters.length, Dfunction.getPrototype);
+        super(cast(uint)fd.parameters.length, Dfunction.getPrototype);
         assert(Dfunction.getPrototype);
         assert(GetPrototypeOf);
         this.fd = fd;
@@ -203,10 +204,10 @@ class DdeclaredFunction : Dconstructor
         return result;
     }
 
-    override d_string toString()
+    override tstring toString()
     {
         import std.array : Appender;
-        Appender!d_string buf;
+        Appender!tstring buf;
 
         //writef("DdeclaredFunction.toString()\n");
         fd.toBuffer(b=>buf.put(b));

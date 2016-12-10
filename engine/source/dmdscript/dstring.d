@@ -18,22 +18,20 @@
 
 module dmdscript.dstring;
 
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.dregexp;
-import dmdscript.darray;
-import dmdscript.value;
-import dmdscript.dfunction;
-import dmdscript.text;
-import dmdscript.property;
+import dmdscript.primitive;
+import dmdscript.script : CallContext;
+import dmdscript.dobject : Dobject;
+import dmdscript.value : Value, DError, vundefined;
+import dmdscript.dfunction : Dconstructor;
+import dmdscript.key : Key;
 import dmdscript.errmsgs;
-import dmdscript.dnative;
+import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
 
 debug import std.stdio;
-//alias script.tchar tchar;
 
 /* ===================== Dstring_fromCharCode ==================== */
-
+@DnativeFunctionDescriptor(Key.fromCharCode, 1,
+                           DnativeFunctionDescriptor.Type.Static)
 DError* Dstring_fromCharCode(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -43,7 +41,7 @@ DError* Dstring_fromCharCode(
     import std.utf : encode, isValidDchar;
 
     // ECMA 15.5.3.2
-    Unqual!(ForeachType!d_string)[] s = null;
+    Unqual!(ForeachType!tstring)[] s = null;
 
     for(size_t i = 0; i < arglist.length; i++)
     {
@@ -71,21 +69,32 @@ class DstringConstructor : Dconstructor
 {
     this()
     {
+        import dmdscript.dnative : NativeFunctionData;
+        import dmdscript.property : Property;
+
         super(Key.String, 1, Dfunction.getPrototype);
 
-        enum NativeFunctionData[] nfd =
-        [
-            { Key.fromCharCode, &Dstring_fromCharCode, 1 },
-        ];
+        DnativeFunctionDescriptor.install!(mixin(__MODULE__))
+            (this, Property.Attribute.None,
+             DnativeFunctionDescriptor.Type.Static);
+        // enum NativeFunctionData[] nfd =
+        // [
+        //     { Key.fromCharCode, &Dstring_fromCharCode, 1 },
+        // ];
 
-        DnativeFunction.initialize(this, nfd, Property.Attribute.None);
+        // DnativeFunction.initialize(this, nfd, Property.Attribute.None);
+        debug
+        {
+            CallContext cc;
+            assert(proptable.get(Key.fromCharCode, cc, null));
+        }
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.5.2
-        d_string s;
+        tstring s;
         Dobject o;
 
         s = (arglist.length) ? arglist[0].toString() : Text.Empty;
@@ -98,7 +107,7 @@ class DstringConstructor : Dconstructor
                           Value[] arglist)
     {
         // ECMA 15.5.1
-        d_string s;
+        tstring s;
 
         s = (arglist.length) ? arglist[0].toString() : Text.Empty;
         ret.put(s);
@@ -108,7 +117,7 @@ class DstringConstructor : Dconstructor
 
 
 /* ===================== Dstring_prototype_toString =============== */
-
+@DnativeFunctionDescriptor(Key.toString, 0)
 DError* Dstring_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -128,7 +137,7 @@ DError* Dstring_prototype_toString(
 }
 
 /* ===================== Dstring_prototype_valueOf =============== */
-
+@DnativeFunctionDescriptor(Key.valueOf, 0)
 DError* Dstring_prototype_valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -150,7 +159,7 @@ DError* Dstring_prototype_valueOf(
 }
 
 /* ===================== Dstring_prototype_charAt =============== */
-
+@DnativeFunctionDescriptor(Key.charAt, 1)
 DError* Dstring_prototype_charAt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -161,8 +170,8 @@ DError* Dstring_prototype_charAt(
     Value* v;
     int pos;            // ECMA says pos should be a d_number,
                         // but int should behave the same
-    d_string s;
-    d_string result;
+    tstring s;
+    tstring result;
 
     v = &othis.value;
     s = v.toString();
@@ -194,7 +203,7 @@ DError* Dstring_prototype_charAt(
 }
 
 /* ===================== Dstring_prototype_charCodeAt ============= */
-
+@DnativeFunctionDescriptor(Key.charCodeAt, 1)
 DError* Dstring_prototype_charCodeAt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -206,16 +215,16 @@ DError* Dstring_prototype_charCodeAt(
     Value* v;
     int pos;            // ECMA says pos should be a d_number,
                         // but int should behave the same
-    d_string s;
+    tstring s;
     uint len;
-    d_number result;
+    double result;
 
     v = &othis.value;
     s = v.toString();
     v = arglist.length ? &arglist[0] : &vundefined;
     pos = cast(int)v.toInteger(cc);
 
-    result = d_number.nan;
+    result = double.nan;
 
     if(pos >= 0)
     {
@@ -241,13 +250,13 @@ DError* Dstring_prototype_charCodeAt(
 }
 
 /* ===================== Dstring_prototype_concat ============= */
-
+@DnativeFunctionDescriptor(Key.concat, 1)
 DError* Dstring_prototype_concat(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.6
-    d_string s;
+    tstring s;
 
     //writefln("Dstring.prototype.concat()");
 
@@ -260,7 +269,7 @@ DError* Dstring_prototype_concat(
 }
 
 /* ===================== Dstring_prototype_indexOf ============= */
-
+@DnativeFunctionDescriptor(Key.indexOf, 1)
 DError* Dstring_prototype_indexOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -275,10 +284,10 @@ DError* Dstring_prototype_indexOf(
     Value* v2;
     ptrdiff_t pos;            // ECMA says pos should be a d_number,
                         // but I can't find a reason.
-    d_string s;
+    tstring s;
     size_t sUCSdim;
 
-    d_string searchString;
+    tstring searchString;
     ptrdiff_t k;
 
     Value xx;
@@ -312,7 +321,7 @@ DError* Dstring_prototype_indexOf(
 }
 
 /* ===================== Dstring_prototype_lastIndexOf ============= */
-
+@DnativeFunctionDescriptor(Key.lastIndexOf, 1)
 DError* Dstring_prototype_lastIndexOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -327,9 +336,9 @@ DError* Dstring_prototype_lastIndexOf(
     Value* v1;
     ptrdiff_t pos;            // ECMA says pos should be a d_number,
                         // but I can't find a reason.
-    d_string s;
+    tstring s;
     size_t sUCSdim;
-    d_string searchString;
+    tstring searchString;
     ptrdiff_t k;
 
     version(all)
@@ -356,7 +365,7 @@ DError* Dstring_prototype_lastIndexOf(
     searchString = v1.toString();
     if(arglist.length >= 2)
     {
-        d_number n;
+        double n;
         Value* v = &arglist[1];
 
         n = v.toNumber(cc);
@@ -392,15 +401,17 @@ DError* Dstring_prototype_lastIndexOf(
 }
 
 /* ===================== Dstring_prototype_localeCompare ============= */
-
+@DnativeFunctionDescriptor(Key.localeCompare, 1)
 DError* Dstring_prototype_localeCompare(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.script : localeCompare;
+
     // ECMA v3 15.5.4.9
-    d_string s1;
-    d_string s2;
-    d_number n;
+    tstring s1;
+    tstring s2;
+    double n;
     Value* v;
 
     v = &othis.value;
@@ -412,11 +423,15 @@ DError* Dstring_prototype_localeCompare(
 }
 
 /* ===================== Dstring_prototype_match ============= */
-
+@DnativeFunctionDescriptor(Key.match, 1)
 DError* Dstring_prototype_match(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.dregexp : Dregexp, EXEC_STRING, EXEC_ARRAY;
+    import dmdscript.darray : Darray;
+    import dmdscript.property : Property;
+
     // ECMA v3 15.5.4.10
     Dregexp r;
 
@@ -435,23 +450,23 @@ DError* Dstring_prototype_match(
     if(r.global.dbool)
     {
         Darray a = new Darray;
-        d_int32 n;
-        d_int32 i;
-        d_int32 lasti;
+        int n;
+        int i;
+        int lasti;
 
         i = 0;
         lasti = 0;
         for(n = 0;; n++)
         {
-            r.lastIndex.put(cast(d_number)i);
+            r.lastIndex.put(cast(double)i);
             Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_STRING);
             if(!ret.text)             // if match failed
             {
-                r.lastIndex.put(cast(d_number)i);
+                r.lastIndex.put(cast(double)i);
                 break;
             }
             lasti = i;
-            i = cast(d_int32)r.lastIndex.toInt32(cc);
+            i = cast(int)r.lastIndex.toInt32(cc);
             if(i == lasti)              // if no source was consumed
                 i++;                    // consume a character
 
@@ -467,30 +482,32 @@ DError* Dstring_prototype_match(
 }
 
 /* ===================== Dstring_prototype_replace ============= */
-
+@DnativeFunctionDescriptor(Key.replace, 2)
 DError* Dstring_prototype_replace(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : indexOf;
+    import dmdscript.dfunction : Dfunction;
+    import dmdscript.dregexp : Dregexp, RegExp, EXEC_STRING;
 
     // ECMA v3 15.5.4.11
     // String.prototype.replace(searchValue, replaceValue)
 
-    d_string str;
-    d_string searchString;
-    d_string newstring;
+    tstring str;
+    tstring searchString;
+    tstring newstring;
     Value* searchValue;
     Value* replaceValue;
     Dregexp r;
     RegExp re;
-    d_string replacement;
-    d_string result;
+    tstring replacement;
+    tstring result;
     int m;
     int i;
     int lasti;
-    d_string[1] pmatch;
+    tstring[1] pmatch;
     Dfunction f;
     Value* v;
 
@@ -508,7 +525,7 @@ DError* Dstring_prototype_replace(
         i = 0;
         result = str;
 
-        r.lastIndex.put(cast(d_number)0);
+        r.lastIndex.put(cast(double)0);
         for(;; )
         {
             Dregexp.exec(r, ret, (&othis.value)[0 .. 1], EXEC_STRING);
@@ -549,7 +566,7 @@ DError* Dstring_prototype_replace(
 
                 // If no source was consumed, consume a character
                 lasti = i;
-                i = cast(d_int32)r.lastIndex.toInt32(cc);
+                i = cast(int)r.lastIndex.toInt32(cc);
                 if(i == lasti)
                 {
                     i++;
@@ -597,11 +614,13 @@ DError* Dstring_prototype_replace(
 }
 
 /* ===================== Dstring_prototype_search ============= */
-
+@DnativeFunctionDescriptor(Key.search, 1)
 DError* Dstring_prototype_search(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.dregexp : Dregexp, EXEC_INDEX;
+
     // ECMA v3 15.5.4.12
     Dregexp r;
 
@@ -623,7 +642,7 @@ DError* Dstring_prototype_search(
 }
 
 /* ===================== Dstring_prototype_slice ============= */
-
+@DnativeFunctionDescriptor(Key.slice, 2)
 DError* Dstring_prototype_slice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -633,8 +652,8 @@ DError* Dstring_prototype_slice(
     ptrdiff_t start;
     ptrdiff_t end;
     ptrdiff_t sUCSdim;
-    d_string s;
-    d_string r;
+    tstring s;
+    tstring r;
     Value* v;
 
     v = &othis.value;
@@ -689,12 +708,15 @@ DError* Dstring_prototype_slice(
 
 
 /* ===================== Dstring_prototype_split ============= */
-
+@DnativeFunctionDescriptor(Key.split, 2)
 DError* Dstring_prototype_split(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.stdc.string : memcmp;
+    import dmdscript.dregexp : Dregexp, RegExp;
+    import dmdscript.darray : Darray;
+    import dmdscript.property : Property;
 
     // ECMA v3 15.5.4.14
     // String.prototype.split(separator, limit)
@@ -706,9 +728,9 @@ DError* Dstring_prototype_split(
     Value* limit = &vundefined;
     Dregexp R;
     RegExp re;
-    d_string rs;
-    d_string T;
-    d_string S;
+    tstring rs;
+    tstring T;
+    tstring S;
     Darray A;
     int str;
 
@@ -842,15 +864,14 @@ DError* Dstring_prototype_split(
 
 
 /* ===================== Dstring_prototype_substr ============= */
-
-DError* dstring_substring(d_string s, size_t sUCSdim, d_number start,
-                          d_number end, out Value ret)
+DError* dstring_substring(tstring s, size_t sUCSdim, double start,
+                          double end, out Value ret)
 {
     import std.math : isNaN;
     import std.utf : toUTFindex;
 
-    d_string sb;
-    d_int32 sb_len;
+    tstring sb;
+    int sb_len;
 
     if(isNaN(start))
         start = 0;
@@ -868,7 +889,7 @@ DError* dstring_substring(d_string s, size_t sUCSdim, d_number start,
 
     if(end < start)             // swap
     {
-        d_number t;
+        double t;
 
         t = start;
         start = end;
@@ -883,6 +904,7 @@ DError* dstring_substring(d_string s, size_t sUCSdim, d_number start,
     return null;
 }
 
+@DnativeFunctionDescriptor(Key.substr, 2)
 DError* Dstring_prototype_substr(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -892,9 +914,9 @@ DError* Dstring_prototype_substr(
 
     // Javascript: TDG pg. 689
     // String.prototype.substr(start, length)
-    d_number start;
-    d_number length;
-    d_string s;
+    double start;
+    double length;
+    tstring s;
 
     s = othis.value.toString();
     size_t sUCSdim = toUCSindex(s, s.length);
@@ -919,7 +941,7 @@ DError* Dstring_prototype_substr(
 }
 
 /* ===================== Dstring_prototype_substring ============= */
-
+@DnativeFunctionDescriptor(Key.substring, 2)
 DError* Dstring_prototype_substring(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -929,9 +951,9 @@ DError* Dstring_prototype_substring(
     // ECMA 15.5.4.9
     // String.prototype.substring(start)
     // String.prototype.substring(start, end)
-    d_number start;
-    d_number end;
-    d_string s;
+    double start;
+    double end;
+    tstring s;
 
     //writefln("String.prototype.substring()");
     s = othis.value.toString();
@@ -963,7 +985,7 @@ DError* tocase(Dobject othis, out Value ret, CASE caseflag)
 {
     import std.string : toLower, toUpper;
 
-    d_string s;
+    tstring s;
 
     s = othis.value.toString();
     switch(caseflag)
@@ -987,7 +1009,7 @@ DError* tocase(Dobject othis, out Value ret, CASE caseflag)
     ret.put(s);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.toLowerCase, 0)
 DError* Dstring_prototype_toLowerCase(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1000,7 +1022,7 @@ DError* Dstring_prototype_toLowerCase(
 }
 
 /* ===================== Dstring_prototype_toLocaleLowerCase ============= */
-
+@DnativeFunctionDescriptor(Key.toLocaleLowerCase, 0)
 DError* Dstring_prototype_toLocaleLowerCase(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1012,7 +1034,7 @@ DError* Dstring_prototype_toLocaleLowerCase(
 }
 
 /* ===================== Dstring_prototype_toUpperCase ============= */
-
+@DnativeFunctionDescriptor(Key.toUpperCase, 0)
 DError* Dstring_prototype_toUpperCase(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1024,7 +1046,7 @@ DError* Dstring_prototype_toUpperCase(
 }
 
 /* ===================== Dstring_prototype_toLocaleUpperCase ============= */
-
+@DnativeFunctionDescriptor(Key.toLocaleUpperCase, 0)
 DError* Dstring_prototype_toLocaleUpperCase(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1037,18 +1059,18 @@ DError* Dstring_prototype_toLocaleUpperCase(
 /* ===================== Dstring_prototype_anchor ============= */
 
 DError* dstring_anchor(
-    Dobject othis, out Value ret, d_string tag, d_string name, Value[] arglist)
+    Dobject othis, out Value ret, tstring tag, tstring name, Value[] arglist)
 {
     // For example:
     //	"foo".anchor("bar")
     // produces:
     //	<tag name="bar">foo</tag>
 
-    d_string foo = othis.value.toString();
+    tstring foo = othis.value.toString();
     Value* va = arglist.length ? &arglist[0] : &vundefined;
-    d_string bar = va.toString();
+    tstring bar = va.toString();
 
-    d_string s;
+    tstring s;
 
     s = "<"     ~
         tag     ~
@@ -1066,7 +1088,7 @@ DError* dstring_anchor(
     return null;
 }
 
-
+@DnativeFunctionDescriptor(Key.anchor, 1)
 DError* Dstring_prototype_anchor(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1080,21 +1102,21 @@ DError* Dstring_prototype_anchor(
 
     return dstring_anchor(othis, ret, "A", "NAME", arglist);
 }
-
+@DnativeFunctionDescriptor(Key.fontcolor, 1)
 DError* Dstring_prototype_fontcolor(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_anchor(othis, ret, "FONT", "COLOR", arglist);
 }
-
+@DnativeFunctionDescriptor(Key.fontsize, 1)
 DError* Dstring_prototype_fontsize(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_anchor(othis, ret, "FONT", "SIZE", arglist);
 }
-
+@DnativeFunctionDescriptor(Key.link, 1)
 DError* Dstring_prototype_link(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1109,10 +1131,10 @@ DError* Dstring_prototype_link(
  * Produce <tag>othis</tag>
  */
 
-DError* dstring_bracket(Dobject othis, out Value ret, d_string tag)
+DError* dstring_bracket(Dobject othis, out Value ret, tstring tag)
 {
-    d_string foo = othis.value.toString();
-    d_string s;
+    tstring foo = othis.value.toString();
+    tstring s;
 
     s = "<"     ~
         tag     ~
@@ -1125,7 +1147,7 @@ DError* dstring_bracket(Dobject othis, out Value ret, d_string tag)
     ret.put(s);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.big, 0)
 DError* Dstring_prototype_big(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1139,56 +1161,56 @@ DError* Dstring_prototype_big(
 
     return dstring_bracket(othis, ret, "BIG");
 }
-
+@DnativeFunctionDescriptor(Key.blink, 0)
 DError* Dstring_prototype_blink(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "BLINK");
 }
-
+@DnativeFunctionDescriptor(Key.bold, 0)
 DError* Dstring_prototype_bold(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "B");
 }
-
+@DnativeFunctionDescriptor(Key.fixed, 0)
 DError* Dstring_prototype_fixed(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "TT");
 }
-
+@DnativeFunctionDescriptor(Key.italics, 0)
 DError* Dstring_prototype_italics(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "I");
 }
-
+@DnativeFunctionDescriptor(Key.small, 0)
 DError* Dstring_prototype_small(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "SMALL");
 }
-
+@DnativeFunctionDescriptor(Key.strike, 0)
 DError* Dstring_prototype_strike(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "STRIKE");
 }
-
+@DnativeFunctionDescriptor(Key.sub, 0)
 DError* Dstring_prototype_sub(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     return dstring_bracket(othis, ret, "SUB");
 }
-
+@DnativeFunctionDescriptor(Key.sup, 0)
 DError* Dstring_prototype_sup(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1199,7 +1221,7 @@ DError* Dstring_prototype_sup(
 
 
 /* ===================== Dstring_prototype ==================== */
-
+/*
 class DstringPrototype : Dstring
 {
     this()
@@ -1248,12 +1270,15 @@ class DstringPrototype : Dstring
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
     }
 }
-
+//*/
 /* ===================== Dstring ==================== */
 
 class Dstring : Dobject
 {
-    this(d_string s)
+    import dmdscript.dobject : Initializer;
+    import dmdscript.property : Property;
+
+    this(tstring s)
     {
         import std.utf : toUCSindex;
 
@@ -1279,6 +1304,8 @@ class Dstring : Dobject
         value.put(Text.Empty);
     }
 
+    mixin Initializer!DstringConstructor;
+/*
 static:
     Dfunction getConstructor()
     {
@@ -1303,6 +1330,7 @@ static:
 private:
     Dfunction _constructor;
     Dobject _prototype;
+//*/
 }
 
 

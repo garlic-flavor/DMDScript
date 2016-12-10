@@ -4,17 +4,18 @@
 module dmdscript.errmsgs;
 
 import dmdscript.protoerror;
-import dmdscript.script;
+import dmdscript.primitive : tchar, tstring, line_number;
 
 private struct err(alias Proto, ARGS...)
 {
     import dmdscript.value : DError, toDError;
     import dmdscript.opcodes : IR;
+    import dmdscript.exception : ScriptException;
 
-    d_string fmt;
+    tstring fmt;
 
     @safe @nogc pure nothrow
-    this(d_string fmt)
+    this(tstring fmt)
     {
         this.fmt = fmt;
     }
@@ -38,8 +39,8 @@ private struct err(alias Proto, ARGS...)
     }
 
     @safe
-    ScriptException toThrow(ARGS args, d_string sourcename, d_string source,
-                            Loc loc, string f = __FILE__,
+    ScriptException toThrow(ARGS args, tstring sourcename, tstring source,
+                            line_number loc, string f = __FILE__,
                             size_t l = __LINE__) const
     {
         import std.format : format;
@@ -50,16 +51,19 @@ private struct err(alias Proto, ARGS...)
 
 private struct syntaxerr(ARGS...)
 {
-    d_string fmt;
+    import dmdscript.exception : ScriptException;
+
+    tstring fmt;
 
     @safe @nogc pure nothrow
-    this(d_string fmt) { this.fmt = fmt; }
+    this(tstring fmt) { this.fmt = fmt; }
 
     @safe
-    ScriptException opCall(ARGS args, Loc linnum = 0, string file = __FILE__,
+    ScriptException opCall(ARGS args, line_number linnum = 0, string file = __FILE__,
                            size_t line = __LINE__) const
     {
         import std.format : format;
+
         return new ScriptException(fmt.format(args), linnum, file, line);
     }
 
@@ -83,9 +87,9 @@ private struct syntaxerr(ARGS...)
 // enum ComObjectError =
 //     err!typeerror("Dcomobject: %s.%s fails with COM error %x");
 // }
-enum BadSwitchError = syntaxerr!(d_string)
+enum BadSwitchError = syntaxerr!(tstring)
     ("unrecognized switch '%s'");
-enum UndefinedLabelError = syntaxerr!(d_string, d_string)
+enum UndefinedLabelError = syntaxerr!(tstring, tstring)
     ("undefined label '%s' in function '%s'");
 enum BadCCommentError = syntaxerr!()
     ("unterminated /* */ comment");
@@ -107,17 +111,17 @@ enum BadUSequenceError = syntaxerr!()
     ("\\u sequence must be followed by 4 hex characters");
 enum UnrecognizedNLiteralError = syntaxerr!()
     ("unrecognized numeric literal");
-enum FplExpectedIdentifierError = syntaxerr!(d_string)
+enum FplExpectedIdentifierError = syntaxerr!(tstring)
     ("Identifier expected in FormalParameterList, not %s");
-enum FplExpectedCommaError = syntaxerr!(d_string)
+enum FplExpectedCommaError = syntaxerr!(tstring)
     ("comma expected in FormalParameterList, not %s");
 enum ExpectedIdentifierError = syntaxerr!()
     ("identifier expected");
-enum ExpectedGenericError = syntaxerr!(d_string, d_string)
+enum ExpectedGenericError = syntaxerr!(tstring, tstring)
     ("found '%s' when expecting '%s'");
-enum ExpectedIdentifierParamError = syntaxerr!(d_string)
+enum ExpectedIdentifierParamError = syntaxerr!(tstring)
     ("identifier expected instead of '%s'");
-enum ExpectedIdentifier2paramError = syntaxerr!(d_string, d_string)
+enum ExpectedIdentifier2paramError = syntaxerr!(tstring, tstring)
     ("identifier expected following '%s', not '%s'");
 // deprecated // not used
 // {
@@ -126,15 +130,15 @@ enum ExpectedIdentifier2paramError = syntaxerr!(d_string, d_string)
 // }
 enum TooManyInVarsError = syntaxerr!(size_t)
     ("only one variable can be declared for 'in', not %d");
-enum InExpectedError = syntaxerr!(d_string)
+enum InExpectedError = syntaxerr!(tstring)
     ("';' or 'in' expected, not '%s'");
-enum GotoLabelExpectedError = syntaxerr!(d_string)
+enum GotoLabelExpectedError = syntaxerr!(tstring)
     ("label expected after goto, not '%s'");
 enum TryCatchExpectedError = syntaxerr!()
     ("catch or finally expected following try");
-enum StatementExpectedError = syntaxerr!(d_string)
+enum StatementExpectedError = syntaxerr!(tstring)
     ("found '%s' instead of statement");
-enum ExpectedExpressionError = syntaxerr!(d_string)
+enum ExpectedExpressionError = syntaxerr!(tstring)
     ("expression expected, not '%s'");
 // deprecated // not used
 // {
@@ -143,9 +147,9 @@ enum ExpectedExpressionError = syntaxerr!(d_string)
 // enum LabelAlreadyDefinedError =
 //     err!typeerror("label '%s' is already defined");
 // }
-enum SwitchRedundantCaseError = syntaxerr!(d_string)
+enum SwitchRedundantCaseError = syntaxerr!(tstring)
     ("redundant case %s");
-enum MisplacedSwitchCaseError = syntaxerr!(d_string)
+enum MisplacedSwitchCaseError = syntaxerr!(tstring)
     ("case %s: is not in a switch statement");
 enum SwitchRedundantDefaultError = syntaxerr!()
     ("redundant default in switch statement");
@@ -157,7 +161,7 @@ enum MisplacedBreakError = syntaxerr!()
     ("can only break from within loop or switch");
 enum MisplacedContinueError = syntaxerr!()
     ("continue is not in a loop");
-enum UndefinedStatementLabelError = syntaxerr!(d_string)
+enum UndefinedStatementLabelError = syntaxerr!(tstring)
     ("Statement label '%s' is undefined");
 // deprecated // not used
 // {
@@ -173,59 +177,59 @@ enum NoThrowExpressionError = syntaxerr!()
 // enum UndefinedObjectSymbolError =
 //     err!typeerror("%s.%s is undefined");
 // }
-enum FunctionWantsNumberError = err!(typeerror, d_string, d_string)
+enum FunctionWantsNumberError = err!(typeerror, tstring, tstring)
     ("Number.prototype.%s() expects a Number not a %s");
-enum FunctionWantsStringError = err!(typeerror, d_string, d_string)
+enum FunctionWantsStringError = err!(typeerror, tstring, tstring)
     ("String.prototype.%s() expects a String not a %s");
-enum FunctionWantsDateError = err!(typeerror, d_string, d_string)
+enum FunctionWantsDateError = err!(typeerror, tstring, tstring)
     ("Date.prototype.%s() expects a Date not a %s");
-enum UndefinedNoCall2Error = err!(typeerror, d_string, d_string)
+enum UndefinedNoCall2Error = err!(typeerror, tstring, tstring)
     ("%s %s is undefined and has no Call method");
-enum UndefinedNoCall3Error = err!(typeerror, d_string, d_string, d_string)
+enum UndefinedNoCall3Error = err!(typeerror, tstring, tstring, tstring)
     ("%s %s.%s is undefined and has no Call method");
-enum FunctionWantsBoolError = err!(typeerror, d_string, d_string)
+enum FunctionWantsBoolError = err!(typeerror, tstring, tstring)
     ("Boolean.prototype.%s() expects a Boolean not a %s");
-enum ArrayLenOutOfBoundsError = err!(rangeerror, d_number)
+enum ArrayLenOutOfBoundsError = err!(rangeerror, double)
     ("arg to Array(len) must be 0 .. 2**32-1, not %.16g");
-enum ValueOutOfRangeError = err!(rangeerror, d_string, d_string)
+enum ValueOutOfRangeError = err!(rangeerror, tstring, tstring)
     ("Number.prototype.%s() %s out of range");
-enum TypeError = err!(typeerror, d_string)
+enum TypeError = err!(typeerror, tstring)
     ("TypeError in %s");
 enum RegexpCompileError = err!syntaxerror
     ("Error compiling regular expression");
-enum NotTransferrableError = err!(typeerror, d_string)
+enum NotTransferrableError = err!(typeerror, tstring)
     ("%s not transferrable");
-enum CannotConvertToObject2Error = err!(typeerror, d_string, d_string)
+enum CannotConvertToObject2Error = err!(typeerror, tstring, tstring)
     ("%s %s cannot convert to Object");
-enum CannotConvertToObject3Error = err!(typeerror, d_string, d_string, d_string)
+enum CannotConvertToObject3Error = err!(typeerror, tstring, tstring, tstring)
     ("%s %s.%s cannot convert to Object");
-enum CannotConvertToObject4Error = err!(typeerror, d_string)
+enum CannotConvertToObject4Error = err!(typeerror, tstring)
     ("cannot convert %s to Object");
-enum CannotAssignToError = err!(typeerror, d_string)
+enum CannotAssignToError = err!(typeerror, tstring)
     ("cannot assign to %s");
-enum CannotAssignError = err!(typeerror, d_string, d_string)
+enum CannotAssignError = err!(typeerror, tstring, tstring)
     ("cannot assign %s to %s");
-enum CannotAssignTo2Error = err!(typeerror, d_string, d_string)
+enum CannotAssignTo2Error = err!(typeerror, tstring, tstring)
     ("cannot assign to %s.%s");
 enum FunctionNotLvalueError = err!typeerror
     ("cannot assign to function");
-enum RhsMustBeObjectError = err!(typeerror, d_string, d_string)
+enum RhsMustBeObjectError = err!(typeerror, tstring, tstring)
     ("RHS of %s must be an Object, not a %s");
-enum CannotPutToPrimitiveError = err!(typeerror, d_string, d_string, d_string)
+enum CannotPutToPrimitiveError = err!(typeerror, tstring, tstring, tstring)
     ("can't Put('%s', %s) to a primitive %s");
 enum CannotPutIndexToPrimitiveError =
-    err!(typeerror, d_uint32, d_string, d_string)
+    err!(typeerror, uint, tstring, tstring)
     ("can't Put(%u, %s) to a primitive %s");
 enum ObjectCannotBePrimitiveError = err!typeerror
     ("object cannot be converted to a primitive type");
-enum CannotGetFromPrimitiveError = err!(typeerror, d_string, d_string, d_string)
+enum CannotGetFromPrimitiveError = err!(typeerror, tstring, tstring, tstring)
     ("can't Get(%s) from primitive %s(%s)");
 enum CannotGetIndexFromPrimitiveError =
-    err!(typeerror, size_t, d_string, d_string)
+    err!(typeerror, size_t, tstring, tstring)
     ("can't Get(%d) from primitive %s(%s)");
-enum PrimitiveNoConstructError = err!(typeerror, d_string)
+enum PrimitiveNoConstructError = err!(typeerror, tstring)
     ("primitive %s has no Construct method");
-enum PrimitiveNoCallError = err!(typeerror, d_string)
+enum PrimitiveNoCallError = err!(typeerror, tstring)
     ("primitive %s has no Call method");
 enum ForInMustBeObjectError = err!typeerror
     ("for-in must be on an object, not a primitive");
@@ -241,11 +245,11 @@ enum AssertError = err!(typeerror, size_t)
 // }
 enum NoDefaultPutError = err!typeerror
     ("no Default Put for object");
-enum SNoConstructError = err!(typeerror, d_string)
+enum SNoConstructError = err!(typeerror, tstring)
     ("%s does not have a [[Construct]] property");
-enum SNoCallError = err!(typeerror, d_string)
+enum SNoCallError = err!(typeerror, tstring)
     ("%s does not have a [[Call]] property");
-enum SNoInstanceError = err!(typeerror, d_string)
+enum SNoInstanceError = err!(typeerror, tstring)
     ("%s does not have a [[HasInstance]] property");
 enum LengthIntError = err!rangeerror
     ("length property must be an integer");
@@ -255,7 +259,7 @@ enum TsNotTransferrableError = err!typeerror
     ("Function.prototype.toString() not transferrable");
 enum ArrayArgsError = err!typeerror
     ("Function.prototype.apply(): argArray must be array or arguments object");
-enum MustBeObjectError = err!(typeerror, d_string)
+enum MustBeObjectError = err!(typeerror, tstring)
     (".prototype must be an Object, not a %s");
 // deprecated // not used
 // {
@@ -274,11 +278,11 @@ enum MustBeObjectError = err!(typeerror, d_string)
 // enum NotCollectionError =
 //     err!typeerror("argument not a collection");
 // }
-enum NotValidUTFError = err!(typeerror, d_string, d_string, uint)
+enum NotValidUTFError = err!(typeerror, tstring, tstring, uint)
     ("%s.%s expects a valid UTF codepoint not \\u%x");
-enum UndefinedVarError = err!(referenceerror, d_string)
+enum UndefinedVarError = err!(referenceerror, tstring)
     ("Variable '%s' is not defined");
-enum CantBreakInternalError = syntaxerr!(d_string)
+enum CantBreakInternalError = syntaxerr!(tstring)
     ("Can't break to internal loop label %s");
 // deprecated // not used
 // {
@@ -289,7 +293,7 @@ enum CantBreakInternalError = syntaxerr!(d_string)
 enum NoDefaultValueError = err!typeerror
     ("No [[DefaultValue]]");
 
-enum ReferenceError = err!(referenceerror, d_string)
+enum ReferenceError = err!(referenceerror, tstring)
     ("%s");
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -297,7 +301,7 @@ enum ReferenceError = err!(referenceerror, d_string)
 enum CannotPutError = err!(typeerror)("Cannot put error");
 enum CreateDataPropertyError = err!(typeerror)("Cannot create a property");
 enum CreateMethodPropertyError = err!(typeerror)("Cannot create a method property");
-enum NotCallableError = err!(typeerror, d_string)
+enum NotCallableError = err!(typeerror, tstring)
     ("%s is not callable");
-enum CantDeleteError = err!(typeerror, d_string)
+enum CantDeleteError = err!(typeerror, tstring)
     ("fail to delete %s.");

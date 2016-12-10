@@ -33,6 +33,8 @@ An implementation of the ECMA 262 (Javascript) programming language
       + [x] Capsulelize more. (use 'private', and property methods..)
       + [x] Add manual stack tracing.
       + [x] Use local importing.
-* [ ] Read the ECMA262 specification, and implement it.(85/586)
+* [ ] Read the ECMA262 specification, and implement it.
+      + [ ] Declaration.(93/586)
+      + [ ] Implementation.
 * [ ] Run test262.(0/23509)
 * [ ] Make pull requests?(0/???)

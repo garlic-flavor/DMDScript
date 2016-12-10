@@ -18,11 +18,12 @@
 
 module dmdscript.darguments;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.identifier;
 import dmdscript.value;
-import dmdscript.text;
+import dmdscript.key;
 import dmdscript.property;
 
 // The purpose of Darguments is to implement "value sharing"
@@ -60,31 +61,28 @@ class Darguments : Dobject
         }
     }
 
-    alias GetImpl = Dobject.GetImpl;
-
     override protected
     Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
     {
-        d_uint32 index;
+        uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
             ? actobj.GetImpl(index, cc)
             : super.GetImpl(PropertyName, cc);
     }
 
-    override Value* GetImpl(in d_uint32 index, ref CallContext cc)
+    override Value* GetImpl(in uint index, ref CallContext cc)
     {
         return (index < parameters.length)
             ? actobj.GetImpl(index, cc)
             : super.GetImpl(index, cc);
     }
 
-    alias SetImpl = super.SetImpl;
     override
     DError* SetImpl(in ref StringKey PropertyName, ref Value value,
                     in Property.Attribute attributes, ref CallContext cc)
     {
-        d_uint32 index;
+        uint index;
 
         if(StringToIndex(PropertyName, index) && index < parameters.length)
             return actobj.SetImpl(PropertyName, value, attributes, cc);
@@ -93,7 +91,7 @@ class Darguments : Dobject
     }
 
     override
-    DError* SetImpl(in d_uint32 index, ref Value value,
+    DError* SetImpl(in uint index, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
         if(index < parameters.length)
@@ -102,18 +100,18 @@ class Darguments : Dobject
             return Dobject.SetImpl(index, value, attributes, cc);
     }
 
-    override int CanPut(in d_string PropertyName)
+    override int CanPut(in tstring PropertyName)
     {
-        d_uint32 index;
+        uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
                ? actobj.CanPut(PropertyName)
                : Dobject.CanPut(PropertyName);
     }
 
-    override bool HasProperty(in d_string PropertyName)
+    override bool HasProperty(in tstring PropertyName)
     {
-        d_uint32 index;
+        uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
                ? actobj.HasProperty(PropertyName)
@@ -122,7 +120,7 @@ class Darguments : Dobject
 
     override bool Delete(in StringKey PropertyName)
     {
-        d_uint32 index;
+        uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
                ? actobj.Delete(PropertyName)

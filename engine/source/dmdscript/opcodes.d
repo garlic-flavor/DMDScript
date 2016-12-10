@@ -18,6 +18,7 @@
 
 module dmdscript.opcodes;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.statement;
@@ -58,15 +59,15 @@ class Catch : Dobject
 
     // This is so we can distinguish between a real Dobject
     // and these fakers
-    override d_string getTypeof()
+    override tstring getTypeof()
     {
         return null;
     }
 
     uint offset;        // offset of CatchBlock
-    d_string name;      // catch identifier
+    tstring name;      // catch identifier
 
-    this(uint offset, d_string name)
+    this(uint offset, tstring name)
     {
         super(null);
         this.offset = offset;
@@ -85,7 +86,7 @@ class Finally : Dobject
     // {
     //     return null;
     // }
-    override d_string getTypeof()
+    override tstring getTypeof()
     {
         return null;
     }
@@ -215,7 +216,7 @@ Dobject scope_tos(Dobject[] scopex)
 /*****************************************
  */
 
-void PutValue(ref CallContext cc, in d_string s, Value* a)
+void PutValue(ref CallContext cc, in tstring s, Value* a)
 {
     // ECMA v3 8.7.2
     // Look for the object o in the scope chain.
@@ -308,11 +309,11 @@ DError* cannotConvert(Value* b)
 
     if(b.isUndefinedOrNull)
     {
-        sta = CannotConvertToObject4Error(b.type.to!d_string);
+        sta = CannotConvertToObject4Error(b.type.to!tstring);
     }
     else
     {
-        sta = CannotConvertToObject2Error(b.type.to!d_string, b.toString);
+        sta = CannotConvertToObject2Error(b.type.to!tstring, b.toString);
     }
     return sta;
 }
@@ -332,7 +333,7 @@ struct IR
         size_t      argc;
         sizediff_t  offset;
         Identifier* id;
-        d_boolean   boolean;
+        bool   boolean;
         Statement   target;     // used for backpatch fixups
         Dobject     object;
         void*       ptr;
@@ -356,13 +357,13 @@ struct IR
         DError* sta;
         Iterator* iter;
         Identifier* id;
-        d_string s;
-        d_string s2;
-        d_number n;
-        d_boolean bo;
-        d_int32 i32;
-        d_uint32 u32;
-        d_boolean res;
+        tstring s;
+        tstring s2;
+        double n;
+        bool bo;
+        int i32;
+        uint u32;
+        bool res;
         Value.Type tx;
         Value.Type ty;
         Dobject o;
@@ -375,7 +376,7 @@ struct IR
         //Finally blocks are sort of called, sort of jumped to
         //So we are doing "push IP in some stack" + "jump"
         IR*[] finallyStack;      //it's a stack of backreferences for finally
-        d_number inc;
+        double inc;
 
         @safe pure nothrow
         void callFinally(Finally f)
@@ -435,7 +436,7 @@ struct IR
         {
             struct ScopeCache
             {
-                d_string s;
+                tstring s;
                 Value*   v;     // never null, and never from a Dcomobject
             }
             int si;
@@ -455,7 +456,7 @@ struct IR
         }
         else
         {
-            uint SCOPECACHE_SI(d_string s)
+            uint SCOPECACHE_SI(tstring s)
             {
                 return 0;
             }
@@ -501,10 +502,10 @@ struct IR
                     }
                     c = locals + (code + 3).index;
                     if(c.type == Value.Type.Number &&
-                       (i32 = cast(d_int32)c.number) == c.number &&
+                       (i32 = cast(int)c.number) == c.number &&
                        i32 >= 0)
                     {
-                        v = o.Get(cast(d_uint32)i32/*, *c*/, cc);
+                        v = o.Get(cast(uint)i32/*, *c*/, cc);
                     }
                     else
                     {
@@ -521,14 +522,14 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
                     if(c.type == Value.Type.Number &&
-                       (i32 = cast(d_int32)c.number) == c.number &&
+                       (i32 = cast(int)c.number) == c.number &&
                        i32 >= 0)
                     {
                         if(b.type == Value.Type.Object)
-                            sta = b.object.Set(cast(d_uint32)i32/*, *c*/, *a,
+                            sta = b.object.Set(cast(uint)i32/*, *c*/, *a,
                                                Property.Attribute.None, cc);
                         else
-                            sta = b.Set(cast(d_uint32)i32/*, *c*/, *a, cc);
+                            sta = b.Set(cast(uint)i32/*, *c*/, *a, cc);
                     }
                     else
                     {
@@ -548,7 +549,7 @@ struct IR
                     if(!o)
                     {
                         sta = CannotConvertToObject3Error(
-                            b.type.to!d_string, b.toString, s);
+                            b.type.to!tstring, b.toString, s);
                         goto Lthrow;
                     }
                     v = o.Get(s, cc);
@@ -717,8 +718,8 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = CannotAssignError(a.type.to!d_string,
-                                                b.type.to!d_string);
+                        sta = CannotAssignError(a.type.to!tstring,
+                                                b.type.to!tstring);
                         goto Lthrow;
                     }
                     sta = o.PutDefault(*a);
@@ -774,7 +775,7 @@ struct IR
 
                 case Opcode.Number:              // a = number
                     (locals + (code + 1).index).put(
-                        *cast(d_number*)(code + 2));
+                        *cast(double*)(code + 2));
                     code += IRTypes[Opcode.Number].size;
                     break;
 
@@ -851,7 +852,7 @@ struct IR
                     if(c.isPrimitive())
                     {
                         sta = RhsMustBeObjectError("instanceof",
-                                                   c.type.to!d_string);
+                                                   c.type.to!tstring);
                         goto Lthrow;
                     }
                     co = c.toObject();
@@ -946,7 +947,7 @@ struct IR
                     c = locals + (code + 3).index;
                     i32 = b.toInt32(cc);
                     u32 = c.toUint32(cc) & 0x1F;
-                    i32 >>= cast(d_int32)u32;
+                    i32 >>= cast(int)u32;
                     a.put(i32);
                     code += IRTypes[Opcode.ShR].size;
                     break;
@@ -957,7 +958,7 @@ struct IR
                     c = locals + (code + 3).index;
                     i32 = b.toUint32(cc);
                     u32 = c.toUint32(cc) & 0x1F;
-                    u32 = (cast(d_uint32)i32) >> u32;
+                    u32 = (cast(uint)i32) >> u32;
                     a.put(u32);
                     code += IRTypes[Opcode.UShR].size;
                     break;
@@ -1239,8 +1240,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            d_string x = b.toString();
-                            d_string y = c.toString();
+                            tstring x = b.toString();
+                            tstring y = c.toString();
 
                             res = cmp(x, y) < 0;
                         }
@@ -1264,8 +1265,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            d_string x = b.toString();
-                            d_string y = c.toString();
+                            tstring x = b.toString();
+                            tstring y = c.toString();
 
                             res = cmp(x, y) <= 0;
                         }
@@ -1289,8 +1290,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            d_string x = b.toString();
-                            d_string y = c.toString();
+                            tstring x = b.toString();
+                            tstring y = c.toString();
 
                             res = cmp(x, y) > 0;
                         }
@@ -1315,8 +1316,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            d_string x = b.toString();
-                            d_string y = c.toString();
+                            tstring x = b.toString();
+                            tstring y = c.toString();
 
                             res = cmp(x, y) >= 0;
                         }
@@ -1342,8 +1343,8 @@ struct IR
                             res = true;
                         else if (tx == Value.Type.Number)
                         {
-                            d_number x = b.number;
-                            d_number y = c.number;
+                            double x = b.number;
+                            double y = c.number;
 
                             res = (x == y);
                         }
@@ -1437,8 +1438,8 @@ struct IR
                             res = true;
                         else if (tx == Value.Type.Number)
                         {
-                            d_number x = b.number;
-                            d_number y = c.number;
+                            double x = b.number;
+                            double y = c.number;
 
                             // Ensure that a NAN operand produces false
                             if(code.opcode == Opcode.CID)
@@ -1524,8 +1525,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            d_string x = b.toString();
-                            d_string y = c.toString();
+                            tstring x = b.toString();
+                            tstring y = c.toString();
 
                             res = cmp(x, y) < 0;
                         }
@@ -1556,8 +1557,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            d_string x = b.toString();
-                            d_string y = c.toString();
+                            tstring x = b.toString();
+                            tstring y = c.toString();
 
                             res = cmp(x, y) <= 0;
                         }
@@ -1572,7 +1573,7 @@ struct IR
 
                 case Opcode.JLTC:        // if (b < constant) goto c
                     b = locals + (code + 2).index;
-                    res = (b.toNumber(cc) < *cast(d_number *)(code + 3));
+                    res = (b.toNumber(cc) < *cast(double*)(code + 3));
                     if(!res)
                         code += (code + 1).offset;
                     else
@@ -1581,7 +1582,7 @@ struct IR
 
                 case Opcode.JLEC:        // if (b <= constant) goto c
                     b = locals + (code + 2).index;
-                    res = (b.toNumber(cc) <= *cast(d_number *)(code + 3));
+                    res = (b.toNumber(cc) <= *cast(double*)(code + 3));
                     if(!res)
                         code += (code + 1).offset;
                     else
@@ -1678,7 +1679,7 @@ struct IR
 
                     Lcallerror:
                     {
-                        sta = UndefinedNoCall3Error(b.type.to!d_string,
+                        sta = UndefinedNoCall3Error(b.type.to!tstring,
                                                     b.toString, s);
                         goto Lthrow;
                     }
@@ -1714,7 +1715,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = UndefinedNoCall2Error(b.type.to!d_string,
+                        sta = UndefinedNoCall2Error(b.type.to!tstring,
                                                     b.toString);
                         goto Lthrow;
                     }
@@ -1748,7 +1749,7 @@ struct IR
                     o = v.toObject();
                     if(!o)
                     {
-                        sta = CannotAssignTo2Error(b.type.to!d_string, s);
+                        sta = CannotAssignTo2Error(b.type.to!tstring, s);
                         goto Lthrow;
                     }
                     sta = o.put_Value(*a, (locals + (code + 5).index)[0 .. (code + 4).argc]);
@@ -1787,7 +1788,7 @@ struct IR
                     if(!o)
                     {
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
-                        sta = UndefinedNoCall2Error(b.type.to!d_string,
+                        sta = UndefinedNoCall2Error(b.type.to!tstring,
                                                     b.toString);
                         goto Lthrow;
                     }
@@ -1965,17 +1966,17 @@ struct IR
         sink(IRTypeDispatcher!proc(code.opcode, address, code,));
     }
 
-    debug static d_string toString(const(IR)* code)
+    debug static tstring toString(const(IR)* code)
     {
         import std.conv : to;
         import std.array : Appender;
 
-        Appender!d_string buf;
+        Appender!tstring buf;
         auto codestart = code;
 
         for(;; )
         {
-            buf.put((cast(size_t)(code - codestart)).to!d_string);
+            buf.put((cast(size_t)(code - codestart)).to!tstring);
             toBuffer(code - codestart, code, b=>buf.put(b));
             if(code.opcode == Opcode.End)
                 break;

@@ -41,9 +41,11 @@ Dobject getPrototype(Dobject o)
 
 struct Iterator
 {
-    //import dmdscript.property; // causes infinity loop at compiling.
+    import dmdscript.property : PropertyKey;
+    import dmdscript.script : CallContext;
+    import dmdscript.value : Value, DError;
 
-    dmdscript.property.PropertyKey[] keys;
+    PropertyKey[] keys;
     size_t  keyindex;
     Dobject o;
     Dobject ostart;
@@ -71,7 +73,7 @@ struct Iterator
         keyindex = 0;
     }
 
-    dmdscript.property.PropertyKey* next()
+    PropertyKey* next()
     {
         import std.algorithm.sorting : sort;
         import dmdscript.property : Property;
@@ -120,4 +122,67 @@ struct Iterator
         }
         assert(0);
     }
+
+    // Ecma-262-v7/7.4.2
+    @disable
+    DError* IteratorNext(ref CallContext cc, out Value ret, Value[] args = null)
+    {
+        import dmdscript.key : Key;
+        auto err = o.value.Invoke(Key.next, cc, ret, args);
+        if (ret.type != Value.Type.Object)
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // use errmsgs
+            throw new Exception("");
+        return err;
+    }
+
+    // Ecma-262-v7/7.4.3
+    @disable
+    bool IteratorComplete(ref CallContext cc)
+    {
+        import dmdscript.key : Key;
+        if (auto ret = o.Get(Key.done, cc))
+            return ret.toBoolean;
+        return false;
+    }
+
+    // Ecma-262-v7/7.4.4
+    @disable
+    Value* IteratorValue(ref CallContext cc)
+    {
+        import dmdscript.key : Key;
+        return o.Get(Key.value, cc);
+    }
+
+    // Ecma-262-v7/7.4.5
+    @disable
+    bool IteratorStep(ref CallContext cc, out Value ret)
+    {
+        auto err = IteratorNext(cc, ret);
+        return IteratorComplete(cc);
+    }
+
+    // Ecma-262-v7/7.4.6
+    @disable
+    void IteratorClose(){}
+
+static:
+
+    @disable
+    Dobject CreateIterResultObject(Value value, bool done)
+    {
+        import dmdscript.key : Key;
+
+        auto obj = new Dobject;
+        obj.CreateDataProperty(Key.value, value);
+        obj.CreateDataProperty(Key.done, done);
+        return obj;
+    }
+
+    @disable
+    Dobject CreateListIterator(Value[] list)
+    {
+        return null;
+    }
 }
+

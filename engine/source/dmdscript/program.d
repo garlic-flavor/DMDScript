@@ -18,6 +18,7 @@
 
 module dmdscript.program;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.dglobal;
@@ -28,7 +29,7 @@ import dmdscript.opcodes;
 import dmdscript.darray;
 import dmdscript.parse;
 import dmdscript.scopex;
-import dmdscript.text;
+import dmdscript.key;
 import dmdscript.property;
 import dmdscript.identifier;
 import dmdscript.ddate;
@@ -44,7 +45,7 @@ class Program
 
     // Locale info
     uint lcid;          // current locale
-    d_string slist;     // list separator
+    tstring slist;     // list separator
 
     this()
     {
@@ -81,11 +82,11 @@ class Program
      * 2. with text representing a function name & body (pfd != null)
      */
 
-    void compile(d_string progIdentifier, d_string srctext,
+    void compile(tstring progIdentifier, tstring srctext,
                  FunctionDefinition* pfd)
     {
         TopStatement[] topstatements;
-        d_string msg;
+        tstring msg;
 
         //writef("parse_common()\n");
         Parser p = new Parser(progIdentifier, srctext,
@@ -160,7 +161,7 @@ class Program
      * Throw ScriptException on error.
      */
 
-    void execute(d_string[] args)
+    void execute(tstring[] args)
     {
         // ECMA 10.2.1
         //writef("Program.execute(argc = %d, argv = %p)\n", argc, argv);

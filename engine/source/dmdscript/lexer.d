@@ -20,11 +20,12 @@
 
 module dmdscript.lexer;
 
-import dmdscript.script;
-import dmdscript.text;
+import dmdscript.primitive;
+import dmdscript.key;
 import dmdscript.identifier;
 import dmdscript.scopex;
 import dmdscript.errmsgs;
+import dmdscript.exception;
 
 debug import std.stdio;
 
@@ -130,31 +131,31 @@ struct Token
     {
         number_t    intvalue;
         real_t      realvalue;
-        d_string    str;
+        tstring    str;
         Identifier* ident;
     };
 
-    // static d_string[Tok.max+1] tochars;
+    // static tstring[Tok.max+1] tochars;
     // alias tochars = ._tochars;
 
-    d_string toString()
+    tstring toString()
     {
         import std.conv : to;
 
-        d_string p;
+        tstring p;
 
         switch(value)
         {
         case Tok.Number:
-            p = intvalue.to!d_string;
+            p = intvalue.to!tstring;
             break;
 
         case Tok.Real:
             long l = cast(long)realvalue;
             if(l == realvalue)
-                p = l.to!d_string;
+                p = l.to!tstring;
             else
-                p = realvalue.to!d_string;
+                p = realvalue.to!tstring;
             break;
 
         case Tok.String:
@@ -188,7 +189,7 @@ protected:
     ScriptException exception;            // syntax error information
 
     @trusted pure nothrow
-    this(d_string sourcename, d_string base, UseStringtable useStringtable)
+    this(tstring sourcename, tstring base, UseStringtable useStringtable)
     {
         //writefln("Lexer::Lexer(base = '%s')\n",base);
 
@@ -284,15 +285,15 @@ protected:
     }
 
 protected:
-    d_string base;             // pointer to start of buffer
+    tstring base;             // pointer to start of buffer
 
 private:
     Token* freelist;
 
     UseStringtable useStringtable;        // use for Identifiers
-    Identifier[d_string] stringtable;
+    Identifier[tstring] stringtable;
 
-    d_string sourcename;       // for error message strings
+    tstring sourcename;       // for error message strings
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
 
@@ -343,7 +344,7 @@ private:
 
         tchar c;
         dchar d;
-        d_string id;
+        tstring id;
         tchar[] buf;
 
         //writefln("Lexer.scan()");
@@ -997,7 +998,7 @@ private:
     /**************************************
      */
     @trusted
-    d_string chompString(tchar quote)
+    tstring chompString(tchar quote)
     {
         import std.array : Appender;
         import std.utf : encode, stride;
@@ -1058,7 +1059,7 @@ private:
      * pointer intact if it is not a regexp.
      */
     @trusted pure nothrow
-    d_string regexp()
+    tstring regexp()
     {
         import std.ascii : isAlphaNum;
 
@@ -1504,7 +1505,7 @@ private:
 // This function seems that only be called at error handling,
 // and for debugging.
 private @safe pure
-d_string tochars(Tok tok)
+tstring tochars(Tok tok)
 {
     import std.conv : to;
     import std.string : toLower;
@@ -1557,7 +1558,7 @@ d_string tochars(Tok tok)
     case Tok.Plusplus: return "++";
     case Tok.Minusminus: return "--";
     default:
-        return tok.to!d_string.toLower;
+        return tok.to!tstring.toLower;
     }
     assert(0);
 }

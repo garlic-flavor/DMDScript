@@ -18,17 +18,19 @@
 
 module dmdscript.scopex;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.program;
 import dmdscript.symbol;
 import dmdscript.functiondefinition;
 import dmdscript.identifier;
 import dmdscript.statement;
+import dmdscript.exception;
 struct Scope
 {
     Scope*             enclosing;    // enclosing Scope
 
-    d_string           src;          // source text
+    tstring           src;          // source text
     Program            program;      // Root module
     // deprecated ScopeSymbol*       scopesym;     // current symbol
     FunctionDefinition funcdef;      // what function we're in
@@ -179,7 +181,7 @@ struct Scope
     }
 
     @property @safe @nogc pure nothrow
-    d_string getSource()
+    tstring getSource()
     {
         for(auto sc = &this; sc !is null; sc = sc.enclosing)
         {

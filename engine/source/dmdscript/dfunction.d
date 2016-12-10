@@ -18,18 +18,13 @@
 
 module dmdscript.dfunction;
 
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.value;
-import dmdscript.protoerror;
-import dmdscript.text;
+import dmdscript.primitive;
+import dmdscript.script : CallContext;
+import dmdscript.dobject : Dobject;
+import dmdscript.value : DError, Value;
+import dmdscript.key : Key;
 import dmdscript.errmsgs;
-import dmdscript.property;
-import dmdscript.scopex;
-import dmdscript.dnative;
-import dmdscript.functiondefinition;
-import dmdscript.parse;
-import dmdscript.ddeclaredfunction;
+import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
 
 /* ===================== Dfunction_constructor ==================== */
 
@@ -47,9 +42,16 @@ class DfunctionConstructor : Dconstructor
     override DError* Construct(ref CallContext cc, out Value ret,
                                Value[] arglist)
     {
+        import dmdscript.functiondefinition : FunctionDefinition;
+        import dmdscript.exception : ScriptException;
+        import dmdscript.parse : Parser;
+        import dmdscript.scopex : Scope;
+        import dmdscript.ddeclaredfunction : DdeclaredFunction;
+        import dmdscript.protoerror;
+
         // ECMA 15.3.2.1
-        d_string bdy;
-        d_string P;
+        tstring bdy;
+        tstring P;
         FunctionDefinition fd;
         ScriptException exception;
 
@@ -97,7 +99,7 @@ class DfunctionConstructor : Dconstructor
         Dobject o;
 
         ret.putVundefined();
-        o = new syntaxerror.D0(exception);
+        o = new syntaxerror(exception);
         auto v = new DError;
         v.put(o);
         return v;
@@ -106,7 +108,7 @@ class DfunctionConstructor : Dconstructor
 
 
 /* ===================== Dfunction_prototype_toString =============== */
-
+@DnativeFunctionDescriptor(Key.toString, 0)
 DError* Dfunction_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -133,7 +135,7 @@ DError* Dfunction_prototype_toString(
 }
 
 /* ===================== Dfunction_prototype_apply =============== */
-
+@DnativeFunctionDescriptor(Key.apply, 2)
 DError* Dfunction_prototype_apply(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -143,6 +145,7 @@ DError* Dfunction_prototype_apply(
     import core.sys.posix.stdlib : alloca;
     import dmdscript.darray : Darray;
     import dmdscript.darguments : Darguments;
+    import dmdscript.value : vundefined;
 
     Value* thisArg;
     Value* argArray;
@@ -222,7 +225,7 @@ DError* Dfunction_prototype_apply(
 }
 
 /* ===================== Dfunction_prototype_call =============== */
-
+@DnativeFunctionDescriptor(Key.call, 1)
 DError* Dfunction_prototype_call(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -251,42 +254,44 @@ DError* Dfunction_prototype_call(
 
 /* ===================== Dfunction_prototype ==================== */
 
-class DfunctionPrototype : Dfunction
-{
-    this()
-    {
-        super(0, Dobject.getPrototype);
+// class DfunctionPrototype : Dfunction
+// {
+//     this()
+//     {
+//         super(0, Dobject.getPrototype);
 
-        auto attributes = Property.Attribute.DontEnum;
+//         auto attributes = Property.Attribute.DontEnum;
 
-        name = "prototype";
-        DefineOwnProperty(Key.constructor, Dfunction.getConstructor, attributes);
+//         name = "prototype";
+//         DefineOwnProperty(Key.constructor, Dfunction.getConstructor, attributes);
 
-        static enum NativeFunctionData[] nfd =
-        [
-            { Key.toString, &Dfunction_prototype_toString, 0 },
-            { Key.apply, &Dfunction_prototype_apply, 2 },
-            { Key.call, &Dfunction_prototype_call, 1 },
-        ];
+//         static enum NativeFunctionData[] nfd =
+//         [
+//             { Key.toString, &Dfunction_prototype_toString, 0 },
+//             { Key.apply, &Dfunction_prototype_apply, 2 },
+//             { Key.call, &Dfunction_prototype_call, 1 },
+//         ];
 
-        DnativeFunction.initialize(this, nfd, attributes);
-    }
+//         DnativeFunction.initialize(this, nfd, attributes);
+//     }
 
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
-                          Value[] arglist)
-    {
-        // ECMA v3 15.3.4
-        // Accept any arguments and return "undefined"
-        ret.putVundefined();
-        return null;
-    }
-}
+//     override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+//                           Value[] arglist)
+//     {
+//         // ECMA v3 15.3.4
+//         // Accept any arguments and return "undefined"
+//         ret.putVundefined();
+//         return null;
+//     }
+// }
 
 
 /* ===================== Dfunction ==================== */
 
 abstract class Dfunction : Dobject
 {
+    import dmdscript.dobject : Initializer;
+
     Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
 
     override abstract
@@ -327,7 +332,7 @@ abstract class Dfunction : Dobject
         w = Get(Key.prototype, cc);
         if(w.isPrimitive())
         {
-            return MustBeObjectError(w.type.to!d_string);
+            return MustBeObjectError(w.type.to!tstring);
         }
         o = w.toObject();
         for(;; )
@@ -348,24 +353,50 @@ abstract class Dfunction : Dobject
         return null;
     }
 
+    @disable
+    bool OrdinaryHasInstance(Dobject o, ref CallContext cc)
+    {
+        if (auto btf = cast(BoundFunctionExoticObject)this)
+        {
+            return o.InstanceofOperator(this, cc);
+        }
+        auto p = Get(Key.prototype, cc);
+        assert(p && p.object);
+
+        debug size_t loopCounter = 0;
+        for(;;)
+        {
+            o = o.GetPrototypeOf;
+            if (o is null)
+                return false;
+            if (p.object is o)
+                return true;
+            assert(++loopCounter < 100);
+        }
+        assert(0);
+    }
+
+
 protected:
     const(tchar)[] name;
 
     //
-    this(d_uint32 length)
+    this(uint length)
     {
         this(length, Dfunction.getPrototype());
     }
 
     //
-    this(d_uint32 length, Dobject prototype)
+    this(uint length, Dobject prototype)
     {
         this(Key.Function, length, prototype);
     }
 
     //
-    this(d_string name, d_uint32 length, Dobject prototype)
+    this(tstring name, uint length, Dobject prototype)
     {
+        import dmdscript.property : Property;
+
         super(prototype, Key.Function);
         this.name = name;
         CallContext cc;
@@ -390,6 +421,8 @@ public static:
             return cast(Dfunction)v.toObject;
     }
 
+    mixin Initializer!DfunctionConstructor;
+/*
     //
     @safe @nogc nothrow
     Dfunction getConstructor()
@@ -407,20 +440,21 @@ public static:
     //
     void initialize()
     {
-        _constructor = new DfunctionConstructor();
         _prototype = new DfunctionPrototype();
+        _constructor = new DfunctionConstructor();
 
         _constructor.DefineOwnProperty(Key.prototype, _prototype,
                             Property.Attribute.DontEnum |
                             Property.Attribute.DontDelete |
                             Property.Attribute.ReadOnly);
 
-        _constructor.SetPrototypeOf = _prototype;
-        _constructor.proptable.previous = _prototype.proptable;
+        // _constructor.SetPrototypeOf = _prototype;
+        // _constructor.proptable.previous = _prototype.proptable;
     }
 private static:
     Dfunction _constructor;
     Dobject _prototype;
+*/
 }
 
 //
@@ -441,14 +475,26 @@ abstract class Dconstructor : Dfunction
 
 protected:
     //
-    this(d_uint32 length, Dobject prototype)
+    this(uint length, Dobject prototype)
     {
         super(length, prototype);
     }
 
     //
-    this(d_string name, d_uint32 length, Dobject prototype)
+    this(tstring name, uint length, Dobject prototype)
     {
         super(name, length, prototype);
     }
+}
+
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// for temp use
+
+//
+interface BoundFunctionExoticObject
+{
+    Dobject BoundTargetFunction();
+    Value BoundThis();
+    Value[] BoundArguments();
 }

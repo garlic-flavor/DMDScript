@@ -71,7 +71,7 @@ module dmdscript.ir;
 debug import std.conv : text;
 import std.meta : AliasSeq;
 
-import dmdscript.script : Loc, d_number, d_boolean;
+import dmdscript.primitive : line_number;
 import dmdscript.identifier : Identifier;
 import dmdscript.functiondefinition : FunctionDefinition;
 
@@ -231,7 +231,7 @@ struct Instruction
 
     alias opcode this;
 
-    this(Loc loc, Opcode op)
+    this(line_number loc, Opcode op)
     {
         linnum = cast(typeof(linnum))loc;
         opcode = op;
@@ -252,7 +252,7 @@ private struct IR0(Opcode CODE)
 
     Instruction ir;
 
-    this(Loc loc)
+    this(line_number loc)
     { ir = Instruction(loc, code); }
 
     debug string toString() const
@@ -268,13 +268,13 @@ private struct IR1(Opcode CODE)
     Instruction ir;
     idx_t acc;  // the position of an acc buffer in local variable array.
 
-    this(Loc loc, idx_t acc)
+    this(line_number loc, idx_t acc)
     {
         ir = Instruction(loc, code);
         this.acc = acc;
     }
 
-    this(Loc loc, Opcode op, idx_t acc)
+    this(line_number loc, Opcode op, idx_t acc)
     {
         ir = Instruction(loc, op);
         this.acc = acc;
@@ -294,7 +294,7 @@ private struct IR2(Opcode CODE, T)
     idx_t acc;
     T operand;
 
-    this(Loc loc, idx_t acc, T operand)
+    this(line_number loc, idx_t acc, T operand)
     {
         ir = Instruction(loc, code);
         this.acc = acc;
@@ -316,7 +316,7 @@ private struct IR3(Opcode CODE, T, U)
     T operand1;
     U operand2;
 
-    this(Loc loc, idx_t acc, T o1, U o2)
+    this(line_number loc, idx_t acc, T o1, U o2)
     {
         ir = Instruction(loc, code);
         this.acc = acc;
@@ -324,7 +324,7 @@ private struct IR3(Opcode CODE, T, U)
         operand2 = o2;
     }
 
-    this(Loc loc, Opcode op, idx_t acc, T o1, U o2)
+    this(line_number loc, Opcode op, idx_t acc, T o1, U o2)
     {
         ir = Instruction(loc, op);
         this.acc = acc;
@@ -348,7 +348,7 @@ private struct IRcall4(Opcode CODE, T)
     size_t argc;
     idx_t argv;
 
-    this(Loc loc, idx_t acc, T func, size_t argc, idx_t argv)
+    this(line_number loc, idx_t acc, T func, size_t argc, idx_t argv)
     {
         ir = Instruction(loc, code);
         this.acc = acc;
@@ -374,7 +374,7 @@ private struct IRcall5(Opcode CODE, T)
     size_t argc;
     idx_t argv;
 
-    this(Loc loc, idx_t acc, idx_t owner, T method, size_t argc, idx_t argv)
+    this(line_number loc, idx_t acc, idx_t owner, T method, size_t argc, idx_t argv)
     {
         ir = Instruction(loc, code);
         this.acc = acc;
@@ -384,7 +384,7 @@ private struct IRcall5(Opcode CODE, T)
         this.argv = argv;
     }
 
-    this(Loc loc, Opcode op, idx_t acc, idx_t owner, T method, size_t argc,
+    this(line_number loc, Opcode op, idx_t acc, idx_t owner, T method, size_t argc,
          idx_t argv)
     {
         ir = Instruction(loc, op);
@@ -413,7 +413,7 @@ private struct IRget3(Opcode CODE, T)
     idx_t owner;
     T method;
 
-    this(Loc loc, idx_t acc, idx_t owner, T method)
+    this(line_number loc, idx_t acc, idx_t owner, T method)
     {
         ir = Instruction(loc, code);
         this.acc = acc;
@@ -435,7 +435,7 @@ private struct IRScope3(Opcode CODE)
     Identifier* operand;
     size_t hash;
 
-    this(Loc loc, idx_t acc, Identifier* operand, size_t hash)
+    this(line_number loc, idx_t acc, Identifier* operand, size_t hash)
     {
         ir = Instruction(loc, code);
         this.acc = acc;
@@ -443,7 +443,7 @@ private struct IRScope3(Opcode CODE)
         this.hash = hash;
     }
 
-    this(Loc loc, Opcode op, idx_t acc, Identifier* operand, size_t hash)
+    this(line_number loc, Opcode op, idx_t acc, Identifier* operand, size_t hash)
     {
         ir = Instruction(loc, op);
         this.acc = acc;
@@ -466,7 +466,7 @@ private struct IRnext3(Opcode CODE, T)
     T func;
     idx_t iter;
 
-    this(Loc loc, sizediff_t offset, T func, idx_t iter)
+    this(line_number loc, sizediff_t offset, T func, idx_t iter)
     {
         ir = Instruction(loc, code);
         this.offset = offset;
@@ -490,7 +490,7 @@ private struct IRnext4(Opcode CODE, T)
     T method;
     idx_t iter;
 
-    this(Loc loc, sizediff_t offset, idx_t owner, T method, idx_t iter)
+    this(line_number loc, sizediff_t offset, idx_t owner, T method, idx_t iter)
     {
         ir = Instruction(loc, code);
         this.offset = offset;
@@ -515,7 +515,7 @@ private struct IRjump1(Opcode CODE)
     Instruction ir;
     sizediff_t offset;
 
-    this(Loc loc, sizediff_t offset)
+    this(line_number loc, sizediff_t offset)
     {
         ir = Instruction(loc, code);
         this.offset = offset;
@@ -534,7 +534,7 @@ private struct IRjump2(Opcode CODE)
     sizediff_t offset;
     idx_t cond;
 
-    this(Loc loc, sizediff_t offset, idx_t cond)
+    this(line_number loc, sizediff_t offset, idx_t cond)
     {
         ir = Instruction(loc, code);
         this.offset = offset;
@@ -555,7 +555,7 @@ private struct IRjump3(Opcode CODE, T = idx_t)
     idx_t operand1;
     T operand2;
 
-    this(Loc loc, sizediff_t offset, idx_t o1, T o2)
+    this(line_number loc, sizediff_t offset, idx_t o1, T o2)
     {
         ir = Instruction(loc, code);
         this.offset = offset;
@@ -578,7 +578,7 @@ struct IRJmpToStatement
     Instruction ir;
     Statement statement;
 
-    this(Loc loc, Statement statement)
+    this(line_number loc, Statement statement)
     {
         ir = Instruction(loc, code);
         this.statement = statement;
@@ -598,7 +598,7 @@ private struct IRTryCatch
     sizediff_t offset;
     Identifier* name;
 
-    this(Loc loc, sizediff_t offset, Identifier* name)
+    this(line_number loc, sizediff_t offset, Identifier* name)
     {
         ir = Instruction(loc, code);
         this.offset = offset;
@@ -623,7 +623,7 @@ private struct IRCheckRef
     Instruction ir;
     Identifier* operand;
 
-    this(Loc loc, Identifier* operand)
+    this(line_number loc, Identifier* operand)
     {
         ir = Instruction(loc, code);
         this.operand = operand;
@@ -645,9 +645,9 @@ private struct IRAssert
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
-    Loc linnum;
+    line_number linnum;
 
-    this(Loc loc, Loc linnum)
+    this(line_number loc, line_number linnum)
     {
         ir = Instruction(loc, code);
         this.linnum = linnum;
@@ -665,13 +665,13 @@ alias IRTypes = AliasSeq!(
 
     IR2!(Opcode.String, Identifier*),        // acc = "string"
     IR2!(Opcode.ThisGet, Identifier*),      // acc = othis.operand
-    IR2!(Opcode.Number, d_number),           // acc = number
+    IR2!(Opcode.Number, double),           // acc = number
     IR2!(Opcode.Object, FunctionDefinition),
                                          // acc = new DdeclaredFunction(operand)
     IR1!(Opcode.This),                         // acc = this
     IR1!(Opcode.Null),                         // acc = null
     IR1!(Opcode.Undefined),               // acc = undefined
-    IR2!(Opcode.Boolean, d_boolean),        // acc = operand
+    IR2!(Opcode.Boolean, bool),        // acc = operand
 
     IRcall5!(Opcode.Call, idx_t), // acc = owner.method(argv[0..argc])
     IRcall5!(Opcode.CallS, Identifier*), // acc = owner.method(argv[0..argc])
@@ -754,8 +754,8 @@ alias IRTypes = AliasSeq!(
     // commonly appears as loop control
     IRjump3!(Opcode.JLT), // if (operand1 < operand2) goto offset,
     IRjump3!(Opcode.JLE), // if (operand1 <= operand2) goto offset,
-    IRjump3!(Opcode.JLTC, d_number), // if (operand < constant) goto offset,
-    IRjump3!(Opcode.JLEC, d_number), // if (operand <= constant) goto offset
+    IRjump3!(Opcode.JLTC, double), // if (operand < constant) goto offset,
+    IRjump3!(Opcode.JLEC, double), // if (operand <= constant) goto offset
 
     IR1!(Opcode.Typeof), // acc = typeof acc,
     IR3!(Opcode.Instance, idx_t, idx_t), // acc = operand1 instanceof operand2

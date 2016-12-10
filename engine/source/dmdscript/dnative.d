@@ -22,6 +22,140 @@ import dmdscript.script : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dfunction;
 import dmdscript.value : Value, DError;
+debug import std.stdio;
+
+//------------------------------------------------------------------------------
+///
+struct DnativeFunctionDescriptor
+{
+    import dmdscript.key : Key;
+
+    enum Type
+    {
+        Prototype,
+        Static,
+    }
+
+    Key name;     ///
+    uint length;  ///
+    Type type = Type.Prototype; ///
+
+public static:
+    import dmdscript.property : Property;
+    ///
+    void install(alias M)(
+        Dobject o, Property.Attribute prop = Property.Attribute.DontEnum,
+        Type type = Type.Prototype)
+    {
+        foreach(one; __traits(allMembers, M))
+        {
+            static if (is(typeof(__traits(getMember, M, one))))
+                enum desc = select!(__traits(getMember, M, one));
+            else
+                enum desc = false;
+
+            static if (is(typeof(desc) == DnativeFunctionDescriptor))
+            {
+                if (type == desc.type)
+                {
+                    o.DefineOwnProperty(
+                        desc.name,
+                        new DnativeFunction(
+                            &__traits(getMember, M, one),
+                            desc.name, desc.length, Dfunction.getPrototype),
+                        prop);
+                }
+            }
+        }
+
+    }
+
+private static:
+    import dmdscript.script : CallContext;
+    import dmdscript.value : Value, DError;
+
+    //
+    alias PCall = DError* function(DnativeFunction pthis,
+                                   ref CallContext cc,
+                                   Dobject othis,
+                                   out Value ret,
+                                   Value[] arglist);
+    //
+    template select(alias F)
+    {
+        template _impl(T...)
+        {
+            static if      (0 == T.length)
+                enum _impl = false;
+            else static if (is(typeof(T[0]) == DnativeFunctionDescriptor))
+                enum _impl = T[0];
+            else
+                enum _impl = _impl!(T[1..$]);
+        }
+        static if (is(typeof(&F) == PCall))
+            enum select = _impl!(__traits(getAttributes, F));
+        else
+            enum select = false;
+    }
+}
+
+//------------------------------------------------------------------------------
+///
+struct DnativeVariableDescriptor
+{
+    import dmdscript.key : Key;
+
+    enum Type
+    {
+        Prototype,
+        Static,
+    }
+
+    Key name;
+    Type type = Type.Prototype;
+
+public static:
+    import dmdscript.property : Property;
+
+    void install(alias M)(
+        Dobject o, Property.Attribute prop = Property.Attribute.None,
+        Type type = Type.Prototype)
+    {
+        foreach(one; __traits(allMembers, M))
+        {
+            static if (is(typeof(__traits(getMember, M, one))))
+                enum desc = select!(__traits(getMember, M, one));
+            else
+                enum desc = false;
+
+            static if (is(typeof(desc) == DnativeVariableDescriptor))
+            {
+                if (type == desc.type)
+                {
+                    o.DefineOwnProperty(
+                        desc.name, __traits(getMember, M, one), prop);
+                }
+            }
+        }
+    }
+
+private static:
+    //
+    template select(alias F)
+    {
+        template _impl(T...)
+        {
+            static if      (0 == T.length)
+                enum _impl = false;
+            else static if (is(typeof(T[0]) == DnativeVariableDescriptor))
+                enum _impl = T[0];
+            else
+                enum _impl = _impl!(T[1..$]);
+        }
+        enum select = _impl!(__traits(getAttributes, F));
+    }
+}
+
 
 /******************* DnativeFunction ****************************/
 
@@ -31,29 +165,28 @@ alias PCall = DError* function(
 
 struct NativeFunctionData
 {
-    import dmdscript.script : d_string, d_uint32;
     import dmdscript.property : StringKey;
 
     StringKey str;
     PCall     pcall;
-    d_uint32  length;
+    uint      length;
 }
 
 class DnativeFunction : Dfunction
 {
-    import dmdscript.script : d_string, d_uint32;
+    import dmdscript.primitive : tstring;
     import dmdscript.property : Property;
 
     PCall pcall;
 
-    this(PCall func, d_string name, d_uint32 length)
+    this(PCall func, tstring name, uint length)
     {
         super(length);
         this.name = name;
         pcall = func;
     }
 
-    this(PCall func, d_string name, d_uint32 length, Dobject o)
+    this(PCall func, tstring name, uint length, Dobject o)
     {
         super(length, o);
         this.name = name;
@@ -83,4 +216,5 @@ class DnativeFunction : Dfunction
                      attributes);
         }
     }
+
 }

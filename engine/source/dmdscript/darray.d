@@ -18,21 +18,21 @@
 
 module dmdscript.darray;
 
-//Nonstandard treatment of Infinity as array length in slice/splice functions, supported by majority of browsers
-//also treats negative starting index in splice wrapping it around just like in slice
+// Nonstandard treatment of Infinity as array length in slice/splice functions,
+// supported by majority of browsers.
+// also treats negative starting index in splice wrapping it around just like
+// in slice.
 version =  SliceSpliceExtension;
 
-import dmdscript.script;
-import dmdscript.value;
-import dmdscript.dobject;
-import dmdscript.identifier;
-import dmdscript.dfunction;
-import dmdscript.text;
-import dmdscript.property;
+import dmdscript.primitive;
+import dmdscript.script : CallContext;
+import dmdscript.value : Value, DError, vundefined;
+import dmdscript.dobject : Dobject;
+import dmdscript.dfunction : Dconstructor;
+import dmdscript.property : Property;
 import dmdscript.errmsgs;
-import dmdscript.protoerror;
-import dmdscript.dnative;
-import dmdscript.program;
+import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.key : Key;
 
 /* ===================== Darray_constructor ==================== */
 
@@ -61,7 +61,7 @@ class DarrayConstructor : Dconstructor
 
             if(v.isNumber())
             {
-                d_uint32 len;
+                uint len;
 
                 len = v.toUint32(cc);
                 if(cast(double)len != v.number)
@@ -89,7 +89,7 @@ class DarrayConstructor : Dconstructor
             {
                 a.ulength = 1;
                 a.length.number = 1;
-                a.Set(cast(d_uint32)0, *v, Property.Attribute.None, cc);
+                a.Set(cast(uint)0, *v, Property.Attribute.None, cc);
             }
         }
         else
@@ -117,7 +117,7 @@ class DarrayConstructor : Dconstructor
 
 
 /* ===================== Darray_prototype_toString ================= */
-
+@DnativeFunctionDescriptor(Key.toString, 0)
 DError* Darray_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -128,16 +128,18 @@ DError* Darray_prototype_toString(
 }
 
 /* ===================== Darray_prototype_toLocaleString ================= */
-
+@DnativeFunctionDescriptor(Key.toLocaleString, 0)
 DError* Darray_prototype_toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.program : Program;
+
     // ECMA v3 15.4.4.3
-    d_string separator;
-    d_string r;
-    d_uint32 len;
-    d_uint32 k;
+    tstring separator;
+    tstring r;
+    uint len;
+    uint k;
     Value* v;
 
     if ((cast(Darray)othis) is null)
@@ -190,7 +192,7 @@ DError* Darray_prototype_toLocaleString(
 }
 
 /* ===================== Darray_prototype_concat ================= */
-
+@DnativeFunctionDescriptor(Key.concat, 1)
 DError* Darray_prototype_concat(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -199,9 +201,9 @@ DError* Darray_prototype_concat(
     Darray A;
     Darray E;
     Value* v;
-    d_uint32 k;
-    d_uint32 n;
-    d_uint32 a;
+    uint k;
+    uint n;
+    uint a;
 
     A = new Darray();
     n = 0;
@@ -210,7 +212,7 @@ DError* Darray_prototype_concat(
     {
         if(!v.isPrimitive() && (E = (cast(Darray)v.object)) !is null)
         {
-            d_uint32 len;
+            uint len;
 
             len = E.ulength;
             for(k = 0; k != len; k++)
@@ -237,7 +239,7 @@ DError* Darray_prototype_concat(
 }
 
 /* ===================== Darray_prototype_join ================= */
-
+@DnativeFunctionDescriptor(Key.join, 1)
 DError* Darray_prototype_join(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -250,10 +252,10 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
                 Value[] arglist)
 {
     // ECMA 15.4.4.3
-    d_string separator;
-    d_string r;
-    d_uint32 len;
-    d_uint32 k;
+    tstring separator;
+    tstring r;
+    uint len;
+    uint k;
     Value* v;
 
     //writef("array_join(othis = %p)\n", othis);
@@ -277,15 +279,15 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
 }
 
 /* ===================== Darray_prototype_toSource ================= */
-
+@DnativeFunctionDescriptor(Key.toSource, 0)
 DError* Darray_prototype_toSource(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    d_string separator;
-    d_string r;
-    d_uint32 len;
-    d_uint32 k;
+    tstring separator;
+    tstring r;
+    uint len;
+    uint k;
     Value* v;
 
     v = othis.Get(Key.length, cc);
@@ -309,14 +311,14 @@ DError* Darray_prototype_toSource(
 
 
 /* ===================== Darray_prototype_pop ================= */
-
+@DnativeFunctionDescriptor(Key.pop, 0)
 DError* Darray_prototype_pop(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.6
     Value* v;
-    d_uint32 u;
+    uint u;
 
     // If othis is a Darray, then we can optimize this significantly
     v = othis.Get(Key.length, cc);
@@ -341,15 +343,15 @@ DError* Darray_prototype_pop(
 }
 
 /* ===================== Darray_prototype_push ================= */
-
+@DnativeFunctionDescriptor(Key.push, 1)
 DError* Darray_prototype_push(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.7
     Value* v;
-    d_uint32 u;
-    d_uint32 a;
+    uint u;
+    uint a;
 
     // If othis is a Darray, then we can optimize this significantly
     v = othis.Get(Key.length, cc);
@@ -366,19 +368,19 @@ DError* Darray_prototype_push(
 }
 
 /* ===================== Darray_prototype_reverse ================= */
-
+@DnativeFunctionDescriptor(Key.reverse, 0)
 DError* Darray_prototype_reverse(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.4.4.4
-    d_uint32 a;
-    d_uint32 b;
+    uint a;
+    uint b;
     Value* va;
     Value* vb;
     Value* v;
-    d_uint32 pivot;
-    d_uint32 len;
+    uint pivot;
+    uint len;
     Value tmp;
 
     v = othis.Get(Key.length, cc);
@@ -407,7 +409,7 @@ DError* Darray_prototype_reverse(
 }
 
 /* ===================== Darray_prototype_shift ================= */
-
+@DnativeFunctionDescriptor(Key.shift, 0)
 DError* Darray_prototype_shift(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -415,8 +417,8 @@ DError* Darray_prototype_shift(
     // ECMA v3 15.4.4.9
     Value* v;
     Value* result;
-    d_uint32 len;
-    d_uint32 k;
+    uint len;
+    uint k;
 
     // If othis is a Darray, then we can optimize this significantly
     //writef("shift(othis = %p)\n", othis);
@@ -453,16 +455,16 @@ DError* Darray_prototype_shift(
 
 
 /* ===================== Darray_prototype_slice ================= */
-
+@DnativeFunctionDescriptor(Key.slice, 2)
 DError* Darray_prototype_slice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.10
-    d_uint32 len;
-    d_uint32 n;
-    d_uint32 k;
-    d_uint32 r8;
+    uint len;
+    uint n;
+    uint k;
+    uint r8;
 
     Value* v;
     Darray A;
@@ -473,8 +475,8 @@ DError* Darray_prototype_slice(
     len = v.toUint32(cc);
 
 version(SliceSpliceExtension){
-    d_number start;
-    d_number end;
+    double start;
+    double end;
     switch(arglist.length)
     {
     case 0:
@@ -502,12 +504,12 @@ version(SliceSpliceExtension){
     if(start < 0)
     {
         k = cast(uint)(len + start);
-        if(cast(d_int32)k < 0)
+        if(cast(int)k < 0)
             k = 0;
     }
-    else if(start == d_number.infinity)
+    else if(start == double.infinity)
         k = len;
-    else if(start == -d_number.infinity)
+    else if(start == -double.infinity)
         k = 0;
     else
     {
@@ -519,12 +521,12 @@ version(SliceSpliceExtension){
     if(end < 0)
     {
         r8 = cast(uint)(len + end);
-        if(cast(d_int32)r8 < 0)
+        if(cast(int)r8 < 0)
             r8 = 0;
     }
-    else if(end == d_number.infinity)
+    else if(end == double.infinity)
             r8 = len;
-    else if(end == -d_number.infinity)
+    else if(end == -double.infinity)
             r8 = 0;
     else
     {
@@ -564,7 +566,7 @@ else
     if(start < 0)
     {
         k = cast(uint)(len + start);
-        if(cast(d_int32)k < 0)
+        if(cast(int)k < 0)
             k = 0;
     }
     else
@@ -577,7 +579,7 @@ else
     if(end < 0)
     {
         r8 = cast(uint)(len + end);
-        if(cast(d_int32)r8 < 0)
+        if(cast(int)r8 < 0)
             r8 = 0;
     }
     else
@@ -614,8 +616,8 @@ extern (C) int compare_value(const void* x, const void* y)
 
     Value* vx = cast(Value*)x;
     Value* vy = cast(Value*)y;
-    d_string sx;
-    d_string sy;
+    tstring sx;
+    tstring sy;
     int cmp;
 
     //writef("compare_value()\n");
@@ -632,7 +634,7 @@ extern (C) int compare_value(const void* x, const void* y)
             Value[2] arglist;
             Value ret;
             Value* v;
-            d_number n;
+            double n;
 
             arglist[0] = *vx;
             arglist[1] = *vy;
@@ -660,15 +662,17 @@ extern (C) int compare_value(const void* x, const void* y)
     return cmp;
 }
 
+@DnativeFunctionDescriptor(Key.sort, 1)
 DError* Darray_prototype_sort(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : qsort;
+    import dmdscript.property : PropertyKey;
 
     // ECMA v3 15.4.4.11
     Value* v;
-    d_uint32 len;
+    uint len;
     uint u;
 
     //writef("Array.prototype.sort()\n");
@@ -681,9 +685,9 @@ DError* Darray_prototype_sort(
 
     Property* p;
     Value[] pvalues;
-    d_uint32[] pindices;
-    d_uint32 parraydim;
-    d_uint32 nprops;
+    uint[] pindices;
+    uint parraydim;
+    uint nprops;
 
     // First, size & alloc our temp array
     if(len < 100)
@@ -718,18 +722,18 @@ DError* Darray_prototype_sort(
         pvalues = p1;
     }
 
-    d_uint32[] p2 = null;
-    d_uint32* p3;
+    uint[] p2 = null;
+    uint* p3;
     version(Win32)
     {
         if(parraydim < 128)
-            p3 = cast(d_uint32*)alloca(parraydim * d_uint32.sizeof);
+            p3 = cast(uint*)alloca(parraydim * uint.sizeof);
     }
     if(p3)
         pindices = p3[0 .. parraydim];
     else
     {
-        p2 = new d_uint32[parraydim];
+        p2 = new uint[parraydim];
         pindices = p2;
     }
 
@@ -737,7 +741,7 @@ DError* Darray_prototype_sort(
     nprops = 0;
     foreach(ref PropertyKey key, ref Property p; othis.proptable)
     {
-        d_uint32 index;
+        uint index;
 
         if(p.isNoneAttribute && key.isArrayIndex(cc, index))
         {
@@ -767,7 +771,7 @@ DError* Darray_prototype_sort(
     // Stuff the sorted value's back into the array
     for(u = 0; u < nprops; u++)
     {
-        d_uint32 index;
+        uint index;
 
         othis.Set(u, pvalues[u], Property.Attribute.None, cc);
         index = pindices[u];
@@ -785,21 +789,21 @@ DError* Darray_prototype_sort(
 }
 
 /* ===================== Darray_prototype_splice ================= */
-
+@DnativeFunctionDescriptor(Key.splice, 2)
 DError* Darray_prototype_splice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.12
-    d_uint32 len;
-    d_uint32 k;
+    uint len;
+    uint k;
 
     Value* v;
     Darray A;
-    d_uint32 a;
-    d_uint32 delcnt;
-    d_uint32 inscnt;
-    d_uint32 startidx;
+    uint a;
+    uint delcnt;
+    uint inscnt;
+    uint startidx;
 
     v = othis.Get(Key.length, cc);
     if(!v)
@@ -807,8 +811,8 @@ DError* Darray_prototype_splice(
     len = v.toUint32(cc);
 
 version(SliceSpliceExtension){
-    d_number start;
-    d_number deleteCount;
+    double start;
+    double deleteCount;
 
     switch(arglist.length)
     {
@@ -828,24 +832,24 @@ version(SliceSpliceExtension){
         //checked later
         break;
     }
-    if(start == d_number.infinity)
+    if(start == double.infinity)
         startidx = len;
-    else if(start == -d_number.infinity)
+    else if(start == -double.infinity)
         startidx = 0;
     else{
         if(start < 0)
         {
             startidx = cast(uint)(len + start);
-            if(cast(d_int32)startidx < 0)
+            if(cast(int)startidx < 0)
                 startidx = 0;
         }
         else
             startidx = cast(uint)start;
     }
     startidx = startidx > len ? len : startidx;
-    if(deleteCount == d_number.infinity)
+    if(deleteCount == double.infinity)
         delcnt = len;
-    else if(deleteCount == -d_number.infinity)
+    else if(deleteCount == -double.infinity)
         delcnt = 0;
     else
         delcnt = (cast(uint)deleteCount > 0) ? cast(uint) deleteCount : 0;
@@ -855,7 +859,7 @@ version(SliceSpliceExtension){
 else
 {
     long start;
-    d_int32 deleteCount;
+    int deleteCount;
     switch(arglist.length)
     {
     case 0:
@@ -943,15 +947,15 @@ else
 }
 
 /* ===================== Darray_prototype_unshift ================= */
-
+@DnativeFunctionDescriptor(Key.unshift, 1)
 DError* Darray_prototype_unshift(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.4.4.13
     Value* v;
-    d_uint32 len;
-    d_uint32 k;
+    uint len;
+    uint k;
 
     v = othis.Get(Key.length, cc);
     if(!v)
@@ -980,6 +984,7 @@ DError* Darray_prototype_unshift(
 
 /* =========================== Darray_prototype =================== */
 
+/*
 class DarrayPrototype : Darray
 {
     this()
@@ -1010,14 +1015,17 @@ class DarrayPrototype : Darray
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
     }
 }
-
+//*/
 
 /* =========================== Darray =================== */
 
 class Darray : Dobject
 {
+    import dmdscript.property : StringKey, PropertyKey;
+    import dmdscript.dobject : Initializer;
+
     Value length;               // length property
-    d_uint32 ulength;
+    uint ulength;
 
     this()
     {
@@ -1035,7 +1043,7 @@ class Darray : Dobject
     DError* SetImpl(in ref StringKey name, ref Value v,
                     in Property.Attribute attributes, ref CallContext cc)
     {
-        d_uint32 i;
+        uint i;
         uint c;
         DError* result;
 
@@ -1054,18 +1062,18 @@ class Darray : Dobject
                 if(i < ulength)
                 {
                     // delete all properties with keys >= i
-                    d_uint32[] todelete;
+                    uint[] todelete;
 
                     foreach(PropertyKey key, ref Property p; proptable)
                     {
-                        d_uint32 j;
+                        uint j;
 
                         j = key.toUint32(cc);
                         if(j >= i)
                             todelete ~= j;
                     }
                     PropertyKey k;
-                    foreach(d_uint32 j; todelete)
+                    foreach(uint j; todelete)
                     {
                         k.put(j);
                         proptable.del(k);
@@ -1090,7 +1098,7 @@ class Darray : Dobject
                 if(c >= '0' && c <= '9')
                 {
                     k = i * cast(ulong)10 + c - '0';
-                    i = cast(d_uint32)k;
+                    i = cast(uint)k;
                     if(i != k)
                         goto Lret;              // overflow
                 }
@@ -1110,7 +1118,7 @@ class Darray : Dobject
     }
 
     override
-    DError* SetImpl(in d_uint32 index, ref Value value,
+    DError* SetImpl(in uint index, ref Value value,
                     in Property.Attribute attributes, ref CallContext cc)
     {
         if(index >= ulength)
@@ -1124,7 +1132,6 @@ class Darray : Dobject
         return null;
     }
 
-    alias GetImpl = Dobject.GetImpl;
     override Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
@@ -1139,7 +1146,7 @@ class Darray : Dobject
         }
     }
 
-    override Value* GetImpl(in d_uint32 index, ref CallContext cc)
+    override Value* GetImpl(in uint index, ref CallContext cc)
     {
         Value* v;
 
@@ -1162,7 +1169,7 @@ class Darray : Dobject
         }
     }
 
-    override bool Delete(in d_uint32 index)
+    override bool Delete(in uint index)
     {
         // ECMA 8.6.2.5
         auto key = PropertyKey(index);
@@ -1170,12 +1177,53 @@ class Darray : Dobject
     }
 
 
-static:
+public static:
+
+    @disable
+    Darray CreateArrayFromList(Value[] list)
+    {
+        auto array = new Darray;
+        foreach(uint i, ref one; list)
+        {
+            array.CreateDataProperty(StringKey(i), one);
+        }
+        return array;
+    }
+
+    @disable
+    Value[] CreateListFromArrayLike(
+        Dobject obj, ref CallContext cc,
+        Value.Type elementTypes = cast(Value.Type)(
+            Value.Type.Undefined | Value.Type.Null | Value.Type.Boolean |
+            Value.Type.String | Value.Type.Number | Value.Type.Object))
+    {
+        assert(obj);
+        auto len = cast(size_t)obj.Get(Key.length, cc).ToLength(cc);
+        auto list = new Value[len];
+        for (uint i = 0; i < len; ++i)
+        {
+            if (auto v = obj.Get(StringKey(i), cc))
+            {
+                if (0 == (v.type & elementTypes))
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    // use errmsgs.
+                    throw new Exception("element type mismatch.");
+                list[i] = *v;
+            }
+        }
+        return list;
+    }
+
+//*
+    mixin Initializer!DarrayConstructor;
+/*/
+    @property @safe @nogc nothrow
     Dfunction getConstructor()
     {
         return _constructor;
     }
 
+    @property @safe @nogc nothrow
     Dobject getPrototype()
     {
         return _prototype;
@@ -1190,9 +1238,10 @@ static:
                             Property.Attribute.DontEnum |
                             Property.Attribute.ReadOnly);
     }
-private:
+private static:
     Dfunction _constructor;
     Dobject _prototype;
+//*/
 }
 
 

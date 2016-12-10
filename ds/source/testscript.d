@@ -24,6 +24,7 @@ import std.exception;
 import core.sys.posix.stdlib;
 import core.memory;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.program;
 import dmdscript.errmsgs;

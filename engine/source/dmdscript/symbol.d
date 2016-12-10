@@ -20,6 +20,7 @@ module dmdscript.symbol;
 
 debug import std.stdio;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.identifier;
 import dmdscript.scopex;
@@ -122,11 +123,11 @@ struct SymbolTable
 /****************************** LabelSymbol ******************************/
 class LabelSymbol : Symbol
 {
-    Loc loc;
+    line_number loc;
     LabelStatement statement;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Identifier* ident, LabelStatement statement)
+    this(line_number loc, Identifier* ident, LabelStatement statement)
     {
         super(ident);
         this.loc = loc;

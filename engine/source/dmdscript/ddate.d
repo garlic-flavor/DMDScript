@@ -19,13 +19,14 @@ module dmdscript.ddate;
 
 debug import std.stdio;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.value;
 import dmdscript.dfunction;
 import dmdscript.dnative;
 import dmdscript.property;
-import dmdscript.text;
+import dmdscript.key;
 import dmdscript.errmsgs;
 
 
@@ -42,14 +43,14 @@ enum TIMEFORMAT
     UTCString,
 }
 
-d_time parseDateString(ref CallContext cc, d_string s)
+d_time parseDateString(ref CallContext cc, tstring s)
 {
     return s.parse;
 }
 
-d_string dateToString(ref CallContext cc, d_time t, TIMEFORMAT tf)
+tstring dateToString(ref CallContext cc, d_time t, TIMEFORMAT tf)
 {
-    d_string p;
+    tstring p;
 
     if(t == d_time_nan)
         p = "Invalid Date";
@@ -101,13 +102,14 @@ d_string dateToString(ref CallContext cc, d_time t, TIMEFORMAT tf)
 
 
 /* ===================== Ddate.constructor functions ==================== */
-
+@DnativeFunctionDescriptor(Key.parse, 1,
+                           DnativeFunctionDescriptor.Type.Static)
 DError* Ddate_parse(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.4.2
-    d_string s;
+    tstring s;
     d_time n;
 
     if(arglist.length == 0)
@@ -122,6 +124,8 @@ DError* Ddate_parse(
     return null;
 }
 
+@DnativeFunctionDescriptor(Key.UTC, 7,
+                           DnativeFunctionDescriptor.Type.Static)
 DError* Ddate_UTC(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -188,6 +192,7 @@ class DdateConstructor : Dconstructor
     {
         super(Key.Date, 7, Dfunction.getPrototype);
 
+/*
         static enum NativeFunctionData[] nfd =
         [
             { Key.parse, &Ddate_parse, 1 },
@@ -195,6 +200,10 @@ class DdateConstructor : Dconstructor
         ];
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
+//*/
+        DnativeFunctionDescriptor.install!(mixin(__MODULE__))
+            (this, Property.Attribute.DontEnum,
+             DnativeFunctionDescriptor.Type.Static);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -215,7 +224,7 @@ class DdateConstructor : Dconstructor
         d_time day;
         d_time time = 0;
         //generate NaN check boilerplate code
-        static d_string breakOnNan(d_string var)
+        static tstring breakOnNan(tstring var)
         {
             return "if(" ~ var ~ " == d_time_nan){
 			n = d_time_nan;
@@ -306,7 +315,7 @@ class DdateConstructor : Dconstructor
 
 /* ===================== Ddate.prototype functions =============== */
 
-DError* checkdate(out Value ret, d_string name, Dobject othis)
+DError* checkdate(out Value ret, tstring name, Dobject othis)
 {
     ret.putVundefined();
     return FunctionWantsDateError(name, othis.classname);
@@ -314,7 +323,7 @@ DError* checkdate(out Value ret, d_string name, Dobject othis)
 
 int getThisTime(out Value ret, Dobject othis, out d_time n)
 {
-    d_number x;
+    double x;
 
     n = cast(d_time)othis.value.number;
     ret.putVtime(n);
@@ -334,7 +343,7 @@ int getThisLocalTime(out Value ret, Dobject othis, out d_time n)
     ret.putVtime(n);
     return isn;
 }
-
+@DnativeFunctionDescriptor(Key.toString, 0)
 DError* Ddate_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -360,7 +369,7 @@ DError* Ddate_prototype_toString(
     ret.put(s);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.toDateString, 0)
 DError* Ddate_prototype_toDateString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -385,7 +394,7 @@ DError* Ddate_prototype_toDateString(
     ret.put(s);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.toTimeString, 0)
 DError* Ddate_prototype_toTimeString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -411,7 +420,7 @@ DError* Ddate_prototype_toTimeString(
     ret.put(s);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.valueOf, 0)
 DError* Ddate_prototype_valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -424,7 +433,7 @@ DError* Ddate_prototype_valueOf(
     getThisTime(ret, othis, n);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getTime, 0)
 DError* Ddate_prototype_getTime(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -437,7 +446,7 @@ DError* Ddate_prototype_getTime(
     getThisTime(ret, othis, n);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getYear, 0)
 DError* Ddate_prototype_getYear(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -464,7 +473,7 @@ DError* Ddate_prototype_getYear(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getFullYear, 0)
 DError* Ddate_prototype_getFullYear(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -482,7 +491,7 @@ DError* Ddate_prototype_getFullYear(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getUTCFullYear, 0)
 DError* Ddate_prototype_getUTCFullYear(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -499,7 +508,7 @@ DError* Ddate_prototype_getUTCFullYear(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getMonth, 0)
 DError* Ddate_prototype_getMonth(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -517,7 +526,7 @@ DError* Ddate_prototype_getMonth(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getUTCMonth, 0)
 DError* Ddate_prototype_getUTCMonth(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -535,7 +544,7 @@ DError* Ddate_prototype_getUTCMonth(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getDate, 0)
 DError* Ddate_prototype_getDate(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -555,7 +564,7 @@ DError* Ddate_prototype_getDate(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getUTCDate, 0)
 DError* Ddate_prototype_getUTCDate(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -573,7 +582,7 @@ DError* Ddate_prototype_getUTCDate(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getDay, 0)
 DError* Ddate_prototype_getDay(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -591,7 +600,7 @@ DError* Ddate_prototype_getDay(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getUTCDay, 0)
 DError* Ddate_prototype_getUTCDay(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -609,7 +618,7 @@ DError* Ddate_prototype_getUTCDay(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getHours, 0)
 DError* Ddate_prototype_getHours(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -627,7 +636,7 @@ DError* Ddate_prototype_getHours(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getUTCHours, 0)
 DError* Ddate_prototype_getUTCHours(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -645,7 +654,7 @@ DError* Ddate_prototype_getUTCHours(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getMinutes, 0)
 DError* Ddate_prototype_getMinutes(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -663,7 +672,7 @@ DError* Ddate_prototype_getMinutes(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getUTCMinutes, 0)
 DError* Ddate_prototype_getUTCMinutes(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -681,7 +690,7 @@ DError* Ddate_prototype_getUTCMinutes(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getSeconds, 0)
 DError* Ddate_prototype_getSeconds(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -699,7 +708,7 @@ DError* Ddate_prototype_getSeconds(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getUTCSeconds, 0)
 DError* Ddate_prototype_getUTCSeconds(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -717,7 +726,7 @@ DError* Ddate_prototype_getUTCSeconds(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getMilliseconds, 0)
 DError* Ddate_prototype_getMilliseconds(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -735,7 +744,7 @@ DError* Ddate_prototype_getMilliseconds(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getUTCMilliseconds, 0)
 DError* Ddate_prototype_getUTCMilliseconds(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -753,7 +762,7 @@ DError* Ddate_prototype_getUTCMilliseconds(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.getTimezoneOffset, 0)
 DError* Ddate_prototype_getTimezoneOffset(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -771,7 +780,7 @@ DError* Ddate_prototype_getTimezoneOffset(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setTime, 1)
 DError* Ddate_prototype_setTime(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -791,7 +800,7 @@ DError* Ddate_prototype_setTime(
     ret.putVtime(n);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setMilliseconds, 1)
 DError* Ddate_prototype_setMilliseconds(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -819,7 +828,7 @@ DError* Ddate_prototype_setMilliseconds(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setUTCMilliseconds, 1)
 DError* Ddate_prototype_setUTCMilliseconds(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -846,7 +855,7 @@ DError* Ddate_prototype_setUTCMilliseconds(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setSeconds, 2)
 DError* Ddate_prototype_setSeconds(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -888,7 +897,7 @@ DError* Ddate_prototype_setSeconds(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setUTCSeconds, 2)
 DError* Ddate_prototype_setUTCSeconds(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -930,7 +939,7 @@ DError* Ddate_prototype_setUTCSeconds(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setMinutes, 3)
 DError* Ddate_prototype_setMinutes(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -982,7 +991,7 @@ DError* Ddate_prototype_setMinutes(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setUTCMinutes, 3)
 DError* Ddate_prototype_setUTCMinutes(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1034,7 +1043,7 @@ DError* Ddate_prototype_setUTCMinutes(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setHours, 4)
 DError* Ddate_prototype_setHours(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1098,7 +1107,7 @@ DError* Ddate_prototype_setHours(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setUTCHours, 4)
 DError* Ddate_prototype_setUTCHours(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1162,7 +1171,7 @@ DError* Ddate_prototype_setUTCHours(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setDate, 1)
 DError* Ddate_prototype_setDate(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1189,7 +1198,7 @@ DError* Ddate_prototype_setDate(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setUTCDate, 1)
 DError* Ddate_prototype_setUTCDate(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1216,7 +1225,7 @@ DError* Ddate_prototype_setUTCDate(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setMonth, 2)
 DError* Ddate_prototype_setMonth(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1258,7 +1267,7 @@ DError* Ddate_prototype_setMonth(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setUTCMonth, 2)
 DError* Ddate_prototype_setUTCMonth(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1300,7 +1309,7 @@ DError* Ddate_prototype_setUTCMonth(
     }
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setFullYear, 3)
 DError* Ddate_prototype_setFullYear(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1352,7 +1361,7 @@ DError* Ddate_prototype_setFullYear(
     ret.putVtime(n);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setUTCFullYear, 3)
 DError* Ddate_prototype_setUTCFullYear(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1404,7 +1413,7 @@ DError* Ddate_prototype_setUTCFullYear(
     ret.putVtime(n);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.setYear, 1)
 DError* Ddate_prototype_setYear(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1443,7 +1452,7 @@ DError* Ddate_prototype_setYear(
     ret.putVtime(n);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.toLocaleString, 0)
 DError* Ddate_prototype_toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1462,7 +1471,7 @@ DError* Ddate_prototype_toLocaleString(
     ret.put(s);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.toLocaleDateString, 0)
 DError* Ddate_prototype_toLocaleDateString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1481,7 +1490,7 @@ DError* Ddate_prototype_toLocaleDateString(
     ret.put(s);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.toLocaleTimeString, 0)
 DError* Ddate_prototype_toLocaleTimeString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1499,7 +1508,7 @@ DError* Ddate_prototype_toLocaleTimeString(
     ret.put(s);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.toUTCString, 0)
 DError* Ddate_prototype_toUTCString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -1519,7 +1528,7 @@ DError* Ddate_prototype_toUTCString(
 }
 
 /* ===================== Ddate_prototype ==================== */
-
+/*
 class DdatePrototype : Ddate
 {
     this()
@@ -1592,13 +1601,15 @@ class DdatePrototype : Ddate
         }
     }
 }
-
+//*/
 
 /* ===================== Ddate ==================== */
 
 class Ddate : Dobject
 {
-    this(d_number n)
+    import dmdscript.dobject : Initializer;
+
+    this(double n)
     {
         super(_prototype, Key.Date);
         value.put(n);
@@ -1613,9 +1624,12 @@ class Ddate : Dobject
     this(Dobject prototype)
     {
         super(prototype, Key.Date);
-        value.put(d_number.nan);
+        value.put(double.nan);
     }
 
+    mixin Initializer!DdateConstructor;
+
+/*
 static:
     void initialize()
     {
@@ -1643,6 +1657,7 @@ static:
 private:
     Dfunction _constructor;
     Dobject _prototype;
+//*/
 }
 
 
@@ -1839,6 +1854,7 @@ private
             return d_time_nan;
     }
 
+/*
     unittest
     {
         import undead.date;
@@ -1880,7 +1896,7 @@ private
         auto today = "August 28, 2016 20:50 +900";
         assert(undead.date.parse(today) == today.parse);
     }
-
+*/
     struct DateParse
     {
         import core.stdc.stdlib : alloca;

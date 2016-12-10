@@ -17,12 +17,13 @@
 
 module dmdscript.derror;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.dobject;
 import dmdscript.dfunction;
 import dmdscript.value;
 import dmdscript.dnative;
-import dmdscript.text;
+import dmdscript.key;
 import dmdscript.property;
 
 
@@ -77,7 +78,7 @@ class DerrorConstructor : Dconstructor
 
 
 /* ===================== Derror_prototype_toString =============== */
-
+@DnativeFunctionDescriptor(Key.toString, 0)
 DError* Derror_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -93,9 +94,8 @@ DError* Derror_prototype_toString(
     ret.put(othis.Get(Key.name, cc).toString()~": "~v.toString());
     return null;
 }
-
 /* ===================== Derror_prototype ==================== */
-
+/*
 class DerrorPrototype : Derror
 {
     this()
@@ -117,16 +117,18 @@ class DerrorPrototype : Derror
         DefineOwnProperty(Key.name, Key.Error, Property.Attribute.None);
         DefineOwnProperty(Key.message, Text.Empty, Property.Attribute.None);
         DefineOwnProperty(Key.description, Text.Empty, Property.Attribute.None);
-        DefineOwnProperty(Key.number, cast(d_number)(/*FACILITY |*/ 0),
+        DefineOwnProperty(Key.number, cast(double)(FACILITY | 0),
                Property.Attribute.None);
     }
 }
-
+//*/
 
 /* ===================== Derror ==================== */
 
 class Derror : Dobject
 {
+    import dmdscript.dobject : Initializer;
+
     this(Value * m, Value * v2)
     {
         super(getPrototype, Key.Error);
@@ -141,8 +143,8 @@ class Derror : Dobject
         }
         else if(m.isNumber())
         {
-            d_number n = m.toNumber(cc);
-            n = cast(d_number)(/*FACILITY |*/ cast(int)n);
+            double n = m.toNumber(cc);
+            n = cast(double)(/*FACILITY |*/ cast(int)n);
             Set(Key.number, n, Property.Attribute.None, cc);
         }
         if(v2.isString())
@@ -152,8 +154,8 @@ class Derror : Dobject
         }
         else if(v2.isNumber())
         {
-            d_number n = v2.toNumber(cc);
-            n = cast(d_number)(/*FACILITY |*/ cast(int)n);
+            double n = v2.toNumber(cc);
+            n = cast(double)(/*FACILITY |*/ cast(int)n);
             Set(Key.number, n, Property.Attribute.None, cc);
         }
     }
@@ -163,6 +165,24 @@ class Derror : Dobject
         super(prototype, Key.Error);
     }
 
+public static:
+    mixin Initializer!DerrorConstructor _Initializer;
+
+    void initPrototype()
+    {
+        _Initializer.initPrototype;
+
+        _prototype.DefineOwnProperty(Key.name, Key.Error,
+                                     Property.Attribute.None);
+        _prototype.DefineOwnProperty(Key.message, Text.Empty,
+                                     Property.Attribute.None);
+        _prototype.DefineOwnProperty(Key.description, Text.Empty,
+                                     Property.Attribute.None);
+        _prototype.DefineOwnProperty(Key.number, cast(double)(/*FACILITY |*/ 0),
+                                     Property.Attribute.None);
+    }
+
+/*
     static Dfunction getConstructor()
     {
         return Derror_constructor;
@@ -183,8 +203,9 @@ class Derror : Dobject
                                   Property.Attribute.DontDelete |
                                   Property.Attribute.ReadOnly);
     }
+*/
 }
 
-private Dfunction Derror_constructor;
-private Dobject Derror_prototype;
+// private Dfunction Derror_constructor;
+// private Dobject Derror_prototype;
 

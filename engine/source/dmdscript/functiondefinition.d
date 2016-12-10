@@ -20,6 +20,7 @@ module dmdscript.functiondefinition;
 
 debug import std.stdio;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.identifier;
 import dmdscript.statement;
@@ -62,7 +63,7 @@ class FunctionDefinition : TopStatement
     IR* code;
     uint nlocals;
 
-    d_string srctext;
+    tstring srctext;
 
     @safe @nogc pure nothrow
     this(TopStatement[] topstatements)
@@ -74,7 +75,7 @@ class FunctionDefinition : TopStatement
     }
 
     @safe @nogc pure nothrow
-    this(d_string srctext, Loc loc, bool isglobal, Identifier*  name,
+    this(tstring srctext, line_number loc, bool isglobal, Identifier*  name,
          Identifier*[] parameters, TopStatement[] topstatements)
     {
         super(loc);

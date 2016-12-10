@@ -17,10 +17,11 @@
 
 module dmdscript.expression;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.lexer;
 import dmdscript.scopex;
-import dmdscript.text;
+import dmdscript.key;
 import dmdscript.errmsgs;
 import dmdscript.functiondefinition;
 import dmdscript.irstate;
@@ -37,11 +38,11 @@ class Expression
     enum uint EXPRESSION_SIGNATURE = 0x3AF31E3F;
     uint signature = EXPRESSION_SIGNATURE;
 
-    Loc loc;                    // file location
+    line_number loc;                    // file location
     Tok op;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Tok op)
+    this(line_number loc, Tok op)
     {
         this.loc = loc;
         this.op = op;
@@ -67,7 +68,7 @@ class Expression
     void checkLvalue(Scope* sc)
     {
         import std.format : format;
-        d_string sourcename;
+        tstring sourcename;
 
         assert(sc !is null);
         if(sc.funcdef)
@@ -118,11 +119,11 @@ class Expression
     }
 
     final override
-    d_string toString()
+    tstring toString()
     {
         import std.array : Appender;
 
-        Appender!d_string buf;
+        Appender!tstring buf;
         toBuffer(b=>buf.put(b));
         return buf.data;
     }
@@ -140,7 +141,7 @@ final class RealExpression : Expression
     real_t value;
 
     @safe @nogc pure nothrow
-    this(Loc loc, real_t value)
+    this(line_number loc, real_t value)
     {
         super(loc, Tok.Real);
         this.value = value;
@@ -168,7 +169,7 @@ final class IdentifierExpression : Expression
     Identifier* ident;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Identifier*  ident)
+    this(line_number loc, Identifier*  ident)
     {
         super(loc, Tok.Identifier);
         this.ident = ident;
@@ -226,7 +227,7 @@ final class IdentifierExpression : Expression
 final class ThisExpression : Expression
 {
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         super(loc, Tok.This);
     }
@@ -255,7 +256,7 @@ final class ThisExpression : Expression
 final class NullExpression : Expression
 {
     @safe @nogc pure nothrow
-    this(Loc loc)
+    this(line_number loc)
     {
         super(loc, Tok.Null);
     }
@@ -277,10 +278,10 @@ final class NullExpression : Expression
 
 final class StringExpression : Expression
 {
-    private d_string str;
+    private tstring str;
 
     @safe @nogc pure nothrow
-    this(Loc loc, d_string str)
+    this(line_number loc, tstring str)
     {
         //writefln("StringExpression('%s')", string);
         super(loc, Tok.String);
@@ -327,10 +328,10 @@ final class StringExpression : Expression
 
 final class RegExpLiteral : Expression
 {
-    private d_string str;
+    private tstring str;
 
     @safe @nogc pure nothrow
-    this(Loc loc, d_string str)
+    this(line_number loc, tstring str)
     {
         //writefln("RegExpLiteral('%s')", string);
         super(loc, Tok.Regexp);
@@ -340,8 +341,8 @@ final class RegExpLiteral : Expression
     override void toIR(IRstate* irs, idx_t ret) const
     {
         import std.string : lastIndexOf;
-        d_string pattern;
-        d_string attribute = null;
+        tstring pattern;
+        tstring attribute = null;
         sizediff_t e;
 
         size_t argc;
@@ -388,10 +389,10 @@ final class RegExpLiteral : Expression
 
 final class BooleanExpression : Expression
 {
-    private d_boolean boolean;
+    private bool boolean;
 
     @safe @nogc pure nothrow
-    this(Loc loc, d_boolean boolean)
+    this(line_number loc, bool boolean)
     {
         super(loc, Tok.Boolean);
         this.boolean = boolean;
@@ -422,7 +423,7 @@ final class ArrayLiteral : Expression
     private Expression[] elements;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Expression[] elements)
+    this(line_number loc, Expression[] elements)
     {
         super(loc, Tok.Arraylit);
         this.elements = elements;
@@ -536,7 +537,7 @@ final class ObjectLiteral : Expression
     private Field[] fields;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Field[] fields)
+    this(line_number loc, Field[] fields)
     {
         super(loc, Tok.Objectlit);
         this.fields = fields;
@@ -598,7 +599,7 @@ final class FunctionLiteral : Expression
     private FunctionDefinition func;
 
     @safe @nogc pure nothrow
-    this(Loc loc, FunctionDefinition func)
+    this(line_number loc, FunctionDefinition func)
     {
         super(loc, Tok.Objectlit);
         this.func = func;
@@ -629,7 +630,7 @@ class UnaExp : Expression
     protected Expression e1;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Tok op, Expression e1)
+    this(line_number loc, Tok op, Expression e1)
     {
         super(loc, op);
         this.e1 = e1;
@@ -657,7 +658,7 @@ class BinExp : Expression
     Expression e2;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Tok op, Expression e1, Expression e2)
+    this(line_number loc, Tok op, Expression e1, Expression e2)
     {
         super(loc, op);
         this.e1 = e1;
@@ -717,7 +718,7 @@ final class PreExp : UnaExp
     private Opcode ircode;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Opcode ircode, Expression e)
+    this(line_number loc, Opcode ircode, Expression e)
     {
         super(loc, Tok.Plusplus, e);
         this.ircode = ircode;
@@ -768,7 +769,7 @@ final class PreExp : UnaExp
 final class PostIncExp : UnaExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e)
+    this(line_number loc, Expression e)
     {
         super(loc, Tok.Plusplus, e);
     }
@@ -826,7 +827,7 @@ final class PostIncExp : UnaExp
 final class PostDecExp : UnaExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e)
+    this(line_number loc, Expression e)
     {
         super(loc, Tok.Plusplus, e);
     }
@@ -886,7 +887,7 @@ final class DotExp : UnaExp
     private Identifier* ident;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e, Identifier*  ident)
+    this(line_number loc, Expression e, Identifier*  ident)
     {
         super(loc, Tok.Dot, e);
         this.ident = ident;
@@ -952,7 +953,7 @@ final class CallExp : UnaExp
     private Expression[] arguments;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e, Expression[] arguments)
+    this(line_number loc, Expression e, Expression[] arguments)
     {
         //writef("CallExp(e1 = %x)\n", e);
         super(loc, Tok.Call, e);
@@ -1050,14 +1051,14 @@ final class CallExp : UnaExp
 final class AssertExp : UnaExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e)
+    this(line_number loc, Expression e)
     {
         super(loc, Tok.Assert, e);
     }
 
     override void toIR(IRstate* irs, idx_t ret)
     {
-        Loc linnum;
+        line_number linnum;
         size_t u;
         idx_t b;
         LocalVariables tmp;
@@ -1073,7 +1074,7 @@ final class AssertExp : UnaExp
         e1.toIR(irs, b);
         u = irs.getIP();
         irs.gen!(Opcode.JT)(loc, 0, b);
-        linnum = cast(Loc)loc;
+        linnum = cast(line_number)loc;
         irs.gen!(Opcode.Assert)(loc, linnum);
         irs.patchJmp(u, irs.getIP);
 
@@ -1095,7 +1096,7 @@ final class NewExp : UnaExp
     private Expression[] arguments;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e, Expression[] arguments)
+    this(line_number loc, Expression e, Expression[] arguments)
     {
         super(loc, Tok.New, e);
         this.arguments = arguments;
@@ -1158,7 +1159,7 @@ class XUnaExp : UnaExp
     protected Opcode ircode;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Tok op, Opcode ircode, Expression e)
+    this(line_number loc, Tok op, Opcode ircode, Expression e)
     {
         super(loc, op, e);
         this.ircode = ircode;
@@ -1175,7 +1176,7 @@ class XUnaExp : UnaExp
 final class NotExp : XUnaExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e)
+    this(line_number loc, Expression e)
     {
         super(loc, Tok.Not, Opcode.Not, e);
     }
@@ -1191,7 +1192,7 @@ final class DeleteExp : UnaExp
     private bool lval;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e)
+    this(line_number loc, Expression e)
     {
         super(loc, Tok.Delete, e);
     }
@@ -1248,7 +1249,7 @@ final class DeleteExp : UnaExp
 final class CommaExp : BinExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e1, Expression e2)
+    this(line_number loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Comma, e1, e2);
     }
@@ -1270,7 +1271,7 @@ final class CommaExp : BinExp
 final class ArrayExp : BinExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e1, Expression e2)
+    this(line_number loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Array, e1, e2);
     }
@@ -1347,7 +1348,7 @@ final class ArrayExp : BinExp
 final class AssignExp : BinExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e1, Expression e2)
+    this(line_number loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Assign, e1, e2);
     }
@@ -1468,7 +1469,7 @@ final class AssignExp : BinExp
 final class AddAssignExp : BinExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e1, Expression e2)
+    this(line_number loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Plusass, e1, e2);
     }
@@ -1543,7 +1544,7 @@ class BinAssignExp : BinExp
     protected Opcode ircode = Opcode.Error;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Tok op, Opcode ircode, Expression e1, Expression e2)
+    this(line_number loc, Tok op, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, op, e1, e2);
         this.ircode = ircode;
@@ -1618,7 +1619,7 @@ class BinAssignExp : BinExp
 final class AddExp : BinExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e1, Expression e2)
+    this(line_number loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Plus, e1, e2);
     }
@@ -1642,7 +1643,7 @@ class XBinExp : BinExp
     protected Opcode ircode = Opcode.Error;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Tok op, Opcode ircode, Expression e1, Expression e2)
+    this(line_number loc, Tok op, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, op, e1, e2);
         this.ircode = ircode;
@@ -1659,7 +1660,7 @@ class XBinExp : BinExp
 final class OrOrExp : BinExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e1, Expression e2)
+    this(line_number loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Oror, e1, e2);
     }
@@ -1693,7 +1694,7 @@ final class OrOrExp : BinExp
 final class AndAndExp : BinExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e1, Expression e2)
+    this(line_number loc, Expression e1, Expression e2)
     {
         super(loc, Tok.Andand, e1, e2);
     }
@@ -1729,7 +1730,7 @@ final class CmpExp : BinExp
     private Opcode ircode = Opcode.Error;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Tok tok, Opcode ircode, Expression e1, Expression e2)
+    this(line_number loc, Tok tok, Opcode ircode, Expression e1, Expression e2)
     {
         super(loc, tok, e1, e2);
         this.ircode = ircode;
@@ -1751,7 +1752,7 @@ final class CmpExp : BinExp
 final class InExp : BinExp
 {
     @safe @nogc pure nothrow
-    this(Loc loc, Expression e1, Expression e2)
+    this(line_number loc, Expression e1, Expression e2)
     {
         super(loc, Tok.In, e1, e2);
     }
@@ -1768,7 +1769,7 @@ final class CondExp : BinExp
     private Expression econd;
 
     @safe @nogc pure nothrow
-    this(Loc loc, Expression econd, Expression e1, Expression e2)
+    this(line_number loc, Expression econd, Expression e1, Expression e2)
     {
         super(loc, Tok.Question, e1, e2);
         this.econd = econd;

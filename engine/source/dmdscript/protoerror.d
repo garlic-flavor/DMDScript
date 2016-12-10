@@ -18,24 +18,23 @@
 
 module dmdscript.protoerror;
 
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.value;
-import dmdscript.text;
-import dmdscript.dfunction;
-import dmdscript.property;
-import dmdscript.derror;
+import dmdscript.primitive;
+import dmdscript.dobject : Dobject;
+import dmdscript.dfunction : Dfunction;
 
-int foo;        // cause this module to be linked in
+// int foo;        // cause this module to be linked in
 
 /* ===================== D0_constructor ==================== */
 
-class D0_constructor : Dfunction
+private class D0_constructor : Dfunction
 {
-    d_string text_d1;
-    Dobject function(d_string) newD0;
+    import dmdscript.script : CallContext;
+    import dmdscript.value : DError, Value, vundefined;
 
-    this(d_string text_d1, Dobject function(d_string) newD0)
+    tstring text_d1;
+    Dobject function(tstring) newD0;
+
+    this(tstring text_d1, Dobject function(tstring) newD0)
     {
         super(1, Dfunction.getPrototype);
         this.text_d1 = text_d1;
@@ -48,7 +47,7 @@ class D0_constructor : Dfunction
         // ECMA 15.11.7.2
         Value* m;
         Dobject o;
-        d_string s;
+        tstring s;
 
         m = (arglist.length) ? &arglist[0] : &vundefined;
         // ECMA doesn't say what we do if m is undefined
@@ -72,6 +71,8 @@ class D0_constructor : Dfunction
 
 package class D0base : Dobject
 {
+    import dmdscript.exception : ScriptException;
+
     ScriptException exception;
 
     protected this(Dobject prototype)
@@ -79,108 +80,132 @@ package class D0base : Dobject
         super(prototype, Key.Error);
     }
 
-    protected this(Dobject prototype, d_string m)
+    protected this(Dobject prototype, tstring m)
     {
+        import dmdscript.property : Property;
+
         this(prototype);
-        CallContext cc;
-        Set(Key.message, m, Property.Attribute.None, cc);
-        Set(Key.description, m, Property.Attribute.None, cc);
-        Set(Key.number, cast(d_number)0, Property.Attribute.None, cc);
+
+        DefineOwnProperty(Key.message, m, Property.Attribute.None);
+        DefineOwnProperty(Key.description, m, Property.Attribute.None);
+        DefineOwnProperty(Key.number, cast(double)0, Property.Attribute.None);
         exception = new ScriptException(m);
     }
 
     protected this(Dobject prototype, ScriptException exception)
     {
+        import dmdscript.property : Property;
+
         this(prototype);
         assert(exception !is null);
         this.exception = exception;
-        CallContext cc;
-        Set(Key.message, exception.msg, Property.Attribute.None, cc);
-        Set(Key.description, exception.toString, Property.Attribute.None, cc);
-        Set(Key.number, cast(d_number)exception.code,
-            Property.Attribute.None, cc);
+
+        DefineOwnProperty(Key.message, exception.msg, Property.Attribute.None);
+        DefineOwnProperty(Key.description, exception.toString,
+                          Property.Attribute.None);
+        DefineOwnProperty(Key.number, cast(double)exception.code,
+                          Property.Attribute.None);
     }
 }
 
-template proto(alias TEXT_D1)
-{
-    enum Text = TEXT_D1;
-
-    private Dobject _prototype;
-    private Dfunction _ctor;
+// template proto(alias TEXT_D1)
+// {
     /* ===================== D0_prototype ==================== */
 
+/*
     class D0_prototype : D0
     {
         this()
         {
             super(Derror.getPrototype);
 
-            d_string s;
+            tstring s;
 
             DefineOwnProperty(Key.constructor, _ctor, Property.Attribute.DontEnum);
             DefineOwnProperty(Key.name, TEXT_D1, Property.Attribute.None);
             s = TEXT_D1 ~ ".prototype.message";
             DefineOwnProperty(Key.message, s, Property.Attribute.None);
             DefineOwnProperty(Key.description, s, Property.Attribute.None);
-            DefineOwnProperty(Key.number, cast(d_number)0, Property.Attribute.None);
+            DefineOwnProperty(Key.number, cast(double)0, Property.Attribute.None);
         }
     }
+//*/
+/* ===================== D0 ==================== */
 
-    /* ===================== D0 ==================== */
+class D0(alias TEXT_D1) : D0base
+{
+    enum Text = TEXT_D1;
 
-    class D0 : D0base
+    private this(Dobject prototype)
     {
-        private this(Dobject prototype)
-        {
-            super(prototype);
-        }
+        super(prototype);
+    }
 
-        this(d_string m)
-        {
-            super(D0.getPrototype, m);
-        }
+    this(tstring m)
+    {
+        super(D0.getPrototype, m);
+    }
 
-        this(ScriptException exception)
-        {
-            super(D0.getPrototype, exception);
-        }
+    this(ScriptException exception)
+    {
+        super(D0.getPrototype, exception);
+    }
 
-        static Dfunction getConstructor()
-        {
-            return _ctor;
-        }
+public static:
+    //
+    Dfunction getConstructor()
+    {
+        return _ctor;
+    }
 
-        static Dobject getPrototype()
-        {
-            return _prototype;
-        }
+    //
+    Dobject getPrototype()
+    {
+        return _prototype;
+    }
 
-        static Dobject newD0(d_string s)
-        {
-            return new D0(s);
-        }
+    //
+    void init()
+    {
+        import dmdscript.property : Property;
 
-        static void init()
-        {
-            Dfunction constructor = new D0_constructor(TEXT_D1, &newD0);
-            _ctor = constructor;
+        _ctor = new D0_constructor(TEXT_D1, &newD0);
 
-            Dobject prototype = new D0_prototype();
-            _prototype = prototype;
+        _prototype = new Dobject();
 
-            constructor.DefineOwnProperty(Key.prototype, prototype,
-                               Property.Attribute.DontEnum |
-                               Property.Attribute.DontDelete |
-                               Property.Attribute.ReadOnly);
-        }
+        _ctor.DefineOwnProperty(Key.prototype, _prototype,
+                                Property.Attribute.DontEnum |
+                                Property.Attribute.DontDelete |
+                                Property.Attribute.ReadOnly);
+
+        _prototype.DefineOwnProperty(Key.constructor, _ctor,
+                                     Property.Attribute.DontEnum);
+        _prototype.DefineOwnProperty(Key.name, TEXT_D1,
+                                     Property.Attribute.None);
+        auto s = TEXT_D1 ~ ".prototype.message";
+        _prototype.DefineOwnProperty(Key.message, s,
+                                     Property.Attribute.None);
+        _prototype.DefineOwnProperty(Key.description, s,
+                                     Property.Attribute.None);
+        _prototype.DefineOwnProperty(Key.number, cast(double)0,
+                                     Property.Attribute.None);
+
+    }
+private static:
+    Dobject _prototype;
+    Dfunction _ctor;
+
+    Dobject newD0(tstring s)
+    {
+        return new D0(s);
     }
 }
-
-alias proto!(Key.SyntaxError) syntaxerror;
-alias proto!(Key.EvalError) evalerror;
-alias proto!(Key.ReferenceError) referenceerror;
-alias proto!(Key.RangeError) rangeerror;
-alias proto!(Key.TypeError) typeerror;
-alias proto!(Key.URIError) urierror;
+// }
+import dmdscript.key : Key;
+alias syntaxerror = D0!(Key.SyntaxError);
+alias evalerror = D0!(Key.EvalError);
+alias referenceerror = D0!(Key.ReferenceError);
+alias rangeerror = D0!(Key.RangeError);
+alias typeerror = D0!(Key.TypeError);
+alias urierror = D0!(Key.URIError);
 

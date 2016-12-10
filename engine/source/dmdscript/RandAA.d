@@ -34,32 +34,304 @@ module dmdscript.RandAA;
  * DEALINGS IN THE SOFTWARE.
  */
 
-private enum
-{
-    EMPTY,
-    USED,
-    REMOVED
-}
-
-// It's faster to store the hash if it's expensive to compute, but
-// faster not to if it's cheap to compute.
-private template shouldStoreHash(K)
-{
-    import std.traits : isFloatingPoint, isIntegral;
-
-    enum bool shouldStoreHash = !isFloatingPoint!K && !isIntegral!K;
-}
-
-/**An associative array class that uses randomized probing and open
- * addressing.  K is the key type, V is the value type, storeHash
- * determines whether the hash of each key is stored in the array.  This
- * increases space requirements, but allows for faster rehashing.  By
- * default, the hash is stored unless the array is an array of floating point
- * or integer types.
- */
+/**
+An associative array class that uses randomized probing and open
+addressing.  K is the key type, V is the value type, storeHash
+determines whether the hash of each key is stored in the array.  This
+increases space requirements, but allows for faster rehashing.  By
+default, the hash is stored unless the array is an array of floating point
+or integer types.
+*/
 final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
                    bool useRandom = false)
 {
+    /** Construct an instance of RandAA with initial size initSize.
+
+    Params:
+        initSize = determines the amount of slots pre-allocated.
+    */
+    @trusted pure nothrow
+    this(in size_t initSize = 10)
+    {
+        space = getNextP2(initSize);
+        mask = space - 1;
+        _keys = (new K[space]).ptr;
+        vals = (new V[space]).ptr;
+
+        static if(storeHash)
+        {
+            hashes = (new size_t[space]).ptr;
+        }
+
+        flags = (new ubyte[space]).ptr;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    size_t length() const
+    {
+        return _length;
+    }
+
+    ///
+    @property @trusted pure nothrow
+    V[] values()
+    {
+        size_t i = 0;
+        V[] result = new V[this._length];
+
+        foreach(ref K k, ref V v; this)
+            result[i++] = v;
+        return result;
+    }
+
+    ///
+    @property @trusted pure nothrow
+    K[] keys()
+    {
+        size_t i = 0;
+        K[] result = new K[this._length];
+
+        foreach(ref K k, ref V v; this)
+            result[i++] = k;
+        return result;
+    }
+
+    /**
+    Does not allocate.  Returns a simple forward range.
+    */
+    @property @safe @nogc pure nothrow
+    key_range keyRange()
+    {
+        return key_range(this);
+    }
+
+    /**
+    Does not allocate.  Returns a simple forward range.
+    */
+    @property @safe @nogc pure nothrow
+    value_range valueRange()
+    {
+        return value_range(this);
+    }
+
+    ///
+    @safe
+    void rehash()
+    {
+        if(cast(float)(_length + nDead) / space < 0.7)
+        {
+            return;
+        }
+        reserve(space + 1);
+    }
+
+    /**
+    Throws:
+        A Exception on unsuccessful key search.
+    */
+    @trusted
+    ref auto opIndex()(auto ref K index) inout
+    {
+        import std.conv : text;
+
+        size_t i = findExisting(index, getHash(index));
+        if(i == size_t.max)
+        {
+            throw new Exception(text("Could not find key ", index));
+        }
+        else
+        {
+            return vals[i];
+        }
+    }
+
+    /**
+    Returns:
+        null if index is not found.
+    */
+    @trusted
+    inout(V)* opBinaryRight(string OP : "in")(auto ref K index) inout
+    {
+        size_t i = findExisting(index, getHash(index));
+        if(i == size_t.max)
+        {
+            return null;
+        }
+        else
+        {
+            return vals + i;
+        }
+    }
+
+    /// Hackery
+    @trusted
+    inout(V)* findExistingAlt(in ref K key, in size_t hashFull) inout
+    {
+        size_t pos = hashFull & mask;
+        static if(useRandom)
+            size_t rand = hashFull + 1;
+        else
+        {
+            size_t perturb = hashFull;
+            size_t i = pos;
+        }
+
+        uint flag = void;
+        while(true)
+        {
+            flag = flags[pos];
+            static if (storeHash)
+            {
+                if (flag == EMPTY || (hashFull == hashes[pos] &&
+                                      key == _keys[pos]))
+                {
+                    break;
+                }
+            }
+            else
+            {
+                if (flag == EMPTY || key == _keys[pos])
+                {
+                    break;
+                }
+            }
+
+            static if(useRandom)
+            {
+                rand = rand * mul + add;
+                pos = (rand + hashFull) & mask;
+            }
+            else
+            {
+                i = (i * 5 + perturb + 1);
+                perturb /= PERTURB_SHIFT;
+                pos = i & mask;
+            }
+        }
+        return (flag == USED) ? &vals[pos] : null;
+    }
+
+    ///
+    @safe
+    void insertAlt(in ref K key, ref V val, in size_t hashFull)
+    {
+        assignNoRehashCheck(key, val, hashFull);
+        rehash();
+    }
+
+    ///
+    @safe
+    void opIndexAssign()(auto ref V val, auto ref K index)
+    {
+        assignNoRehashCheck(index, val, getHash(index));
+        rehash();
+    }
+
+    /**
+    Removes an element from this.  Elements *may* be removed while iterating
+    via .keys.
+    */
+    @trusted
+    ref const(V) remove()(auto ref K index)
+    {
+        import std.conv : text;
+
+        size_t i = findExisting(index, getHash(index));
+        if(i == size_t.max)
+        {
+            throw new Exception(text("Could not find key ", index));
+        }
+        else
+        {
+            _length--;
+            nDead++;
+            flags[i] = REMOVED;
+            return vals[i];
+        }
+    }
+
+    /// ditto
+    @trusted
+    ref const(V) remove(in ref K index, in size_t hash)
+    {
+        import std.conv : text;
+
+        size_t i = findExisting(index, hash);
+        if(i == size_t.max)
+        {
+            throw new Exception(text("Could not find key ", index));
+        }
+        else
+        {
+            _length--;
+            nDead++;
+            flags[i] = REMOVED;
+            return vals[i];
+        }
+    }
+
+    /// ditto
+    @trusted
+    bool remove()(auto ref K index, out V value)
+    {
+        size_t i = findExisting(index, getHash(index));
+        if(i == size_t.max)
+        {
+            return false;
+        }
+        else
+        {
+            _length--;
+            nDead++;
+            flags[i] = REMOVED;
+            value = vals[i];
+            return true;
+        }
+    }
+
+    /**
+    Iterate over keys, values in lockstep.
+    */
+    auto opApply(Dg)(scope Dg dg)
+    {
+        import std.traits : ParameterTypeTuple;
+        int result;
+        foreach(i, k; _keys[0..space])
+        {
+            if (flags[i] == USED)
+            {
+                static if      (1 == ParameterTypeTuple!Dg.length)
+                    result = dg(vals[i]);
+                else static if (2 == ParameterTypeTuple!Dg.length)
+                    result = dg(k, vals[i]);
+                if (result)
+                    break;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+    Allows for deleting the contents of the array manually, if supported
+    by the GC.
+    */
+    @trusted pure nothrow
+    void free()
+    {
+        import core.memory : GC;
+
+        GC.free(cast(void*)this._keys);
+        GC.free(cast(void*)this.vals);
+        GC.free(cast(void*)this.flags);
+
+        static if(storeHash)
+        {
+            GC.free(cast(void*)this.hashes);
+        }
+    }
+
 private:
 
     // Store keys, values in parallel arrays.  This prevents us from having
@@ -75,351 +347,18 @@ private:
     }
 
     size_t mask;    // easy modular 2
-    size_t clock;   // calculate with size
     size_t _length; // Logical size
     size_t space;   // Storage space
     size_t nDead;   // Number of elements removed.
-    //TypeInfo  ti_;
 
-    // Good values for a linear congruential random number gen.  The modulus
-    // is implicitly uint.max + 1, meaning that we take advantage of overflow
-    // to avoid a div instruction.
-    enum : size_t  { mul = 1103515245U, add = 12345U }
-    enum : size_t  { PERTURB_SHIFT = 32 }
-
-    // Optimized for a few special cases to avoid the virtual function call
-    // to TypeInfo.getHash().
-    static @safe
-    size_t getHash(ref K key)
-    {
-        static if(is (K : long) && K.sizeof <= size_t.sizeof)
-        {
-            size_t hash = cast(size_t)key;
-        }
-        else static if(is (typeof(key.toHash())))
-        {
-            size_t hash = key.toHash();
-        }
-        else
-        {
-            size_t hash = typeid(K).getHash(cast(const(void)*)&key);
-        }
-
-        return hash;
-    }
-
-
-    static if(storeHash)
-    {
-        @trusted
-        size_t findExisting(ref K key)  const
-        {
-            immutable hashFull = getHash(key);
-            size_t pos = hashFull & mask;
-            static if(useRandom)
-                size_t rand = hashFull + 1;
-            else // static if (P == "perturb")
-            {
-                size_t perturb = hashFull;
-                size_t i = pos;
-            }
-
-            uint flag = void;
-            while(true)
-            {
-                flag = flags[pos];
-                if(flag == EMPTY || (hashFull == hashes[pos] &&
-                                     key == _keys[pos] && flag != EMPTY))
-                {
-                    break;
-                }
-                static if(useRandom)
-                {
-                    rand = rand * mul + add;
-                    pos = (rand + hashFull) & mask;
-                }
-                else // static if (P == "perturb")
-                {
-                    i = (i * 5 + perturb + 1);
-                    perturb /= PERTURB_SHIFT;
-                    pos = i & mask;
-                }
-            }
-            return (flag == USED) ? pos : size_t.max;
-        }
-
-        @trusted
-        size_t findExisting(in ref K key, in size_t hashFull)  const
-        {
-            size_t pos = hashFull & mask;
-            static if(useRandom)
-                size_t rand = hashFull + 1;
-            else // static if (P == "perturb")
-            {
-                size_t perturb = hashFull;
-                size_t i = pos;
-            }
-
-            uint flag = void;
-            while(true)
-            {
-                flag = flags[pos];
-                if(flag == EMPTY || (hashFull == hashes[pos] &&
-                                     key == _keys[pos] && flag != EMPTY))
-                {
-                    break;
-                }
-                static if(useRandom)
-                {
-                    rand = rand * mul + add;
-                    pos = (rand + hashFull) & mask;
-                }
-                else // static if (P == "perturb")
-                {
-                    i = (i * 5 + perturb + 1);
-                    perturb /= PERTURB_SHIFT;
-                    pos = i & mask;
-                }
-            }
-            return (flag == USED) ? pos : size_t.max;
-        }
-
-        @trusted
-        size_t findForInsert(in ref K key, in size_t hashFull)
-        {
-            size_t pos = hashFull & mask;
-            static if(useRandom)
-                size_t rand = hashFull + 1;
-            else //static if (P == "perturb")
-            {
-                size_t perturb = hashFull;
-                size_t i = pos;
-            }
-
-            while(true)
-            {
-                if(flags[pos] != USED ||
-                   (hashes[pos] == hashFull && _keys[pos] == key))
-                {
-                    break;
-                }
-                static if(useRandom)
-                {
-                    rand = rand * mul + add;
-                    pos = (rand + hashFull) & mask;
-                }
-                else //static if (P == "perturb")
-                {
-                    i = (i * 5 + perturb + 1);
-                    perturb /= PERTURB_SHIFT;
-                    pos = i & mask;
-                }
-            }
-
-            hashes[pos] = hashFull;
-            return pos;
-        }
-    }
-    else
-    {
-        size_t findExisting(ref K key) const
-        {
-            immutable hashFull = getHash(key);
-            size_t pos = hashFull & mask;
-            static if(useRandom)
-                size_t rand = hashFull + 1;
-            else //static if (P == "perturb")
-            {
-                size_t perturb = hashFull;
-                size_t i = pos;
-            }
-
-            uint flag = void;
-            while(true)
-            {
-                flag = flags[pos];
-                if(flag == EMPTY || (_keys[pos] == key && flag != EMPTY))
-                {
-                    break;
-                }
-                static if(useRandom)
-                {
-                    rand = rand * mul + add;
-                    pos = (rand + hashFull) & mask;
-                }
-                else // static if (P == "perturb")
-                {
-                    i = (i * 5 + perturb + 1);
-                    perturb /= PERTURB_SHIFT;
-                    pos = i & mask;
-                }
-            }
-            return (flag == USED) ? pos : size_t.max;
-        }
-
-        size_t findExisting(in ref K key, in size_t hashFull) const
-        {
-            size_t pos = hashFull & mask;
-            static if(useRandom)
-                size_t rand = hashFull + 1;
-            else //static if (P == "perturb")
-            {
-                size_t perturb = hashFull;
-                size_t i = pos;
-            }
-
-            uint flag = void;
-            while(true)
-            {
-                flag = flags[pos];
-                if(flag == EMPTY || (_keys[pos] == key && flag != EMPTY))
-                {
-                    break;
-                }
-                static if(useRandom)
-                {
-                    rand = rand * mul + add;
-                    pos = (rand + hashFull) & mask;
-                }
-                else // static if (P == "perturb")
-                {
-                    i = (i * 5 + perturb + 1);
-                    perturb /= PERTURB_SHIFT;
-                    pos = i & mask;
-                }
-            }
-            return (flag == USED) ? pos : size_t.max;
-        }
-
-
-        size_t findForInsert(in ref K key, in size_t hashFull) const
-        {
-            size_t pos = hashFull & mask;
-            static if(useRandom)
-            {
-                size_t rand = hashFull + 1;
-            }
-            else
-            {
-                size_t perturb = hashFull;
-                size_t i = pos;
-            }
-
-
-
-            while(flags[pos] == USED && _keys[pos] != key)
-            {
-                static if(useRandom)
-                {
-                    rand = rand * mul + add;
-                    pos = (rand + hashFull) & mask;
-                }
-                else
-                {
-                    i = (i * 5 + perturb + 1);
-                    perturb /= PERTURB_SHIFT;
-                    pos = i & mask;
-                }
-            }
-
-            return pos;
-        }
-    }
-
+    /*
+    Reserve enough space for newSize elements.  Note that the rehashing
+    heuristics do not guarantee that no new space will be allocated before
+    newSize elements are added.
+    */
     @trusted
-    void assignNoRehashCheck(in ref K key, ref V val, in size_t hashFull)
+    void reserve(size_t newSize)
     {
-        size_t i = findForInsert(key, hashFull);
-        vals[i] = val;
-        immutable uint flag = flags[i];
-        if(flag != USED)
-        {
-            if(flag == REMOVED)
-            {
-                nDead--;
-            }
-            _length++;
-            flags[i] = USED;
-            _keys[i] = key;
-        }
-    }
-
-    @trusted
-    void assignNoRehashCheck(ref K key, ref V val)
-    {
-        size_t hashFull = getHash(key);
-        size_t i = findForInsert(key, hashFull);
-        vals[i] = val;
-        immutable uint flag = flags[i];
-        if(flag != USED)
-        {
-            if(flag == REMOVED)
-            {
-                nDead--;
-            }
-            _length++;
-            flags[i] = USED;
-            _keys[i] = key;
-        }
-    }
-
-    // Dummy constructor only used internally.
-    @safe @nogc pure nothrow
-    this(bool dummy) const {}
-
-public:
-
-    static @safe @nogc pure nothrow
-    size_t getNextP2(size_t n)
-    {
-        // get the powerof 2 > n
-
-        size_t result = 16;
-        while(n >= result)
-        {
-            result *= 2;
-        }
-        return result;
-    }
-    /**Construct an instance of RandAA with initial size initSize.
-     * initSize determines the amount of slots pre-allocated.*/
-    @trusted pure nothrow
-    this(size_t initSize = 10)
-    {
-        //initSize = nextSize(initSize);
-        space = getNextP2(initSize);
-        mask = space - 1;
-        _keys = (new K[space]).ptr;
-        vals = (new V[space]).ptr;
-
-        static if(storeHash)
-        {
-            hashes = (new size_t[space]).ptr;
-        }
-
-        flags = (new ubyte[space]).ptr;
-    }
-
-    ///
-    @safe
-    void rehash()
-    {
-        if(cast(float)(_length + nDead) / space < 0.7)
-        {
-            return;
-        }
-        reserve(space + 1);
-    }
-
-    /**Reserve enough space for newSize elements.  Note that the rehashing
-     * heuristics do not guarantee that no new space will be allocated before
-     * newSize elements are added.
-     */
-    @trusted
-    private void reserve(size_t newSize)
-    {
-        import core.memory : GC;
-
         scope typeof(this)newTable = new typeof(this)(newSize);
 
         foreach(i; 0..space)
@@ -439,14 +378,7 @@ public:
 
         // Can't free vals b/c references to it could escape.  Let GC
         // handle it.
-        GC.free(cast(void*)this._keys);
-        GC.free(cast(void*)this.flags);
-        GC.free(cast(void*)this.vals);
-
-        static if(storeHash)
-        {
-            GC.free(cast(void*)this.hashes);
-        }
+        free;
 
         foreach(ti, elem; newTable.tupleof)
         {
@@ -454,45 +386,16 @@ public:
         }
     }
 
-    /**Throws a KeyError on unsuccessful key search.*/
+    //
     @trusted
-    ref V opIndex()(auto ref K index)
-    {
-        import std.conv : text;
-
-        size_t i = findExisting(index);
-        if(i == size_t.max)
-        {
-            throw new Exception(text("Could not find key ", index));
-        }
-        else
-        {
-            return vals[i];
-        }
-    }
-/+ I have to insure there is no returns by value, rude hack
-    /**Non-ref return for const instances.*/
-    V opIndex(K index)
-    {
-        size_t i = findExisting(index);
-        if(i == size_t.max)
-        {
-            throw new KeyError("Could not find key " ~ to !string(index));
-        }
-        else
-        {
-            return vals[i];
-        }
-    }
-+/
-    ///Hackery
-    @trusted
-    inout(V)* findExistingAlt(in ref K key, in size_t hashFull) inout
+    size_t findExisting(in ref K key, in size_t hashFull)  const
     {
         size_t pos = hashFull & mask;
         static if(useRandom)
+        {
             size_t rand = hashFull + 1;
-        else // static if (P == "perturb")
+        }
+        else
         {
             size_t perturb = hashFull;
             size_t i = pos;
@@ -502,41 +405,118 @@ public:
         while(true)
         {
             flag = flags[pos];
-            if(flag == EMPTY || (hashFull == hashes[pos] && key == _keys[pos]
-                                 && flag != EMPTY))
+            static if (storeHash)
             {
-                break;
+                if(flag == EMPTY || (hashFull == hashes[pos] &&
+                                     key == _keys[pos]))
+                {
+                    break;
+                }
+            }
+            else
+            {
+                if(flag == EMPTY || _keys[pos] == key)
+                {
+                    break;
+                }
             }
             static if(useRandom)
             {
                 rand = rand * mul + add;
                 pos = (rand + hashFull) & mask;
             }
-            else // static if (P == "perturb")
+            else
             {
                 i = (i * 5 + perturb + 1);
                 perturb /= PERTURB_SHIFT;
                 pos = i & mask;
             }
         }
-        return (flag == USED) ? &vals[pos] : null;
+        return (flag == USED) ? pos : size_t.max;
     }
 
-    @safe
-    void insertAlt(in ref K key, ref V val, in size_t hashFull)
+    //
+    @trusted
+    size_t findForInsert(in ref K key, in size_t hashFull)
     {
-        assignNoRehashCheck(key, val, hashFull);
-        rehash();
+        size_t pos = hashFull & mask;
+        static if(useRandom)
+            size_t rand = hashFull + 1;
+        else
+        {
+            size_t perturb = hashFull;
+            size_t i = pos;
+        }
+
+        while(true)
+        {
+            static if (storeHash)
+            {
+                if (flags[pos] != USED || (hashes[pos] == hashFull &&
+                                           _keys[pos] == key))
+                {
+                    break;
+                }
+            }
+            else
+            {
+                if (flags[pos] != USED || _keys[pos] == key)
+                {
+                    break;
+                }
+            }
+            static if(useRandom)
+            {
+                rand = rand * mul + add;
+                pos = (rand + hashFull) & mask;
+            }
+            else
+            {
+                i = (i * 5 + perturb + 1);
+                perturb /= PERTURB_SHIFT;
+                pos = i & mask;
+            }
+        }
+
+        hashes[pos] = hashFull;
+        return pos;
     }
 
-    ///
-    @safe
-    void opIndexAssign()(auto ref V val, in auto ref K index)
+    //
+    @trusted
+    void assignNoRehashCheck(in ref K key, ref V val, in size_t hashFull)
     {
-        assignNoRehashCheck(index, val);
-        rehash();
+        const size_t i = findForInsert(key, hashFull);
+        vals[i] = val;
+        const uint flag = flags[i];
+        if(flag != USED)
+        {
+            if(flag == REMOVED)
+            {
+                assert(0 < nDead);
+                nDead--;
+            }
+            _length++;
+            flags[i] = USED;
+            _keys[i] = key;
+        }
     }
 
+private static:
+    enum : ubyte
+    {
+        EMPTY,
+        USED,
+        REMOVED
+    }
+
+    // Good values for a linear congruential random number gen.  The modulus
+    // is implicitly uint.max + 1, meaning that we take advantage of overflow
+    // to avoid a div instruction.
+    enum : size_t  { mul = 1103515245U, add = 12345U }
+    enum : size_t  { PERTURB_SHIFT = 32 }
+
+    //
     struct KeyValRange(T)
     {
         @trusted @nogc pure nothrow
@@ -605,209 +585,79 @@ public:
         size_t index = 0;
         RandAA aa;
     }
+    //
     alias key_range = KeyValRange!K;
+    //
     alias value_range = KeyValRange!V;
 
-    /**Does not allocate.  Returns a simple forward range.*/
+
+    // Optimized for a few special cases to avoid the virtual function call
+    // to TypeInfo.getHash().
+    @trusted
+    size_t getHash(ref K key)
+    {
+        static if(is (K : long) && K.sizeof <= size_t.sizeof)
+        {
+            size_t hash = cast(size_t)key;
+        }
+        else static if(is (typeof(key.toHash())))
+        {
+            size_t hash = key.toHash();
+        }
+        else
+        {
+            size_t hash = typeid(K).getHash(cast(const(void)*)&key);
+        }
+
+        return hash;
+    }
+
+    //
     @safe @nogc pure nothrow
-    key_range keyRange()
+    size_t getNextP2(size_t n)
     {
-        return key_range(this);
-    }
-
-    /**Does not allocate.  Returns a simple forward range.*/
-    @safe @nogc pure nothrow
-    value_range valueRange()
-    {
-        return value_range(this);
-    }
-
-    /**Removes an element from this.  Elements *may* be removed while iterating
-     * via .keys.*/
-    @trusted
-    V remove()(auto ref K index)
-    {
-        import std.conv : text;
-
-        size_t i = findExisting(index);
-        if(i == size_t.max)
+        // get the powerof 2 > n
+        assert (n < (1 << (size_t.sizeof * 8 - 1)));
+        size_t result = 16;
+        while(n >= result)
         {
-            throw new Exception(text("Could not find key ", index));
+            result *= 2;
         }
-        else
-        {
-            _length--;
-            nDead++;
-            flags[i] = REMOVED;
-            return vals[i];
-        }
-    }
-
-    @trusted
-    V remove(in ref K index, in size_t hash)
-    {
-        import std.conv : text;
-
-        size_t i = findExisting(index, hash);
-        if(i == size_t.max)
-        {
-            throw new Exception(text("Could not find key ", index));
-        }
-        else
-        {
-            _length--;
-            nDead++;
-            flags[i] = REMOVED;
-            return vals[i];
-        }
-    }
-
-    @property @trusted pure nothrow
-    V[] values()
-    {
-        size_t i = 0;
-        V[] result = new V[this._length];
-
-        foreach(ref K k, ref V v; this)
-            result[i++] = v;
         return result;
     }
-    @property @trusted pure nothrow
-    K[] keys()
+}
+
+//------------------------------------------------------------------------------
+private:
+
+// It's faster to store the hash if it's expensive to compute, but
+// faster not to if it's cheap to compute.
+template shouldStoreHash(K)
+{
+    import std.traits : isFloatingPoint, isIntegral;
+
+    enum bool shouldStoreHash = !isFloatingPoint!K && !isIntegral!K;
+}
+
+//------------------------------------------------------------------------------
+version (unittest)
+{
+    package auto randString(String = string)(size_t size)
     {
-        size_t i = 0;
-        K[] result = new K[this._length];
-
-        foreach(ref K k, ref V v; this)
-            result[i++] = k;
-        return result;
-    }
-    @trusted
-    bool remove()(auto ref K index, ref V value)
-    {
-        size_t i = findExisting(index);
-        if(i == size_t.max)
-        {
-            return false;
-        }
-        else
-        {
-            _length--;
-            nDead++;
-            flags[i] = REMOVED;
-            value = vals[i];
-            return true;
-        }
-    }
-    /**Returns null if index is not found.*/
-    @trusted
-    V* opBinaryRight(string OP : "in")(auto ref K index)
-    {
-        size_t i = findExisting(index);
-        if(i == size_t.max)
-        {
-            return null;
-        }
-        else
-        {
-            return vals + i;
-        }
-    }
-
-    /**Iterate over keys, values in lockstep.*/
-    auto opApply(Dg)(scope Dg dg)
-    {
-        import std.traits : ParameterTypeTuple;
-        int result;
-        foreach(i, k; _keys[0..space])
-        {
-            if (flags[i] == USED)
-            {
-                static if      (1 == ParameterTypeTuple!Dg.length)
-                    result = dg(vals[i]);
-                else static if (2 == ParameterTypeTuple!Dg.length)
-                    result = dg(k, vals[i]);
-                if (result)
-                    break;
-            }
-        }
-
-        return result;
-    }
-
-/+
-    int opApply(int delegate(ref K, ref V) dg)
-    {
-        int result;
-        foreach(i, k; _keys[0..space])
-            if(flags[i] == USED)
-            {
-                result = dg(k, vals[i]);
-                if(result)
-                {
-                    break;
-                }
-            }
-        return result;
-    }
-
-    public int opApply(int delegate(ref V_ value) dg)
-    {
-        return opApply((ref K_ k, ref V_ v) { return dg(v); });
-    }
-
-    private template DeconstArrayType(T)
-    {
-        import std.traits : isStaticArray;
-
-        static if(isStaticArray!(T))
-        {
-            //the equivalent dynamic array
-            alias typeof(T.init[0])[] DeconstArrayType;
-        }
-        else
-        {
-            alias T DeconstArrayType;
-        }
-    }
-
-    alias K_ = DeconstArrayType!(K);
-    alias V_ = DeconstArrayType!(V);
-+/
-
-    @safe pure nothrow
-    void clear()
-    {
-        free();
-    }
-    /**Allows for deleting the contents of the array manually, if supported
-     * by the GC.*/
-    @trusted pure nothrow
-    void free()
-    {
-        import core.memory : GC;
-
-        GC.free(cast(void*)this._keys);
-        GC.free(cast(void*)this.vals);
-        GC.free(cast(void*)this.flags);
-
-        static if(storeHash)
-        {
-            GC.free(cast(void*)this.hashes);
-        }
-    }
-
-    ///
-    @property @safe @nogc pure nothrow
-    size_t length() const
-    {
-        return _length;
+        import std.random : uniform;
+        import std.traits : ForeachType, Unqual;
+        import std.exception : assumeUnique;
+        alias Char = Unqual!(ForeachType!String);
+        auto buf = new Char[size];
+        foreach(ref one; buf)
+            one = cast(Char)uniform(0, 127);
+        return buf.assumeUnique;
     }
 }
 
 unittest
 {
-    import std.random, std.exception, std.stdio;
+    import std.random, std.exception, std.stdio, std.algorithm;
 
     // Test it out.
     string[string] builtin;
@@ -859,147 +709,6 @@ unittest
     enforce(myKeys == builtinKeys);
     enforce(myValues == builtinVals);
 
-    writeln("Passed all tests.");
+    writeln("Passed all tests about RandAA.");
 }
-
-
-/+ not used.
-private void missing_key(K) (K key)
-{
-    throw new Exception(text("missing or invalid key ", key));
-}
-
-/**Forward range to iterate over keys or values of a RandAA.  Elements can
- * safely be removed (but not added) while iterating over the keys.*/
-
-struct aard (K, V, bool useRandom = false)
-{
-    alias RandAA!(K, V, shouldStoreHash!(K), useRandom) HashMapClass;
-
-    HashMapClass imp_;
-
-    V opIndex(K key)
-    {
-        if(imp_ !is null)
-            return imp_.opIndex(key);
-        missing_key(key);
-        assert(0);
-    }
-
-    V* opIn_r(K k)
-    {
-        if(imp_ is null)
-            return null;
-        return imp_.opIn_r(k);
-    }
-    void opIndexAssign(V value, K k)
-    {
-        if(imp_ is null)
-            imp_ = new HashMapClass();
-        imp_.assignNoRehashCheck(k, value);
-        imp_.rehash();
-    }
-
-    void clear()
-    {
-        if(imp_ !is null)
-            imp_.free();
-    }
-    void detach()
-    {
-        imp_ = null;
-    }
-    bool remove(K k)
-    {
-        if(imp_ is null)
-            return false;
-        V val;
-
-        return imp_.remove(k, val);
-    }
-
-    bool remove(K k, ref V value)
-    {
-        if(imp_ is null)
-            return false;
-        return imp_.remove(k, value);
-    }
-    @property
-    K[] keys()
-    {
-        if(imp_ is null)
-            return null;
-        return imp_.keys();
-    }
-
-    @property aard allocate()
-    {
-        aard newAA;
-
-        newAA.imp_ = new HashMapClass();
-
-        return newAA;
-    }
-    @property void loadRatio(double cap)
-    {
-        // dummy
-    }
-    @property void capacity(size_t cap)
-    {
-        // dummy
-    }
-
-    @property
-    V[] values()
-    {
-        if(imp_ is null)
-            return null;
-        return imp_.values();
-    }
-
-    V get(K k)
-    {
-        V* p = opIn_r(k);
-        if(p !is null)
-        {
-            return *p;
-        }
-        return V.init;
-    }
-
-    bool get(K k, ref V val)
-    {
-        if(imp_ !is null)
-        {
-            V* p = opIn_r(k);
-            if(p !is null)
-            {
-                val = *p;
-                return true;
-            }
-        }
-        val = V.init;
-        return false;
-    }
-
-    @property size_t length()
-    {
-        if(imp_ is null)
-            return 0;
-        return imp_._length;
-    }
-
-
-    public int opApply(int delegate(ref V value) dg)
-    {
-        return (imp_ !is null) ? imp_.opApply(dg) : 0;
-    }
-
-    public int opApply(int delegate(ref K key, ref V value) dg)
-    {
-        return (imp_ !is null) ? imp_.opApply(dg) : 0;
-    }
-}
-+/
-
 

@@ -19,14 +19,14 @@ module dmdscript.dnumber;
 
 import std.math;
 
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.dfunction;
-import dmdscript.value;
-import dmdscript.text;
-import dmdscript.property;
+import dmdscript.primitive;
+import dmdscript.script : CallContext;
+import dmdscript.dobject : Dobject;
+import dmdscript.dfunction : Dconstructor;
+import dmdscript.value : Value, DError;
+import dmdscript.key : Key;
 import dmdscript.errmsgs;
-import dmdscript.dnative;
+import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
 
 /* ===================== Dnumber_constructor ==================== */
 
@@ -34,25 +34,27 @@ class DnumberConstructor : Dconstructor
 {
     this()
     {
+        import dmdscript.property : Property;
+
         super(Key.Number, 1, Dfunction.getPrototype);
         auto attributes =
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly;
 
-        DefineOwnProperty(Key.MAX_VALUE, d_number.max, attributes);
-        DefineOwnProperty(Key.MIN_VALUE, d_number.min_normal*d_number.epsilon,
+        DefineOwnProperty(Key.MAX_VALUE, double.max, attributes);
+        DefineOwnProperty(Key.MIN_VALUE, double.min_normal*double.epsilon,
             attributes);
-        DefineOwnProperty(Key.NaN, d_number.nan, attributes);
-        DefineOwnProperty(Key.NEGATIVE_INFINITY, -d_number.infinity, attributes);
-        DefineOwnProperty(Key.POSITIVE_INFINITY, d_number.infinity, attributes);
+        DefineOwnProperty(Key.NaN, double.nan, attributes);
+        DefineOwnProperty(Key.NEGATIVE_INFINITY, -double.infinity, attributes);
+        DefineOwnProperty(Key.POSITIVE_INFINITY, double.infinity, attributes);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.7.2
-        d_number n;
+        double n;
         Dobject o;
 
         n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
@@ -65,7 +67,7 @@ class DnumberConstructor : Dconstructor
                           Value[] arglist)
     {
         // ECMA 15.7.1
-        d_number n;
+        double n;
 
         n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
         ret.put(n);
@@ -75,13 +77,13 @@ class DnumberConstructor : Dconstructor
 
 
 /* ===================== Dnumber_prototype_toString =============== */
-
+@DnativeFunctionDescriptor(Key.toString, 1)
 DError* Dnumber_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.2
-    d_string s;
+    tstring s;
 
     // othis must be a Number
     if (auto dn = cast(Dnumber)othis)
@@ -92,7 +94,7 @@ DError* Dnumber_prototype_toString(
 
         if(arglist.length)
         {
-            d_number radix;
+            double radix;
 
             radix = arglist[0].toNumber(cc);
             if(radix == 10.0 || arglist[0].isUndefined())
@@ -122,7 +124,7 @@ DError* Dnumber_prototype_toString(
 }
 
 /* ===================== Dnumber_prototype_toLocaleString =============== */
-
+@DnativeFunctionDescriptor(Key.toLocaleString, 1)
 DError* Dnumber_prototype_toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -143,7 +145,7 @@ DError* Dnumber_prototype_toLocaleString(
 }
 
 /* ===================== Dnumber_prototype_valueOf =============== */
-
+@DnativeFunctionDescriptor(Key.valueOf, 0)
 DError* Dnumber_prototype_valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -168,7 +170,7 @@ const int FIXED_DIGITS = 20;    // ECMA says >= 20
 
 // power of tens array, indexed by power
 
-static d_number[FIXED_DIGITS + 1] tens =
+static double[FIXED_DIGITS + 1] tens =
 [
     1, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9,
     1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
@@ -184,7 +186,7 @@ static d_number[FIXED_DIGITS + 1] tens =
  * is larger.
  */
 
-number_t deconstruct_real(d_number x, int f, out int pe)
+number_t deconstruct_real(double x, int f, out int pe)
 {
     number_t n;
     int e;
@@ -203,7 +205,7 @@ number_t deconstruct_real(d_number x, int f, out int pe)
 }
 
 /* ===================== Dnumber_prototype_toFixed =============== */
-
+@DnativeFunctionDescriptor(Key.toFixed, 1)
 DError* Dnumber_prototype_toFixed(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -214,9 +216,9 @@ DError* Dnumber_prototype_toFixed(
 
     // ECMA v3 15.7.4.5
     Value* v;
-    d_number x;
-    d_number fractionDigits;
-    d_string result;
+    double x;
+    double fractionDigits;
+    tstring result;
     int dup;
 
     if(arglist.length)
@@ -259,7 +261,7 @@ DError* Dnumber_prototype_toFixed(
         {
             number_t n;
             tchar[32 + 1] buffer;
-            d_number tenf;
+            double tenf;
             int f;
 
             f = cast(int)fractionDigits;
@@ -327,7 +329,7 @@ DError* Dnumber_prototype_toFixed(
 }
 
 /* ===================== Dnumber_prototype_toExponential =============== */
-
+@DnativeFunctionDescriptor(Key.toExponential, 1)
 DError* Dnumber_prototype_toExponential(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -338,9 +340,9 @@ DError* Dnumber_prototype_toExponential(
     // ECMA v3 15.7.4.6
     Value* varg;
     Value* v;
-    d_number x;
-    d_number fractionDigits;
-    d_string result;
+    double x;
+    double fractionDigits;
+    tstring result;
 
     if(arglist.length)
     {
@@ -454,7 +456,7 @@ DError* Dnumber_prototype_toExponential(
             }
 
             // result = sign + m + "e" + c + e;
-            d_string c = (e >= 0) ? "+" : "";
+            tstring c = (e >= 0) ? "+" : "";
 
             result = format("%s%se%s%d", sign ? "-" : "", m, c, e);
         }
@@ -465,20 +467,21 @@ DError* Dnumber_prototype_toExponential(
 }
 
 /* ===================== Dnumber_prototype_toPrecision =============== */
-
+@DnativeFunctionDescriptor(Key.toPrecision, 1)
 DError* Dnumber_prototype_toPrecision(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
+    import dmdscript.value : vundefined;
 
     // ECMA v3 15.7.4.7
     Value* varg;
     Value* v;
-    d_number x;
-    d_number precision;
-    d_string result;
+    double x;
+    double precision;
+    tstring result;
 
     v = &othis.value;
     x = v.toNumber(cc);
@@ -543,7 +546,7 @@ DError* Dnumber_prototype_toPrecision(
                 if(e < -6 || e >= p)
                 {
                     // result = sign + m[0] + "." + m[1 .. p] + "e" + c + e;
-                    d_string c = (e >= 0) ? "+" : "";
+                    tstring c = (e >= 0) ? "+" : "";
                     result = format("%s%s.%se%s%d",
                                                (sign ? "-" : ""), m[0], m[1 .. $], c, e);
                     goto Ldone;
@@ -605,6 +608,7 @@ DError* Dnumber_prototype_toPrecision(
 
 /* ===================== Dnumber_prototype ==================== */
 
+/*
 class DnumberPrototype : Dnumber
 {
     this()
@@ -630,13 +634,15 @@ class DnumberPrototype : Dnumber
         DnativeFunction.initialize(this, nfd, attributes);
     }
 }
-
+//*/
 
 /* ===================== Dnumber ==================== */
 
 class Dnumber : Dobject
 {
-    this(d_number n)
+    import dmdscript.dobject : Initializer;
+
+    this(double n)
     {
         super(getPrototype, Key.Number);
         value.put(n);
@@ -648,6 +654,8 @@ class Dnumber : Dobject
         value.put(0);
     }
 
+    mixin Initializer!DnumberConstructor;
+/*
 static:
     Dfunction getConstructor()
     {
@@ -672,6 +680,7 @@ static:
 private:
     Dfunction _constructor;
     Dobject _prototype;
+//*/
 }
 
 

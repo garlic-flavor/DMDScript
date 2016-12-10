@@ -17,14 +17,14 @@
 
 module dmdscript.dboolean;
 
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.value;
-import dmdscript.dfunction;
-import dmdscript.text;
-import dmdscript.property;
+import dmdscript.primitive;
+import dmdscript.script : CallContext;
+import dmdscript.dobject : Dobject;
+import dmdscript.value : DError, Value;
+import dmdscript.dfunction : Dconstructor;
+import dmdscript.key : Key;
 import dmdscript.errmsgs;
-import dmdscript.dnative;
+import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
 
 /* ===================== Dboolean_constructor ==================== */
 
@@ -39,7 +39,7 @@ class DbooleanConstructor : Dconstructor
                                Value[] arglist)
     {
         // ECMA 15.6.2
-        d_boolean b;
+        bool b;
         Dobject o;
 
         b = (arglist.length) ? arglist[0].toBoolean() : false;
@@ -52,7 +52,7 @@ class DbooleanConstructor : Dconstructor
                           Value[] arglist)
     {
         // ECMA 15.6.1
-        d_boolean b;
+        bool b;
 
         b = (arglist.length) ? arglist[0].toBoolean() : false;
         ret.put(b);
@@ -62,7 +62,7 @@ class DbooleanConstructor : Dconstructor
 
 
 /* ===================== Dboolean_prototype_toString =============== */
-
+@DnativeFunctionDescriptor(Key.toString, 0)
 DError* Dboolean_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -81,7 +81,7 @@ DError* Dboolean_prototype_toString(
 }
 
 /* ===================== Dboolean_prototype_valueOf =============== */
-
+@DnativeFunctionDescriptor(Key.valueOf, 0)
 DError* Dboolean_prototype_valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
@@ -103,7 +103,7 @@ DError* Dboolean_prototype_valueOf(
 }
 
 /* ===================== Dboolean_prototype ==================== */
-
+/*
 class DbooleanPrototype : Dboolean
 {
     this()
@@ -123,13 +123,15 @@ class DbooleanPrototype : Dboolean
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
     }
 }
-
+//*/
 
 /* ===================== Dboolean ==================== */
 
 class Dboolean : Dobject
 {
-    this(d_boolean b)
+    import dmdscript.dobject : Initializer;
+
+    this(bool b)
     {
         super(Dboolean.getPrototype, Key.Boolean);
         value.put(b);
@@ -141,6 +143,8 @@ class Dboolean : Dobject
         value.put(false);
     }
 
+    mixin Initializer!DbooleanConstructor;
+/*
 static:
     Dfunction getConstructor()
     {
@@ -165,6 +169,7 @@ static:
 private:
     Dfunction _constructor;
     Dobject _prototype;
+//*/
 }
 
 

@@ -20,77 +20,77 @@ module dmdscript.dmath;
 import std.math;
 import std.random;
 
-import dmdscript.script;
-import dmdscript.value;
-import dmdscript.dobject;
-import dmdscript.dnative;
-import dmdscript.text;
-import dmdscript.property;
+import dmdscript.script : CallContext;
+import dmdscript.value : DError, Value, vundefined;
+import dmdscript.dobject : Dobject;
+import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor,
+    DnativeVariableDescriptor;
+import dmdscript.key : Key;
 
-d_number math_helper(ref CallContext cc, Value[] arglist)
+double math_helper(ref CallContext cc, Value[] arglist)
 {
     Value *v;
 
     v = arglist.length ? &arglist[0] : &vundefined;
     return v.toNumber(cc);
 }
-
+@DnativeFunctionDescriptor(Key.abs, 1)
 DError* Dmath_abs(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.1
-    d_number result;
+    double result;
 
     result = fabs(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.acos, 1)
 DError* Dmath_acos(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.2
-    d_number result;
+    double result;
 
     result = acos(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.asin, 1)
 DError* Dmath_asin(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.3
-    d_number result;
+    double result;
 
     result = asin(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.atan, 1)
 DError* Dmath_atan(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.4
-    d_number result;
+    double result;
 
     result = atan(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.atan2, 2)
 DError* Dmath_atan2(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.5
-    d_number n1;
+    double n1;
     Value* v2;
-    d_number result;
+    double result;
 
     n1 = math_helper(cc, arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
@@ -98,83 +98,84 @@ DError* Dmath_atan2(
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.ceil, 1)
 DError* Dmath_ceil(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.6
-    d_number result;
+    double result;
 
     result = ceil(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
 
+@DnativeFunctionDescriptor(Key.cos, 1)
 DError* Dmath_cos(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.7
-    d_number result;
+    double result;
 
     result = cos(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.exp, 1)
 DError* Dmath_exp(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.8
-    d_number result;
+    double result;
 
     result = std.math.exp(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.floor, 1)
 DError* Dmath_floor(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.9
-    d_number result;
+    double result;
 
     result = std.math.floor(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.log, 1)
 DError* Dmath_log(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.10
-    d_number result;
+    double result;
 
     result = log(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.max, 2)
 DError* Dmath_max(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.8.2.11
-    d_number n;
-    d_number result;
+    double n;
+    double result;
     uint a;
 
-    result = -d_number.infinity;
+    result = -double.infinity;
     foreach(Value v; arglist)
     {
         n = v.toNumber(cc);
         if(isNaN(n))
         {
-            result = d_number.nan;
+            result = double.nan;
             break;
         }
         if(result == n)
@@ -189,23 +190,23 @@ DError* Dmath_max(
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.min, 2)
 DError* Dmath_min(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.8.2.12
-    d_number n;
-    d_number result;
+    double n;
+    double result;
     uint a;
 
-    result = d_number.infinity;
+    result = double.infinity;
     foreach(Value v; arglist)
     {
         n = v.toNumber(cc);
         if(isNaN(n))
         {
-            result = d_number.nan;
+            result = double.nan;
             break;
         }
         if(result == n)
@@ -220,15 +221,15 @@ DError* Dmath_min(
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.pow, 2)
 DError* Dmath_pow(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.13
-    d_number n1;
+    double n1;
     Value *v2;
-    d_number result;
+    double result;
 
     n1 = math_helper(cc, arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
@@ -236,14 +237,14 @@ DError* Dmath_pow(
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.random, 0)
 DError* Dmath_random(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.14
     // 0.0 <= result < 1.0
-    d_number result;
+    double result;
     //+++ old random +++
     version(none)
     {
@@ -266,13 +267,13 @@ DError* Dmath_random(
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.round, 1)
 DError* Dmath_round(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.15
-    d_number result;
+    double result;
 
     result = math_helper(cc, arglist);
     if(!isNaN(result))
@@ -280,42 +281,51 @@ DError* Dmath_round(
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.sin, 1)
 DError* Dmath_sin(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.16
-    d_number result;
+    double result;
 
     result = sin(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.sqrt, 1)
 DError* Dmath_sqrt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.17
-    d_number result;
+    double result;
 
     result = sqrt(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-
+@DnativeFunctionDescriptor(Key.tan, 1)
 DError* Dmath_tan(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.18
-    d_number result;
+    double result;
 
     result = tan(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
+
+@DnativeVariableDescriptor(Key.E) immutable E = std.math.E;
+@DnativeVariableDescriptor(Key.LN10) immutable LN10 = std.math.LN10;
+@DnativeVariableDescriptor(Key.LN2) immutable LN2 = std.math.LN2;
+@DnativeVariableDescriptor(Key.LOG2E) immutable LOG2E = std.math.LOG2E;
+@DnativeVariableDescriptor(Key.LOG10E) immutable LOG10E = std.math.LOG10E;
+@DnativeVariableDescriptor(Key.PI) immutable PI = std.math.PI;
+@DnativeVariableDescriptor(Key.SQRT1_2) immutable SQRT1_2 = std.math.SQRT1_2;
+@DnativeVariableDescriptor(Key.SQRT2) immutable SQRT2 = std.math.SQRT2;
 
 /* ===================== Dmath ==================== */
 
@@ -323,40 +333,42 @@ class Dmath : Dobject
 {
     this()
     {
+        import dmdscript.property : Property;
+
         super(Dobject.getPrototype, Key.Math);
 
         //writef("Dmath::Dmath(%x)\n", this);
-        auto attributes =
+        enum attributes =
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly;
 
-        struct MathConst
-        {
-            StringKey name;
-            d_number  value;
-        }
+        // struct MathConst
+        // {
+        //     Key name;
+        //     double  value;
+        // }
 
-        static enum MathConst[] table =
-        [
-            { Key.E, std.math.E },
-            { Key.LN10, std.math.LN10 },
-            { Key.LN2, std.math.LN2 },
-            { Key.LOG2E, std.math.LOG2E },
-            { Key.LOG10E, std.math.LOG10E },
-            { Key.PI, std.math.PI },
-            { Key.SQRT1_2, std.math.SQRT1_2 },
-            { Key.SQRT2, std.math.SQRT2 },
-        ];
+        // enum MathConst[] Table =
+        // [
+        //     { Key.E, std.math.E },
+        //     { Key.LN10, std.math.LN10 },
+        //     { Key.LN2, std.math.LN2 },
+        //     { Key.LOG2E, std.math.LOG2E },
+        //     { Key.LOG10E, std.math.LOG10E },
+        //     { Key.PI, std.math.PI },
+        //     { Key.SQRT1_2, std.math.SQRT1_2 },
+        //     { Key.SQRT2, std.math.SQRT2 },
+        // ];
 
-        for(size_t u = 0; u < table.length; u++)
-        {
-            // DError* v;
+        // foreach(one; Table)
+        // {
+        //     DefineOwnProperty(one.name, one.value, attributes);
+        // }
 
-            /*v =*/ DefineOwnProperty(table[u].name, table[u].value, attributes);
-            //writef("Put(%s,%.5g) = %x\n", *table[u].name, table[u].value, v);
-        }
+        DnativeVariableDescriptor.install!(mixin(__MODULE__))(this, attributes);
 
+/*
         static enum NativeFunctionData[] nfd =
         [
             { Key.abs, &Dmath_abs, 1 },
@@ -380,6 +392,8 @@ class Dmath : Dobject
         ];
 
         DnativeFunction.initialize(this, nfd, attributes);
+//*/
+        DnativeFunctionDescriptor.install!(mixin(__MODULE__))(this, attributes);
     }
 
 static:
@@ -388,7 +402,7 @@ static:
         object = new Dmath();
     }
 
-package:
+package static:
     Dmath object;
 }
 

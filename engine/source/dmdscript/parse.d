@@ -18,6 +18,7 @@
 
 module dmdscript.parse;
 
+import dmdscript.primitive;
 import dmdscript.script;
 import dmdscript.lexer;
 import dmdscript.functiondefinition;
@@ -26,12 +27,13 @@ import dmdscript.statement;
 import dmdscript.identifier;
 import dmdscript.ir;
 import dmdscript.errmsgs;
+import dmdscript.exception;
 
 class Parser : Lexer
 {
     FunctionDefinition lastnamedfunc;
 
-    this(d_string sourcename, d_string base, UseStringtable useStringtable)
+    this(tstring sourcename, tstring base, UseStringtable useStringtable)
     {
         //writefln("Parser.this(base = '%s')", base);
         super(sourcename, base, useStringtable);
@@ -42,7 +44,7 @@ class Parser : Lexer
     /**********************************************
      */
     static ScriptException parseFunctionDefinition(
-        out FunctionDefinition pfd, d_string params, d_string bdy)
+        out FunctionDefinition pfd, tstring params, tstring bdy)
     {
         import std.array : Appender;
         Parser p;
@@ -166,7 +168,7 @@ private:
         TopStatement[] topstatements;
         FunctionDefinition f;
         Expression e = null;
-        Loc loc;
+        line_number loc;
 
         //writef("parseFunction()\n");
         loc = currentline;
@@ -263,7 +265,7 @@ private:
     {
         Statement s;
         Token* t;
-        Loc loc;
+        line_number loc;
 
         //writefln("parseStatement()");
         loc = currentline;
@@ -712,7 +714,7 @@ private:
     Expression parsePrimaryExp(int innew)
     {
         Expression e;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         switch(token.value)
@@ -832,7 +834,7 @@ private:
         import std.array : Appender;
         Expression e;
         Appender!(Expression[]) elements;
-        Loc loc;
+        line_number loc;
 
         //writef("parseArrayLiteral()\n");
         loc = currentline;
@@ -872,7 +874,7 @@ private:
         import std.array : Appender;
         Expression e;
         Appender!(Field[]) fields;
-        Loc loc;
+        line_number loc;
 
         //writef("parseObjectLiteral()\n");
         loc = currentline;
@@ -914,7 +916,7 @@ private:
     Expression parseFunctionLiteral()
     {
         FunctionDefinition f;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         f = cast(FunctionDefinition)parseFunction(ParseFlag.literal);
@@ -923,12 +925,12 @@ private:
 
     Expression parsePostExp(Expression e, int innew)
     {
-        Loc loc;
+        line_number loc;
 
         for(;; )
         {
             loc = currentline;
-            //loc = (Loc)token.ptr;
+            //loc = (line_number)token.ptr;
             switch(token.value)
             {
             case Tok.Dot:
@@ -994,7 +996,7 @@ private:
     Expression parseUnaryExp()
     {
         Expression e;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         switch(token.value)
@@ -1064,7 +1066,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseUnaryExp();
@@ -1106,7 +1108,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseMulExp();
@@ -1138,7 +1140,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseAddExp();
@@ -1171,7 +1173,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseShiftExp();
@@ -1219,7 +1221,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseRelExp();
@@ -1253,7 +1255,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseEqualExp();
@@ -1270,7 +1272,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseAndExp();
@@ -1287,7 +1289,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseXorExp();
@@ -1304,7 +1306,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseOrExp();
@@ -1321,7 +1323,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseAndAndExp();
@@ -1339,7 +1341,7 @@ private:
         Expression e;
         Expression e1;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseOrOrExp();
@@ -1358,7 +1360,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
 
         loc = currentline;
         e = parseCondExp();
@@ -1409,7 +1411,7 @@ private:
     {
         Expression e;
         Expression e2;
-        Loc loc;
+        line_number loc;
         Flag flags_save;
 
         //writefln("Parser.parseExpression()");

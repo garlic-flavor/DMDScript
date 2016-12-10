@@ -18,7 +18,7 @@
 
 module dmdscript.identifier;
 
-import dmdscript.script;
+import dmdscript.primitive;
 import dmdscript.value;
 
 /* An Identifier is a special case of a Value - it is a V_STRING
@@ -30,7 +30,7 @@ struct Identifier
     Value value;
 
     @trusted @nogc pure nothrow
-    d_string toString() const
+    tstring toString() const
     {
         return value.text;
     }
@@ -42,7 +42,7 @@ struct Identifier
     }
 
     @trusted
-    static Identifier* build(d_string s)
+    static Identifier* build(tstring s)
     {
         Identifier* id = new Identifier;
         id.value.put(s);
