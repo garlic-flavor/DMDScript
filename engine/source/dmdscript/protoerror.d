@@ -18,7 +18,7 @@
 
 module dmdscript.protoerror;
 
-import dmdscript.primitive;
+import dmdscript.primitive : Key;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dfunction;
 
@@ -28,8 +28,10 @@ import dmdscript.dfunction : Dfunction;
 
 private class D0_constructor : Dfunction
 {
-    import dmdscript.script : CallContext;
-    import dmdscript.value : DError, Value, vundefined;
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.value : DError, Value;
+    import dmdscript.dglobal : undefined;
+    import dmdscript.primitive : tstring;
 
     tstring text_d1;
     Dobject function(tstring) newD0;
@@ -49,7 +51,7 @@ private class D0_constructor : Dfunction
         Dobject o;
         tstring s;
 
-        m = (arglist.length) ? &arglist[0] : &vundefined;
+        m = (arglist.length) ? &arglist[0] : &undefined;
         // ECMA doesn't say what we do if m is undefined
         if(m.isUndefined())
             s = text_d1;
@@ -71,6 +73,7 @@ private class D0_constructor : Dfunction
 
 package class D0base : Dobject
 {
+    import dmdscript.primitive : tstring;
     import dmdscript.exception : ScriptException;
 
     ScriptException exception;
@@ -201,7 +204,6 @@ private static:
     }
 }
 // }
-import dmdscript.key : Key;
 alias syntaxerror = D0!(Key.SyntaxError);
 alias evalerror = D0!(Key.EvalError);
 alias referenceerror = D0!(Key.ReferenceError);

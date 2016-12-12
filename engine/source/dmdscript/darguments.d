@@ -18,13 +18,7 @@
 
 module dmdscript.darguments;
 
-import dmdscript.primitive;
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.identifier;
-import dmdscript.value;
-import dmdscript.key;
-import dmdscript.property;
+import dmdscript.dobject : Dobject;
 
 // The purpose of Darguments is to implement "value sharing"
 // per ECMA 10.1.8 between the activation object and the
@@ -34,13 +28,20 @@ import dmdscript.property;
 
 class Darguments : Dobject
 {
+    import dmdscript.primitive : StringKey, tstring;
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.value : Value, DError;
+    import dmdscript.property : Property;
+
     Dobject actobj;             // activation object
-    Identifier*[] parameters;
+    StringKey*[] parameters;
 
     this(Dobject caller, Dobject callee, Dobject actobj,
-         Identifier*[] parameters, Value[] arglist)
+         StringKey*[] parameters, Value[] arglist)
 
     {
+        import dmdscript.primitive : Key;
+
         super(Dobject.getPrototype());
 
         this.actobj = actobj;
@@ -50,7 +51,7 @@ class Darguments : Dobject
         if(caller)
             Set(Key.caller, caller, Property.Attribute.DontEnum, cc);
         else
-            Set(Key.caller, vnull, Property.Attribute.DontEnum, cc);
+            Set(Key.caller, Value.Type.Null, Property.Attribute.DontEnum, cc);
 
         Set(Key.callee, callee, Property.Attribute.DontEnum, cc);
         Set(Key.length, arglist.length, Property.Attribute.DontEnum, cc);
@@ -64,6 +65,8 @@ class Darguments : Dobject
     override protected
     Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
     {
+        import dmdscript.primitive : StringToIndex;
+
         uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
@@ -82,6 +85,8 @@ class Darguments : Dobject
     DError* SetImpl(in ref StringKey PropertyName, ref Value value,
                     in Property.Attribute attributes, ref CallContext cc)
     {
+        import dmdscript.primitive : StringToIndex;
+
         uint index;
 
         if(StringToIndex(PropertyName, index) && index < parameters.length)
@@ -102,6 +107,8 @@ class Darguments : Dobject
 
     override int CanPut(in tstring PropertyName)
     {
+        import dmdscript.primitive : StringToIndex;
+
         uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
@@ -111,6 +118,8 @@ class Darguments : Dobject
 
     override bool HasProperty(in tstring PropertyName)
     {
+        import dmdscript.primitive : StringToIndex;
+
         uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
@@ -120,6 +129,8 @@ class Darguments : Dobject
 
     override bool Delete(in StringKey PropertyName)
     {
+        import dmdscript.primitive : StringToIndex;
+
         uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)

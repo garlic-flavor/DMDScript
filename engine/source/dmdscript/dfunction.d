@@ -19,275 +19,14 @@
 module dmdscript.dfunction;
 
 import dmdscript.primitive;
-import dmdscript.script : CallContext;
+import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : DError, Value;
-import dmdscript.key : Key;
 import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
 
-/* ===================== Dfunction_constructor ==================== */
-
-class DfunctionConstructor : Dconstructor
-{
-    this()
-    {
-        super(1, Dfunction.getPrototype);
-
-        // Actually put in later by Dfunction::initialize()
-        //unsigned attributes = DontEnum | DontDelete | ReadOnly;
-        //Put(TEXT_prototype, Dfunction::getPrototype(), attributes);
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        import dmdscript.functiondefinition : FunctionDefinition;
-        import dmdscript.exception : ScriptException;
-        import dmdscript.parse : Parser;
-        import dmdscript.scopex : Scope;
-        import dmdscript.ddeclaredfunction : DdeclaredFunction;
-        import dmdscript.protoerror;
-
-        // ECMA 15.3.2.1
-        tstring bdy;
-        tstring P;
-        FunctionDefinition fd;
-        ScriptException exception;
-
-        //writef("Dfunction_constructor::Construct()\n");
-
-        // Get parameter list (P) and body from arglist[]
-        if(arglist.length)
-        {
-            bdy = arglist[arglist.length - 1].toString();
-            if(arglist.length >= 2)
-            {
-                for(uint a = 0; a < arglist.length - 1; a++)
-                {
-                    if(a)
-                        P ~= ',';
-                    P ~= arglist[a].toString();
-                }
-            }
-        }
-
-        if((exception = Parser.parseFunctionDefinition(fd, P, bdy)) !is null)
-            goto Lsyntaxerror;
-
-        if(fd)
-        {
-            Scope sc;
-
-            sc.ctor(fd);
-            fd.semantic(&sc);
-            exception = sc.exception;
-            if(exception !is null)
-                goto Lsyntaxerror;
-            fd.toIR(null);
-            Dfunction fobj = new DdeclaredFunction(fd);
-            assert(cc.scoperoot <= cc.scopex.length);
-            fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
-            ret.put(fobj);
-        }
-        else
-            ret.putVundefined();
-
-        return null;
-
-        Lsyntaxerror:
-        Dobject o;
-
-        ret.putVundefined();
-        o = new syntaxerror(exception);
-        auto v = new DError;
-        v.put(o);
-        return v;
-    }
-}
-
-
-/* ===================== Dfunction_prototype_toString =============== */
-@DnativeFunctionDescriptor(Key.toString, 0)
-DError* Dfunction_prototype_toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist)
-{
-    // othis must be a Function
-    if (auto f = cast(Dfunction)othis)
-    {
-        // Generate string that looks like a FunctionDeclaration
-        // FunctionDeclaration:
-        //	function Identifier (Identifier, ...) Block
-
-        // If anonymous function, the name should be "anonymous"
-        // per ECMA 15.3.2.1.19
-
-        auto s = f.toString;
-        ret.put(s);
-    }
-    else
-    {
-        ret.putVundefined();
-        return TsNotTransferrableError;
-    }
-    return null;
-}
-
-/* ===================== Dfunction_prototype_apply =============== */
-@DnativeFunctionDescriptor(Key.apply, 2)
-DError* Dfunction_prototype_apply(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist)
-{
-    // ECMA v3 15.3.4.3
-
-    import core.sys.posix.stdlib : alloca;
-    import dmdscript.darray : Darray;
-    import dmdscript.darguments : Darguments;
-    import dmdscript.value : vundefined;
-
-    Value* thisArg;
-    Value* argArray;
-    Dobject o;
-    DError* v;
-
-    thisArg = &vundefined;
-    argArray = &vundefined;
-    switch(arglist.length)
-    {
-    case 0:
-        break;
-    default:
-        argArray = &arglist[1];
-        goto case;
-    case 1:
-        thisArg = &arglist[0];
-        break;
-    }
-
-    if(thisArg.isUndefinedOrNull())
-        o = cc.global;
-    else
-        o = thisArg.toObject();
-
-    if(argArray.isUndefinedOrNull())
-    {
-        v = othis.Call(cc, o, ret, null);
-    }
-    else
-    {
-        if(argArray.isPrimitive())
-        {
-            Ltypeerror:
-            ret.putVundefined();
-            return ArrayArgsError;
-        }
-        Dobject a;
-
-        a = argArray.toObject();
-
-        // Must be array or arguments object
-        if(((cast(Darray)a) is null) && ((cast(Darguments)a) is null))
-            goto Ltypeerror;
-
-        uint len;
-        uint i;
-        Value[] alist;
-        Value* x;
-
-        x = a.Get(Key.length, cc);
-        len = x ? x.toUint32(cc) : 0;
-
-        Value[] p1;
-        Value* v1;
-        if(len < 128)
-            v1 = cast(Value*)alloca(len * Value.sizeof);
-        if(v1)
-            alist = v1[0 .. len];
-        else
-        {
-            p1 = new Value[len];
-            alist = p1;
-        }
-
-        for(i = 0; i < len; i++)
-        {
-            x = a.Get(i, cc);
-            alist[i] = *x;
-        }
-
-        v = othis.Call(cc, o, ret, alist);
-
-        delete p1;
-    }
-    return v;
-}
-
-/* ===================== Dfunction_prototype_call =============== */
-@DnativeFunctionDescriptor(Key.call, 1)
-DError* Dfunction_prototype_call(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist)
-{
-    // ECMA v3 15.3.4.4
-    Value* thisArg;
-    Dobject o;
-    DError* v;
-
-    if(arglist.length == 0)
-    {
-        o = cc.global;
-        v = othis.Call(cc, o, ret, arglist);
-    }
-    else
-    {
-        thisArg = &arglist[0];
-        if(thisArg.isUndefinedOrNull())
-            o = cc.global;
-        else
-            o = thisArg.toObject();
-        v = othis.Call(cc, o, ret, arglist[1 .. $]);
-    }
-    return v;
-}
-
-/* ===================== Dfunction_prototype ==================== */
-
-// class DfunctionPrototype : Dfunction
-// {
-//     this()
-//     {
-//         super(0, Dobject.getPrototype);
-
-//         auto attributes = Property.Attribute.DontEnum;
-
-//         name = "prototype";
-//         DefineOwnProperty(Key.constructor, Dfunction.getConstructor, attributes);
-
-//         static enum NativeFunctionData[] nfd =
-//         [
-//             { Key.toString, &Dfunction_prototype_toString, 0 },
-//             { Key.apply, &Dfunction_prototype_apply, 2 },
-//             { Key.call, &Dfunction_prototype_call, 1 },
-//         ];
-
-//         DnativeFunction.initialize(this, nfd, attributes);
-//     }
-
-//     override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
-//                           Value[] arglist)
-//     {
-//         // ECMA v3 15.3.4
-//         // Accept any arguments and return "undefined"
-//         ret.putVundefined();
-//         return null;
-//     }
-// }
-
-
-/* ===================== Dfunction ==================== */
-
+//==============================================================================
+///
 abstract class Dfunction : Dobject
 {
     import dmdscript.dobject : Initializer;
@@ -422,42 +161,9 @@ public static:
     }
 
     mixin Initializer!DfunctionConstructor;
-/*
-    //
-    @safe @nogc nothrow
-    Dfunction getConstructor()
-    {
-        return _constructor;
-    }
-
-    //
-    @safe @nogc nothrow
-    Dobject getPrototype()
-    {
-        return _prototype;
-    }
-
-    //
-    void initialize()
-    {
-        _prototype = new DfunctionPrototype();
-        _constructor = new DfunctionConstructor();
-
-        _constructor.DefineOwnProperty(Key.prototype, _prototype,
-                            Property.Attribute.DontEnum |
-                            Property.Attribute.DontDelete |
-                            Property.Attribute.ReadOnly);
-
-        // _constructor.SetPrototypeOf = _prototype;
-        // _constructor.proptable.previous = _prototype.proptable;
-    }
-private static:
-    Dfunction _constructor;
-    Dobject _prototype;
-*/
 }
 
-//
+//------------------------------------------------------------------------------
 abstract class Dconstructor : Dfunction
 {
     //
@@ -485,6 +191,233 @@ protected:
     {
         super(name, length, prototype);
     }
+}
+
+
+//==============================================================================
+private:
+
+//------------------------------------------------------------------------------
+class DfunctionConstructor : Dconstructor
+{
+    this()
+    {
+        super(1, Dfunction.getPrototype);
+    }
+
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        import dmdscript.functiondefinition : FunctionDefinition;
+        import dmdscript.exception : ScriptException;
+        import dmdscript.parse : Parser;
+        import dmdscript.scopex : Scope;
+        import dmdscript.ddeclaredfunction : DdeclaredFunction;
+        import dmdscript.protoerror;
+
+        // ECMA 15.3.2.1
+        tstring bdy;
+        tstring P;
+        FunctionDefinition fd;
+        ScriptException exception;
+
+        // Get parameter list (P) and body from arglist[]
+        if(arglist.length)
+        {
+            bdy = arglist[arglist.length - 1].toString();
+            if(arglist.length >= 2)
+            {
+                for(uint a = 0; a < arglist.length - 1; a++)
+                {
+                    if(a)
+                        P ~= ',';
+                    P ~= arglist[a].toString();
+                }
+            }
+        }
+
+        if((exception = Parser.parseFunctionDefinition(fd, P, bdy)) !is null)
+            goto Lsyntaxerror;
+
+        if(fd)
+        {
+            Scope sc;
+
+            sc.ctor(fd);
+            fd.semantic(&sc);
+            exception = sc.exception;
+            if(exception !is null)
+                goto Lsyntaxerror;
+            fd.toIR(null);
+            Dfunction fobj = new DdeclaredFunction(fd);
+            assert(cc.scoperoot <= cc.scopex.length);
+            fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
+            ret.put(fobj);
+        }
+        else
+            ret.putVundefined();
+
+        return null;
+
+        Lsyntaxerror:
+        Dobject o;
+
+        ret.putVundefined();
+        o = new syntaxerror(exception);
+        auto v = new DError;
+        v.put(o);
+        return v;
+    }
+}
+
+
+//------------------------------------------------------------------------------
+//
+@DnativeFunctionDescriptor(Key.toString, 0)
+DError* Dfunction_prototype_toString(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    // othis must be a Function
+    if (auto f = cast(Dfunction)othis)
+    {
+        // Generate string that looks like a FunctionDeclaration
+        // FunctionDeclaration:
+        //	function Identifier (Identifier, ...) Block
+
+        // If anonymous function, the name should be "anonymous"
+        // per ECMA 15.3.2.1.19
+
+        auto s = f.toString;
+        ret.put(s);
+    }
+    else
+    {
+        ret.putVundefined();
+        return TsNotTransferrableError;
+    }
+    return null;
+}
+
+//------------------------------------------------------------------------------
+//
+@DnativeFunctionDescriptor(Key.apply, 2)
+DError* Dfunction_prototype_apply(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    // ECMA v3 15.3.4.3
+
+    import core.sys.posix.stdlib : alloca;
+    import dmdscript.darray : Darray;
+    import dmdscript.darguments : Darguments;
+    import dmdscript.value : vundefined;
+    import dmdscript.dglobal : undefined;
+
+    Value* thisArg;
+    Value* argArray;
+    Dobject o;
+    DError* v;
+
+    thisArg = &undefined;
+    argArray = &undefined;
+    switch(arglist.length)
+    {
+    case 0:
+        break;
+    default:
+        argArray = &arglist[1];
+        goto case;
+    case 1:
+        thisArg = &arglist[0];
+        break;
+    }
+
+    if(thisArg.isUndefinedOrNull())
+        o = cc.global;
+    else
+        o = thisArg.toObject();
+
+    if(argArray.isUndefinedOrNull())
+    {
+        v = othis.Call(cc, o, ret, null);
+    }
+    else
+    {
+        if(argArray.isPrimitive())
+        {
+            Ltypeerror:
+            ret.putVundefined();
+            return ArrayArgsError;
+        }
+        Dobject a;
+
+        a = argArray.toObject();
+
+        // Must be array or arguments object
+        if(((cast(Darray)a) is null) && ((cast(Darguments)a) is null))
+            goto Ltypeerror;
+
+        uint len;
+        uint i;
+        Value[] alist;
+        Value* x;
+
+        x = a.Get(Key.length, cc);
+        len = x ? x.toUint32(cc) : 0;
+
+        Value[] p1;
+        Value* v1;
+        if(len < 128)
+            v1 = cast(Value*)alloca(len * Value.sizeof);
+        if(v1)
+            alist = v1[0 .. len];
+        else
+        {
+            p1 = new Value[len];
+            alist = p1;
+        }
+
+        for(i = 0; i < len; i++)
+        {
+            x = a.Get(i, cc);
+            alist[i] = *x;
+        }
+
+        v = othis.Call(cc, o, ret, alist);
+
+        delete p1;
+    }
+    return v;
+}
+
+//------------------------------------------------------------------------------
+//
+@DnativeFunctionDescriptor(Key.call, 1)
+DError* Dfunction_prototype_call(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    // ECMA v3 15.3.4.4
+    Value* thisArg;
+    Dobject o;
+    DError* v;
+
+    if(arglist.length == 0)
+    {
+        o = cc.global;
+        v = othis.Call(cc, o, ret, arglist);
+    }
+    else
+    {
+        thisArg = &arglist[0];
+        if(thisArg.isUndefinedOrNull())
+            o = cc.global;
+        else
+            o = thisArg.toObject();
+        v = othis.Call(cc, o, ret, arglist[1 .. $]);
+    }
+    return v;
 }
 
 

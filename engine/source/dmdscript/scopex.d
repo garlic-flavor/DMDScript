@@ -19,11 +19,10 @@
 module dmdscript.scopex;
 
 import dmdscript.primitive;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.program;
 import dmdscript.symbol;
 import dmdscript.functiondefinition;
-import dmdscript.identifier;
 import dmdscript.statement;
 import dmdscript.exception;
 struct Scope
@@ -146,7 +145,7 @@ struct Scope
     // }
 
     @safe pure nothrow
-    LabelSymbol searchLabel(Identifier* ident)
+    LabelSymbol searchLabel(StringKey* ident)
     {
         SymbolTable* st;
         LabelSymbol ls;

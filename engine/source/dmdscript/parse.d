@@ -19,12 +19,11 @@
 module dmdscript.parse;
 
 import dmdscript.primitive;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.lexer;
 import dmdscript.functiondefinition;
 import dmdscript.expression;
 import dmdscript.statement;
-import dmdscript.identifier;
 import dmdscript.ir;
 import dmdscript.errmsgs;
 import dmdscript.exception;
@@ -48,7 +47,7 @@ class Parser : Lexer
     {
         import std.array : Appender;
         Parser p;
-        Appender!(Identifier*[]) parameters;
+        Appender!(StringKey*[]) parameters;
         Appender!(TopStatement[]) topstatements;
         FunctionDefinition fd = null;
 
@@ -163,8 +162,8 @@ private:
     TopStatement parseFunction(ParseFlag flag)
     {
         import std.array : Appender;
-        Identifier* name;
-        Appender!(Identifier*[]) parameters;
+        StringKey* name;
+        Appender!(StringKey*[]) parameters;
         TopStatement[] topstatements;
         FunctionDefinition f;
         Expression e = null;
@@ -323,7 +322,7 @@ private:
         }
         case Tok.Var:
         {
-            Identifier *ident;
+            StringKey *ident;
             Expression init;
             VarDeclaration v;
             VarStatement vs;
@@ -526,7 +525,7 @@ private:
         }
         case Tok.Break:
         {
-            Identifier* ident;
+            StringKey* ident;
 
             nextToken();
             if(token.sawLineTerminator && token != Tok.Semicolon)
@@ -549,7 +548,7 @@ private:
         }
         case Tok.Continue:
         {
-            Identifier* ident;
+            StringKey* ident;
 
             nextToken();
             if(token.sawLineTerminator && token != Tok.Semicolon)
@@ -572,7 +571,7 @@ private:
         }
         case Tok.Goto:
         {
-            Identifier* ident;
+            StringKey* ident;
 
             nextToken();
             if(token != Tok.Identifier)
@@ -613,7 +612,7 @@ private:
         case Tok.Try:
         {
             Statement bdy;
-            Identifier* catchident;
+            StringKey* catchident;
             Statement catchbody;
             Statement finalbody;
 
@@ -885,14 +884,14 @@ private:
         {
             for(;; )
             {
-                Identifier* ident;
+                StringKey* ident;
                 switch(token.value)
                 {
                 case Tok.Identifier:
                     ident = token.ident;
                     break;
                 case Tok.String, Tok.Number, Tok.Real:
-                    ident = Identifier.build(token.toString);
+                    ident = StringKey.build(token.toString);
                     break;
                 default:
                     error(ExpectedIdentifierError);

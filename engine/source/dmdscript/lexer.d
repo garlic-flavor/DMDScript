@@ -21,8 +21,6 @@
 module dmdscript.lexer;
 
 import dmdscript.primitive;
-import dmdscript.key;
-import dmdscript.identifier;
 import dmdscript.scopex;
 import dmdscript.errmsgs;
 import dmdscript.exception;
@@ -132,7 +130,7 @@ struct Token
         number_t    intvalue;
         real_t      realvalue;
         tstring    str;
-        Identifier* ident;
+        StringKey* ident;
     };
 
     // static tstring[Tok.max+1] tochars;
@@ -187,6 +185,7 @@ protected:
     Token token;
     uint currentline;
     ScriptException exception;            // syntax error information
+    tstring base;             // pointer to start of buffer
 
     @trusted pure nothrow
     this(tstring sourcename, tstring base, UseStringtable useStringtable)
@@ -284,14 +283,11 @@ protected:
         p = token.ptr + 1;
     }
 
-protected:
-    tstring base;             // pointer to start of buffer
-
 private:
     Token* freelist;
 
     UseStringtable useStringtable;        // use for Identifiers
-    Identifier[tstring] stringtable;
+    StringKey[tstring] stringtable;
 
     tstring sourcename;       // for error message strings
     immutable(char)* end;      // past end of buffer
@@ -460,18 +456,17 @@ private:
                     return;
                 if(useStringtable == UseStringtable.Yes)
                 {     //Identifier* i = &stringtable[id];
-                    Identifier* i = id in stringtable;
+                    StringKey* i = id in stringtable;
                     if(!i)
                     {
-                        stringtable[id] = Identifier.init;
+                        stringtable[id] = StringKey.init;
                         i = id in stringtable;
                     }
-                    i.value.put(id);
-                    i.value.toHash();
+                    i.put(id);
                     t.ident = i;
                 }
                 else
-                    t.ident = Identifier.build(id);
+                    t.ident = StringKey.build(id);
                 t.value = Tok.Identifier;
                 return;
             }
@@ -1563,119 +1558,3 @@ tstring tochars(Tok tok)
     assert(0);
 }
 
-/+
-private enum string[] _tochars =
-[
-    // Keywords
-    Tok.Break: "break",
-    Tok.Case: "case",
-    Tok.Continue: "continue",
-    Tok.Default: "default",
-    Tok.Delete: "delete",
-    Tok.Do: "do",
-    Tok.Else: "else",
-    Tok.Export: "export",
-    Tok.False: "false",
-    Tok.For: "for",
-    Tok.Function: "function",
-    Tok.If: "if",
-    Tok.Import: "import",
-    Tok.In: "in",
-    Tok.New: "new",
-    Tok.Null: "null",
-    Tok.Return: "return",
-    Tok.Switch: "switch",
-    Tok.This: "this",
-    Tok.True: "true",
-    Tok.Typeof: "typeof",
-    Tok.Var: "var",
-    Tok.Void: "void",
-    Tok.While: "while",
-    Tok.With: "with",
-
-    Tok.Catch: "catch",
-    Tok.Class: "class",
-    Tok.Const: "const",
-    Tok.Debugger: "debugger",
-    Tok.Enum: "enum",
-    Tok.Extends: "extends",
-    Tok.Finally: "finally",
-    Tok.Super: "super",
-    Tok.Throw: "throw",
-    Tok.Try: "try",
-
-    Tok.Abstract: "abstract",
-    Tok.Boolean: "boolean",
-    Tok.Byte: "byte",
-    Tok.Char: "char",
-    Tok.Double: "double",
-    Tok.Final: "final",
-    Tok.Float: "float",
-    Tok.Goto: "goto",
-    Tok.Implements: "implements",
-    Tok.Instanceof: "instanceof",
-    Tok.Int: "int",
-    Tok.Interface: "interface",
-    Tok.Long: "long",
-    Tok.Native: "native",
-    Tok.Package: "package",
-    Tok.Private: "private",
-    Tok.Protected: "protected",
-    Tok.Public: "public",
-    Tok.Short: "short",
-    Tok.Static: "static",
-    Tok.Synchronized: "synchronized",
-    Tok.Transient: "transient",
-
-    //
-    Tok.reserved: "reserved",
-    Tok.Eof: "EOF",
-    Tok.Lbrace: "{",
-    Tok.Rbrace: "}",
-    Tok.Lparen: "(",
-    Tok.Rparen: "",
-    Tok.Lbracket: "[",
-    Tok.Rbracket: "]",
-    Tok.Colon: ":",
-    Tok.Semicolon: ";",
-    Tok.Comma: ",",
-    Tok.Or: "|",
-    Tok.Orass: "|=",
-    Tok.Xor: "^",
-    Tok.Xorass: "^=",
-    Tok.Assign: "=",
-    Tok.Less: "<",
-    Tok.Greater: ">",
-    Tok.Lessequal: "<=",
-    Tok.Greaterequal: ">=",
-    Tok.Equal: "==",
-    Tok.Notequal: "!=",
-    Tok.Identity: "===",
-    Tok.Nonidentity: "!==",
-    Tok.Shiftleft: "<<",
-    Tok.Shiftright: ">>",
-    Tok.Ushiftright: ">>>",
-    Tok.Plus: "+",
-    Tok.Plusass: "+=",
-    Tok.Minus: "-",
-    Tok.Minusass: "-=",
-    Tok.Multiply: "*",
-    Tok.Multiplyass: "*=",
-    Tok.Divide: "/",
-    Tok.Divideass: "/=",
-    Tok.Percent: "%",
-    Tok.Percentass: "%=",
-    Tok.And: "&",
-    Tok.Andass: "&=",
-    Tok.Dot: ".",
-    Tok.Question: "?",
-    Tok.Tilde: "~",
-    Tok.Not: "!",
-    Tok.Andand: "&&",
-    Tok.Oror: "||",
-    Tok.Plusplus: "++",
-    Tok.Minusminus: "--",
-    Tok.Call: "CALL",
-];
-debug static assert(_tochars.length == Tok.max+1);
-+/

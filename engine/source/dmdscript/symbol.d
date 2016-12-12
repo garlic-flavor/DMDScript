@@ -20,20 +20,14 @@ module dmdscript.symbol;
 
 debug import std.stdio;
 
-import dmdscript.primitive;
-import dmdscript.script;
-import dmdscript.identifier;
-import dmdscript.scopex;
-import dmdscript.statement;
-import dmdscript.irstate;
-import dmdscript.opcodes;
-import dmdscript.errmsgs;
-
-/****************************** Symbol ******************************/
-
+//------------------------------------------------------------------------------
+///
 class Symbol
 {
-    Identifier* ident;
+    import dmdscript.scopex : Scope;
+    import dmdscript.primitive : tchar, StringKey;
+
+    StringKey* ident;
 
     @safe @nogc pure nothrow
     this() const
@@ -41,7 +35,7 @@ class Symbol
     }
 
     @safe @nogc pure nothrow
-    this(Identifier* ident)
+    this(StringKey* ident)
     {
         this.ident = ident;
     }
@@ -51,7 +45,7 @@ class Symbol
         assert(0);
     }
 
-    Symbol search(Identifier* ident)
+    Symbol search(StringKey* ident)
     {
         assert(0);
         //error(DTEXT("%s.%s is undefined"),toString(), ident.toString());
@@ -82,18 +76,17 @@ class Symbol
 }
 
 
-
-
-/****************************** SymbolTable ******************************/
-
-// Table of Symbol's
+//------------------------------------------------------------------------------
+/// Table of Symbol's
 struct SymbolTable
 {
-    Symbol[Identifier*] members;
+    import dmdscript.primitive : StringKey;
+
+    Symbol[StringKey*] members;
 
     // Look up Identifier. Return Symbol if found, NULL if not.
     @safe @nogc pure nothrow
-    Symbol lookup(Identifier* ident)
+    Symbol lookup(StringKey* ident)
     {
         if (auto ps = ident in members)
             return *ps;
@@ -120,14 +113,17 @@ struct SymbolTable
     }
 }
 
-/****************************** LabelSymbol ******************************/
+//------------------------------------------------------------------------------
 class LabelSymbol : Symbol
 {
+    import dmdscript.primitive : line_number;
+    import dmdscript.statement : LabelStatement;
+
     line_number loc;
     LabelStatement statement;
 
     @safe @nogc pure nothrow
-    this(line_number loc, Identifier* ident, LabelStatement statement)
+    this(line_number loc, StringKey* ident, LabelStatement statement)
     {
         super(ident);
         this.loc = loc;

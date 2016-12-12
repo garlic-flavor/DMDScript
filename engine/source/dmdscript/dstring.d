@@ -18,18 +18,59 @@
 
 module dmdscript.dstring;
 
-import dmdscript.primitive;
-import dmdscript.script : CallContext;
+import dmdscript.primitive : Key, tstring;
+import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
-import dmdscript.value : Value, DError, vundefined;
+import dmdscript.value : Value, DError;
 import dmdscript.dfunction : Dconstructor;
-import dmdscript.key : Key;
 import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.dglobal : undefined;
 
 debug import std.stdio;
 
-/* ===================== Dstring_fromCharCode ==================== */
+//==============================================================================
+///
+class Dstring : Dobject
+{
+    import dmdscript.dobject : Initializer;
+    import dmdscript.property : Property;
+
+    this(tstring s)
+    {
+        import std.utf : toUCSindex;
+
+        super(getPrototype, Key.String);
+
+        CallContext cc;
+        Set(Key.length, toUCSindex(s, s.length),
+            Property.Attribute.DontEnum |
+            Property.Attribute.DontDelete |
+            Property.Attribute.ReadOnly, cc);
+        value.put(s);
+    }
+
+    this(Dobject prototype)
+    {
+        import dmdscript.primitive : Text;
+
+        super(prototype, Key.String);
+
+        CallContext cc;
+        Set(Key.length, 0,
+            Property.Attribute.DontEnum |
+            Property.Attribute.DontDelete |
+            Property.Attribute.ReadOnly, cc);
+        value.put(Text.Empty);
+    }
+
+    mixin Initializer!DstringConstructor;
+}
+
+//==============================================================================
+private:
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.fromCharCode, 1,
                            DnativeFunctionDescriptor.Type.Static)
 DError* Dstring_fromCharCode(
@@ -63,13 +104,11 @@ DError* Dstring_fromCharCode(
     return null;
 }
 
-/* ===================== Dstring_constructor ==================== */
-
+//------------------------------------------------------------------------------
 class DstringConstructor : Dconstructor
 {
     this()
     {
-        import dmdscript.dnative : NativeFunctionData;
         import dmdscript.property : Property;
 
         super(Key.String, 1, Dfunction.getPrototype);
@@ -77,12 +116,7 @@ class DstringConstructor : Dconstructor
         DnativeFunctionDescriptor.install!(mixin(__MODULE__))
             (this, Property.Attribute.None,
              DnativeFunctionDescriptor.Type.Static);
-        // enum NativeFunctionData[] nfd =
-        // [
-        //     { Key.fromCharCode, &Dstring_fromCharCode, 1 },
-        // ];
 
-        // DnativeFunction.initialize(this, nfd, Property.Attribute.None);
         debug
         {
             CallContext cc;
@@ -93,6 +127,8 @@ class DstringConstructor : Dconstructor
     override DError* Construct(ref CallContext cc, out Value ret,
                                Value[] arglist)
     {
+        import dmdscript.primitive : Text;
+
         // ECMA 15.5.2
         tstring s;
         Dobject o;
@@ -106,6 +142,8 @@ class DstringConstructor : Dconstructor
     override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
+        import dmdscript.primitive : Text;
+
         // ECMA 15.5.1
         tstring s;
 
@@ -115,8 +153,7 @@ class DstringConstructor : Dconstructor
     }
 }
 
-
-/* ===================== Dstring_prototype_toString =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toString, 0)
 DError* Dstring_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -136,7 +173,7 @@ DError* Dstring_prototype_toString(
     return null;
 }
 
-/* ===================== Dstring_prototype_valueOf =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.valueOf, 0)
 DError* Dstring_prototype_valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -158,13 +195,14 @@ DError* Dstring_prototype_valueOf(
     return null;
 }
 
-/* ===================== Dstring_prototype_charAt =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.charAt, 1)
 DError* Dstring_prototype_charAt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : stride;
+    import dmdscript.primitive : Text;
     // ECMA 15.5.4.4
 
     Value* v;
@@ -175,7 +213,7 @@ DError* Dstring_prototype_charAt(
 
     v = &othis.value;
     s = v.toString();
-    v = arglist.length ? &arglist[0] : &vundefined;
+    v = arglist.length ? &arglist[0] : &undefined;
     pos = cast(int)v.toInteger(cc);
 
     result = Text.Empty;
@@ -202,7 +240,7 @@ DError* Dstring_prototype_charAt(
     return null;
 }
 
-/* ===================== Dstring_prototype_charCodeAt ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.charCodeAt, 1)
 DError* Dstring_prototype_charCodeAt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -221,7 +259,7 @@ DError* Dstring_prototype_charCodeAt(
 
     v = &othis.value;
     s = v.toString();
-    v = arglist.length ? &arglist[0] : &vundefined;
+    v = arglist.length ? &arglist[0] : &undefined;
     pos = cast(int)v.toInteger(cc);
 
     result = double.nan;
@@ -249,7 +287,7 @@ DError* Dstring_prototype_charCodeAt(
     return null;
 }
 
-/* ===================== Dstring_prototype_concat ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.concat, 1)
 DError* Dstring_prototype_concat(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -268,7 +306,7 @@ DError* Dstring_prototype_concat(
     return null;
 }
 
-/* ===================== Dstring_prototype_indexOf ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.indexOf, 1)
 DError* Dstring_prototype_indexOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -295,8 +333,8 @@ DError* Dstring_prototype_indexOf(
     s = xx.toString();
     sUCSdim = toUCSindex(s, s.length);
 
-    v1 = arglist.length ? &arglist[0] : &vundefined;
-    v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
+    v1 = arglist.length ? &arglist[0] : &undefined;
+    v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
 
     searchString = v1.toString();
     pos = cast(int)v2.toInteger(cc);
@@ -320,7 +358,7 @@ DError* Dstring_prototype_indexOf(
     return null;
 }
 
-/* ===================== Dstring_prototype_lastIndexOf ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.lastIndexOf, 1)
 DError* Dstring_prototype_lastIndexOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -361,7 +399,7 @@ DError* Dstring_prototype_lastIndexOf(
     }
     sUCSdim = toUCSindex(s, s.length);
 
-    v1 = arglist.length ? &arglist[0] : &vundefined;
+    v1 = arglist.length ? &arglist[0] : &undefined;
     searchString = v1.toString();
     if(arglist.length >= 2)
     {
@@ -400,14 +438,12 @@ DError* Dstring_prototype_lastIndexOf(
     return null;
 }
 
-/* ===================== Dstring_prototype_localeCompare ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.localeCompare, 1)
 DError* Dstring_prototype_localeCompare(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.script : localeCompare;
-
     // ECMA v3 15.5.4.9
     tstring s1;
     tstring s2;
@@ -416,13 +452,20 @@ DError* Dstring_prototype_localeCompare(
 
     v = &othis.value;
     s1 = v.toString();
-    s2 = arglist.length ? arglist[0].toString() : vundefined.toString();
+    s2 = arglist.length ? arglist[0].toString() : undefined.toString();
     n = localeCompare(cc, s1, s2);
     ret.put(n);
     return null;
 }
 
-/* ===================== Dstring_prototype_match ============= */
+@safe @nogc pure nothrow
+int localeCompare(ref CallContext cc, tstring s1, tstring s2)
+{   // no locale support here
+    import std.string : cmp;
+    return cmp(s1, s2);
+}
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.match, 1)
 DError* Dstring_prototype_match(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -481,7 +524,7 @@ DError* Dstring_prototype_match(
     return null;
 }
 
-/* ===================== Dstring_prototype_replace ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.replace, 2)
 DError* Dstring_prototype_replace(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -513,8 +556,8 @@ DError* Dstring_prototype_replace(
 
     v = &othis.value;
     str = v.toString();
-    searchValue = (arglist.length >= 1) ? &arglist[0] : &vundefined;
-    replaceValue = (arglist.length >= 2) ? &arglist[1] : &vundefined;
+    searchValue = (arglist.length >= 1) ? &arglist[0] : &undefined;
+    replaceValue = (arglist.length >= 2) ? &arglist[1] : &undefined;
     r = Dregexp.isRegExp(searchValue);
     f = Dfunction.isFunction(replaceValue);
     if(r)
@@ -613,7 +656,7 @@ DError* Dstring_prototype_replace(
     return null;
 }
 
-/* ===================== Dstring_prototype_search ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.search, 1)
 DError* Dstring_prototype_search(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -641,7 +684,7 @@ DError* Dstring_prototype_search(
     return null;
 }
 
-/* ===================== Dstring_prototype_slice ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.slice, 2)
 DError* Dstring_prototype_slice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -707,13 +750,14 @@ DError* Dstring_prototype_slice(
 }
 
 
-/* ===================== Dstring_prototype_split ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.split, 2)
 DError* Dstring_prototype_split(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.stdc.string : memcmp;
+    import dmdscript.primitive : tchar;
     import dmdscript.dregexp : Dregexp, RegExp;
     import dmdscript.darray : Darray;
     import dmdscript.property : Property;
@@ -724,8 +768,8 @@ DError* Dstring_prototype_split(
     size_t p;
     size_t q;
     size_t e;
-    Value* separator = &vundefined;
-    Value* limit = &vundefined;
+    Value* separator = &undefined;
+    Value* limit = &undefined;
     Dregexp R;
     RegExp re;
     tstring rs;
@@ -862,8 +906,7 @@ DError* Dstring_prototype_split(
     return null;
 }
 
-
-/* ===================== Dstring_prototype_substr ============= */
+//------------------------------------------------------------------------------
 DError* dstring_substring(tstring s, size_t sUCSdim, double start,
                           double end, out Value ret)
 {
@@ -904,6 +947,7 @@ DError* dstring_substring(tstring s, size_t sUCSdim, double start,
     return null;
 }
 
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.substr, 2)
 DError* Dstring_prototype_substr(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -940,7 +984,7 @@ DError* Dstring_prototype_substr(
     return dstring_substring(s, sUCSdim, start, start + length, ret);
 }
 
-/* ===================== Dstring_prototype_substring ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.substring, 2)
 DError* Dstring_prototype_substring(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -971,8 +1015,7 @@ DError* Dstring_prototype_substring(
     return dstring_substring(s, sUCSdim, start, end, ret);
 }
 
-/* ===================== Dstring_prototype_toLowerCase ============= */
-
+//------------------------------------------------------------------------------
 enum CASE
 {
     Lower,
@@ -1009,6 +1052,8 @@ DError* tocase(Dobject othis, out Value ret, CASE caseflag)
     ret.put(s);
     return null;
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toLowerCase, 0)
 DError* Dstring_prototype_toLowerCase(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1021,7 +1066,7 @@ DError* Dstring_prototype_toLowerCase(
     return tocase(othis, ret, CASE.Lower);
 }
 
-/* ===================== Dstring_prototype_toLocaleLowerCase ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toLocaleLowerCase, 0)
 DError* Dstring_prototype_toLocaleLowerCase(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1033,7 +1078,7 @@ DError* Dstring_prototype_toLocaleLowerCase(
     return tocase(othis, ret, CASE.LocaleLower);
 }
 
-/* ===================== Dstring_prototype_toUpperCase ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toUpperCase, 0)
 DError* Dstring_prototype_toUpperCase(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1045,7 +1090,7 @@ DError* Dstring_prototype_toUpperCase(
     return tocase(othis, ret, CASE.Upper);
 }
 
-/* ===================== Dstring_prototype_toLocaleUpperCase ============= */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toLocaleUpperCase, 0)
 DError* Dstring_prototype_toLocaleUpperCase(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1056,8 +1101,7 @@ DError* Dstring_prototype_toLocaleUpperCase(
     return tocase(othis, ret, CASE.LocaleUpper);
 }
 
-/* ===================== Dstring_prototype_anchor ============= */
-
+//------------------------------------------------------------------------------
 DError* dstring_anchor(
     Dobject othis, out Value ret, tstring tag, tstring name, Value[] arglist)
 {
@@ -1067,7 +1111,7 @@ DError* dstring_anchor(
     //	<tag name="bar">foo</tag>
 
     tstring foo = othis.value.toString();
-    Value* va = arglist.length ? &arglist[0] : &vundefined;
+    Value* va = arglist.length ? &arglist[0] : &undefined;
     tstring bar = va.toString();
 
     tstring s;
@@ -1088,6 +1132,7 @@ DError* dstring_anchor(
     return null;
 }
 
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.anchor, 1)
 DError* Dstring_prototype_anchor(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1102,6 +1147,8 @@ DError* Dstring_prototype_anchor(
 
     return dstring_anchor(othis, ret, "A", "NAME", arglist);
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.fontcolor, 1)
 DError* Dstring_prototype_fontcolor(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1109,6 +1156,8 @@ DError* Dstring_prototype_fontcolor(
 {
     return dstring_anchor(othis, ret, "FONT", "COLOR", arglist);
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.fontsize, 1)
 DError* Dstring_prototype_fontsize(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1116,6 +1165,8 @@ DError* Dstring_prototype_fontsize(
 {
     return dstring_anchor(othis, ret, "FONT", "SIZE", arglist);
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.link, 1)
 DError* Dstring_prototype_link(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1125,12 +1176,10 @@ DError* Dstring_prototype_link(
 }
 
 
-/* ===================== Dstring_prototype bracketing ============= */
-
-/***************************
- * Produce <tag>othis</tag>
- */
-
+//------------------------------------------------------------------------------
+/*
+Produce <tag>othis</tag>
+*/
 DError* dstring_bracket(Dobject othis, out Value ret, tstring tag)
 {
     tstring foo = othis.value.toString();
@@ -1147,6 +1196,8 @@ DError* dstring_bracket(Dobject othis, out Value ret, tstring tag)
     ret.put(s);
     return null;
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.big, 0)
 DError* Dstring_prototype_big(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1161,6 +1212,8 @@ DError* Dstring_prototype_big(
 
     return dstring_bracket(othis, ret, "BIG");
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.blink, 0)
 DError* Dstring_prototype_blink(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1168,6 +1221,8 @@ DError* Dstring_prototype_blink(
 {
     return dstring_bracket(othis, ret, "BLINK");
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.bold, 0)
 DError* Dstring_prototype_bold(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1175,6 +1230,8 @@ DError* Dstring_prototype_bold(
 {
     return dstring_bracket(othis, ret, "B");
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.fixed, 0)
 DError* Dstring_prototype_fixed(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1182,6 +1239,8 @@ DError* Dstring_prototype_fixed(
 {
     return dstring_bracket(othis, ret, "TT");
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.italics, 0)
 DError* Dstring_prototype_italics(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1189,6 +1248,8 @@ DError* Dstring_prototype_italics(
 {
     return dstring_bracket(othis, ret, "I");
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.small, 0)
 DError* Dstring_prototype_small(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1196,6 +1257,8 @@ DError* Dstring_prototype_small(
 {
     return dstring_bracket(othis, ret, "SMALL");
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.strike, 0)
 DError* Dstring_prototype_strike(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1203,6 +1266,8 @@ DError* Dstring_prototype_strike(
 {
     return dstring_bracket(othis, ret, "STRIKE");
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.sub, 0)
 DError* Dstring_prototype_sub(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1210,6 +1275,8 @@ DError* Dstring_prototype_sub(
 {
     return dstring_bracket(othis, ret, "SUB");
 }
+
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.sup, 0)
 DError* Dstring_prototype_sup(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -1217,120 +1284,4 @@ DError* Dstring_prototype_sup(
 {
     return dstring_bracket(othis, ret, "SUP");
 }
-
-
-
-/* ===================== Dstring_prototype ==================== */
-/*
-class DstringPrototype : Dstring
-{
-    this()
-    {
-        super(Dobject.getPrototype);
-
-        DefineOwnProperty(Key.constructor, Dstring.getConstructor,
-               Property.Attribute.DontEnum);
-
-        static enum NativeFunctionData[] nfd =
-        [
-            { Key.toString, &Dstring_prototype_toString, 0 },
-            { Key.valueOf, &Dstring_prototype_valueOf, 0 },
-            { Key.charAt, &Dstring_prototype_charAt, 1 },
-            { Key.charCodeAt, &Dstring_prototype_charCodeAt, 1 },
-            { Key.concat, &Dstring_prototype_concat, 1 },
-            { Key.indexOf, &Dstring_prototype_indexOf, 1 },
-            { Key.lastIndexOf, &Dstring_prototype_lastIndexOf, 1 },
-            { Key.localeCompare, &Dstring_prototype_localeCompare, 1 },
-            { Key.match, &Dstring_prototype_match, 1 },
-            { Key.replace, &Dstring_prototype_replace, 2 },
-            { Key.search, &Dstring_prototype_search, 1 },
-            { Key.slice, &Dstring_prototype_slice, 2 },
-            { Key.split, &Dstring_prototype_split, 2 },
-            { Key.substr, &Dstring_prototype_substr, 2 },
-            { Key.substring, &Dstring_prototype_substring, 2 },
-            { Key.toLowerCase, &Dstring_prototype_toLowerCase, 0 },
-            { Key.toLocaleLowerCase, &Dstring_prototype_toLocaleLowerCase, 0 },
-            { Key.toUpperCase, &Dstring_prototype_toUpperCase, 0 },
-            { Key.toLocaleUpperCase, &Dstring_prototype_toLocaleUpperCase, 0 },
-            { Key.anchor, &Dstring_prototype_anchor, 1 },
-            { Key.fontcolor, &Dstring_prototype_fontcolor, 1 },
-            { Key.fontsize, &Dstring_prototype_fontsize, 1 },
-            { Key.link, &Dstring_prototype_link, 1 },
-            { Key.big, &Dstring_prototype_big, 0 },
-            { Key.blink, &Dstring_prototype_blink, 0 },
-            { Key.bold, &Dstring_prototype_bold, 0 },
-            { Key.fixed, &Dstring_prototype_fixed, 0 },
-            { Key.italics, &Dstring_prototype_italics, 0 },
-            { Key.small, &Dstring_prototype_small, 0 },
-            { Key.strike, &Dstring_prototype_strike, 0 },
-            { Key.sub, &Dstring_prototype_sub, 0 },
-            { Key.sup, &Dstring_prototype_sup, 0 },
-        ];
-
-        DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
-    }
-}
-//*/
-/* ===================== Dstring ==================== */
-
-class Dstring : Dobject
-{
-    import dmdscript.dobject : Initializer;
-    import dmdscript.property : Property;
-
-    this(tstring s)
-    {
-        import std.utf : toUCSindex;
-
-        super(getPrototype, Key.String);
-
-        CallContext cc;
-        Set(Key.length, toUCSindex(s, s.length),
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete |
-            Property.Attribute.ReadOnly, cc);
-        value.put(s);
-    }
-
-    this(Dobject prototype)
-    {
-        super(prototype, Key.String);
-
-        CallContext cc;
-        Set(Key.length, 0,
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete |
-            Property.Attribute.ReadOnly, cc);
-        value.put(Text.Empty);
-    }
-
-    mixin Initializer!DstringConstructor;
-/*
-static:
-    Dfunction getConstructor()
-    {
-        return _constructor;
-    }
-
-    Dobject getPrototype()
-    {
-        return _prototype;
-    }
-    void initialize()
-    {
-        _constructor = new DstringConstructor();
-        _prototype = new DstringPrototype();
-
-        _constructor.DefineOwnProperty(Key.prototype, _prototype,
-                            Property.Attribute.DontEnum |
-                            Property.Attribute.DontDelete |
-                            Property.Attribute.ReadOnly);
-    }
-
-private:
-    Dfunction _constructor;
-    Dobject _prototype;
-//*/
-}
-
 

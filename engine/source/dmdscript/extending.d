@@ -13,7 +13,7 @@
  */
 module dmdscript.extending;
 
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.value;
 import dmdscript.dobject;
 import dmdscript.dfunction;

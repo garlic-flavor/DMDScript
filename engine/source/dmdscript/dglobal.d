@@ -18,10 +18,9 @@
 module dmdscript.dglobal;
 
 import dmdscript.primitive;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.protoerror;
 import dmdscript.parse;
-import dmdscript.key;
 import dmdscript.dobject;
 import dmdscript.value;
 import dmdscript.statement;
@@ -42,9 +41,41 @@ import dmdscript.ddate;
 import dmdscript.derror;
 import dmdscript.dmath;
 
+//------------------------------------------------------------------------------
+// Configuration
+enum MAJOR_VERSION = 5;       // ScriptEngineMajorVersion
+enum MINOR_VERSION = 5;       // ScriptEngineMinorVersion
+
+enum BUILD_VERSION = 1;       // ScriptEngineBuildVersion
+
+enum JSCRIPT_CATCH_BUG = 1;   // emulate Jscript's bug in scoping of
+                              // catch objects in violation of ECMA
+enum JSCRIPT_ESCAPEV_BUG = 0; // emulate Jscript's bug where \v is
+                              // not recognized as vertical tab
+
+//
+enum COPYRIGHT = "Copyright (c) 1999-2010 by Digital Mars";
+enum WRITTEN = "by Walter Bright";
+
+//
+@safe pure nothrow
+string banner()
+{
+    import std.array : join;
+    return [
+        "DMDSsript-2 v0.1rc1",
+        "Compiled by Digital Mars DMD D compiler",
+        "http://www.digitalmars.com",
+        "Fork of the original DMDScript 1.16",
+        WRITTEN,
+        COPYRIGHT,
+        ].join("\n");
+}
+
+//
 tstring arg0string(Value[] arglist)
 {
-    Value* v = arglist.length ? &arglist[0] : &vundefined;
+    Value* v = arglist.length ? &arglist[0] : &undefined;
     return v.toString();
 }
 
@@ -65,7 +96,7 @@ DError* Dglobal_eval(
 
     //FuncLog funclog(L"Global.eval()");
 
-    v = arglist.length ? &arglist[0] : &vundefined;
+    v = arglist.length ? &arglist[0] : &undefined;
     if(v.type != Value.Type.String)
     {
         ret = *v;
@@ -502,7 +533,7 @@ DError* Dglobal_isNaN(
     if(arglist.length)
         v = &arglist[0];
     else
-        v = &vundefined;
+        v = &undefined;
     n = v.toNumber(cc);
     b = isNaN(n) ? true : false;
     ret.put(b);
@@ -525,7 +556,7 @@ DError* Dglobal_isFinite(
     if(arglist.length)
         v = &arglist[0];
     else
-        v = &vundefined;
+        v = &undefined;
     n = v.toNumber(cc);
     b = isFinite(n) ? true : false;
     ret.put(b);
@@ -789,10 +820,9 @@ DError* Dglobal_ScriptEngineMinorVersion(
     return null;
 }
 
-@DnativeVariableDescriptor(Key.NaN) immutable NaN = double.nan;
-@DnativeVariableDescriptor(Key.Infinity) immutable Infinity = double.infinity;
-@DnativeVariableDescriptor(Key.undefined) auto undefined =
-    Value(Value.Type.Undefined);
+@DconstantDescriptor(Key.NaN) immutable NaN = double.nan;
+@DconstantDescriptor(Key.Infinity) immutable Infinity = double.infinity;
+@DconstantDescriptor(Key.undefined) auto undefined = vundefined;
 /* ====================== Dglobal =========================== */
 
 class Dglobal : Dobject
@@ -821,7 +851,7 @@ class Dglobal : Dobject
                Property.Attribute.DontEnum |
                Property.Attribute.DontDelete);
 //*/
-        DnativeVariableDescriptor.install!(mixin(__MODULE__))
+        DconstantDescriptor.install!(mixin(__MODULE__))
             (this, Property.Attribute.DontEnum | Property.Attribute.DontDelete);
 /*
         static enum NativeFunctionData[] nfd =
@@ -914,7 +944,8 @@ class Dglobal : Dobject
 // Where is this definition?
             arguments.Set(i, argv[i].idup, Property.Attribute.DontEnum, cc);
         }
-        arguments.DefineOwnProperty(Key.callee, vnull, Property.Attribute.DontEnum);
+        arguments.DefineOwnProperty(Key.callee, Value.Type.Null,
+                                    Property.Attribute.DontEnum);
     }
 }
 

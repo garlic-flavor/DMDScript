@@ -20,13 +20,12 @@ module dmdscript.ddate;
 debug import std.stdio;
 
 import dmdscript.primitive;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.value;
 import dmdscript.dfunction;
 import dmdscript.dnative;
 import dmdscript.property;
-import dmdscript.key;
 import dmdscript.errmsgs;
 
 

@@ -17,14 +17,9 @@
 
 module dmdscript.value;
 
-// import dmdscript.script;
-// import dmdscript.errmsgs;
-// import dmdscript.property : Property, PropertyKey, PropTable;
-
-import dmdscript.primitive : tstring;
+import dmdscript.primitive : tstring, Key;
 import dmdscript.dobject : Dobject;
 import dmdscript.property : PropertyKey, Property;
-import dmdscript.key : Key;
 import dmdscript.errmsgs;
 debug import std.stdio;
 
@@ -48,11 +43,10 @@ struct Value
 {
     import dmdscript.iterator : Iterator;
     import dmdscript.primitive;
-    import dmdscript.script : CallContext;
-    import dmdscript.identifier : Identifier;
+    import dmdscript.callcontext : CallContext;
     import dmdscript.property : PropTable;
 
-    //
+    //--------------------------------------------------------------------
     enum Type : ubyte
     {
         RefError  = 0x00,//triggers ReferenceError expcetion when accessed
@@ -65,13 +59,14 @@ struct Value
         Iter      = 0x40,
     }
 
+    //--------------------------------------------------------------------
     template IsPrimitiveType(T)
     {
         enum IsPrimitiveType = is(T == bool) || is(T : double) ||
             is(T : tstring) || is(T : Dobject) || is(T == Iterator*);
     }
 
-    //
+    //--------------------------------------------------------------------
     this(T)(T arg) if (IsPrimitiveType!T || is(T == Type))
     {
         static if (is(T == Type))
@@ -80,12 +75,13 @@ struct Value
             put(arg);
     }
 
-    //
+    //--------------------------------------------------------------------
     this(T)(T arg, size_t h) if (IsPrimitiveType!T)
     {
         put(arg, h);
     }
 
+    //--------------------------------------------------------------------
     @property @trusted @nogc pure nothrow
     {
         size_t hash() const
@@ -131,7 +127,7 @@ struct Value
         }
     }
 
-    //
+    //--------------------------------------------------------------------
     @trusted
     void checkReference() const
     {
@@ -139,7 +135,7 @@ struct Value
             throwRefError();
     }
 
-    //
+    //--------------------------------------------------------------------
     @trusted @nogc pure nothrow
     void putVundefined()
     {
@@ -148,14 +144,14 @@ struct Value
         _text = null;
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe @nogc pure nothrow
     void putVnull()
     {
         _type = Type.Null;
     }
 
-    //
+    //--------------------------------------------------------------------
     @trusted @nogc pure nothrow
     void putVtime(d_time n)
     {
@@ -163,7 +159,7 @@ struct Value
         _number = (n == d_time_nan) ? double.nan : n;
     }
 
-    //
+    //--------------------------------------------------------------------
     @trusted @nogc pure nothrow
     void put(T)(T t) if (IsPrimitiveType!T)
     {
@@ -196,7 +192,7 @@ struct Value
         else static assert(0);
     }
 
-    //
+    // ditto
     @trusted @nogc pure nothrow
     void put(T)(T t, size_t h) if (IsPrimitiveType!T)
     {
@@ -230,12 +226,14 @@ struct Value
         _hash = h;
     }
 
+    // ditto
     @trusted @nogc pure nothrow
     void put(ref Value v)
     {
         this = v;
     }
 
+    // ditto
     @trusted @nogc pure nothrow
     void put(ref Value v, size_t h)
     {
@@ -243,7 +241,7 @@ struct Value
         _hash = h;
     }
 
-    //
+    //--------------------------------------------------------------------
     void toPrimitive(ref CallContext cc, out Value v,
                      in Type PreferredType = Type.RefError)
     {
@@ -275,7 +273,7 @@ struct Value
         }
     }
 
-    //
+    //--------------------------------------------------------------------
     @trusted
     bool toBoolean() const
     {
@@ -302,7 +300,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @trusted
     double toNumber(ref CallContext cc)
     {
@@ -361,14 +359,14 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     d_time toDtime(ref CallContext cc)
     {
         return cast(d_time)toNumber(cc);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     double toInteger(ref CallContext cc)
     {
@@ -406,7 +404,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     int toInt32(ref CallContext cc)
     {
@@ -450,7 +448,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     uint toUint32(ref CallContext cc)
     {
@@ -494,7 +492,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     short toInt16(ref CallContext cc)
     {
@@ -536,7 +534,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     ushort toUint16(ref CallContext cc)
     {
@@ -578,7 +576,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     byte toInt8(ref CallContext cc)
     {
@@ -620,7 +618,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     ubyte toUint8(ref CallContext cc)
     {
@@ -662,7 +660,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     ubyte toUint8Clamp(ref CallContext cc)
     {
@@ -701,13 +699,9 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     tstring toString()
     {
-        import std.format : sformat;
-        import std.math : isInfinity, isNaN;
-        import core.stdc.string : strlen;
-
         final switch(_type)
         {
         case Type.RefError:
@@ -720,78 +714,7 @@ struct Value
         case Type.Boolean:
             return _dbool ? Text._true : Text._false;
         case Type.Number:
-        {
-            tstring str;
-            enum tstring[10]  strs =
-                [ Text._0, Text._1, Text._2, Text._3, Text._4,
-                  Text._5, Text._6, Text._7, Text._8, Text._9 ];
-
-            //writefln("Vnumber.tostr(%g)", number);
-            if(isNaN(_number))
-                str = Key.NaN;
-            else if(_number >= 0 && _number <= 9 && _number == cast(int)_number)
-                str = strs[cast(int)_number];
-            else if(isInfinity(_number))
-            {
-                if(_number < 0)
-                    str = Text.negInfinity;
-                else
-                    str = Key.Infinity;
-            }
-            else
-            {
-                tchar[100] buffer;                // should shrink this to max size,
-                // but doesn't really matter
-                tchar* p;
-
-                // ECMA 262 requires %.21g (21 digits) of precision. But, the
-                // C runtime library doesn't handle that. Until the C runtime
-                // library is upgraded to ANSI C 99 conformance, use
-                // 16 digits, which is all the GCC library will round correctly.
-
-                sformat(buffer, "%.16g\0", _number);
-                //std.c.stdio.sprintf(buffer.ptr, "%.16g", number);
-
-                // Trim leading spaces
-                for(p = buffer.ptr; *p == ' '; p++)
-                {
-                }
-
-
-                {             // Trim any 0's following exponent 'e'
-                    tchar* q;
-                    tchar* t;
-
-                    for(q = p; *q; q++)
-                    {
-                        if(*q == 'e')
-                        {
-                            q++;
-                            if(*q == '+' || *q == '-')
-                                q++;
-                            t = q;
-                            while(*q == '0')
-                                q++;
-                            if(t != q)
-                            {
-                                for(;; )
-                                {
-                                    *t = *q;
-                                    if(*t == 0)
-                                        break;
-                                    t++;
-                                    q++;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-                str = p[0 .. strlen(p)].idup;
-            }
-            //writefln("str = '%s'", str);
-            return str;
-        }
+            return NumberToString(_number);
         case Type.String:
             return _text;
         case Type.Object:
@@ -822,7 +745,7 @@ struct Value
         return toString();
     }
 
-    //
+    //--------------------------------------------------------------------
     tstring toString(in int radix)
     {
         import std.math : isFinite;
@@ -841,9 +764,11 @@ struct Value
         }
     }
 
-    //
+    //--------------------------------------------------------------------
     tstring toSource(ref CallContext cc)
     {
+        import dmdscript.dglobal : undefined;
+
         switch(_type)
         {
         case Type.String:
@@ -856,29 +781,24 @@ struct Value
         case Type.Object:
         {
             Value* v;
-//            CallContext cc;
 
-            //writefln("Vobject.toSource()");
             v = Get(Key.toSource, cc);
             if(!v)
-                v = &vundefined;
+                v = &undefined;
             if(v.isPrimitive())
                 return v.toSource(cc);
             else          // it's an Object
             {
                 DError* a;
-                // CallContext* pcc;
                 Dobject o;
                 Value* ret;
                 Value val;
 
                 o = v._object;
-                // pcc = &Program.getProgram.callcontext;
                 ret = &val;
                 a = o.Call(cc, this._object, *ret, null);
                 if(a)                             // if exception was thrown
                 {
-                    /*return a;*/
                     debug writef("Vobject.toSource() failed with %x\n", a);
                 }
                 else if(ret.isPrimitive())
@@ -892,7 +812,7 @@ struct Value
         assert(0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @trusted
     Dobject toObject()
     {
@@ -933,7 +853,7 @@ struct Value
         return toString;
     }
 
-    //
+    //--------------------------------------------------------------------
     @disable
     double ToLength(ref CallContext cc)
     {
@@ -947,19 +867,19 @@ struct Value
         else return len;
     }
 
-    //
+    //--------------------------------------------------------------------
     @safe
     bool opEquals(in ref Value v) const
     {
         return(opCmp(v) == 0);
     }
 
-    //
+    //--------------------------------------------------------------------
     @trusted
     int opCmp()(in auto ref Value v) const
     {
         import std.math : isNaN;
-        import core.stdc.string : memcmp;
+        import dmdscript.primitive : stringcmp;
 
         final switch(_type)
         {
@@ -990,26 +910,17 @@ struct Value
             }
             else if(v._type == Type.String)
             {
-                return stringcmp((cast(Value*)&this).toString(), v._text);    //TODO: remove this hack!
+                return stringcmp(NumberToString(_number), v._text);
             }
             break;
         case Type.String:
             if(v._type == Type.String)
             {
-                //writefln("'%s'.compareTo('%s')", string, v.string);
-                int len = _text.length - v._text.length;
-                if(len == 0)
-                {
-                    if(_text.ptr == v._text.ptr)
-                        return 0;
-                    len = memcmp(_text.ptr, v._text.ptr, _text.length);
-                }
-                return len;
+                return stringcmp(_text, v._text);
             }
             else if(v._type == Type.Number)
             {
-                //writefln("'%s'.compareTo(%g)\n", text, v.number);
-                return stringcmp(_text, (cast(Value*)&v).toString());    //TODO: remove this hack!
+                return stringcmp(_text, NumberToString(v._number));
             }
             break;
         case Type.Object:
@@ -1022,6 +933,7 @@ struct Value
         return -1;
     }
 
+    //--------------------------------------------------------------------
     @trusted
     tstring getTypeof()
     {
@@ -1042,6 +954,7 @@ struct Value
         return s;
     }
 
+    //--------------------------------------------------------------------
     @property @safe @nogc pure nothrow
     bool isEmpty() const
     {
@@ -1181,6 +1094,7 @@ struct Value
         return (cast(Dregexp)_object) !is null;
     }
 
+    //--------------------------------------------------------------------
     @disable
     bool SameValueZero(in ref Value r) const
     {
@@ -1196,6 +1110,7 @@ struct Value
         else return SameValueNonNumber(r);
     }
 
+    //--------------------------------------------------------------------
     @disable
     bool SameValueNonNumber(in ref Value r) const
     {
@@ -1217,47 +1132,12 @@ struct Value
         }
     }
 
-    // only calculation. not caching.
-    static @trusted
-    size_t calcHash(in ref Value v)
-    {
-        final switch(v._type)
-        {
-        case Type.RefError:
-            v.throwRefError();
-            assert(0);
-        case Type.Undefined:
-        case Type.Null:
-            return 0;
-        case Type.Boolean:
-            return v._dbool ? 1 : 0;
-        case Type.Number:
-            return PropertyKey.calcHash(v._number);
-        case Type.String:
-            return PropertyKey.calcHash(v._text);
-        case Type.Object:
-            /* Uses the address of the object as the hash.
-             * Since the object never moves, it will work
-             * as its hash.
-             * BUG: shouldn't do this.
-             */
-            return cast(uint)cast(void*)v._object;
-        case Type.Iter:
-            assert(0);
-        }
-        assert(0);
-    }
-
-    // only calculation. not caching.
-    static @safe
-    size_t calcHash(ref Value v)
-    {
-        return v.toHash;
-    }
-
+    //--------------------------------------------------------------------
     @trusted
     size_t toHash()
     {
+        import dmdscript.primitive : calcHash;
+
         size_t h;
 
         final switch(_type)
@@ -1273,13 +1153,13 @@ struct Value
             h = _dbool ? 1 : 0;
             break;
         case Type.Number:
-            h = PropertyKey.calcHash(_number);
+            h = calcHash(_number);
             break;
         case Type.String:
             // Since strings are immutable, if we've already
             // computed the hash, use previous value
             if(!_hash)
-                _hash = PropertyKey.calcHash(_text);
+                _hash = calcHash(_text);
             h = _hash;
             break;
         case Type.Object:
@@ -1297,7 +1177,6 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-
     Value* Get(in tstring PropertyName, ref CallContext cc)
     {
         import std.conv : to;
@@ -1313,6 +1192,7 @@ struct Value
         }
     }
 
+    // ditto
     Value* Get(in uint index, ref CallContext cc)
     {
         import std.conv : to;
@@ -1328,7 +1208,7 @@ struct Value
         }
     }
 
-    //
+    //--------------------------------------------------------------------
     DError* Set(K, V)(in auto ref K name, auto ref V value, ref CallContext cc)
         if (PropTable.IsKeyValue!(K, V))
 
@@ -1360,6 +1240,7 @@ struct Value
         }
     }
 
+    //--------------------------------------------------------------------
     @disable
     Value* GetV(K)(in auto ref K PropertyName, ref CallContext cc)
         if (PropertyKey.IsKey!K)
@@ -1370,6 +1251,7 @@ struct Value
             return null;
     }
 
+    //--------------------------------------------------------------------
     @disable
     Value* GetMethod(K)(in auto ref K PropertyName, ref CallContext cc)
         if (PropertyKey.IsKey!K)
@@ -1391,6 +1273,7 @@ struct Value
     }
 
 
+    //--------------------------------------------------------------------
     DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                  Value[] arglist)
     {
@@ -1416,6 +1299,7 @@ struct Value
         }
     }
 
+    //--------------------------------------------------------------------
     DError* Construct(ref CallContext cc, out Value ret, Value[] arglist)
     {
         import std.conv : to;
@@ -1432,6 +1316,7 @@ struct Value
         }
     }
 
+    //--------------------------------------------------------------------
     DError* putIterator(out Value v)
     {
         if(_type == Type.Object)
@@ -1443,6 +1328,7 @@ struct Value
         }
     }
 
+    //--------------------------------------------------------------------
     @disable
     DError* Invoke(K)(in auto ref K key, ref CallContext cc,
                       out Value ret, Value[] args)
@@ -1454,6 +1340,7 @@ struct Value
             return null;
     }
 
+    //====================================================================
 private:
     size_t  _hash;               // cache 'hash' value
     Type _type = Type.Undefined;
@@ -1491,11 +1378,12 @@ else static if (size_t.sizeof == 8)
   static assert(Value.sizeof == 32); //fat string point 2*8 + type tag & hash
 else static assert(0, "This machine is not supported.");
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// How do I make these to be enum?
-Value vundefined = Value(Value.Type.Undefined);
-Value vnull = Value(Value.Type.Null);
+//------------------------------------------------------------------------------
+enum vundefined = Value(Value.Type.Undefined);
+//
+enum vnull = Value(Value.Type.Null);
 
+//------------------------------------------------------------------------------
 @safe pure nothrow
 Value* signalingUndefined(in tstring id)
 {
@@ -1509,7 +1397,9 @@ Value* signalingUndefined(in tstring id)
 @disable
 Value* CanonicalNumericIndexString(in tstring str)
 {
-    import dmdscript.script : CallContext;
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.dglobal : undefined;
+    import dmdscript.primitive : stringcmp;
 
     auto value = new Value;
     if (str == "-0")
@@ -1527,7 +1417,7 @@ Value* CanonicalNumericIndexString(in tstring str)
             Value v2;
             v2.put(number);
             if(0 != stringcmp(v2.toString, str))
-                return &vundefined;
+                return &undefined;
         }
         value.put(number);
     }
@@ -1605,27 +1495,5 @@ DError* toDError(alias Proto = typeerror)(Throwable t)
     auto v = new DError;
     v.put(new Proto(exception));
     return v;
-}
-
-
-private:
-/*********************************
- * Use this instead of std.string.cmp() because
- * we don't care about lexicographic ordering.
- * This is faster.
- */
-@trusted @nogc pure nothrow
-int stringcmp(in tstring s1, in tstring s2)
-{
-    import core.stdc.string : memcmp;
-
-    int c = s1.length - s2.length;
-    if(c == 0)
-    {
-        if(s1.ptr == s2.ptr)
-            return 0;
-        c = memcmp(s1.ptr, s2.ptr, s1.length);
-    }
-    return c;
 }
 

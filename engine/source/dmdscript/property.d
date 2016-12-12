@@ -25,8 +25,7 @@ debug import std.stdio;
 struct PropertyKey
 {
     import dmdscript.value : Value;
-    import dmdscript.identifier : Identifier;
-    import dmdscript.primitive : tchar, tstring;
+    import dmdscript.primitive : tchar, tstring, StringKey;
     template IsKey(K)
     {
         enum IsKey = is(K : PropertyKey) || is(K : StringKey) ||
@@ -78,107 +77,15 @@ struct PropertyKey
         return hash == rvalue.hash && value == rvalue.value;
     }
 
+    @safe @nogc pure nothrow
+    StringKey toStringKey() const
+    {
+        return StringKey(value.text, value.hash);
+    }
+
 static:
 
-    @safe @nogc pure nothrow
-    size_t calcHash(in size_t u)
-    {
-        static if      (size_t.sizeof == 4)
-            return u ^ 0x55555555;
-        else static if (size_t.sizeof == 8) // Is this OK?
-            return u ^ 0x5555555555555555;
-        else static assert(0);
-    }
-
-    @safe @nogc pure nothrow
-    size_t calcHash(in double d)
-    {
-        return calcHash(cast(size_t)d);
-    }
-
-    static @trusted @nogc pure nothrow
-    size_t calcHash(in tstring s)
-    {
-        size_t hash;
-
-        /* If it looks like an array index, hash it to the
-         * same value as if it was an array index.
-         * This means that "1234" hashes to the same value as 1234.
-         */
-        hash = 0;
-        foreach(tchar c; s)
-        {
-            switch(c)
-            {
-            case '0':       hash *= 10;             break;
-            case '1':       hash = hash * 10 + 1;   break;
-
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                hash = hash * 10 + (c - '0');
-                break;
-
-            default:
-            {
-                uint len = s.length;
-                ubyte* str = cast(ubyte*)s.ptr;
-
-                hash = 0;
-                while(1)
-                {
-                    switch(len)
-                    {
-                    case 0:
-                        break;
-
-                    case 1:
-                        hash *= 9;
-                        hash += *cast(ubyte*)str;
-                        break;
-
-                    case 2:
-                        hash *= 9;
-                        if (__ctfe)
-                            hash += str[0..2].toNative!ushort;
-                        else
-                            hash += *cast(ushort*)str;
-                        break;
-
-                    case 3:
-                        hash *= 9;
-                        if (__ctfe)
-                            hash += (str[0..2].toNative!ushort << 8) +
-                                (cast(ubyte*)str)[2];
-                        else
-                            hash += (*cast(ushort*)str << 8) +
-                                (cast(ubyte*)str)[2];
-                        break;
-
-                    default:
-                        hash *= 9;
-                        if (__ctfe)
-                            hash += str[0..4].toNative!uint;
-                        else
-                            hash += *cast(uint*)str;
-                        str += 4;
-                        len -= 4;
-                        continue;
-                    }
-                    break;
-                }
-                break;
-            }
-            // return s.hash;
-            }
-        }
-        return calcHash(hash);
-    }
+    alias calcHash = dmdscript.primitive.calcHash;
 
     //
     @safe @nogc pure nothrow
@@ -189,93 +96,6 @@ static:
 }
 
 //==============================================================================
-//
-struct StringKey
-{
-    import dmdscript.primitive : tstring;
-    import dmdscript.identifier : Identifier;
-
-    //
-    tstring entity;
-    alias entity this;
-
-    //
-    @safe @nogc pure nothrow
-    this(tstring str)
-    {
-        entity = str;
-        if (__ctfe)
-            _hash = PropertyKey.calcHash(entity);
-    }
-
-    //
-    @safe @nogc pure nothrow
-    this(tstring str, size_t h)
-    {
-        entity = str;
-        _hash = h;
-    }
-
-    //
-    @safe @nogc pure nothrow
-    this(in ref PropertyKey pk)
-    {
-        entity = pk.text;
-        _hash = pk.toHash;
-    }
-
-    //
-    @safe pure nothrow
-    this(in uint idx)
-    {
-        import std.conv : to;
-        entity = idx.to!tstring;
-        if (__ctfe)
-            _hash = PropertyKey.calcHash(entity);
-    }
-
-    //
-    @property @safe @nogc pure nothrow
-    size_t hash() const
-    {
-        if (0 < _hash)
-            return _hash;
-        return PropertyKey.calcHash(entity);
-    }
-
-    //
-    @property @safe @nogc pure nothrow
-    size_t hash()
-    {
-        if (0 == _hash)
-            _hash = PropertyKey.calcHash(entity);
-        return _hash;
-    }
-
-    //
-    @property @safe @nogc pure nothrow
-    size_t calculatedHash() const
-    {
-        return _hash;
-    }
-
-    //
-    @safe @nogc pure nothrow
-    bool opEquals(in ref StringKey rvalue) const
-    {
-        return entity == rvalue.entity;
-    }
-
-    //
-    @safe @nogc pure nothrow
-    bool opEquals(in tstring rvalue) const
-    {
-        return entity == rvalue;
-    }
-
-private:
-    size_t _hash;
-}
 
 //==============================================================================
 // See_Also: Ecma-262-v7/6.1.7.1/Property Attributes
@@ -285,7 +105,7 @@ struct Property
     import dmdscript.value : Value, DError;
     import dmdscript.dfunction : Dfunction;
     import dmdscript.dobject : Dobject;
-    import dmdscript.script : CallContext;
+    import dmdscript.callcontext : CallContext;
 
     // attribute flags
     enum Attribute : uint
@@ -337,7 +157,7 @@ struct Property
     @disable
     this(ref CallContext cc, Dobject obj)
     {
-        import dmdscript.key : Key;
+        import dmdscript.primitive : Key;
         import dmdscript.errmsgs;
         bool valueOrWritable = false;
 
@@ -670,7 +490,7 @@ struct Property
     Dobject toObject()
     {
         import std.exception : enforce;
-        import dmdscript.key : Key;
+        import dmdscript.primitive : Key;
         enum Attr = Attribute.None;
 
         auto obj = new Dobject(Dobject.getPrototype);
@@ -730,7 +550,7 @@ final class PropTable
     import dmdscript.value : Value, DError, vundefined;
     import dmdscript.primitive : tstring;
     import dmdscript.dobject : Dobject;
-    import dmdscript.script : CallContext;
+    import dmdscript.callcontext : CallContext;
     import dmdscript.RandAA : RandAA;
 
     template IsKeyValue(K, V)
@@ -738,11 +558,13 @@ final class PropTable
         enum IsKeyValue = PropertyKey.IsKey!K && Property.IsValue!V;
     }
 
+    alias Table = RandAA!(PropertyKey, Property, false);
+
     //
     @safe pure nothrow
     this()
     {
-        _table = new RandAA!(PropertyKey, Property);
+        _table = new Table;
     }
 
     //
@@ -1011,7 +833,7 @@ final class PropTable
     }
 
 private:
-    RandAA!(PropertyKey, Property) _table;
+    Table _table;
     PropTable _previous;
 
     @trusted
@@ -1031,59 +853,3 @@ private:
     }
 }
 
-//==============================================================================
-private:
-
-// for Value.calcHash at CTFE.
-@safe @nogc pure nothrow
-T toNative(T, size_t N = T.sizeof)(in ubyte[] buf)
-{
-    assert(N <= buf.length);
-    static if      (N == 1)
-        return buf[0];
-    else static if (N == 2)
-    {
-        version      (BigEndian)
-            return ((cast(ushort)buf[0]) << 8) | (cast(ushort)buf[1]);
-        else version (LittleEndian)
-            return (cast(ushort)buf[0]) | ((cast(ushort)buf[1]) << 8);
-        else static assert(0);
-    }
-    else static if (N == 4)
-    {
-        version      (BigEndian)
-            return ((cast(uint)buf[0]) << 24) |
-                   ((cast(uint)buf[1]) << 16) |
-                   ((cast(uint)buf[2]) << 8) |
-                   (cast(uint)buf[3]);
-        else version (LittleEndian)
-            return (cast(uint)buf[0]) |
-                   ((cast(uint)buf[1]) << 8) |
-                   ((cast(uint)buf[2]) << 16) |
-                   ((cast(uint)buf[3]) << 24);
-        else static assert(0);
-    }
-    else static if (N == 8)
-    {
-        version      (BigEndian)
-            return ((cast(ulong)buf[0]) << 56) |
-                   ((cast(ulong)buf[1]) << 48) |
-                   ((cast(ulong)buf[2]) << 40) |
-                   ((cast(ulong)buf[3]) << 32) |
-                   ((cast(ulong)buf[4]) << 24) |
-                   ((cast(ulong)buf[5]) << 16) |
-                   ((cast(ulong)buf[6]) << 8) |
-                   (cast(ulong)buf[7]);
-        else version (LittleEndian)
-            return (cast(ulong)buf[0]) |
-                   ((cast(ulong)buf[1]) << 8) |
-                   ((cast(ulong)buf[2]) << 16) |
-                   ((cast(ulong)buf[3]) << 24) |
-                   ((cast(ulong)buf[4]) << 32) |
-                   ((cast(ulong)buf[5]) << 40) |
-                   ((cast(ulong)buf[6]) << 48) |
-                   ((cast(ulong)buf[7]) << 56);
-        else static assert(0);
-    }
-    else static assert(0);
-}

@@ -21,8 +21,7 @@ module dmdscript.functiondefinition;
 debug import std.stdio;
 
 import dmdscript.primitive;
-import dmdscript.script;
-import dmdscript.identifier;
+import dmdscript.callcontext;
 import dmdscript.statement;
 import dmdscript.dfunction;
 import dmdscript.scopex;
@@ -48,11 +47,11 @@ class FunctionDefinition : TopStatement
         bool, "iseval", 1,           // !=0 if eval function
         int, "_padding", 5));
 
-    Identifier* name;             // null for anonymous function
-    Identifier*[] parameters;     // array of Identifier's
+    StringKey* name;             // null for anonymous function
+    StringKey*[] parameters;     // array of Identifier's
     TopStatement[] topstatements; // array of TopStatement's
 
-    Identifier*[] varnames;       // array of Identifier's
+    StringKey*[] varnames;       // array of Identifier's
     private FunctionDefinition[] functiondefinitions;
     private FunctionDefinition enclosingFunction;
     private int nestDepth;
@@ -75,8 +74,8 @@ class FunctionDefinition : TopStatement
     }
 
     @safe @nogc pure nothrow
-    this(tstring srctext, line_number loc, bool isglobal, Identifier*  name,
-         Identifier*[] parameters, TopStatement[] topstatements)
+    this(tstring srctext, line_number loc, bool isglobal, StringKey*  name,
+         StringKey*[] parameters, TopStatement[] topstatements)
     {
         super(loc);
 
@@ -251,7 +250,7 @@ class FunctionDefinition : TopStatement
     {
         // Instantiate all the Var's per 10.1.3
         auto actobj = cc.variable;
-        foreach(Identifier* name; varnames)
+        foreach(StringKey* name; varnames)
         {
             // If name is already declared, don't override it
             actobj.Set(name.toString, vundefined,

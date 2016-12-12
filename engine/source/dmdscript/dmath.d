@@ -20,18 +20,19 @@ module dmdscript.dmath;
 import std.math;
 import std.random;
 
-import dmdscript.script : CallContext;
+import dmdscript.callcontext : CallContext;
 import dmdscript.value : DError, Value, vundefined;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor,
-    DnativeVariableDescriptor;
-import dmdscript.key : Key;
+    DconstantDescriptor;
+import dmdscript.primitive : Key;
+import dmdscript.dglobal : undefined;
 
 double math_helper(ref CallContext cc, Value[] arglist)
 {
     Value *v;
 
-    v = arglist.length ? &arglist[0] : &vundefined;
+    v = arglist.length ? &arglist[0] : &undefined;
     return v.toNumber(cc);
 }
 @DnativeFunctionDescriptor(Key.abs, 1)
@@ -93,7 +94,7 @@ DError* Dmath_atan2(
     double result;
 
     n1 = math_helper(cc, arglist);
-    v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
+    v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
     result = atan2(n1, v2.toNumber(cc));
     ret.put(result);
     return null;
@@ -232,7 +233,7 @@ DError* Dmath_pow(
     double result;
 
     n1 = math_helper(cc, arglist);
-    v2 = (arglist.length >= 2) ? &arglist[1] : &vundefined;
+    v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
     result = pow(n1, v2.toNumber(cc));
     ret.put(result);
     return null;
@@ -318,14 +319,14 @@ DError* Dmath_tan(
     return null;
 }
 
-@DnativeVariableDescriptor(Key.E) immutable E = std.math.E;
-@DnativeVariableDescriptor(Key.LN10) immutable LN10 = std.math.LN10;
-@DnativeVariableDescriptor(Key.LN2) immutable LN2 = std.math.LN2;
-@DnativeVariableDescriptor(Key.LOG2E) immutable LOG2E = std.math.LOG2E;
-@DnativeVariableDescriptor(Key.LOG10E) immutable LOG10E = std.math.LOG10E;
-@DnativeVariableDescriptor(Key.PI) immutable PI = std.math.PI;
-@DnativeVariableDescriptor(Key.SQRT1_2) immutable SQRT1_2 = std.math.SQRT1_2;
-@DnativeVariableDescriptor(Key.SQRT2) immutable SQRT2 = std.math.SQRT2;
+@DconstantDescriptor(Key.E) immutable E = std.math.E;
+@DconstantDescriptor(Key.LN10) immutable LN10 = std.math.LN10;
+@DconstantDescriptor(Key.LN2) immutable LN2 = std.math.LN2;
+@DconstantDescriptor(Key.LOG2E) immutable LOG2E = std.math.LOG2E;
+@DconstantDescriptor(Key.LOG10E) immutable LOG10E = std.math.LOG10E;
+@DconstantDescriptor(Key.PI) immutable PI = std.math.PI;
+@DconstantDescriptor(Key.SQRT1_2) immutable SQRT1_2 = std.math.SQRT1_2;
+@DconstantDescriptor(Key.SQRT2) immutable SQRT2 = std.math.SQRT2;
 
 /* ===================== Dmath ==================== */
 
@@ -337,62 +338,13 @@ class Dmath : Dobject
 
         super(Dobject.getPrototype, Key.Math);
 
-        //writef("Dmath::Dmath(%x)\n", this);
         enum attributes =
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly;
 
-        // struct MathConst
-        // {
-        //     Key name;
-        //     double  value;
-        // }
+        DconstantDescriptor.install!(mixin(__MODULE__))(this, attributes);
 
-        // enum MathConst[] Table =
-        // [
-        //     { Key.E, std.math.E },
-        //     { Key.LN10, std.math.LN10 },
-        //     { Key.LN2, std.math.LN2 },
-        //     { Key.LOG2E, std.math.LOG2E },
-        //     { Key.LOG10E, std.math.LOG10E },
-        //     { Key.PI, std.math.PI },
-        //     { Key.SQRT1_2, std.math.SQRT1_2 },
-        //     { Key.SQRT2, std.math.SQRT2 },
-        // ];
-
-        // foreach(one; Table)
-        // {
-        //     DefineOwnProperty(one.name, one.value, attributes);
-        // }
-
-        DnativeVariableDescriptor.install!(mixin(__MODULE__))(this, attributes);
-
-/*
-        static enum NativeFunctionData[] nfd =
-        [
-            { Key.abs, &Dmath_abs, 1 },
-            { Key.acos, &Dmath_acos, 1 },
-            { Key.asin, &Dmath_asin, 1 },
-            { Key.atan, &Dmath_atan, 1 },
-            { Key.atan2, &Dmath_atan2, 2 },
-            { Key.ceil, &Dmath_ceil, 1 },
-            { Key.cos, &Dmath_cos, 1 },
-            { Key.exp, &Dmath_exp, 1 },
-            { Key.floor, &Dmath_floor, 1 },
-            { Key.log, &Dmath_log, 1 },
-            { Key.max, &Dmath_max, 2 },
-            { Key.min, &Dmath_min, 2 },
-            { Key.pow, &Dmath_pow, 2 },
-            { Key.random, &Dmath_random, 0 },
-            { Key.round, &Dmath_round, 1 },
-            { Key.sin, &Dmath_sin, 1 },
-            { Key.sqrt, &Dmath_sqrt, 1 },
-            { Key.tan, &Dmath_tan, 1 },
-        ];
-
-        DnativeFunction.initialize(this, nfd, attributes);
-//*/
         DnativeFunctionDescriptor.install!(mixin(__MODULE__))(this, attributes);
     }
 

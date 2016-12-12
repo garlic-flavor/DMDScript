@@ -20,29 +20,10 @@ module dmdscript.iterator;
 
 import dmdscript.dobject : Dobject;
 
-Dobject getPrototype(Dobject o)
-{
-    version(all)
-    {
-        return o.GetPrototypeOf;    // use internal [[Prototype]]
-    }
-    else
-    {
-        // use "prototype"
-        Value* v;
-
-        v = o.Get(Text.prototype);
-        if(!v || v.isPrimitive())
-            return null;
-        o = v.toObject();
-        return o;
-    }
-}
-
 struct Iterator
 {
     import dmdscript.property : PropertyKey;
-    import dmdscript.script : CallContext;
+    import dmdscript.callcontext : CallContext;
     import dmdscript.value : Value, DError;
 
     PropertyKey[] keys;
@@ -127,7 +108,7 @@ struct Iterator
     @disable
     DError* IteratorNext(ref CallContext cc, out Value ret, Value[] args = null)
     {
-        import dmdscript.key : Key;
+        import dmdscript.primitive : Key;
         auto err = o.value.Invoke(Key.next, cc, ret, args);
         if (ret.type != Value.Type.Object)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -140,7 +121,7 @@ struct Iterator
     @disable
     bool IteratorComplete(ref CallContext cc)
     {
-        import dmdscript.key : Key;
+        import dmdscript.primitive : Key;
         if (auto ret = o.Get(Key.done, cc))
             return ret.toBoolean;
         return false;
@@ -150,7 +131,7 @@ struct Iterator
     @disable
     Value* IteratorValue(ref CallContext cc)
     {
-        import dmdscript.key : Key;
+        import dmdscript.primitive : Key;
         return o.Get(Key.value, cc);
     }
 
@@ -171,7 +152,7 @@ static:
     @disable
     Dobject CreateIterResultObject(Value value, bool done)
     {
-        import dmdscript.key : Key;
+        import dmdscript.primitive : Key;
 
         auto obj = new Dobject;
         obj.CreateDataProperty(Key.value, value);
@@ -186,3 +167,25 @@ static:
     }
 }
 
+//==============================================================================
+private:
+
+//
+Dobject getPrototype(Dobject o)
+{
+    version(all)
+    {
+        return o.GetPrototypeOf;    // use internal [[Prototype]]
+    }
+    else
+    {
+        // use "prototype"
+        Value* v;
+
+        v = o.Get(Text.prototype);
+        if(!v || v.isPrimitive())
+            return null;
+        o = v.toObject();
+        return o;
+    }
+}

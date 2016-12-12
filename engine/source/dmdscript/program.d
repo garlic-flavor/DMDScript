@@ -19,7 +19,7 @@
 module dmdscript.program;
 
 import dmdscript.primitive;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.dglobal;
 import dmdscript.functiondefinition;
@@ -29,9 +29,7 @@ import dmdscript.opcodes;
 import dmdscript.darray;
 import dmdscript.parse;
 import dmdscript.scopex;
-import dmdscript.key;
 import dmdscript.property;
-import dmdscript.identifier;
 import dmdscript.ddate;
 
 debug import std.stdio;
@@ -108,7 +106,7 @@ class Program
         // Make globalfunction an anonymous one (by passing in null for name) so
         // it won't get instantiated as a property
         globalfunction = new FunctionDefinition(
-            srctext, 0, 1, Identifier.build(progIdentifier), null, null);
+            srctext, 0, 1, StringKey.build(progIdentifier), null, null);
 
         // Any functions parsed in topstatements wind up in the global
         // object (cc.global), where they are found by normal property lookups.

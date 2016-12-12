@@ -25,7 +25,7 @@ import core.sys.posix.stdlib;
 import core.memory;
 
 import dmdscript.primitive;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.program;
 import dmdscript.errmsgs;
 
@@ -81,6 +81,8 @@ enum
 
 int main(string[] args)
 {
+    import dmdscript.dglobal : banner;
+
     uint errors = 0;
     string[] includes;
     SrcFile[] srcfiles;
@@ -89,7 +91,7 @@ int main(string[] args)
 
     //GC.disable();
     if(args.length == 1)
-		stderr.writefln(dmdscript.script.banner());
+		stderr.writefln(banner);
     for (size_t i = 1; i < args.length; i++)
     {	string p = args[i];
 

@@ -1,8 +1,25 @@
+/* Digital Mars DMDScript source code.
+ * Copyright (c) 2000-2002 by Chromium Communications
+ * D version Copyright (c) 2004-2010 by Digital Mars
+ * Distributed under the Boost Software License, Version 1.0.
+ * (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ * written by Walter Bright
+ * http://www.digitalmars.com
+ *
+ * D2 port by Dmitry Olshansky 
+ *
+ * DMDScript is implemented in the D Programming Language,
+ * http://www.digitalmars.com/d/
+ *
+ * For a C++ implementation of DMDScript, including COM support, see
+ * http://www.digitalmars.com/dscript/cppscript.html
+ */
 module dmdscript.exception;
 
 import dmdscript.primitive;
 
-//
+//------------------------------------------------------------------------------
+///
 class ScriptException : Exception
 {
     import dmdscript.opcodes : IR;
@@ -30,7 +47,8 @@ class ScriptException : Exception
     }
 
     @safe pure
-    this(tstring msg, line_number loc, string file = __FILE__, size_t line = __LINE__)
+    this(tstring msg, line_number loc, string file = __FILE__,
+         size_t line = __LINE__)
     {
         super(msg, file, line); addTrace(loc);
     }
@@ -247,10 +265,10 @@ private:
     SourceDescriptor[] trace;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 private:
 
-//
+//------------------------------------------------------------------------------
 @trusted @nogc pure nothrow
 tstring getLineAt(tstring base, const(tchar)* p,
                    out line_number linnum, out int charpos)
@@ -292,7 +310,7 @@ tstring getLineAt(tstring base, const(tchar)* p,
     return slinestart[0.. s - slinestart];
 }
 
-//
+//------------------------------------------------------------------------------
 @safe @nogc pure nothrow
 tstring getLineAt(tstring src, line_number loc)
 {

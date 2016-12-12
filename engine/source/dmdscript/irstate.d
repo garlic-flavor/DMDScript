@@ -18,11 +18,11 @@
 
 module dmdscript.irstate;
 
-import dmdscript.script;
+import dmdscript.primitive : StringKey;
+import dmdscript.callcontext;
 import dmdscript.statement;
 import dmdscript.opcodes;
 import dmdscript.ir;
-import dmdscript.identifier;
 
 debug import std.stdio;
 
@@ -267,7 +267,7 @@ struct IRstate
 
             case Opcode.GetScope:
             {
-                Identifier* cs = (c + 2).id;
+                StringKey* cs = (c + 2).id;
                 IR* cimax = null;
                 for(i = lvm.max; i--; )
                 {
@@ -275,7 +275,7 @@ struct IRstate
                     if(ci &&
                        (ci.opcode == Opcode.GetScope ||
                         ci.opcode == Opcode.PutScope) &&
-                       (ci + 2).id.value.text == cs.value.text
+                       (*(ci + 2).id) == (*cs)
                        )
                     {
                         if(cimax)

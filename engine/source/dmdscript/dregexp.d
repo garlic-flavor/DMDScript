@@ -19,16 +19,16 @@
 module dmdscript.dregexp;
 
 import dmdscript.primitive;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.value;
 import dmdscript.protoerror;
-import dmdscript.key;
 import dmdscript.darray;
 import dmdscript.dfunction;
 import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.dnative;
+import dmdscript.dglobal : undefined;
 
 //alias script.tchar tchar;
 
@@ -142,8 +142,8 @@ class DregexpConstructor : Dconstructor
 
         //writef("Dregexp_constructor.Construct()\n");
         ret.putVundefined();
-        pattern = &vundefined;
-        flags = &vundefined;
+        pattern = &undefined;
+        flags = &undefined;
         switch(arglist.length)
         {
         case 0:
@@ -585,7 +585,7 @@ static:
                 dc.lastIndex.put(r.lastIndex);
 
                 // Fill in $1..$9
-                lastv = &vundefined;
+                lastv = &undefined;
                 nmatches = r.nmatches;
                 for(i = 1; i <= 9; i++)
                 {

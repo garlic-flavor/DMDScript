@@ -19,13 +19,12 @@ module dmdscript.statement;
 
 import dmdscript.primitive;
 import dmdscript.exception;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.value;
 import dmdscript.scopex;
 import dmdscript.expression;
 import dmdscript.irstate;
 import dmdscript.symbol;
-import dmdscript.identifier;
 import dmdscript.ir;
 import dmdscript.lexer;
 import dmdscript.errmsgs;
@@ -257,11 +256,11 @@ class ExpStatement : Statement
 final class VarDeclaration
 {
     line_number loc;
-    Identifier* name;
+    StringKey* name;
     Expression init;
 
     @safe @nogc pure nothrow
-    this(line_number loc, Identifier* name, Expression init)
+    this(line_number loc, StringKey* name, Expression init)
     {
         this.loc = loc;
         this.init = init;
@@ -321,7 +320,7 @@ final class VarStatement : Statement
                 if(vd.init)
                 {
                     vd.init.toIR(irs, ret[0]);
-                    property.id = Identifier.build(vd.name.toString);
+                    property.id = StringKey.build(vd.name.toString);
                     irs.gen!(Opcode.PutThis)(loc, ret[0], property.id);
                 }
             }
@@ -418,7 +417,7 @@ final class BlockStatement : Statement
 final class LabelStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Identifier* ident, Statement statement)
+    this(line_number loc, StringKey* ident, Statement statement)
     {
         super(loc);
         this.ident = ident;
@@ -497,7 +496,7 @@ final class LabelStatement : Statement
     }
 
 private:
-    Identifier* ident;
+    StringKey* ident;
     Statement statement;
     size_t gotoIP;
     size_t breakIP;
@@ -1245,7 +1244,7 @@ final class ForInStatement : Statement
             assert(vs.vardecls.length == 1);
             vd = vs.vardecls[0];
 
-            property.id = Identifier.build(vd.name.toString);
+            property.id = StringKey.build(vd.name.toString);
             opoff = OpOffset.Scope;
             base = ~0u;
         }
@@ -1401,7 +1400,7 @@ private:
 final class ContinueStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Identifier* ident)
+    this(line_number loc, StringKey* ident)
     {
         super(loc);
         this.ident = ident;
@@ -1457,7 +1456,7 @@ final class ContinueStatement : Statement
         return target.getContinue;
     }
 private:
-    Identifier* ident;
+    StringKey* ident;
     Statement target;
 }
 
@@ -1466,7 +1465,7 @@ private:
 final class BreakStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Identifier* ident)
+    this(line_number loc, StringKey* ident)
     {
         super(loc);
         this.ident = ident;
@@ -1503,7 +1502,7 @@ final class BreakStatement : Statement
                 //Scope* s;
                 //for(s = sc; s && s != ls.statement.whichScope; s = s.enclosing){ }
                 if(ls.statement.whichScope == *sc)
-                    error(sc, CantBreakInternalError(ls.ident.value.text));
+                    error(sc, CantBreakInternalError(*ls.ident));
                 target = ls.statement;
             }
         }
@@ -1534,7 +1533,7 @@ final class BreakStatement : Statement
     }
 
 private:
-    Identifier* ident;
+    StringKey* ident;
     Statement target;
 }
 
@@ -1543,7 +1542,7 @@ private:
 final class GotoStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Identifier * ident)
+    this(line_number loc, StringKey * ident)
     {
         super(loc);
         this.ident = ident;
@@ -1596,7 +1595,7 @@ final class GotoStatement : Statement
     }
 
 private:
-    Identifier* ident;
+    StringKey* ident;
     LabelSymbol label;
 }
 
@@ -1769,7 +1768,7 @@ private:
 final class TryStatement : ScopeStatement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Statement bdy, Identifier* catchident, Statement catchbdy,
+    this(line_number loc, Statement bdy, StringKey* catchident, Statement catchbdy,
          Statement finalbdy)
     {
         super(loc);
@@ -1820,7 +1819,7 @@ final class TryStatement : ScopeStatement
             {
                 c = irs.getIP;
                 irs.gen!(Opcode.TryCatch)(
-                    loc, 0, Identifier.build(catchident.toString));
+                    loc, 0, StringKey.build(catchident.toString));
                 bdy.toIR(irs);
                 irs.gen!(Opcode.Pop)(loc);           // remove catch clause
                 irs.gen!(Opcode.Pop)(loc);           // call finalbdy
@@ -1858,7 +1857,7 @@ final class TryStatement : ScopeStatement
         {
             c = irs.getIP;
             irs.gen!(Opcode.TryCatch)(
-                loc, 0, Identifier.build(catchident.toString));
+                loc, 0, StringKey.build(catchident.toString));
             bdy.toIR(irs);
             irs.gen!(Opcode.Pop)(loc);
             e = irs.getIP;
@@ -1899,7 +1898,7 @@ final class TryStatement : ScopeStatement
 
 private:
     Statement bdy;
-    Identifier* catchident;
+    StringKey* catchident;
     Statement catchbdy;
     Statement finalbdy;
 }

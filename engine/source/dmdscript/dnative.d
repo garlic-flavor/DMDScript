@@ -18,7 +18,7 @@
 
 module dmdscript.dnative;
 
-import dmdscript.script : CallContext;
+import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dfunction;
 import dmdscript.value : Value, DError;
@@ -26,9 +26,16 @@ debug import std.stdio;
 
 //------------------------------------------------------------------------------
 ///
+alias PCall = DError* function(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist);
+
+
+//------------------------------------------------------------------------------
+///
 struct DnativeFunctionDescriptor
 {
-    import dmdscript.key : Key;
+    import dmdscript.primitive : Key;
 
     enum Type
     {
@@ -37,7 +44,7 @@ struct DnativeFunctionDescriptor
     }
 
     Key name;     ///
-    uint length;  ///
+    uint length;  /// is a number of arguments.
     Type type = Type.Prototype; ///
 
 public static:
@@ -71,15 +78,9 @@ public static:
     }
 
 private static:
-    import dmdscript.script : CallContext;
+    import dmdscript.callcontext : CallContext;
     import dmdscript.value : Value, DError;
 
-    //
-    alias PCall = DError* function(DnativeFunction pthis,
-                                   ref CallContext cc,
-                                   Dobject othis,
-                                   out Value ret,
-                                   Value[] arglist);
     //
     template select(alias F)
     {
@@ -101,9 +102,9 @@ private static:
 
 //------------------------------------------------------------------------------
 ///
-struct DnativeVariableDescriptor
+struct DconstantDescriptor
 {
-    import dmdscript.key : Key;
+    import dmdscript.primitive : Key;
 
     enum Type
     {
@@ -118,7 +119,10 @@ public static:
     import dmdscript.property : Property;
 
     void install(alias M)(
-        Dobject o, Property.Attribute prop = Property.Attribute.None,
+        Dobject o,
+        Property.Attribute prop = Property.Attribute.DontEnum |
+                                  Property.Attribute.DontDelete |
+                                  Property.Attribute.ReadOnly,
         Type type = Type.Prototype)
     {
         foreach(one; __traits(allMembers, M))
@@ -128,7 +132,7 @@ public static:
             else
                 enum desc = false;
 
-            static if (is(typeof(desc) == DnativeVariableDescriptor))
+            static if (is(typeof(desc) == typeof(this)))
             {
                 if (type == desc.type)
                 {
@@ -147,31 +151,21 @@ private static:
         {
             static if      (0 == T.length)
                 enum _impl = false;
-            else static if (is(typeof(T[0]) == DnativeVariableDescriptor))
+            else static if (is(typeof(T[0]) == typeof(this)))
                 enum _impl = T[0];
             else
                 enum _impl = _impl!(T[1..$]);
         }
-        enum select = _impl!(__traits(getAttributes, F));
+        static if (is(typeof(__traits(getAttributes, F))))
+            enum select = _impl!(__traits(getAttributes, F));
+        else
+            enum select = false;
     }
 }
 
 
-/******************* DnativeFunction ****************************/
-
-alias PCall = DError* function(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist);
-
-struct NativeFunctionData
-{
-    import dmdscript.property : StringKey;
-
-    StringKey str;
-    PCall     pcall;
-    uint      length;
-}
-
+//------------------------------------------------------------------------------
+///
 class DnativeFunction : Dfunction
 {
     import dmdscript.primitive : tstring;
@@ -198,23 +192,4 @@ class DnativeFunction : Dfunction
     {
         return (*pcall)(this, cc, othis, ret, arglist);
     }
-
-    /*********************************
-     * Initalize table of native functions designed
-     * to go in as properties of o.
-     */
-
-    static void initialize(Dobject o, NativeFunctionData[] nfd,
-                           Property.Attribute attributes)
-    {
-        Dobject f = Dfunction.getPrototype();
-        for(size_t i = 0; i < nfd.length; i++)
-        {
-            NativeFunctionData* n = &nfd[i];
-
-            o.DefineOwnProperty(n.str, new DnativeFunction(n.pcall, n.str, n.length, f),
-                     attributes);
-        }
-    }
-
 }

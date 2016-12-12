@@ -71,8 +71,7 @@ module dmdscript.ir;
 debug import std.conv : text;
 import std.meta : AliasSeq;
 
-import dmdscript.primitive : line_number;
-import dmdscript.identifier : Identifier;
+import dmdscript.primitive : line_number, StringKey;
 import dmdscript.functiondefinition : FunctionDefinition;
 
 //
@@ -344,7 +343,7 @@ private struct IRcall4(Opcode CODE, T)
 
     Instruction ir;
     idx_t acc;
-    T func; // the name of the function. idx_t or Identifier*.
+    T func; // the name of the function. idx_t or StringKey*.
     size_t argc;
     idx_t argv;
 
@@ -370,7 +369,7 @@ private struct IRcall5(Opcode CODE, T)
     Instruction ir;
     idx_t acc;
     idx_t owner; // the owner of the method.
-    T method;    // the name of the method. idx_t or Identifier*
+    T method;    // the name of the method. idx_t or StringKey*
     size_t argc;
     idx_t argv;
 
@@ -432,10 +431,10 @@ private struct IRScope3(Opcode CODE)
 
     Instruction ir;
     idx_t acc;
-    Identifier* operand;
+    StringKey* operand;
     size_t hash;
 
-    this(line_number loc, idx_t acc, Identifier* operand, size_t hash)
+    this(line_number loc, idx_t acc, StringKey* operand, size_t hash)
     {
         ir = Instruction(loc, code);
         this.acc = acc;
@@ -443,7 +442,7 @@ private struct IRScope3(Opcode CODE)
         this.hash = hash;
     }
 
-    this(line_number loc, Opcode op, idx_t acc, Identifier* operand, size_t hash)
+    this(line_number loc, Opcode op, idx_t acc, StringKey* operand, size_t hash)
     {
         ir = Instruction(loc, op);
         this.acc = acc;
@@ -452,7 +451,7 @@ private struct IRScope3(Opcode CODE)
     }
 
     debug string toString() const
-    { return text(ir, " ", acc, " = ", operand.value.text, ", ", hash); }
+    { return text(ir, " ", acc, " = ", *operand, ", ", hash); }
 }
 
 // if (func iter) goto offset; iter = iter.next;
@@ -596,9 +595,9 @@ private struct IRTryCatch
 
     Instruction ir;
     sizediff_t offset;
-    Identifier* name;
+    StringKey* name;
 
-    this(line_number loc, sizediff_t offset, Identifier* name)
+    this(line_number loc, sizediff_t offset, StringKey* name)
     {
         ir = Instruction(loc, code);
         this.offset = offset;
@@ -608,7 +607,7 @@ private struct IRTryCatch
     debug string toString(size_t base = 0) const
     {
         if (name !is null)
-            return text(ir, " ", name.value.text, ", ", offset + base);
+            return text(ir, " ", *name, ", ", offset + base);
         else
             return text(ir, " \"\"", offset + base);
     }
@@ -621,9 +620,9 @@ private struct IRCheckRef
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
-    Identifier* operand;
+    StringKey* operand;
 
-    this(line_number loc, Identifier* operand)
+    this(line_number loc, StringKey* operand)
     {
         ir = Instruction(loc, code);
         this.operand = operand;
@@ -632,7 +631,7 @@ private struct IRCheckRef
     debug string toString() const
     {
         if (operand !is null)
-            return text(ir, " ", operand.value.text);
+            return text(ir, " ", *operand);
         else
             return text(ir, " \"\"");
     }
@@ -663,8 +662,8 @@ alias IRTypes = AliasSeq!(
     IR0!(Opcode.Nop), // no operation
     IR0!(Opcode.End), // end of function
 
-    IR2!(Opcode.String, Identifier*),        // acc = "string"
-    IR2!(Opcode.ThisGet, Identifier*),      // acc = othis.operand
+    IR2!(Opcode.String, StringKey*),        // acc = "string"
+    IR2!(Opcode.ThisGet, StringKey*),      // acc = othis.operand
     IR2!(Opcode.Number, double),           // acc = number
     IR2!(Opcode.Object, FunctionDefinition),
                                          // acc = new DdeclaredFunction(operand)
@@ -674,34 +673,34 @@ alias IRTypes = AliasSeq!(
     IR2!(Opcode.Boolean, bool),        // acc = operand
 
     IRcall5!(Opcode.Call, idx_t), // acc = owner.method(argv[0..argc])
-    IRcall5!(Opcode.CallS, Identifier*), // acc = owner.method(argv[0..argc])
-    IRcall4!(Opcode.CallScope, Identifier*), // acc = func(argv[0..argv])
+    IRcall5!(Opcode.CallS, StringKey*), // acc = owner.method(argv[0..argc])
+    IRcall4!(Opcode.CallScope, StringKey*), // acc = func(argv[0..argv])
     IRcall4!(Opcode.CallV, idx_t),     // func(argv[0..argv]) = acc
     IRcall5!(Opcode.PutCall, idx_t), // owner.method(argv[0..argc]) = acc
-    IRcall5!(Opcode.PutCallS, Identifier*), // owner.method(argv[0..argc]) = acc
-    IRcall4!(Opcode.PutCallScope, Identifier*), // func(argv[0..argc]) = acc
+    IRcall5!(Opcode.PutCallS, StringKey*), // owner.method(argv[0..argc]) = acc
+    IRcall4!(Opcode.PutCallScope, StringKey*), // func(argv[0..argc]) = acc
     IRcall4!(Opcode.PutCallV, idx_t), // func(argv[0..argc]) = acc
 
     IRget3!(Opcode.Get, idx_t), // acc = owner.method
-    IRget3!(Opcode.GetS, Identifier*), // acc = owner.method
-    IR2!(Opcode.GetScope, Identifier*), // acc = operand
+    IRget3!(Opcode.GetS, StringKey*), // acc = owner.method
+    IR2!(Opcode.GetScope, StringKey*), // acc = operand
     IRget3!(Opcode.Put, idx_t), // owner.method = acc
-    IRget3!(Opcode.PutS, Identifier*), // owner.method = acc
-    IR2!(Opcode.PutScope, Identifier*), // s = acc,
+    IRget3!(Opcode.PutS, StringKey*), // owner.method = acc
+    IR2!(Opcode.PutScope, StringKey*), // s = acc,
     IRget3!(Opcode.Del, idx_t), // acc = delete owner.method
-    IRget3!(Opcode.DelS, Identifier*), // acc = delete owner.method
-    IR2!(Opcode.DelScope, Identifier*), // acc = delete operand
+    IRget3!(Opcode.DelS, StringKey*), // acc = delete owner.method
+    IR2!(Opcode.DelScope, StringKey*), // acc = delete operand
 
     IRnext4!(Opcode.Next, idx_t),
                    // if (!(owner.method = iter)) goto offset, iter = iter.next
-    IRnext4!(Opcode.NextS, Identifier*),
+    IRnext4!(Opcode.NextS, StringKey*),
                    // if (!(owner.method = iter)) goto offset, iter = iter.next
-    IRnext3!(Opcode.NextScope, Identifier*),
+    IRnext3!(Opcode.NextScope, StringKey*),
 
     IRget3!(Opcode.AddAsS, idx_t),  // acc = (owner.method += acc)
-    IRget3!(Opcode.AddAsSS, Identifier*), // acc = (owner.method += acc)
+    IRget3!(Opcode.AddAsSS, StringKey*), // acc = (owner.method += acc)
     IRScope3!(Opcode.AddAsSScope), // acc = (operand += acc)
-    IR2!(Opcode.PutThis, Identifier*), // operand = acc,
+    IR2!(Opcode.PutThis, StringKey*), // operand = acc,
     IR2!(Opcode.PutDefault, idx_t), // operand = acc,
     IR2!(Opcode.Mov, idx_t), // acc = operand,
     IR0!(Opcode.Ret),         // return,
@@ -724,17 +723,17 @@ alias IRTypes = AliasSeq!(
     IR3!(Opcode.Xor, idx_t, idx_t), // acc = operand1 ^ operand2
     IR3!(Opcode.In, idx_t, idx_t), // acc = operand1 in operand2
     IRget3!(Opcode.PreInc, idx_t), // acc = ++owner.method
-    IRget3!(Opcode.PreIncS, Identifier*), // acc = ++owner.method
+    IRget3!(Opcode.PreIncS, StringKey*), // acc = ++owner.method
     IRScope3!(Opcode.PreIncScope), // acc = ++operand,
     IRget3!(Opcode.PreDec, idx_t), // acc = --owner.method
-    IRget3!(Opcode.PreDecS, Identifier*), // acc = --owner.method
+    IRget3!(Opcode.PreDecS, StringKey*), // acc = --owner.method
     IRScope3!(Opcode.PreDecScope), // acc = --operand
     IRget3!(Opcode.PostInc, idx_t), // acc = owner.method++,
-    IRget3!(Opcode.PostIncS, Identifier*), // acc = owner.method++,
-    IR2!(Opcode.PostIncScope, Identifier*), // acc = operand++,
+    IRget3!(Opcode.PostIncS, StringKey*), // acc = owner.method++,
+    IR2!(Opcode.PostIncScope, StringKey*), // acc = operand++,
     IRget3!(Opcode.PostDec, idx_t), // acc = owner.method--,
-    IRget3!(Opcode.PostDecS, Identifier*), // acc = owner.method--,
-    IR2!(Opcode.PostDecScope, Identifier*), // acc = operand--,
+    IRget3!(Opcode.PostDecS, StringKey*), // acc = owner.method--,
+    IR2!(Opcode.PostDecScope, StringKey*), // acc = operand--,
     IRcall4!(Opcode.New, idx_t), // acc = new func(argv[0..argc]),
     IR3!(Opcode.CLT, idx_t, idx_t), // acc = (operand1 < operand2)
     IR3!(Opcode.CLE, idx_t, idx_t), // acc = (operand1 <= operand2)
@@ -787,7 +786,7 @@ unittest
 
 alias GenIR1 = IR1!(Opcode.Nop);
 alias GenIR3 = IR3!(Opcode.Nop, idx_t, idx_t);
-alias GenIR3S = IR3!(Opcode.Nop, idx_t, Identifier*);
+alias GenIR3S = IR3!(Opcode.Nop, idx_t, StringKey*);
 alias GenIRScope3 = IRScope3!(Opcode.Nop);
 
 /* suger.

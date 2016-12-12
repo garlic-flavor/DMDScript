@@ -17,35 +17,32 @@
 
 module dmdscript.dobject;
 
-import dmdscript.primitive : tstring;
-import dmdscript.value : Value, DError, vundefined;
-import dmdscript.script : CallContext;
+import dmdscript.primitive : tstring, Key;
+import dmdscript.value : Value, DError;
+import dmdscript.callcontext : CallContext;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.dglobal : undefined;
 import dmdscript.errmsgs;
-import dmdscript.key : Key;
 
 //debug = LOG;
 
 //==============================================================================
 class Dobject
 {
-    import dmdscript.primitive : tstring, Text;
-    import dmdscript.property : PropertyKey, Property, PropTable, StringKey;
-    import dmdscript.identifier : Identifier;
+    import dmdscript.primitive : tstring, Text, StringKey;
+    import dmdscript.property : PropertyKey, Property, PropTable;
 
     PropTable proptable;
     Value value;
 
     //
-    mixin Initializer!DobjectConstructor;
+    mixin Initializer!DobjectConstructor _Initializer;
 
     //
     @safe pure nothrow
     this(Dobject prototype = getPrototype, tstring cn = Key.Object)
     {
-        // signature = DOBJECT_SIGNATURE;
-
         proptable = new PropTable;
         SetPrototypeOf(prototype);
         _classname = cn;
@@ -71,7 +68,7 @@ class Dobject
         @property @safe @nogc pure nothrow
         Dobject GetPrototypeOf()
         {
-            return internal_prototype;
+            return _prototype;
         }
 
         //
@@ -80,7 +77,7 @@ class Dobject
         {
             if (!_extensible)
                 return false;
-            internal_prototype = prototype;
+            _prototype = prototype;
             if (prototype !is null)
             {
                 proptable.previous = prototype.proptable;
@@ -111,7 +108,7 @@ class Dobject
             {
                 if      (name.type == Value.Type.String)
                 {
-                    auto sk = StringKey(name);
+                    auto sk = name.toStringKey;
                     return GetImpl(sk, cc);
                 }
                 else if (name.type == Value.Type.Number)
@@ -151,7 +148,7 @@ class Dobject
             {
                 if      (name.type == Value.Type.String)
                 {
-                    auto sk = StringKey(name);
+                    auto sk = name.toStringKey;
                     static if (is(V : Value))
                         alias v = value;
                     else
@@ -604,78 +601,20 @@ class Dobject
 private:
 
     tstring _classname;
-    Dobject internal_prototype;
+    Dobject _prototype;
     bool _extensible = true;
-
-    // I think these are not for D.
-    // enum uint DOBJECT_SIGNATURE = 0xAA31EE31;
-    // uint signature;
-    // invariant()
-    // {
-    //     assert(signature == DOBJECT_SIGNATURE);
-    // }
 
     // See_Also:
     // Ecma-272-v7:6.1.7.3 Invariants of the Essential Internal Methods
     debug @trusted @nogc pure nothrow
     void _checkCircularPrototypeChain() const
     {
-        for (auto ite = cast(Dobject)internal_prototype; ite !is null;
-             ite = ite.internal_prototype)
+        for (auto ite = cast(Dobject)_prototype; ite !is null;
+             ite = ite._prototype)
             assert(this !is ite);
-        if (internal_prototype !is null)
-            internal_prototype._checkCircularPrototypeChain;
+        if (_prototype !is null)
+            _prototype._checkCircularPrototypeChain;
     }
-
-/*
-public static:
-    @safe @nogc nothrow
-    Dfunction getConstructor()
-    {
-        assert(_constructor !is null);
-        return _constructor;
-    }
-
-    @safe @nogc nothrow
-    Dobject getPrototype()
-    {
-        assert(_prototype !is null);
-        return _prototype;
-    }
-
-    void initialize()
-    {
-        import dmdscript.dnative : NativeFunctionData;
-
-        _prototype = new DobjectPrototype();
-        Dfunction.initialize();
-        _constructor = new DobjectConstructor();
-
-        Dobject op = _prototype;
-        // Dobject f = Dfunction.getPrototype;
-
-        op.DefineOwnProperty(Key.constructor, _constructor,
-                             Property.Attribute.DontEnum);
-
-        static enum NativeFunctionData[] nfd =
-        [
-            { Key.toString, &Dobject_prototype_toString, 0 },
-            { Key.toLocaleString, &Dobject_prototype_toLocaleString, 0 },
-            { Key.toSource, &Dobject_prototype_toSource, 0 },
-            { Key.valueOf, &Dobject_prototype_valueOf, 0 },
-            { Key.hasOwnProperty, &Dobject_prototype_hasOwnProperty, 1 },
-            { Key.isPrototypeOf, &Dobject_prototype_isPrototypeOf, 0 },
-            { Key.propertyIsEnumerable,
-              &Dobject_prototype_propertyIsEnumerable, 0 },
-        ];
-
-        DnativeFunction.initialize(op, nfd, Property.Attribute.DontEnum);
-    }
-
-private static:
-    Dfunction _constructor;
-    Dobject _prototype;
-*/
 }
 
 //==============================================================================
@@ -759,7 +698,7 @@ void dobject_init()
     import dmdscript.protoerror : syntaxerror, evalerror, referenceerror,
         rangeerror, typeerror, urierror;
 
-    if(Dobject._prototype !is null)
+    if(Dobject._Initializer._prototype !is null)
         return;                 // already initialized for this thread
 
     void init(Types...)()
@@ -787,15 +726,7 @@ void dobject_init()
         Derror,
         );
 
-
-    // Dboolean.initialize();
-    // Dstring.initialize();
-    // Dnumber.initialize();
-    // Darray.initialize();
     Dmath.initialize();
-    // Ddate.initialize();
-    // Dregexp.initialize();
-    // Derror.initialize();
 
     syntaxerror.init;
     evalerror.init;
@@ -813,16 +744,7 @@ class DobjectConstructor : Dconstructor
 {
     this()
     {
-        // import dmdscript.property : Property;
-
         super(1, Dfunction.getPrototype);
-        // if(Dobject.getPrototype)
-        // {
-        //     DefineOwnProperty(Key.prototype, Dobject.getPrototype,
-        //            Property.Attribute.DontEnum |
-        //            Property.Attribute.DontDelete |
-        //            Property.Attribute.ReadOnly);
-        // }
     }
 
     //
@@ -896,8 +818,6 @@ DError* Dobject_prototype_toString(
     tstring s;
     tstring str;
 
-    //debug (LOG) writef("Dobject.prototype.toString(ret = %x)\n", ret);
-
     s = othis.classname;
 /+
     // Should we do [object] or [object Object]?
@@ -921,7 +841,6 @@ DError* Dobject_prototype_toLocaleString(
 
     Value* v;
 
-    //writef("Dobject.prototype.toLocaleString(ret = %x)\n", ret);
     v = othis.Get(Key.toString, cc);
     if(v && !v.isPrimitive())   // if it's an Object
     {
@@ -985,7 +904,7 @@ DError* Dobject_prototype_hasOwnProperty(
     import dmdscript.property : PropertyKey;
 
     // ECMA v3 15.2.4.5
-    auto key = PropertyKey(arglist.length ? arglist[0] : vundefined);
+    auto key = PropertyKey(arglist.length ? arglist[0] : undefined);
     ret.put(othis.proptable.getOwnProperty(key) !is null);
     return null;
 }
@@ -1001,13 +920,13 @@ DError* Dobject_prototype_isPrototypeOf(
     Value* v;
     Dobject o;
 
-    v = arglist.length ? &arglist[0] : &vundefined;
+    v = arglist.length ? &arglist[0] : &undefined;
     if(!v.isPrimitive())
     {
         o = v.toObject();
         for(;; )
         {
-            o = o.internal_prototype;
+            o = o._prototype;
             if(!o)
                 break;
             if(o == othis)
@@ -1030,21 +949,11 @@ DError* Dobject_prototype_propertyIsEnumerable(
 {
     import dmdscript.property : PropertyKey;
     // ECMA v3 15.2.4.7
-    auto key = PropertyKey(arglist.length ? arglist[0] : vundefined);
+    auto key = PropertyKey(arglist.length ? arglist[0] : undefined);
     if (auto p = othis.proptable.getOwnProperty(key))
         ret.put(p.enumerable);
     else
         ret.put(false);
     return null;
 }
-
-//==============================================================================
-// class DobjectPrototype : Dobject
-// {
-//     this()
-//     {
-//         super(null);
-//     }
-// }
-
 

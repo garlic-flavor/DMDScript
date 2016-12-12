@@ -17,29 +17,26 @@
 
 module dmdscript.ddeclaredfunction;
 
-import dmdscript.primitive;
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.dfunction;
-import dmdscript.darguments;
-import dmdscript.opcodes;
-import dmdscript.ir;
-import dmdscript.identifier;
-import dmdscript.value;
-import dmdscript.functiondefinition;
-import dmdscript.key;
-import dmdscript.property;
-
+import dmdscript.dfunction : Dconstructor;
 debug import std.stdio;
 
 /* ========================== DdeclaredFunction ================== */
 
 class DdeclaredFunction : Dconstructor
 {
+    import dmdscript.primitive : tstring, StringKey;
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.dobject : Dobject;
+    import dmdscript.value : DError, Value;
+    import dmdscript.functiondefinition : FunctionDefinition;
+
     FunctionDefinition fd;
 
     this(FunctionDefinition fd)
     {
+        import dmdscript.primitive : Key;
+        import dmdscript.property : Property;
+
         super(cast(uint)fd.parameters.length, Dfunction.getPrototype);
         assert(Dfunction.getPrototype);
         assert(GetPrototypeOf);
@@ -63,16 +60,19 @@ class DdeclaredFunction : Dconstructor
         // 3. The 'this' value is the activation object
 
         import core.sys.posix.stdlib : alloca;
+        import dmdscript.primitive : Key;
+        import dmdscript.dglobal : undefined;
+        import dmdscript.darguments : Darguments;
+        import dmdscript.property : Property, PropertyKey;
+        import dmdscript.ir : Opcode;
+        import dmdscript.opcodes : IR;
+        import dmdscript.value : vundefined;
 
         Dobject actobj;         // activation object
         Darguments args;
         Value[] locals;
         uint i;
         DError* result;
-
-        //writefln("DdeclaredFunction.Call() '%s'", toString());
-        //writefln("this.scopex.length = %d", this.scopex.length);
-        //writefln("\tinstantiate(this = %x, fd = %x)", cast(uint)cast(void*)this, cast(uint)cast(void*)fd);
 
         // if it's an empty function, just return
         if(fd.code[0].opcode == Opcode.Ret)
@@ -88,15 +88,14 @@ class DdeclaredFunction : Dconstructor
         if(fd.name)
         {
            vtmp.put(this);
-           auto key = PropertyKey(fd.name.value);
-           actobj.Set(key, vtmp, Property.Attribute.DontDelete, cc);
+           actobj.Set(*fd.name, vtmp, Property.Attribute.DontDelete, cc);
         }
         // Instantiate the parameters
         {
             uint a = 0;
-            foreach(Identifier* p; fd.parameters)
+            foreach(StringKey* p; fd.parameters)
             {
-                Value* v = (a < arglist.length) ? &arglist[a++] : &vundefined;
+                Value* v = (a < arglist.length) ? &arglist[a++] : &undefined;
                 actobj.Set(p.toString, *v, Property.Attribute.DontDelete, cc);
             }
         }
@@ -121,24 +120,7 @@ class DdeclaredFunction : Dconstructor
         // make grannymail bug work
 
         auto newCC = CallContext(cc, actobj, this, fd);
-        // Dobject[] newScopex;
-        // newScopex = this.scopex.dup;//copy this function object scope chain
-        // assert(newScopex.length != 0);
-        // newScopex ~= actobj;//and put activation object on top of it
-
-        // fd.instantiate(newScopex, actobj, Property.Attribute.DontDelete);
         fd.instantiate(newCC, Property.Attribute.DontDelete);
-
-        // Dobject[] scopesave = cc.scopex;
-        // cc.scopex = newScopex;
-        // auto scoperootsave = cc.scoperoot;
-        // cc.scoperoot++;//to accaunt extra activation object on scopex chain
-        // Dobject variablesave = cc.variable;
-        // cc.variable = actobj;
-        // auto callersave = cc.caller;
-        // cc.caller = this;
-        // auto callerfsave = cc.callerf;
-        // cc.callerf = fd;
 
         Value[] p1;
         Value* v;
@@ -152,7 +134,6 @@ class DdeclaredFunction : Dconstructor
             locals = p1;
         }
 
-        // result = IR.call(cc, othis, fd.code, ret, locals.ptr);
         result = IR.call(newCC, othis, fd.code, ret, locals.ptr);
 
         if (result !is null)
@@ -164,18 +145,10 @@ class DdeclaredFunction : Dconstructor
 
         delete p1;
 
-        // cc.callerf = callerfsave;
-        // cc.caller = callersave;
-        // cc.variable = variablesave;
-        // cc.scopex = scopesave;
-        // cc.scoperoot = scoperootsave;
-
         // Remove the arguments object
         //Value* v;
         //v=Get(TEXT_arguments);
-        //writef("1v = %x, %s, v.object = %x\n", v, v.getType(), v.object);
         Set(Key.arguments, vundefined, Property.Attribute.None, cc);
-        //actobj.Put(TEXT_arguments, &vundefined, 0);
 
         return result;
     }
@@ -183,6 +156,8 @@ class DdeclaredFunction : Dconstructor
     override DError* Construct(ref CallContext cc, out Value ret,
                                Value[] arglist)
     {
+        import dmdscript.primitive : Key;
+
         // ECMA 3 13.2.2
         Dobject othis;
         Dobject proto;
@@ -209,7 +184,6 @@ class DdeclaredFunction : Dconstructor
         import std.array : Appender;
         Appender!tstring buf;
 
-        //writef("DdeclaredFunction.toString()\n");
         fd.toBuffer(b=>buf.put(b));
         return buf.data;
     }

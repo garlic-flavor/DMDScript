@@ -19,20 +19,20 @@
 module dmdscript.opcodes;
 
 import dmdscript.primitive;
-import dmdscript.script;
+import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.statement;
 import dmdscript.functiondefinition;
 import dmdscript.value;
 import dmdscript.iterator;
 import dmdscript.scopex;
-import dmdscript.identifier;
 import dmdscript.ir;
 import dmdscript.errmsgs;
 import dmdscript.property;
 import dmdscript.ddeclaredfunction;
 import dmdscript.dfunction;
 import dmdscript.protoerror;
+import dmdscript.dglobal : undefined;
 
 debug import std.stdio;
 
@@ -40,285 +40,6 @@ debug import std.stdio;
 
 version = SCOPECACHING;         // turn scope caching on
 //version = SCOPECACHE_LOG;	// log statistics on it
-
-// Catch & Finally are "fake" Dobjects that sit in the scope
-// chain to implement our exception handling context.
-
-class Catch : Dobject
-{
-    alias GetImpl = Dobject.GetImpl;
-    // This is so scope_get() will skip over these objects
-    override Value* GetImpl(in ref StringKey, ref CallContext) const
-    {
-        return null;
-    }
-    // override Value* Get(in d_string, in uint, ref CallContext) const
-    // {
-    //     return null;
-    // }
-
-    // This is so we can distinguish between a real Dobject
-    // and these fakers
-    override tstring getTypeof()
-    {
-        return null;
-    }
-
-    uint offset;        // offset of CatchBlock
-    tstring name;      // catch identifier
-
-    this(uint offset, tstring name)
-    {
-        super(null);
-        this.offset = offset;
-        this.name = name;
-    }
-}
-
-class Finally : Dobject
-{
-    alias GetImpl = Dobject.GetImpl;
-    override Value* GetImpl(in ref StringKey, ref CallContext) const
-    {
-        return null;
-    }
-    // override Value* Get(in d_string, in uint, ref CallContext) const
-    // {
-    //     return null;
-    // }
-    override tstring getTypeof()
-    {
-        return null;
-    }
-
-    IR* finallyblock;    // code for FinallyBlock
-
-    this(IR* finallyblock)
-    {
-        super(null);
-        this.finallyblock = finallyblock;
-    }
-}
-
-
-/************************
- * Look for identifier in scope.
- */
-
-Value* scope_get(ref CallContext cc, Dobject[] scopex, Identifier* id,
-                 out Dobject pthis)
-{
-    uint d;
-    Dobject o;
-    Value* v;
-
-    d = scopex.length;
-    auto key = PropertyKey(id.value);
-    for(;; )
-    {
-        if(!d)
-        {
-            v = null;
-            pthis = null;
-            break;
-        }
-        d--;
-        o = scopex[d];
-        v = o.Get(key, cc);
-        if(v)
-        {
-            pthis = o;
-            break;
-        }
-    }
-    return v;
-}
-
-Value* scope_get_lambda(ref CallContext cc, Dobject[] scopex, Identifier* id,
-                        out Dobject pthis)
-{
-    uint d;
-    Dobject o;
-    Value* v;
-
-    d = scopex.length;
-    auto key = PropertyKey(id.value);
-    for(;; )
-    {
-        if(!d)
-        {
-            v = null;
-            pthis = null;
-            break;
-        }
-        d--;
-        o = scopex[d];
-        //v = o.GetLambda(s, hash);
-        v = o.Get(key, cc);
-        if(v)
-        {
-            pthis = o;
-            break;
-        }
-    }
-    return v;
-}
-
-Value* scope_get(ref CallContext cc, Dobject[] scopex, Identifier* id)
-{
-    uint d;
-    Dobject o;
-    Value* v;
-
-    d = scopex.length;
-    auto key = PropertyKey(id.value);
-    // 1 is most common case for d
-    if(d == 1)
-    {
-        return scopex[0].Get(key, cc);
-    }
-    for(;; )
-    {
-        if(!d)
-        {
-            v = null;
-            break;
-        }
-        d--;
-        o = scopex[d];
-
-        v = o.Get(key, cc);
-        if(v)
-            break;
-    }
-    return v;
-}
-
-/************************************
- * Find last object in scopex, null if none.
- */
-
-Dobject scope_tos(Dobject[] scopex)
-{
-    uint d;
-    Dobject o;
-
-    for(d = scopex.length; d; )
-    {
-        d--;
-        o = scopex[d];
-        if(o.getTypeof() != null)  // if not a Finally or a Catch
-            return o;
-    }
-    return null;
-}
-
-/*****************************************
- */
-
-void PutValue(ref CallContext cc, in tstring s, Value* a)
-{
-    // ECMA v3 8.7.2
-    // Look for the object o in the scope chain.
-    // If we find it, put its value.
-    // If we don't find it, put it into the global object
-
-    uint d;
-    // uint hash;
-    Value* v;
-    Dobject o;
-    //a.checkReference();
-    d = cc.scopex.length;
-    if(d == cc.globalroot)
-    {
-        o = scope_tos(cc.scopex);
-        o.Set(s, *a, Property.Attribute.None, cc);
-        return;
-    }
-
-    // hash = Value.calcHash(s);
-    auto key = PropertyKey(s);
-
-    for(;; d--)
-    {
-        assert(d > 0);
-        o = cc.scopex[d - 1];
-
-        v = o.Get(key, cc);
-        if(v)
-        {
-            // Overwrite existing property with new one
-            v.checkReference();
-            o.Set(s, *a, Property.Attribute.None, cc);
-            break;
-        }
-        if(d == cc.globalroot)
-        {
-            o.Set(s, *a, Property.Attribute.None, cc);
-            return;
-        }
-    }
-}
-
-
-void PutValue(ref CallContext cc, Identifier* id, Value* a)
-{
-    // ECMA v3 8.7.2
-    // Look for the object o in the scope chain.
-    // If we find it, put its value.
-    // If we don't find it, put it into the global object
-
-    uint d;
-    Value* v;
-    Dobject o;
-    //a.checkReference();
-    d = cc.scopex.length;
-    auto key = PropertyKey(id.value);
-    if(d == cc.globalroot)
-    {
-        o = scope_tos(cc.scopex);
-    }
-    else
-    {
-        for(;; d--)
-        {
-            assert(d > 0);
-            o = cc.scopex[d - 1];
-            v = o.Get(key, cc);
-            if(v)
-            {
-                v.checkReference();
-                break;// Overwrite existing property with new one
-            }
-            if(d == cc.globalroot)
-                break;
-        }
-    }
-    o.Set(key, *a, Property.Attribute.None, cc);
-}
-
-
-/*****************************************
- * Helper function for Values that cannot be converted to Objects.
- */
-
-DError* cannotConvert(Value* b)
-{
-    import std.conv : to;
-    DError* sta;
-
-    if(b.isUndefinedOrNull)
-    {
-        sta = CannotConvertToObject4Error(b.type.to!tstring);
-    }
-    else
-    {
-        sta = CannotConvertToObject2Error(b.type.to!tstring, b.toString);
-    }
-    return sta;
-}
-
-// enum size_t INDEX_FACTOR = Value.sizeof;//1;//or Value.sizeof;
 
 struct IR
 {
@@ -332,8 +53,8 @@ struct IR
         size_t      hash;       // cached hash value
         size_t      argc;
         sizediff_t  offset;
-        Identifier* id;
-        bool   boolean;
+        StringKey*  id;
+        bool        boolean;
         Statement   target;     // used for backpatch fixups
         Dobject     object;
         void*       ptr;
@@ -356,7 +77,7 @@ struct IR
         PropertyKey* ppk;
         DError* sta;
         Iterator* iter;
-        Identifier* id;
+        StringKey* id;
         tstring s;
         tstring s2;
         double n;
@@ -474,14 +195,17 @@ struct IR
         assert(code);
         assert(othis);
 
-        for(;; )
+        loop: for(;; )
         {
-            Lnext:
+            // Lnext:
             if(cc.Interrupt)                    // see if script was interrupted
-                goto Linterrupt;
-            try{
+                break loop;
+
+            try
+            {
                 assert(code.opcode < Opcode.max,
                        "Unrecognized IR instruction " ~ code.opcode.to!string);
+
                 final switch(code.opcode)
                 {
                 case Opcode.Error:
@@ -512,7 +236,7 @@ struct IR
                         v = o.Get(c.toString, cc);
                     }
                     if(!v)
-                        v = &vundefined;
+                        v = &undefined;
                     *a = *v;
                     code += IRTypes[Opcode.Get].size;
                     break;
@@ -544,7 +268,7 @@ struct IR
                 case Opcode.GetS:                // a = b.s
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     o = b.toObject();
                     if(!o)
                     {
@@ -555,22 +279,24 @@ struct IR
                     v = o.Get(s, cc);
                     if(!v)
                     {
-                        v = &vundefined;
+                        v = &undefined;
                     }
                     *a = *v;
                     code += IRTypes[Opcode.GetS].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
                 case Opcode.CheckRef: // s
                     id = (code+1).id;
-                    s = id.value.text;
-                    if(!scope_get(cc, scopex, id))
+                    s = *id;
+                    // if(!scope_get(cc, scopex, id))
+                    if (!cc.get(*id))
                         throw UndefinedVarError.toThrow(s);
                     code += IRTypes[Opcode.CheckRef].size;
                     break;
                 case Opcode.GetScope:            // a = s
                     a = locals + (code + 1).index;
                     id = (code + 2).id;
-                    s = id.value.text;
+                    s = *id;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
@@ -585,10 +311,11 @@ struct IR
                     }
                     version(all)
                     {
-                        v = scope_get(cc, scopex, id);
+                        // v = scope_get(cc, scopex, id);
+                        v = cc.get(*id);
                         if(!v){
                             v = signalingUndefined(s);
-                            PutValue(cc, id, v);
+                            cc.put(*id, *v);
                         }
                         else
                         {
@@ -613,7 +340,7 @@ struct IR
                     goto Laddass;
 
                 case Opcode.AddAsSS:             // a = (b.s += a)
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     Laddass:
                     b = locals + (code + 2).index;
                     v = b.Get(s, cc);
@@ -622,14 +349,15 @@ struct IR
                 case Opcode.AddAsSScope:         // a = (s += a)
                     b = null;               // Needed for the b.Put() below to shutup a compiler use-without-init warning
                     id = (code + 2).id;
-                    s = id.value.text;
+                    s = *id;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
                         if(s is scopecache[si].s)
                             v = scopecache[si].v;
                         else
-                            v = scope_get(cc, scopex, id);
+                            // v = scope_get(cc, scopex, id);
+                            v = cc.get(*id);
                     }
                     else
                     {
@@ -698,17 +426,18 @@ struct IR
                         sta = cannotConvert(b);
                         goto Lthrow;
                     }
-                    sta = o.Set((code + 3).id.value.text, *a,
+                    sta = o.Set(*(code + 3).id, *a,
                                 Property.Attribute.None, cc);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutS].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.PutScope:            // s = a
                     a = locals + (code + 1).index;
                     a.checkReference();
-                    PutValue(cc, (code + 2).id, a);
+                    cc.put(*(code + 2).id, *a);
                     code += IRTypes[Opcode.PutScope].size;
                     break;
 
@@ -732,12 +461,12 @@ struct IR
                     //a = cc.variable.Put((code + 2).id.value.string, GETa(code), DontDelete);
                     o = scope_tos(scopex);
                     assert(o);
-                    if(o.HasProperty((code + 2).id.value.text))
-                        sta = o.Set((code+2).id.value.text,
+                    if(o.HasProperty(*(code + 2).id))
+                        sta = o.Set(*(code+2).id,
                                     *(locals + (code + 1).index),
                                     Property.Attribute.DontDelete, cc);
                     else
-                        sta = cc.variable.Set((code + 2).id.value.text,
+                        sta = cc.variable.Set(*(code + 2).id,
                                               *(locals + (code + 1).index),
                                               Property.Attribute.DontDelete,
                                               cc);
@@ -752,8 +481,7 @@ struct IR
                     break;
 
                 case Opcode.String:              // a = "string"
-                    (locals + (code + 1).index).put(
-                        (code + 2).id.value.text);
+                    (locals + (code + 1).index).put(*(code + 2).id);
                     code += IRTypes[Opcode.String].size;
                     break;
 
@@ -796,9 +524,9 @@ struct IR
 
                 case Opcode.ThisGet:             // a = othis.ident
                     a = locals + (code + 1).index;
-                    v = othis.Get((code + 2).id.value.text, cc);
+                    v = othis.Get(*(code + 2).id, cc);
                     if(!v)
-                        v = &vundefined;
+                        v = &undefined;
                     *a = *v;
                     code += IRTypes[Opcode.ThisGet].size;
                     break;
@@ -1006,7 +734,7 @@ struct IR
                     s = c.toString();
                     goto Lpreinc;
                 case Opcode.PreIncS:    // a = ++b.s
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     Lpreinc:
                     inc = 1;
                     Lpre:
@@ -1014,7 +742,7 @@ struct IR
                     b = locals + (code + 2).index;
                     v = b.Get(s, cc);
                     if(!v)
-                        v = &vundefined;
+                        v = &undefined;
                     n = v.toNumber(cc);
                     a.put(n + inc);
                     b.Set(s, *a, cc);
@@ -1032,7 +760,7 @@ struct IR
                     Lprescope:
                     a = locals + (code + 1).index;
                     id = (code + 2).id;
-                    s = id.value.text;
+                    s = *id;
                     version(SCOPECACHING)
                     {
                         si = SCOPECACHE_SI(s.ptr);
@@ -1045,7 +773,8 @@ struct IR
                         }
                         else
                         {
-                            v = scope_get(cc, scopex, id, o);
+                            // v = scope_get(cc, scopex, id, o);
+                            v = cc.get(*id, o);
                             if(v)
                             {
                                 n = v.toNumber(cc) + inc;
@@ -1085,7 +814,7 @@ struct IR
                     s = c.toString();
                     goto Lpredec;
                 case Opcode.PreDecS:    // a = --b.s
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     Lpredec:
                     inc = -1;
                     goto Lpre;
@@ -1101,13 +830,13 @@ struct IR
                     s = c.toString();
                     goto Lpostinc;
                 case Opcode.PostIncS:    // a = b.s++
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     Lpostinc:
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     v = b.Get(s, cc);
                     if(!v)
-                        v = &vundefined;
+                        v = &undefined;
                     n = v.toNumber(cc);
                     a.put(n + 1);
                     b.Set(s, *a, cc);
@@ -1120,8 +849,9 @@ struct IR
 
                 case Opcode.PostIncScope:        // a = s++
                     id = (code + 2).id;
-                    v = scope_get(cc, scopex, id, o);
-                    if(v && v != &vundefined)
+                    // v = scope_get(cc, scopex, id, o);
+                    v = cc.get(*id, o);
+                    if(v && v != &undefined)
                     {
                         a = locals + (code + 1).index;
                         n = v.toNumber(cc);
@@ -1132,7 +862,7 @@ struct IR
                     {
                         //GETa(code).putVundefined();
                         //FIXED: as per ECMA v5 should throw ReferenceError
-                        throw ReferenceError.toThrow(id.value.text);
+                        throw ReferenceError.toThrow(*id);
                         //v = signalingUndefined(id.value.string);
                     }
                     code += IRTypes[Opcode.PostIncScope].size;
@@ -1143,13 +873,13 @@ struct IR
                     s = c.toString();
                     goto Lpostdec;
                 case Opcode.PostDecS:    // a = b.s--
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     Lpostdec:
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     v = b.Get(s, cc);
                     if(!v)
-                        v = &vundefined;
+                        v = &undefined;
                     n = v.toNumber(cc);
                     a.put(n - 1);
                     b.Set(s, *a, cc);
@@ -1162,8 +892,9 @@ struct IR
 
                 case Opcode.PostDecScope:        // a = s--
                     id = (code + 2).id;
-                    v = scope_get(cc, scopex, id, o);
-                    if(v && v != &vundefined)
+                    // v = scope_get(cc, scopex, id, o);
+                    v = cc.get(*id, o);
+                    if(v && v != &undefined)
                     {
                         n = v.toNumber(cc);
                         a = locals + (code + 1).index;
@@ -1174,7 +905,7 @@ struct IR
                     {
                         //GETa(code).putVundefined();
                         //FIXED: as per ECMA v5 should throw ReferenceError
-                        throw ReferenceError.toThrow(id.value.text);
+                        throw ReferenceError.toThrow(*id);
                         //v = signalingUndefined(id.value.string);
                     }
                     code += IRTypes[Opcode.PostDecScope].size;
@@ -1195,7 +926,7 @@ struct IR
                         }
                         s = (code.opcode == Opcode.Del)
                             ? (locals + (code + 3).index).toString()
-                            : (code + 3).id.value.text;
+                            : *(code + 3).id;
                         if(o.implementsDelete())
                             bo = !!o.Delete(StringKey(s));
                         else
@@ -1210,9 +941,10 @@ struct IR
 
                 case Opcode.DelScope:    // a = delete s
                     id = (code + 2).id;
-                    s = id.value.text;
+                    s = *id;
                     //o = scope_tos(scopex);		// broken way
-                    if(!scope_get(cc, scopex, id, o))
+                    // if(!scope_get(cc, scopex, id, o))
+                    if (!cc.get(*id, o))
                         bo = true;
                     else if(o.implementsDelete())
                         bo = !!o.Delete(StringKey(s));
@@ -1610,7 +1342,7 @@ struct IR
                     goto case_next;
 
                 case Opcode.NextS:       // a, b.s, iter
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     case_next:
                     iter = (locals + (code + 4).index).iter;
                     ppk = iter.next();
@@ -1628,7 +1360,7 @@ struct IR
                     break;
 
                 case Opcode.NextScope:   // a, s, iter
-                    s = (code + 2).id.value.text;
+                    s = *(code + 2).id;
                     iter = (locals + (code + 3).index).iter;
                     ppk = iter.next();
                     if(!ppk)
@@ -1646,7 +1378,7 @@ struct IR
                     goto case_call;
 
                 case Opcode.CallS:       // a = b.s(argc, argv)
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     goto case_call;
 
                     case_call:
@@ -1675,7 +1407,8 @@ struct IR
                     static assert (IRTypes[Opcode.Call].size
                                    == IRTypes[Opcode.CallS].size);
                     code += IRTypes[Opcode.CallS].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                     Lcallerror:
                     {
@@ -1686,9 +1419,10 @@ struct IR
 
                 case Opcode.CallScope:   // a = s(argc, argv)
                     id = (code + 2).id;
-                    s = id.value.text;
+                    s = *id;
                     a = locals + (code + 1).index;
-                    v = scope_get_lambda(cc, scopex, id, o);
+                    // v = scope_get_lambda(cc, scopex, id, o);
+                    v = cc.get(*id, o);
 
                     if(!v)
                     {
@@ -1707,7 +1441,8 @@ struct IR
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.CallScope].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.CallV:   // v(argc, argv) = a
                     a = locals + (code + 1).index;
@@ -1725,14 +1460,15 @@ struct IR
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.CallV].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.PutCall:        // b.c(argc, argv) = a
                     s = (locals + (code + 3).index).toString();
                     goto case_putcall;
 
                 case Opcode.PutCallS:       //  b.s(argc, argv) = a
-                    s = (code + 3).id.value.text;
+                    s = *(code + 3).id;
                     goto case_putcall;
 
                     case_putcall:
@@ -1759,12 +1495,14 @@ struct IR
                     static assert (IRTypes[Opcode.PutCall].size
                                    == IRTypes[Opcode.PutCallS].size);
                     code += IRTypes[Opcode.PutCallS].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.PutCallScope:   // a = s(argc, argv)
                     id = (code + 2).id;
-                    s = id.value.text;
-                    v = scope_get_lambda(cc, scopex, id, o);
+                    s = *id;
+                    // v = scope_get_lambda(cc, scopex, id, o);
+                    v = cc.get(*id, o);
                     if(!v)
                     {
                         sta = UndefinedNoCall2Error("property", s);
@@ -1780,7 +1518,8 @@ struct IR
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutCallScope].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.PutCallV:        // v(argc, argv) = a
                     b = locals + (code + 2).index;
@@ -1796,7 +1535,8 @@ struct IR
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutCallV].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.New: // a = new b(argc, argv)
                     a = locals + (code + 1).index;
@@ -1808,7 +1548,8 @@ struct IR
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.New].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.Push:
                     SCOPECACHE_CLEAR();
@@ -1840,13 +1581,16 @@ struct IR
                             assert(checksum == IR.verify(__LINE__, codestart));
                     }
 
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.FinallyRet:
                     assert(finallyStack.length);
                     code = finallyStack[$-1];
                     finallyStack = finallyStack[0..$-1];
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
+
                 case Opcode.Ret:
                     version(SCOPECACHE_LOG)
                         printf("scopecache_cnt = %d\n", scopecache_cnt);
@@ -1865,7 +1609,8 @@ struct IR
                     ret = *a;
 
                     code += IRTypes[Opcode.ImpRet].size;
-                    goto Lnext;
+                    // goto Lnext;
+                    break;
 
                 case Opcode.Throw:
                     a = locals + (code + 1).index;
@@ -1882,7 +1627,7 @@ struct IR
                 case Opcode.TryCatch:
                     SCOPECACHE_CLEAR();
                     offset = (code - codestart) + (code + 1).offset;
-                    s = (code + 2).id.value.text;
+                    s = *(code + 2).id;
                     ca = new Catch(offset, s);
                     scopex ~= ca;
                     cc.scopex = scopex;
@@ -1914,8 +1659,9 @@ struct IR
                 }
                 case Opcode.End:
                     code += IRTypes[Opcode.End].size;
-                    goto Linterrupt;
-                }
+                    // goto Linterrupt;
+                    break loop;
+                } // the end of the final switch.
             }
             catch(Throwable t)
             {
@@ -1927,9 +1673,9 @@ struct IR
                 }
 
             }
-        }
+        } // the end of the for(;;) loop.
 
-        Linterrupt:
+        // Linterrupt:
         ret.putVundefined();
         return null;
     }
@@ -2032,3 +1778,110 @@ struct IR
     }
 }
 static assert(IR.sizeof == size_t.sizeof);
+
+//==============================================================================
+private:
+
+//------------------------------------------------------------------------------
+// Catch & Finally are "fake" Dobjects that sit in the scope
+// chain to implement our exception handling context.
+
+class Catch : Dobject
+{
+    import dmdscript.primitive : StringKey, tstring;
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.value : Value;
+
+    alias GetImpl = Dobject.GetImpl;
+    // This is so scope_get() will skip over these objects
+    override Value* GetImpl(in ref StringKey, ref CallContext) const
+    {
+        return null;
+    }
+
+    // This is so we can distinguish between a real Dobject
+    // and these fakers
+    override tstring getTypeof()
+    {
+        return null;
+    }
+
+    uint offset;        // offset of CatchBlock
+    tstring name;      // catch identifier
+
+    this(uint offset, tstring name)
+    {
+        super(null);
+        this.offset = offset;
+        this.name = name;
+    }
+}
+
+//------------------------------------------------------------------------------
+class Finally : Dobject
+{
+    import dmdscript.primitive : StringKey, tstring;
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.value : Value;
+    import dmdscript.opcodes : IR;
+
+    alias GetImpl = Dobject.GetImpl;
+    override Value* GetImpl(in ref StringKey, ref CallContext) const
+    {
+        return null;
+    }
+
+    override tstring getTypeof()
+    {
+        return null;
+    }
+
+    IR* finallyblock;    // code for FinallyBlock
+
+    this(IR* finallyblock)
+    {
+        super(null);
+        this.finallyblock = finallyblock;
+    }
+}
+
+
+//------------------------------------------------------------------------------
+/*
+Find last object in scopex, null if none.
+*/
+Dobject scope_tos(Dobject[] scopex)
+{
+    uint d;
+    Dobject o;
+
+    for(d = scopex.length; d; )
+    {
+        d--;
+        o = scopex[d];
+        if(o.getTypeof() != null)  // if not a Finally or a Catch
+            return o;
+    }
+    return null;
+}
+
+//------------------------------------------------------------------------------
+/*
+Helper function for Values that cannot be converted to Objects.
+ */
+DError* cannotConvert(Value* b)
+{
+    import std.conv : to;
+    DError* sta;
+
+    if(b.isUndefinedOrNull)
+    {
+        sta = CannotConvertToObject4Error(b.type.to!tstring);
+    }
+    else
+    {
+        sta = CannotConvertToObject2Error(b.type.to!tstring, b.toString);
+    }
+    return sta;
+}
+

@@ -19,17 +19,40 @@ module dmdscript.dnumber;
 
 import std.math;
 
-import dmdscript.primitive;
-import dmdscript.script : CallContext;
+import dmdscript.primitive : Key, number_t, tstring, tchar;
+import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.value : Value, DError;
-import dmdscript.key : Key;
 import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
 
-/* ===================== Dnumber_constructor ==================== */
+//==============================================================================
+///
+class Dnumber : Dobject
+{
+    import dmdscript.dobject : Initializer;
 
+    this(double n)
+    {
+        super(getPrototype, Key.Number);
+        value.put(n);
+    }
+
+    this(Dobject prototype)
+    {
+        super(prototype, Key.Number);
+        value.put(0);
+    }
+
+    mixin Initializer!DnumberConstructor;
+}
+
+
+//==============================================================================
+private:
+
+//------------------------------------------------------------------------------
 class DnumberConstructor : Dconstructor
 {
     this()
@@ -76,7 +99,7 @@ class DnumberConstructor : Dconstructor
 }
 
 
-/* ===================== Dnumber_prototype_toString =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toString, 1)
 DError* Dnumber_prototype_toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -123,7 +146,7 @@ DError* Dnumber_prototype_toString(
     return null;
 }
 
-/* ===================== Dnumber_prototype_toLocaleString =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toLocaleString, 1)
 DError* Dnumber_prototype_toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -144,7 +167,7 @@ DError* Dnumber_prototype_toLocaleString(
     return null;
 }
 
-/* ===================== Dnumber_prototype_valueOf =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.valueOf, 0)
 DError* Dnumber_prototype_valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -177,14 +200,14 @@ static double[FIXED_DIGITS + 1] tens =
     1e20,
 ];
 
-/************************************************
- * Let e and n be integers such that
- * 10**f <= n < 10**(f+1) and for which the exact
- * mathematical value of n * 10**(e-f) - x is as close
- * to zero as possible. If there are two such sets of
- * e and n, pick the e and n for which n * 10**(e-f)
- * is larger.
- */
+/*
+Let e and n be integers such that
+10**f <= n < 10**(f+1) and for which the exact
+mathematical value of n * 10**(e-f) - x is as close
+to zero as possible. If there are two such sets of
+e and n, pick the e and n for which n * 10**(e-f)
+ is larger.
+*/
 
 number_t deconstruct_real(double x, int f, out int pe)
 {
@@ -204,7 +227,7 @@ number_t deconstruct_real(double x, int f, out int pe)
     return n;
 }
 
-/* ===================== Dnumber_prototype_toFixed =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toFixed, 1)
 DError* Dnumber_prototype_toFixed(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -213,6 +236,7 @@ DError* Dnumber_prototype_toFixed(
     import core.sys.posix.stdlib : alloca;
     import std.exception : assumeUnique;
     import std.string : sformat;
+    import dmdscript.primitive : Text;
 
     // ECMA v3 15.7.4.5
     Value* v;
@@ -328,7 +352,7 @@ DError* Dnumber_prototype_toFixed(
     return null;
 }
 
-/* ===================== Dnumber_prototype_toExponential =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toExponential, 1)
 DError* Dnumber_prototype_toExponential(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -336,6 +360,7 @@ DError* Dnumber_prototype_toExponential(
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
+    import dmdscript.primitive : Text;
 
     // ECMA v3 15.7.4.6
     Value* varg;
@@ -466,7 +491,7 @@ DError* Dnumber_prototype_toExponential(
     return null;
 }
 
-/* ===================== Dnumber_prototype_toPrecision =============== */
+//------------------------------------------------------------------------------
 @DnativeFunctionDescriptor(Key.toPrecision, 1)
 DError* Dnumber_prototype_toPrecision(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -474,7 +499,8 @@ DError* Dnumber_prototype_toPrecision(
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
-    import dmdscript.value : vundefined;
+    import dmdscript.dglobal : undefined;
+    import dmdscript.primitive : Text;
 
     // ECMA v3 15.7.4.7
     Value* varg;
@@ -486,7 +512,7 @@ DError* Dnumber_prototype_toPrecision(
     v = &othis.value;
     x = v.toNumber(cc);
 
-    varg = (arglist.length == 0) ? &vundefined : &arglist[0];
+    varg = (arglist.length == 0) ? &undefined : &arglist[0];
 
     if(arglist.length == 0 || varg.isUndefined())
     {
@@ -605,83 +631,4 @@ DError* Dnumber_prototype_toPrecision(
     ret.put(result);
     return null;
 }
-
-/* ===================== Dnumber_prototype ==================== */
-
-/*
-class DnumberPrototype : Dnumber
-{
-    this()
-    {
-        super(Dobject.getPrototype);
-        auto attributes = Property.Attribute.DontEnum;
-
-        Dobject f = Dfunction.getPrototype;
-
-        DefineOwnProperty(Key.constructor, Dnumber.getConstructor, attributes);
-
-        static enum NativeFunctionData[] nfd =
-        [
-            { Key.toString, &Dnumber_prototype_toString, 1 },
-            // Permissible to use toString()
-            { Key.toLocaleString, &Dnumber_prototype_toLocaleString, 1 },
-            { Key.valueOf, &Dnumber_prototype_valueOf, 0 },
-            { Key.toFixed, &Dnumber_prototype_toFixed, 1 },
-            { Key.toExponential, &Dnumber_prototype_toExponential, 1 },
-            { Key.toPrecision, &Dnumber_prototype_toPrecision, 1 },
-        ];
-
-        DnativeFunction.initialize(this, nfd, attributes);
-    }
-}
-//*/
-
-/* ===================== Dnumber ==================== */
-
-class Dnumber : Dobject
-{
-    import dmdscript.dobject : Initializer;
-
-    this(double n)
-    {
-        super(getPrototype, Key.Number);
-        value.put(n);
-    }
-
-    this(Dobject prototype)
-    {
-        super(prototype, Key.Number);
-        value.put(0);
-    }
-
-    mixin Initializer!DnumberConstructor;
-/*
-static:
-    Dfunction getConstructor()
-    {
-        return _constructor;
-    }
-
-    Dobject getPrototype()
-    {
-        return _prototype;
-    }
-
-    void initialize()
-    {
-        _constructor = new DnumberConstructor();
-        _prototype = new DnumberPrototype();
-
-        _constructor.DefineOwnProperty(Key.prototype, _prototype,
-                            Property.Attribute.DontEnum |
-                            Property.Attribute.DontDelete |
-                            Property.Attribute.ReadOnly);
-    }
-private:
-    Dfunction _constructor;
-    Dobject _prototype;
-//*/
-}
-
-
 

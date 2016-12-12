@@ -371,7 +371,8 @@ private:
                 }
                 else
                 {
-                    newTable.assignNoRehashCheck(_keys[i], vals[i]);
+                    newTable.assignNoRehashCheck(
+                        _keys[i], vals[i], getHash(_keys[i]));
                 }
             }
         }
@@ -478,7 +479,10 @@ private:
             }
         }
 
-        hashes[pos] = hashFull;
+        static if (storeHash)
+        {
+            hashes[pos] = hashFull;
+        }
         return pos;
     }
 
@@ -598,18 +602,16 @@ private static:
     {
         static if(is (K : long) && K.sizeof <= size_t.sizeof)
         {
-            size_t hash = cast(size_t)key;
+            return cast(size_t)key;
         }
         else static if(is (typeof(key.toHash())))
         {
-            size_t hash = key.toHash();
+            return key.toHash();
         }
         else
         {
-            size_t hash = typeid(K).getHash(cast(const(void)*)&key);
+            return typeid(K).getHash(cast(const(void)*)&key);
         }
-
-        return hash;
     }
 
     //

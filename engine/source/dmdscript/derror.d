@@ -17,117 +17,19 @@
 
 module dmdscript.derror;
 
-import dmdscript.primitive;
-import dmdscript.script;
-import dmdscript.dobject;
-import dmdscript.dfunction;
-import dmdscript.value;
-import dmdscript.dnative;
-import dmdscript.key;
-import dmdscript.property;
+import dmdscript.primitive : Key;
+import dmdscript.callcontext : CallContext;
+import dmdscript.dobject : Dobject;
+import dmdscript.dfunction : Dconstructor;
+import dmdscript.value : Value, DError;
+import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
 
-
-// Comes from MAKE_HRESULT(SEVERITY_ERROR, FACILITY_CONTROL, 0)
-const uint FACILITY = 0x800A0000;
-
-/* ===================== Derror_constructor ==================== */
-
-class DerrorConstructor : Dconstructor
-{
-    this()
-    {
-        super(1, Dfunction.getPrototype);
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        // ECMA 15.7.2
-        Dobject o;
-        Value* m;
-        Value* n;
-        Value vemptystring;
-
-        vemptystring.put(Text.Empty);
-        switch(arglist.length)
-        {
-        case 0:         // ECMA doesn't say what we do if m is undefined
-            m = &vemptystring;
-            n = &vundefined;
-            break;
-        case 1:
-            m = &arglist[0];
-            if(m.isNumber())
-            {
-                n = m;
-                m = &vemptystring;
-            }
-            else
-                n = &vundefined;
-            break;
-        default:
-            m = &arglist[0];
-            n = &arglist[1];
-            break;
-        }
-        o = new Derror(m, n);
-        ret.put(o);
-        return null;
-    }
-}
-
-
-/* ===================== Derror_prototype_toString =============== */
-@DnativeFunctionDescriptor(Key.toString, 0)
-DError* Derror_prototype_toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist)
-{
-    // ECMA v3 15.11.4.3
-    // Return implementation defined string
-    Value* v;
-
-    //writef("Error.prototype.toString()\n");
-    v = othis.Get(Key.message, cc);
-    if(!v)
-        v = &vundefined;
-    ret.put(othis.Get(Key.name, cc).toString()~": "~v.toString());
-    return null;
-}
-/* ===================== Derror_prototype ==================== */
-/*
-class DerrorPrototype : Derror
-{
-    this()
-    {
-        super(Dobject.getPrototype);
-        Dobject f = Dfunction.getPrototype;
-        //d_string m = d_string_ctor(DTEXT("Error.prototype.message"));
-
-        DefineOwnProperty(Key.constructor, Derror_constructor,
-               Property.Attribute.DontEnum);
-
-        static enum NativeFunctionData[] nfd =
-        [
-            { Key.toString, &Derror_prototype_toString, 0 },
-        ];
-
-        DnativeFunction.initialize(this, nfd, Property.Attribute.None);
-
-        DefineOwnProperty(Key.name, Key.Error, Property.Attribute.None);
-        DefineOwnProperty(Key.message, Text.Empty, Property.Attribute.None);
-        DefineOwnProperty(Key.description, Text.Empty, Property.Attribute.None);
-        DefineOwnProperty(Key.number, cast(double)(FACILITY | 0),
-               Property.Attribute.None);
-    }
-}
-//*/
-
-/* ===================== Derror ==================== */
-
+//==============================================================================
+///
 class Derror : Dobject
 {
     import dmdscript.dobject : Initializer;
+    import dmdscript.property : Property;
 
     this(Value * m, Value * v2)
     {
@@ -170,6 +72,9 @@ public static:
 
     void initPrototype()
     {
+        import dmdscript.primitive : Text;
+        import dmdscript.property : Property;
+
         _Initializer.initPrototype;
 
         _prototype.DefineOwnProperty(Key.name, Key.Error,
@@ -181,31 +86,80 @@ public static:
         _prototype.DefineOwnProperty(Key.number, cast(double)(/*FACILITY |*/ 0),
                                      Property.Attribute.None);
     }
-
-/*
-    static Dfunction getConstructor()
-    {
-        return Derror_constructor;
-    }
-
-    static Dobject getPrototype()
-    {
-        return Derror_prototype;
-    }
-
-    static void initialize()
-    {
-        Derror_constructor = new DerrorConstructor();
-        Derror_prototype = new DerrorPrototype();
-
-        Derror_constructor.DefineOwnProperty(Key.prototype, Derror_prototype,
-                                  Property.Attribute.DontEnum |
-                                  Property.Attribute.DontDelete |
-                                  Property.Attribute.ReadOnly);
-    }
-*/
 }
 
-// private Dfunction Derror_constructor;
-// private Dobject Derror_prototype;
+//==============================================================================
+private:
+
+// Comes from MAKE_HRESULT(SEVERITY_ERROR, FACILITY_CONTROL, 0)
+const uint FACILITY = 0x800A0000;
+
+//------------------------------------------------------------------------------
+class DerrorConstructor : Dconstructor
+{
+    this()
+    {
+        super(1, Dfunction.getPrototype);
+    }
+
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        import dmdscript.dglobal : undefined;
+        import dmdscript.primitive : Text;
+
+        // ECMA 15.7.2
+        Dobject o;
+        Value* m;
+        Value* n;
+        Value vemptystring;
+
+        vemptystring.put(Text.Empty);
+        switch(arglist.length)
+        {
+        case 0:         // ECMA doesn't say what we do if m is undefined
+            m = &vemptystring;
+            n = &undefined;
+            break;
+        case 1:
+            m = &arglist[0];
+            if(m.isNumber())
+            {
+                n = m;
+                m = &vemptystring;
+            }
+            else
+                n = &undefined;
+            break;
+        default:
+            m = &arglist[0];
+            n = &arglist[1];
+            break;
+        }
+        o = new Derror(m, n);
+        ret.put(o);
+        return null;
+    }
+}
+
+
+//------------------------------------------------------------------------------
+@DnativeFunctionDescriptor(Key.toString, 0)
+DError* Derror_prototype_toString(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    import dmdscript.dglobal : undefined;
+
+    // ECMA v3 15.11.4.3
+    // Return implementation defined string
+    Value* v;
+
+    //writef("Error.prototype.toString()\n");
+    v = othis.Get(Key.message, cc);
+    if(!v)
+        v = &undefined;
+    ret.put(othis.Get(Key.name, cc).toString()~": "~v.toString());
+    return null;
+}
 
