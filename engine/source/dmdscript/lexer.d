@@ -116,6 +116,8 @@ enum Tok : int
 
 struct Token
 {
+    import dmdscript.templateliteral;
+
     Tok    value;
     alias value this;
 
@@ -129,8 +131,9 @@ struct Token
     {
         number_t    intvalue;
         real_t      realvalue;
-        tstring    str;
-        StringKey* ident;
+        tstring     str;
+        StringKey*  ident;
+        TemplateLiteral* tliteral;
     };
 
     // static tstring[Tok.max+1] tochars;
@@ -1412,6 +1415,7 @@ private:
                 case "super":               return Tok.Super;
                 case "throw":               return Tok.Throw;
                 case "while":               return Tok.While;
+              //case "await":
                 default:
                     break;
                 }

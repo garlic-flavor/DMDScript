@@ -102,7 +102,8 @@ class DdeclaredFunction : Dconstructor
 
         // Generate the Arguments Object
         // ECMA v3 10.1.8
-        args = new Darguments(cc.caller, this, actobj, fd.parameters, arglist);
+        args = new Darguments(cc.scopex.caller, this, actobj, fd.parameters,
+                              arglist);
 
         actobj.Set(Key.arguments, args, Property.Attribute.DontDelete, cc);
 
@@ -119,8 +120,10 @@ class DdeclaredFunction : Dconstructor
         Set(Key.arguments, args, Property.Attribute.DontDelete, cc);
         // make grannymail bug work
 
-        auto newCC = CallContext(cc, actobj, this, fd);
-        fd.instantiate(newCC, Property.Attribute.DontDelete);
+        // auto newCC = CallContext(cc, actobj, this, fd);
+        cc.scopex.pushVariableScope(actobj, this, fd);
+
+        fd.instantiate(cc, Property.Attribute.DontDelete);
 
         Value[] p1;
         Value* v;
@@ -134,14 +137,15 @@ class DdeclaredFunction : Dconstructor
             locals = p1;
         }
 
-        result = IR.call(newCC, othis, fd.code, ret, locals.ptr);
-
+        result = IR.call(cc, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
             result.addTrace(fd.name !is null ?
                             "function " ~ fd.name.toString : "anonymous",
                             fd.srctext);
         }
+
+        cc.scopex.popVariableScope;
 
         delete p1;
 

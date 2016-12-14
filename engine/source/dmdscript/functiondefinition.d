@@ -249,7 +249,7 @@ class FunctionDefinition : TopStatement
     void instantiate(ref CallContext cc, Property.Attribute attributes)
     {
         // Instantiate all the Var's per 10.1.3
-        auto actobj = cc.variable;
+        auto actobj = cc.scopex.variable;
         foreach(StringKey* name; varnames)
         {
             // If name is already declared, don't override it
@@ -263,7 +263,7 @@ class FunctionDefinition : TopStatement
         {
             // Set [[Scope]] property per 13.2 step 7
             Dfunction fobject = new DdeclaredFunction(fd);
-            fobject.scopex = cc.scopex;
+            fobject.scopex = cc.scopex.stack;
 
             if(fd.name !is null && !fd.isliteral) // skip anonymous functions
             {

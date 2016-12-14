@@ -172,7 +172,7 @@ class Program
         DError* result;
         CallContext* cc = &callcontext;
         Darray arguments;
-        Dobject dglobal = cc.global;
+        Dobject dglobal = cc.scopex.global;
         //Program program_save;
 
         // Set argv and argc for execute
@@ -218,7 +218,8 @@ class Program
 
         // setProgram(this);
         ret.putVundefined();
-        result = IR.call(*cc, cc.global, globalfunction.code, ret, locals.ptr);
+        result = IR.call(*cc, cc.scopex.global, globalfunction.code, ret,
+                         locals.ptr);
         if(result)
         {
             auto exception = result.toScriptException;

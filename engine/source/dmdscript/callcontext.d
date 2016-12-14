@@ -18,88 +18,249 @@
 module dmdscript.callcontext;
 
 debug import std.stdio;
-//=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-//
+//==============================================================================
+///
 struct CallContext
 {
     import dmdscript.dobject : Dobject;
     import dmdscript.program : Program;
-    import dmdscript.dfunction : Dfunction;
-    import dmdscript.functiondefinition : FunctionDefinition;
-    import dmdscript.property : PropertyKey;
-    import dmdscript.value : Value;
+    import dmdscript.property : PropertyKey, Property;
+    import dmdscript.value : Value, DError;
 
-    // current scope chain
-    Dobject[] scopex;
-
-    // object for variable instantiation (is scopex[scoperoot-1] is scopex[$-1])
-    Dobject variable;
-
-    // global object (is scopex[globalroot - 1])
-    Dobject global;
-
-    // number of entries in scope[] starting from 0 to copy onto new scopes
-    const uint scoperoot;
-
-    // number of entries in scope[] starting from 0
-    // that are in the "global" context. Always <= scoperoot
-    const uint globalroot;
-
-    // points to the last named function added as an event
-    // void* lastnamedfunc;
-
-    Program prog;
-    Dobject callerothis;         // caller's othis
-    Dfunction caller;            // caller function object
-    FunctionDefinition callerf;
-
-    bool Interrupt;  // !=0 if cancelled due to interrupt
+    Dobject callerothis;   /// caller's othis for eval().
 
     //--------------------------------------------------------------------
     ///
     @safe pure nothrow
     this(Program prog, Dobject global)
     {
-        scopex = [global];
-        variable = global;
-        this.global = global;
-        scoperoot = 1;
-        globalroot = 1;
-        this.prog = prog;
+        _scopex = new ScopeStack(global);
+        _prog = prog;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @property @safe @nogc pure nothrow
+    inout(ScopeStack) scopex() inout
+    {
+        return _scopex;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Program) program() inout
+    {
+        return _prog;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    bool isInterrupting() const
+    {
+        return _interrupt;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    void interrupt()
+    {
+        _interrupt = true;
+    }
+
+    //--------------------------------------------------------------------
+    /// Search a variable in current scope chain.
+    Value* get(K)(in auto ref K key, out Dobject pthis)
+        if (PropertyKey.IsKey!K)
+    {
+        return _scopex.get(this, key, pthis);
+    }
+
+    /// ditto
+    Value* get(K)(in auto ref K key)
+        if (PropertyKey.IsKey!K)
+    {
+        return _scopex.get(this, key);
+    }
+
+    //--------------------------------------------------------------------
+    /// Assign a variable in current scope chain.
+    /// Or, define a variable in global.
+    DError* set(K)(in auto ref K key, ref Value value,
+                   Property.Attribute attr = Property.Attribute.None)
+        if (PropertyKey.IsKey!K)
+    {
+        return _scopex.set(this, key, value, attr);
+    }
+
+    //--------------------------------------------------------------------
+    /// Define/Assign a variable in current variable's scope.
+    DError* setThis(K)(in auto ref K key, ref Value value,
+                       Property.Attribute attr)
+        if (PropertyKey.IsKey!K)
+    {
+        return _scopex.setThis(this, key, value, attr);
+    }
+
+private:
+    ScopeStack _scopex;     /// current scope chain
+    Program _prog;
+    bool _interrupt;        /// !=0 if cancelled due to interrupt
+}
+
+
+//==============================================================================
+/*
+function func1()
+{
+    if (true)
+    {
+        func2();
+    }
+}
+
++------+------+------+------+---- --- -- -
+|      |      |      |      |
+|global|func1 |  if  |func2 |              ----  _stack
+|      |      |      |      |
++------+------+------+------+---- --- -- -
+      /  ____/             /
+     /  /  _______________/
+    /  /  /
+  [1][2][4][...                            ----  _scopes.scoperoot
+
+1. _stack represents a variable searching chain.
+2. _scopes.scoperoot indicates the point on _stack,
+   and it means that _stack[_scopes[x].scoperoot - 1] is a function's root
+   variable searching scope.
+*/
+///
+final class ScopeStack
+{
+    import std.array : Appender;
+    import dmdscript.dobject : Dobject;
+    import dmdscript.dfunction : Dfunction;
+    import dmdscript.functiondefinition : FunctionDefinition;
+    import dmdscript.property : Property, PropertyKey;
+    import dmdscript.value : Value, DError;
+
+    //--------------------------------------------------------------------
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Dfunction) caller() inout
+    {
+        return _variable.caller;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Dobject) global() inout
+    {
+        return _global;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Dobject) variable() inout
+    {
+        return _variable.variable;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Dobject)[] stack() inout
+    {
+        return _stack.data;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    bool isVariableRoot() const
+    {
+        return _stack.data.length == _variable.scoperoot;
+    }
+
+    /// Get a Dobject that is not a Catch nor a Finally.
+    @safe @nogc pure nothrow
+    inout(Dobject) getNonFakeObject() inout
+    {
+        auto stack = _stack.data;
+        for (size_t d = stack.length; _variable.scoperoot <= d; --d)
+        {
+            auto o = stack[d - 1];
+            if (o.getTypeof !is null)
+                return o;
+        }
+        assert(0);
     }
 
     //--------------------------------------------------------------------
     ///
     @safe pure nothrow
-    this(ref CallContext cc, Dobject variable, Dfunction caller,
-         FunctionDefinition callerf)
+    void pushVariableScope(Dobject variable, Dfunction caller,
+                      FunctionDefinition callerf)
     {
-        scopex = cc.scopex ~ variable;
-        this.variable = variable;
-        global = cc.global;
-        scoperoot = cc.scoperoot + 1;
-        globalroot = cc.globalroot;
-        callerothis = cc.callerothis;
-        prog = cc.prog;
-        this.caller = caller;
-        this.callerf = callerf;
+        assert (variable !is null);
+
+        _stack.put(variable);
+        _variable = VariableScope(_stack.data.length, variable,
+                                  caller, callerf);
+        _scopes.put(_variable);
+    }
+
+    ///
+    @safe pure
+    bool popVariableScope()
+    {
+        auto sd = _scopes.data;
+        if (sd.length <= GLOBAL_ROOT)
+            return false;
+
+        assert(GLOBAL_ROOT < _variable.scoperoot);
+
+        _stack.shrinkTo(_variable.scoperoot - 1);
+        _variable = sd[$ - 2];
+        _scopes.shrinkTo(sd.length - 1);
+        return true;
     }
 
     //--------------------------------------------------------------------
     ///
-    Value* get(K)(in auto ref K key, out Dobject pthis)
+    @safe pure nothrow
+    void push(Dobject obj)
+    {
+        _stack.put(obj);
+    }
+
+    ///
+    @safe pure
+    Dobject pop()
+    {
+        auto sd = _stack.data;
+        auto len = sd.length;
+        if (len <= _variable.scoperoot)
+            return null;
+
+        auto ret = sd[len - 1];
+        _stack.shrinkTo(len - 1);
+        return ret;
+    }
+
+
+    //--------------------------------------------------------------------
+    ///
+    Value* get(K)(ref CallContext cc, in auto ref K key, out Dobject pthis)
         if (PropertyKey.IsKey!K)
     {
         Value* v;
         Dobject o;
 
-        for (size_t d = scopex.length; ; --d)
+        auto stack = _stack.data;
+        for (size_t d = stack.length; ; --d)
         {
-            if (0 < d)
+            if (GLOBAL_ROOT <= d)
             {
-                o = scopex[d-1];
-                v = o.Get(key, this);
+                o = stack[d - 1];
+                v = o.Get(key, cc);
                 if (v !is null)
                     break;
             }
@@ -109,53 +270,84 @@ struct CallContext
                 break;
             }
         }
-
         pthis = o;
         return v;
     }
 
-    //--------------------------------------------------------------------
     ///
-    Value* get(K)(in auto ref K key)
+    Value* get(K)(ref CallContext cc, in auto ref K key)
         if (PropertyKey.IsKey!K)
     {
-        for (size_t d = scopex.length; 0 < d; --d)
+        auto stack = _stack.data;
+        for (size_t d = stack.length; 0 < d; --d)
         {
-            if (auto v = scopex[d-1].Get(key, this))
+            if (auto v = stack[d-1].Get(key, cc))
                 return v;
         }
-
         return null;
     }
 
     //--------------------------------------------------------------------
     ///
-    void put(K)(in auto ref K key, ref Value value)
-        if (PropertyKey.IsKey!K)
+    DError* set(K)(ref CallContext cc, in auto ref K key, ref Value value,
+                   Property.Attribute attr = Property.Attribute.None)
     {
         import dmdscript.property : Property;
 
-        assert(0 < globalroot);
-
-        for (size_t d = scopex.length; ; --d)
+        auto stack = _stack.data;
+        for (size_t d = stack.length; ; --d)
         {
-            if (globalroot < d)
+            if (GLOBAL_ROOT < d)
             {
-                auto o = scopex[d-1];
-                if (auto v = o.Get(key, this))
+                auto o = stack[d - 1];
+                if (auto v = o.Get(key, cc))
                 {
                     v.checkReference;
-                    o.Set(key, value, Property.Attribute.None, this);
-                    break;
+                    return o.Set(key, value, attr, cc);
                 }
             }
             else
             {
-                scopex[globalroot-1].Set(key, value, Property.Attribute.None,
-                                         this);
-                break;
+                return _global.Set(key, value, attr, cc);
             }
         }
     }
-}
 
+    ///
+    DError* setThis(K)(ref CallContext cc, in auto ref K key, ref Value value,
+                       Property.Attribute attr)
+    {
+        assert(_variable.variable !is null);
+        return _variable.variable.Set(key, value, attr, cc);
+    }
+
+    //====================================================================
+private:
+    enum GLOBAL_ROOT = 1;
+
+    struct VariableScope
+    {
+        size_t scoperoot;
+        Dobject variable;
+        Dfunction caller;
+        FunctionDefinition callerf;
+    }
+
+    Dobject _global;
+    VariableScope _variable;
+
+    Appender!(Dobject[]) _stack;
+    Appender!(VariableScope[]) _scopes;
+
+    ///
+    @safe pure nothrow
+    this(Dobject global)
+    {
+        assert (global !is null);
+
+        _global = global;
+        _stack.put(global);
+        _variable = VariableScope(GLOBAL_ROOT, global, null, null);
+        _scopes.put(_variable);
+    }
+}

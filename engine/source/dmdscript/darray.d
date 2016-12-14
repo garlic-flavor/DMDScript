@@ -355,7 +355,7 @@ DError* Darray_prototype_toLocaleString(
     v = othis.Get(Key.length, cc);
     len = v ? v.toUint32(cc) : 0;
 
-    Program prog = cc.prog;
+    Program prog = cc.program;
     if(!prog.slist)
     {
         // Determine what list separator is only once per thread

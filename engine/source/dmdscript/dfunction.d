@@ -18,7 +18,7 @@
 
 module dmdscript.dfunction;
 
-import dmdscript.primitive;
+import dmdscript.primitive : Key;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : DError, Value;
@@ -29,16 +29,35 @@ import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
 ///
 abstract class Dfunction : Dobject
 {
+    import dmdscript.primitive : tchar, tstring, Text;
     import dmdscript.dobject : Initializer;
 
+    @disable
+    enum Kind
+    {
+        normal,
+        classConstructor,
+        generator,
+    }
+
+    @disable
+    enum ConstructorKind
+    {
+        base,
+        derived,
+    }
+
     Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
+
+    @disable
+    Dobject HomeObject;
 
     override abstract
     DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                  Value[] arglist);
 
     //
-    override immutable(char)[] getTypeof()
+    override tstring getTypeof() const
     {     // ECMA 11.4.3
         return Text._function;
     }
@@ -250,8 +269,8 @@ class DfunctionConstructor : Dconstructor
                 goto Lsyntaxerror;
             fd.toIR(null);
             Dfunction fobj = new DdeclaredFunction(fd);
-            assert(cc.scoperoot <= cc.scopex.length);
-            fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
+            // fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
+            fobj.scopex = cc.scopex.stack.dup;
             ret.put(fobj);
         }
         else
@@ -334,7 +353,7 @@ DError* Dfunction_prototype_apply(
     }
 
     if(thisArg.isUndefinedOrNull())
-        o = cc.global;
+        o = cc.scopex.global;
     else
         o = thisArg.toObject();
 
@@ -405,14 +424,14 @@ DError* Dfunction_prototype_call(
 
     if(arglist.length == 0)
     {
-        o = cc.global;
+        o = cc.scopex.global;
         v = othis.Call(cc, o, ret, arglist);
     }
     else
     {
         thisArg = &arglist[0];
         if(thisArg.isUndefinedOrNull())
-            o = cc.global;
+            o = cc.scopex.global;
         else
             o = thisArg.toObject();
         v = othis.Call(cc, o, ret, arglist[1 .. $]);

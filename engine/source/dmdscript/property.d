@@ -214,9 +214,13 @@ struct Property
         }
     }
 
+    /*
+    See_Also: Ecma-262-v7/9.1.6.3 ValidateAndApplyPropertyDescriptor.
+    */
+
     //
     @trusted @nogc pure nothrow
-    bool canBeData(ref Attribute a)
+    bool canBeData(ref Attribute a) const
     {
         auto na = a & ~Attribute.Accessor & ~Attribute.DontOverride;
 
@@ -243,7 +247,7 @@ struct Property
 
     //
     @trusted @nogc pure nothrow
-    bool canBeAccessor(ref Attribute a)
+    bool canBeAccessor(ref Attribute a) const
     {
         auto na = a | Attribute.Accessor & ~Attribute.DontOverride &
             ~Attribute.ReadOnly;
@@ -267,7 +271,6 @@ struct Property
         a = na;
         return true;
     }
-
 
     //
     @safe @nogc pure nothrow
@@ -296,13 +299,16 @@ struct Property
     @trusted @nogc pure nothrow
     bool config(T)(auto ref T v, Attribute a) if (IsValue!T)
     {
-        if (canBeData(a))
+        if      (canBeData(a))
         {
             _attr = a;
             _value.put(v);
             return true;
         }
-        return false;
+        else if (_attr & Attribute.Accessor)
+            return false;
+        else
+            return _value == v;
     }
 
     //
@@ -310,14 +316,17 @@ struct Property
     bool config(Dfunction getter, Dfunction setter, Attribute a)
     {
         auto na = a;
-        if (canBeAccessor(a))
+        if      (canBeAccessor(a))
         {
             _attr = a;
             _Get = getter;
             _Set = setter;
             return true;
         }
-        return false;
+        else if (_attr & Attribute.Accessor)
+            return _Get is getter && _Set is setter;
+        else
+            return false;
     }
 
     //
@@ -723,7 +732,7 @@ final class PropTable
     //
     @safe
     bool config(K, V)(in auto ref K k, auto ref V value,
-                in Property.Attribute attributes)
+                      in Property.Attribute attributes, in bool extensible)
         if (IsKeyValue!(K, V))
     {
         static if (is(K : PropertyKey))
@@ -731,7 +740,7 @@ final class PropTable
         else
             auto key = PropertyKey(k);
 
-        if (auto p = _table.findExistingAlt(key, key.hash))
+        if      (auto p = _table.findExistingAlt(key, key.hash))
         {
             auto na = cast(Property.Attribute)attributes;
             if (!p.canBeData(na))
@@ -746,8 +755,10 @@ final class PropTable
             }
 
             *p = Property(value, na);
+
+            return true;
         }
-        else
+        else if (extensible)
         {
             if (!_canExtend(key))
             {
@@ -756,8 +767,11 @@ final class PropTable
 
             auto p = Property(value, attributes);
             _table.insertAlt(key, p, key.hash);
+
+            return true;
         }
-        return true;
+        else
+            return false;
     }
 
     //

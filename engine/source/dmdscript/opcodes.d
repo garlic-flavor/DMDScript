@@ -88,8 +88,10 @@ struct IR
         Value.Type tx;
         Value.Type ty;
         Dobject o;
-        Dobject[] scopex;
-        uint dimsave;
+// deprecated
+//         Dobject[] scopex;
+// deprecated
+//         uint dimsave;
         uint offset;
         Catch ca;
         Finally f;
@@ -109,18 +111,20 @@ struct IR
 
         DError* unwindStack(DError* err)
         {
-            assert(scopex.length && scopex[0] !is null,
-                   "Null in scopex, Line " ~ code.opcode.linnum.to!string);
+            // assert(scopex.length && scopex[0] !is null,
+            //        "Null in scopex, Line " ~ code.opcode.linnum.to!string);
 
             for(;; )
             {
-                if(scopex.length <= dimsave)
+                if (cc.scopex.isVariableRoot)
+                // if(scopex.length <= dimsave)
                 {
                     ret.putVundefined();
                     return err;
                 }
-                o = scopex[$ - 1];
-                scopex = scopex[0 .. $ - 1]; // pop entry off scope chain
+                // o = scopex[$ - 1];
+                // scopex = scopex[0 .. $ - 1]; // pop entry off scope chain
+                o = cc.scopex.pop;
 
                 if(auto ca = cast(Catch)o)
                 {
@@ -134,8 +138,9 @@ struct IR
                         o.Set(ca.name, err.entity,
                               Property.Attribute.DontDelete, cc);
                     }
-                    scopex ~= o;
-                    cc.scopex = scopex;
+                    // scopex ~= o;
+                    // cc.scopex = scopex;
+                    cc.scopex.push(o);
                     code = codestart + ca.offset;
                     break;
                 }
@@ -188,9 +193,9 @@ struct IR
 
         debug(VERIFY) uint checksum = IR.verify(__LINE__, code);
 
-        scopex = cc.scopex;
+        // scopex = cc.scopex;
 
-        dimsave = scopex.length;
+        // dimsave = scopex.length;
 
         assert(code);
         assert(othis);
@@ -198,7 +203,7 @@ struct IR
         loop: for(;; )
         {
             // Lnext:
-            if(cc.Interrupt)                    // see if script was interrupted
+            if(cc.isInterrupting) // see if script was interrupted
                 break loop;
 
             try
@@ -315,7 +320,7 @@ struct IR
                         v = cc.get(*id);
                         if(!v){
                             v = signalingUndefined(s);
-                            cc.put(*id, *v);
+                            cc.set(*id, *v);
                         }
                         else
                         {
@@ -437,7 +442,7 @@ struct IR
                 case Opcode.PutScope:            // s = a
                     a = locals + (code + 1).index;
                     a.checkReference();
-                    cc.put(*(code + 2).id, *a);
+                    cc.set(*(code + 2).id, *a);
                     code += IRTypes[Opcode.PutScope].size;
                     break;
 
@@ -459,17 +464,16 @@ struct IR
 
                 case Opcode.PutThis:             // s = a
                     //a = cc.variable.Put((code + 2).id.value.string, GETa(code), DontDelete);
-                    o = scope_tos(scopex);
+                    o = cc.scopex.getNonFakeObject;
                     assert(o);
                     if(o.HasProperty(*(code + 2).id))
                         sta = o.Set(*(code+2).id,
                                     *(locals + (code + 1).index),
                                     Property.Attribute.DontDelete, cc);
                     else
-                        sta = cc.variable.Set(*(code + 2).id,
-                                              *(locals + (code + 1).index),
-                                              Property.Attribute.DontDelete,
-                                              cc);
+                        sta = cc.setThis(*(code + 2).id,
+                                         *(locals + (code + 1).index),
+                                         Property.Attribute.DontDelete);
                     if (sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutThis].size;
@@ -490,7 +494,7 @@ struct IR
                     FunctionDefinition fd;
                     fd = cast(FunctionDefinition)(code + 2).ptr;
                     Dfunction fobject = new DdeclaredFunction(fd);
-                    fobject.scopex = scopex;
+                    fobject.scopex = cc.scopex.stack;
                     (locals + (code + 1).index).put(fobject);
                     code += IRTypes[Opcode.Object].size;
                     break;
@@ -1367,7 +1371,7 @@ struct IR
                         code += (code + 1).offset;
                     else
                     {
-                        o = scope_tos(scopex);
+                        o = cc.scopex.getNonFakeObject;
                         o.Set(s, ppk.value, Property.Attribute.None, cc);
                         code += IRTypes[Opcode.NextScope].size;
                     }
@@ -1560,16 +1564,18 @@ struct IR
                         sta = cannotConvert(a);
                         goto Lthrow;
                     }
-                    scopex ~= o;                // push entry onto scope chain
-                    cc.scopex = scopex;
+                    // scopex ~= o;                // push entry onto scope chain
+                    // cc.scopex = scopex;
+                    cc.scopex.push(o);
                     code += IRTypes[Opcode.Push].size;
                     break;
 
                 case Opcode.Pop:
                     SCOPECACHE_CLEAR();
-                    o = scopex[$ - 1];
-                    scopex = scopex[0 .. $ - 1];        // pop entry off scope chain
-                    cc.scopex = scopex;
+                    // o = scopex[$ - 1];
+                    // scopex = scopex[0 .. $ - 1];        // pop entry off scope chain
+                    // cc.scopex = scopex;
+                    o = cc.scopex.pop;
                     // If it's a Finally, we need to execute
                     // the finally block
                     code += IRTypes[Opcode.Pop].size;
@@ -1616,7 +1622,7 @@ struct IR
                     a = locals + (code + 1).index;
                     sta = new DError(*a);
                     Lthrow:
-                    assert(scopex[0] !is null);
+                    // assert(scopex[0] !is null);
                     sta = unwindStack(sta);
                     if(sta)
                     {
@@ -1629,16 +1635,18 @@ struct IR
                     offset = (code - codestart) + (code + 1).offset;
                     s = *(code + 2).id;
                     ca = new Catch(offset, s);
-                    scopex ~= ca;
-                    cc.scopex = scopex;
+                    // scopex ~= ca;
+                    // cc.scopex = scopex;
+                    cc.scopex.push(ca);
                     code += IRTypes[Opcode.TryCatch].size;
                     break;
 
                 case Opcode.TryFinally:
                     SCOPECACHE_CLEAR();
                     f = new Finally(code + (code + 1).offset);
-                    scopex ~= f;
-                    cc.scopex = scopex;
+                    // scopex ~= f;
+                    // cc.scopex = scopex;
+                    cc.scopex.push(f);
                     code += IRTypes[Opcode.TryFinally].size;
                     break;
 
@@ -1801,7 +1809,7 @@ class Catch : Dobject
 
     // This is so we can distinguish between a real Dobject
     // and these fakers
-    override tstring getTypeof()
+    override tstring getTypeof() const
     {
         return null;
     }
@@ -1831,7 +1839,7 @@ class Finally : Dobject
         return null;
     }
 
-    override tstring getTypeof()
+    override tstring getTypeof() const
     {
         return null;
     }
@@ -1845,25 +1853,6 @@ class Finally : Dobject
     }
 }
 
-
-//------------------------------------------------------------------------------
-/*
-Find last object in scopex, null if none.
-*/
-Dobject scope_tos(Dobject[] scopex)
-{
-    uint d;
-    Dobject o;
-
-    for(d = scopex.length; d; )
-    {
-        d--;
-        o = scopex[d];
-        if(o.getTypeof() != null)  // if not a Finally or a Catch
-            return o;
-    }
-    return null;
-}
 
 //------------------------------------------------------------------------------
 /*
