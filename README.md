@@ -42,5 +42,6 @@ An implementation of the ECMA 262 (Javascript) programming language
       + [ ] Declaration.(175/586)
       + [ ] Implementation.
             - [ ] Template Literal
+            - [ ] Generator
 * [ ] Run test262.(0/23509)
 * [ ] Make pull requests?(0/???)
