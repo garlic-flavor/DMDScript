@@ -16,9 +16,14 @@
  */
 module dmdscript.dimmutableprototype;
 
-module dmdscript.dobject : Dobject;
+import dmdscript.dobject : Dobject;
 
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// NOT IMPLEMENTED YED!
 class DimmutablePrototype : Dobject
 {
-
+    this()
+    {
+        super(null);
+    }
 }
