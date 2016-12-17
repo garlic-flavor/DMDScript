@@ -698,11 +698,17 @@ class BinExp : Expression
 
     override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
+        sink("(");
+        sink(typeid(e1).toString);
+        sink(":");
         e1.toBuffer(sink);
-        sink(" ");
+        sink(") ");
         sink(Token.toString(op));
-        sink(" ");
+        sink(" (");
+        sink(typeid(e2).toString);
+        sink(":");
         e2.toBuffer(sink);
+        sink(")");
     }
 }
 
@@ -1362,7 +1368,6 @@ final class AssignExp : BinExp
     {
         idx_t b;
 
-        //writef("AssignExp::toIR('%s')\n", toChars());
         if(e1.op == Tok.Call)            // if CallExp
         {
             assert(cast(CallExp)(e1));  // make sure we got it right
@@ -1370,10 +1375,10 @@ final class AssignExp : BinExp
             // Special case a function call as an lvalue.
             // This can happen if:
             //	foo() = 3;
-            // A Microsoft extension, it means to assign 3 to the default property of
-            // the object returned by foo(). It only has meaning for com objects.
-            // This functionality should be worked into toLvalue() if it gets used
-            // elsewhere.
+            // A Microsoft extension, it means to assign 3 to the default
+            // property of the object returned by foo(). It only has meaning for
+            // com objects. This functionality should be worked into toLvalue()
+            // if it gets used elsewhere.
 
             idx_t base;
             size_t argc;
@@ -1439,6 +1444,7 @@ final class AssignExp : BinExp
                 tmp = irs.alloc(1);
                 b = tmp[0];
             }
+            e2.toIR(irs, b);
 
             e1.toLvalue(irs, base, &property, opoff);
             final switch (opoff)
@@ -1563,7 +1569,6 @@ class BinAssignExp : BinExp
         IR property;
         OpOffset opoff;
 
-        //writef("BinExp::binAssignIR('%s')\n", toChars());
         e1.toLvalue(irs, base, &property, opoff);
         b = irs.alloc(1);
         final switch (opoff)

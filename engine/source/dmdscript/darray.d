@@ -367,6 +367,7 @@ DError* toLocaleString(
 {
     import dmdscript.primitive : string_t;
     import dmdscript.program : Program;
+    import dmdscript.locale : Locale;
 
     // ECMA v3 15.4.4.3
     string_t separator;
@@ -384,14 +385,15 @@ DError* toLocaleString(
     v = othis.Get(Key.length, cc);
     len = v ? v.toUint32(cc) : 0;
 
-    Program prog = cc.program;
-    if(!prog.slist)
-    {
-        // Determine what list separator is only once per thread
-        //prog.slist = list_separator(prog.lcid);
-        prog.slist = ",";
-    }
-    separator = prog.slist;
+    // Program prog = cc.program;
+    // if(0 == prog.slist.length)
+    // {
+    //     // Determine what list separator is only once per thread
+    //     //prog.slist = list_separator(prog.lcid);
+    //     prog.slist = ",";
+    // }
+    // separator = prog.slist;
+    separator = Locale.list_separator;
 
     for(k = 0; k != len; k++)
     {

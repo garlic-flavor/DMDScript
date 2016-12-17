@@ -58,6 +58,17 @@ DError* parse(
     assert (0);
 }
 
+//
+@DFD(1, DFD.Type.Static)
+DError* stringfy(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+
+
 class DJSONConstructor : Dconstructor
 {
     this()

@@ -14,79 +14,48 @@
  * For a C++ implementation of DMDScript, including COM support, see
  * http://www.digitalmars.com/dscript/cppscript.html
  */
-
-
 module dmdscript.program;
-
-import dmdscript.primitive;
-import dmdscript.callcontext;
-import dmdscript.dobject;
-import dmdscript.dglobal;
-import dmdscript.functiondefinition;
-import dmdscript.statement;
-import dmdscript.value;
-import dmdscript.opcodes;
-import dmdscript.darray;
-import dmdscript.parse;
-import dmdscript.scopex;
-import dmdscript.property;
-import dmdscript.ddate;
 
 debug import std.stdio;
 
 class Program
 {
-    uint errors;        // if any errors in file
-    CallContext callcontext;
-    FunctionDefinition globalfunction;
-    // static Program program;//per thread global associated data
-
-    // Locale info
-    uint lcid;          // current locale
-    string_t slist;     // list separator
+    import dmdscript.primitive : string_t, char_t;
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.functiondefinition : FunctionDefinition;
 
     this()
     {
+        import dmdscript.dobject : dobject_init;
+        import dmdscript.dglobal : Dglobal;
+
         dobject_init();
         callcontext = CallContext(this, new Dglobal(null));
-/*
-        callcontext = new CallContext();
 
-        CallContext* cc = callcontext;
-
-        // Do object inits
-        dobject_init();
-
-        cc.prog = this;
-
-        // Create global object
-        cc.global = new Dglobal(null);
-
-        Dobject[] scopex;
-        scopex ~= cc.global;
-
-        cc.variable = cc.global;
-        cc.scopex = scopex;
-        cc.scoperoot++;
-        cc.globalroot++;
-
-*/
-        assert(Ddate.getPrototype.proptable.length != 0);
+        debug
+        {
+            import dmdscript.ddate : Ddate;
+            assert(Ddate.getPrototype.proptable.length != 0);
+        }
     }
 
-    /**************************************************
-     * Two ways of calling this:
-     * 1. with text representing group of topstatements (pfd == null)
-     * 2. with text representing a function name & body (pfd != null)
-     */
-
+    //--------------------------------------------------------------------
+    /**
+    Two ways of calling this:
+    1. with text representing group of topstatements (pfd == null)
+    2. with text representing a function name & body (pfd != null)
+    */
     void compile(string_t progIdentifier, string_t srctext,
                  FunctionDefinition* pfd)
     {
+        import dmdscript.statement : TopStatement;
+        import dmdscript.parse : Parser;
+        import dmdscript.primitive : StringKey;
+        import dmdscript.scopex : Scope;
+
         TopStatement[] topstatements;
         string_t msg;
 
-        //writef("parse_common()\n");
         Parser p = new Parser(progIdentifier, srctext,
                               Parser.UseStringtable.Yes);
 
@@ -94,6 +63,12 @@ class Program
         {
             topstatements = null;
             throw exception;
+        }
+
+        debug
+        {
+            if (dumpMode & DumpMode.Statement)
+                TopStatement.dump(topstatements).writeln;
         }
 
         if(pfd)
@@ -106,18 +81,17 @@ class Program
         // Make globalfunction an anonymous one (by passing in null for name) so
         // it won't get instantiated as a property
         globalfunction = new FunctionDefinition(
-            srctext, 0, 1, StringKey.build(progIdentifier), null, null);
+            srctext, 0, 1, StringKey.build(progIdentifier), null,
+            topstatements);
 
         // Any functions parsed in topstatements wind up in the global
         // object (cc.global), where they are found by normal property lookups.
         // Any global new top statements only get executed once, and so although
         // the previous group of topstatements gets lost, it does not matter.
 
-        // In essence, globalfunction encapsulates the *last* group of topstatements
-        // passed to script, and any previous version of globalfunction, along with
-        // previous topstatements, gets discarded.
-
-        globalfunction.topstatements = topstatements;
+        // In essence, globalfunction encapsulates the *last* group of
+        // topstatements passed to script, and any previous version of
+        // globalfunction, along with previous topstatements, gets discarded.
 
         // If pfd, it is not really necessary to create a global function just
         // so we can do the semantic analysis, we could use p.lastnamedfunc
@@ -139,6 +113,12 @@ class Program
             throw sc.exception;
         }
 
+        debug
+        {
+            if (dumpMode & DumpMode.Semantics)
+                TopStatement.dump(topstatements).writeln;
+        }
+
         if(pfd)
             // If expecting a function, that is the only topstatement we should
             // have had
@@ -148,42 +128,49 @@ class Program
             globalfunction.toIR(null);
         }
 
+        debug
+        {
+            import dmdscript.opcodes;
+            if (dumpMode & DumpMode.IR)
+                IR.toString(globalfunction.code).writeln;
+        }
+
         // Don't need parse trees anymore, so null'ing the pointer allows
         // the garbage collector to find & free them.
-        globalfunction.topstatements[] = null;
         globalfunction.topstatements = null;
     }
 
-    /*******************************
-     * Execute program.
-     * Throw ScriptException on error.
-     */
-
+    //--------------------------------------------------------------------
+    /**
+    Execute program.
+    Throw ScriptException on error.
+    */
     void execute(string_t[] args)
     {
-        // ECMA 10.2.1
-        //writef("Program.execute(argc = %d, argv = %p)\n", argc, argv);
-        //writef("Program.execute()\n");
+        import dmdscript.primitive : Key;
+        import dmdscript.value : Value, DError;
+        import dmdscript.darray : Darray;
+        import dmdscript.dobject : Dobject;
+        import dmdscript.property : Property;
+        import dmdscript.opcodes : IR;
 
-        // initContext();
+        // ECMA 10.2.1
 
         Value[] locals;
         Value ret;
         DError* result;
-        CallContext* cc = &callcontext;
         Darray arguments;
-        Dobject dglobal = cc.scopex.global;
-        //Program program_save;
+        Dobject dglobal = callcontext.scopex.global;
 
         // Set argv and argc for execute
         arguments = new Darray();
         dglobal.Set(Key.arguments, arguments,
                     Property.Attribute.DontDelete |
-                    Property.Attribute.DontEnum, *cc);
+                    Property.Attribute.DontEnum, callcontext);
         arguments.length.put(args.length);
         for(int i = 0; i < args.length; i++)
         {
-            arguments.Set(i, args[i], Property.Attribute.DontEnum, *cc);
+            arguments.Set(i, args[i], Property.Attribute.DontEnum, callcontext);
         }
 
         Value[] p1;
@@ -205,21 +192,12 @@ class Program
 
         // Instantiate global variables as properties of global
         // object with 0 attributes
-        globalfunction.instantiate(*cc, Property.Attribute.DontDelete);
-        // globalfunction.instantiate(cc.scopex, cc.variable,
-        //                            Property.Attribute.DontDelete);
-
+        globalfunction.instantiate(callcontext, Property.Attribute.DontDelete);
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
 
-        // The 'this' value is the global object
-        //FIXED: NOT any longer in D 2.0, any global data is actually thread-local, so stripped all this 'saving global object' crap
-        //printf("cc.scopex.ptr = %x, cc.scopex.length = %d\n", cc.scopex.ptr, cc.scopex.length);
-        //program_save = getProgram();
-
-        // setProgram(this);
         ret.putVundefined();
-        result = IR.call(*cc, cc.scopex.global, globalfunction.code, ret,
-                         locals.ptr);
+        result = IR.call(callcontext, callcontext.scopex.global,
+                         globalfunction.code, ret, locals.ptr);
         if(result)
         {
             auto exception = result.toScriptException;
@@ -230,38 +208,33 @@ class Program
                 globalfunction.srctext);
             throw exception;
         }
-        //writef("-Program.execute()\n");
-
 
         delete p1;
     }
 
+    //--------------------------------------------------------------------
+    ///
     void toBuffer(scope void delegate(in char_t[]) sink)
     {
         if(globalfunction)
             globalfunction.toBuffer(sink);
     }
 
-    /***********************************************
-     * Get/Set Program associated with this thread.
-     * This enables multiple scripts (Programs) running simultaneously
-     * in different threads.
-     * It is needed because which Program is being run is essentially
-     * global data - and this makes it thread local data.
-     */
+    //====================================================================
+private:
 
-/+
-deprecated
-    static Program getProgram()
-    {
-        return program;
-    }
+    CallContext callcontext;
+    FunctionDefinition globalfunction;
 
-deprecated
-    static void setProgram(Program p)
+debug public:
+    enum DumpMode
     {
-        program = p;
+        None       = 0x00,
+        Statement  = 0x01,
+        Semantics  = 0x02,
+        IR         = 0x04,
+        All        = 0x07,
     }
-+/
+    DumpMode dumpMode;
 }
 

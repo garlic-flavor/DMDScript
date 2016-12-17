@@ -31,101 +31,112 @@ import dmdscript.errmsgs;
 
 enum
 {
-	EXITCODE_INIT_ERROR = 1,
-	EXITCODE_INVALID_ARGS = 2,
-	EXITCODE_RUNTIME_ERROR = 3,
+    EXITCODE_INIT_ERROR = 1,
+    EXITCODE_INVALID_ARGS = 2,
+    EXITCODE_RUNTIME_ERROR = 3,
 }
-//Ehm, well, this fools VisualD, and of little convinience anyway
-/*version (Windows)
-{
-    pragma(lib, "dmdscript");
-}*/
-
-
 
 /**************************************************
-	Usage:
+Usage:
 
-	    ds
-		will run test.ds
+    ds
+        will run test.ds
 
-	    ds foo
-		will run foo.ds
+    ds foo
+        will run foo.ds
 
-	    ds foo.js
-		will run foo.js
+    ds foo.js
+        will run foo.js
 
-	    ds foo1 foo2 foo.bar
-		will run foo1.ds, foo2.ds, foo.bar
+    ds foo1 foo2 foo.bar
+        will run foo1.ds, foo2.ds, foo.bar
 
-	The -iinc flag will prefix the source files with the contents of file inc.
-	There can be multiple -i's. The include list is reset to empty any time
-	a new -i is encountered that is not preceded by a -i.
+    The -iinc flag will prefix the source files with the contents of file inc.
+    There can be multiple -i's. The include list is reset to empty any time
+    a new -i is encountered that is not preceded by a -i.
 
-	    ds -iinc foo
-		will prefix foo.ds with inc
+    ds -iinc foo
+        will prefix foo.ds with inc
 
-	    ds -iinc1 -iinc2 foo bar
-		will prefix foo.ds with inc1+inc2, and will prefix bar.ds
-		with inc1+inc2
+    ds -iinc1 -iinc2 foo bar
+        will prefix foo.ds with inc1+inc2, and will prefix bar.ds
+        with inc1+inc2
 
-	    ds -iinc1 -iinc2 foo -iinc3 bar
-		will prefix foo.ds with inc1+inc2, and will prefix bar.ds
-		with inc3
+    ds -iinc1 -iinc2 foo -iinc3 bar
+        will prefix foo.ds with inc1+inc2, and will prefix bar.ds
+        with inc3
 
-	    ds -iinc1 -iinc2 foo -i bar
-		will prefix foo.ds with inc1+inc2, and will prefix bar.ds
-		with nothing
+    ds -iinc1 -iinc2 foo -i bar
+        will prefix foo.ds with inc1+inc2, and will prefix bar.ds
+        with nothing
 
  */
 
 int main(string[] args)
 {
+    import std.algorithm : startsWith;
     import dmdscript.dglobal : banner;
 
     uint errors = 0;
     string[] includes;
     SrcFile[] srcfiles;
     int result;
+
     bool verbose;
 
-    //GC.disable();
-    if(args.length == 1)
-		stderr.writefln(banner);
-    for (size_t i = 1; i < args.length; i++)
-    {	string p = args[i];
-
-	if (p[0] == '-')
-	{
-	    switch (p[1])
-	    {
-		case 'i':
-		    if (p[2])
-			includes ~= p[2 .. $];
-		    break;
-
-		case 'v':
-		    verbose = 1;
-		    break;
-
-		default:
-		    writefln(BadSwitchError(p).toString);
-		    errors++;
-		    break;
-	    }
-	}
-	else
-	{
-	    srcfiles ~= new SrcFile(p, includes);
-	    includes = null;
-	}
+    debug
+    {
+        bool compileOnly;
+        Program.DumpMode dumpMode;
     }
-    if (errors)
-	return EXITCODE_INVALID_ARGS;
+
+    if(args.length == 1)
+        stderr.writefln(banner);
+    for (size_t i = 1; i < args.length; i++)
+    {
+        switch (args[i])
+        {
+        case "-v":
+            verbose = true;
+            break;
+        debug
+        {
+            case "-c":
+                compileOnly = true;
+                break;
+            case "-dumpStatement":
+                dumpMode |= Program.DumpMode.Statement;
+                break;
+            case "-dumpSemantics":
+                dumpMode |= Program.DumpMode.Semantics;
+                break;
+            case "-dumpIR":
+                dumpMode |= Program.DumpMode.IR;
+                break;
+        }
+        default:
+            if      (args[i].startsWith("-i"))
+            {
+                includes ~= args[i][2..$];
+            }
+            else if (args[i].startsWith("-"))
+            {
+                BadSwitchError(args[i]).toString.writefln;
+                errors++;
+            }
+            else
+            {
+                srcfiles ~= new SrcFile(args[i], includes);
+                includes = null;
+            }
+        }
+    }
+    if (0 < errors)
+        return EXITCODE_INVALID_ARGS;
 
     if (srcfiles.length == 0)
     {
-	srcfiles ~= new SrcFile("test", null);
+        srcfiles ~= new SrcFile("test", null);
     }
 
     stderr.writefln("%d source files", srcfiles.length);
@@ -133,12 +144,22 @@ int main(string[] args)
     // Read files, parse them, execute them
     foreach (SrcFile m; srcfiles)
     {
+        debug
+        {
+            m.dumpMode = dumpMode;
+        }
         if (verbose)
             writefln("read    %s:", m.srcfile);
         m.read();
         if (verbose)
             writefln("compile %s:", m.srcfile);
         m.compile();
+
+        debug
+        {
+            if (compileOnly) continue;
+        }
+
         if (verbose)
             writefln("execute %s:", m.srcfile);
         try m.execute();
@@ -162,75 +183,84 @@ class SrcFile
 
     this(string srcfilename, string[] includes)
     {
-	/* DMDScript source files default to a '.ds' extension
-	 */
+        /* DMDScript source files default to a '.ds' extension
+         */
 
-	srcfile = defaultExtension(srcfilename, "ds");
-	this.includes = includes;
+        srcfile = defaultExtension(srcfilename, "ds");
+        this.includes = includes;
     }
 
     void read()
     {
-	/* Read the source file, prepend the include files,
-	 * and put it all in buffer[]. Allocate an extra byte
-	 * to buffer[] and terminate it with a 0x1A.
-	 * (If the 0x1A isn't at the end, the lexer will put
-	 * one there, forcing an extra copy to be made of the
-	 * source text.)
-	 */
+        /* Read the source file, prepend the include files,
+         * and put it all in buffer[]. Allocate an extra byte
+         * to buffer[] and terminate it with a 0x1A.
+         * (If the 0x1A isn't at the end, the lexer will put
+         * one there, forcing an extra copy to be made of the
+         * source text.)
+         */
 
-	//writef("read file '%s'\n",srcfile);
+        //writef("read file '%s'\n",srcfile);
 
-	// Read the includes[] files
-	size_t i;
-	void[] buf;
-	ulong len;
+        // Read the includes[] files
+        size_t i;
+        void[] buf;
+        ulong len;
 
-	len = std.file.getSize(srcfile);
-	foreach (string filename; includes)
-	{
-	    len += std.file.getSize(filename);
-	}
-	len++;				// leave room for sentinal
+        len = std.file.getSize(srcfile);
+        foreach (string filename; includes)
+        {
+            len += std.file.getSize(filename);
+        }
+        len++; // leave room for sentinal
 
-	assert(len < uint.max);
+        assert(len < uint.max);
 
-	// Prefix the includes[] files
+        // Prefix the includes[] files
 
-	int sz = cast(int)len;
-	buffer = new char_t[sz];
+        int sz = cast(int)len;
+        buffer = new char_t[sz];
 
-	foreach (string filename; includes)
-	{
-	    buf = std.file.read(filename);
-	    buffer[i .. i + buf.length] = cast(string)buf[];
-	    i += buf.length;
-	}
+        foreach (string filename; includes)
+        {
+            buf = std.file.read(filename);
+            buffer[i .. i + buf.length] = cast(string)buf[];
+            i += buf.length;
+        }
 
-	buf = std.file.read(srcfile);
-	buffer[i .. i + buf.length] = cast(string)buf[];
-	i += buf.length;
+        buf = std.file.read(srcfile);
+        buffer[i .. i + buf.length] = cast(string)buf[];
+        i += buf.length;
 
-	buffer[i] = 0x1A;		// ending sentinal
-	i++;
-	assert(i == len);
+        buffer[i] = 0x1A; // ending sentinal
+        i++;
+        assert(i == len);
     }
 
     void compile()
     {
-	/* Create a DMDScript program, and compile our text buffer.
-	 */
+        /* Create a DMDScript program, and compile our text buffer.
+         */
 
-	program = new Program();
-	program.compile(srcfile, assumeUnique(buffer), null);
+        program = new Program();
+
+        debug
+        {
+            program.dumpMode = dumpMode;
+        }
+
+        program.compile(srcfile, assumeUnique(buffer), null);
     }
 
     void execute()
     {
-	/* Execute the resulting program.
-	 */
+        /* Execute the resulting program.
+         */
 
-	program.execute(null);
+        program.execute(null);
     }
+
+debug public:
+    Program.DumpMode dumpMode;
 }
 

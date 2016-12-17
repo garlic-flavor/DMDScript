@@ -176,7 +176,6 @@ class FunctionDefinition : TopStatement
         IRstate irs;
         uint i;
 
-        //writefln("FunctionDefinition.toIR() done = %d", done);
         irs.ctor;
         if(topstatements.length)
         {

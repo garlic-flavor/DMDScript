@@ -1730,8 +1730,11 @@ struct IR
 
         for(;; )
         {
+            buf.put(code.opcode.linnum.to!string_t);
+            buf.put(":");
             buf.put((cast(size_t)(code - codestart)).to!string_t);
             toBuffer(code - codestart, code, b=>buf.put(b));
+            buf.put("\n");
             if(code.opcode == Opcode.End)
                 break;
             code += size(code.opcode);

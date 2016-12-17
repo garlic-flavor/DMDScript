@@ -117,6 +117,23 @@ class TopStatement
         assert(se !is null);
         debug throw se;
     }
+
+debug static:
+    string_t dump(TopStatement[] s)
+    {
+        import std.array : Appender;
+        import std.conv : to;
+        Appender!string_t buf;
+        foreach(one; s)
+        {
+            buf.put(one.linnum.to!string_t);
+            buf.put(":");
+            buf.put(typeid(one).to!string_t);
+            buf.put(":");
+            one.toBuffer(b=>buf.put(b));
+        }
+        return buf.data;
+    }
 }
 
 /******************************** Statement ***************************/
@@ -246,7 +263,11 @@ class ExpStatement : Statement
     override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         if(exp)
+        {
+            sink(typeid(exp).toString);
+            sink(":");
             exp.toBuffer(sink);
+        }
         sink(";\n");
     }
 }
