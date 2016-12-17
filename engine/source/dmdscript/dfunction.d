@@ -18,18 +18,17 @@
 
 module dmdscript.dfunction;
 
-import dmdscript.primitive : Key;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : DError, Value;
 import dmdscript.errmsgs;
-import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 
 //==============================================================================
 ///
 abstract class Dfunction : Dobject
 {
-    import dmdscript.primitive : tchar, tstring, Text;
+    import dmdscript.primitive : string_t, Text, Key;
     import dmdscript.dobject : Initializer;
 
     @disable
@@ -57,7 +56,7 @@ abstract class Dfunction : Dobject
                  Value[] arglist);
 
     //
-    override tstring getTypeof() const
+    override string_t getTypeof() const
     {     // ECMA 11.4.3
         return Text._function;
     }
@@ -90,7 +89,7 @@ abstract class Dfunction : Dobject
         w = Get(Key.prototype, cc);
         if(w.isPrimitive())
         {
-            return MustBeObjectError(w.type.to!tstring);
+            return MustBeObjectError(w.type.to!string_t);
         }
         o = w.toObject();
         for(;; )
@@ -136,7 +135,7 @@ abstract class Dfunction : Dobject
 
 
 protected:
-    const(tchar)[] name;
+    string_t name;
 
     //
     this(uint length)
@@ -151,21 +150,26 @@ protected:
     }
 
     //
-    this(tstring name, uint length, Dobject prototype)
+    this(string_t name, uint length, Dobject prototype)
     {
         import dmdscript.property : Property;
 
         super(prototype, Key.Function);
         this.name = name;
-        CallContext cc;
-        Set(Key.length, length,
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum |
-            Property.Attribute.ReadOnly, cc);
-        Set(Key.arity, length,
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum |
-            Property.Attribute.ReadOnly, cc);
+
+        DefineOwnProperty(Key.length, length,
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum |
+                          Property.Attribute.ReadOnly);
+        DefineOwnProperty(Key.name, name,
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum |
+                          Property.Attribute.ReadOnly);
+
+        // Set(Key.arity, length,
+        //     Property.Attribute.DontDelete |
+        //     Property.Attribute.DontEnum |
+        //     Property.Attribute.ReadOnly, cc);
     }
 
 
@@ -206,7 +210,7 @@ protected:
     }
 
     //
-    this(tstring name, uint length, Dobject prototype)
+    this(string_t name, uint length, Dobject prototype)
     {
         super(name, length, prototype);
     }
@@ -235,8 +239,8 @@ class DfunctionConstructor : Dconstructor
         import dmdscript.protoerror;
 
         // ECMA 15.3.2.1
-        tstring bdy;
-        tstring P;
+        string_t bdy;
+        string_t P;
         FunctionDefinition fd;
         ScriptException exception;
 
@@ -292,8 +296,8 @@ class DfunctionConstructor : Dconstructor
 
 //------------------------------------------------------------------------------
 //
-@DnativeFunctionDescriptor(Key.toString, 0)
-DError* Dfunction_prototype_toString(
+@DFD(0)
+DError* toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -320,14 +324,15 @@ DError* Dfunction_prototype_toString(
 
 //------------------------------------------------------------------------------
 //
-@DnativeFunctionDescriptor(Key.apply, 2)
-DError* Dfunction_prototype_apply(
+@DFD(2)
+DError* apply(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.3.4.3
 
     import core.sys.posix.stdlib : alloca;
+    import dmdscript.primitive : Key;
     import dmdscript.darray : Darray;
     import dmdscript.darguments : Darguments;
     import dmdscript.value : vundefined;
@@ -411,9 +416,19 @@ DError* Dfunction_prototype_apply(
 }
 
 //------------------------------------------------------------------------------
+@DFD(1)
+DError* bind(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+
+//------------------------------------------------------------------------------
 //
-@DnativeFunctionDescriptor(Key.call, 1)
-DError* Dfunction_prototype_call(
+@DFD(1)
+DError* call(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

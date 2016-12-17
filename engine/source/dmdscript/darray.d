@@ -32,7 +32,7 @@ import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.property : Property;
 import dmdscript.errmsgs;
-import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 
 //==============================================================================
 ///
@@ -238,6 +238,35 @@ public static:
 //==============================================================================
 private:
 
+//
+@DFD(1, DFD.Type.Static)
+DError* from(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isArray(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* of(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+
+
 //------------------------------------------------------------------------------
 class DarrayConstructor : Dconstructor
 {
@@ -320,8 +349,8 @@ class DarrayConstructor : Dconstructor
 
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toString, 0)
-DError* Darray_prototype_toString(
+@DFD(0)
+DError* toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -331,17 +360,17 @@ DError* Darray_prototype_toString(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toLocaleString, 0)
-DError* Darray_prototype_toLocaleString(
+@DFD(0)
+DError* toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : tstring;
+    import dmdscript.primitive : string_t;
     import dmdscript.program : Program;
 
     // ECMA v3 15.4.4.3
-    tstring separator;
-    tstring r;
+    string_t separator;
+    string_t r;
     uint len;
     uint k;
     Value* v;
@@ -396,8 +425,8 @@ DError* Darray_prototype_toLocaleString(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.concat, 1)
-DError* Darray_prototype_concat(
+@DFD(1)
+DError* concat(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -443,8 +472,8 @@ DError* Darray_prototype_concat(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.join, 1)
-DError* Darray_prototype_join(
+@DFD(1)
+DError* join(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -456,11 +485,11 @@ DError* Darray_prototype_join(
 void array_join(ref CallContext cc, Dobject othis, out Value ret,
                 Value[] arglist)
 {
-    import dmdscript.primitive : tstring, Text;
+    import dmdscript.primitive : string_t, Text;
 
     // ECMA 15.4.4.3
-    tstring separator;
-    tstring r;
+    string_t separator;
+    string_t r;
     uint len;
     uint k;
     Value* v;
@@ -486,15 +515,15 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toSource, 0)
-DError* Darray_prototype_toSource(
+@DFD(0)
+DError* toSource(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : tstring;
+    import dmdscript.primitive : string_t;
 
-    tstring separator;
-    tstring r;
+    string_t separator;
+    string_t r;
     uint len;
     uint k;
     Value* v;
@@ -520,8 +549,8 @@ DError* Darray_prototype_toSource(
 
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.pop, 0)
-DError* Darray_prototype_pop(
+@DFD(0)
+DError* pop(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -552,8 +581,8 @@ DError* Darray_prototype_pop(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.push, 1)
-DError* Darray_prototype_push(
+@DFD(1)
+DError* push(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -577,8 +606,8 @@ DError* Darray_prototype_push(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.reverse, 0)
-DError* Darray_prototype_reverse(
+@DFD(0)
+DError* reverse(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -618,8 +647,8 @@ DError* Darray_prototype_reverse(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.shift, 0)
-DError* Darray_prototype_shift(
+@DFD(0)
+DError* shift(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -664,8 +693,8 @@ DError* Darray_prototype_shift(
 
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.slice, 2)
-DError* Darray_prototype_slice(
+@DFD(2)
+DError* slice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -821,12 +850,12 @@ static CallContext* comparecc;
 extern (C) int compare_value(const void* x, const void* y)
 {
     import std.string : stdcmp = cmp;
-    import dmdscript.primitive : tstring;
+    import dmdscript.primitive : string_t;
 
     Value* vx = cast(Value*)x;
     Value* vy = cast(Value*)y;
-    tstring sx;
-    tstring sy;
+    string_t sx;
+    string_t sy;
     int cmp;
 
     //writef("compare_value()\n");
@@ -872,8 +901,8 @@ extern (C) int compare_value(const void* x, const void* y)
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.sort, 1)
-DError* Darray_prototype_sort(
+@DFD(1)
+DError* sort(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -999,8 +1028,8 @@ DError* Darray_prototype_sort(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.splice, 2)
-DError* Darray_prototype_splice(
+@DFD(2)
+DError* splice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1157,8 +1186,8 @@ else
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.unshift, 1)
-DError* Darray_prototype_unshift(
+@DFD(1)
+DError* unshift(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1192,3 +1221,155 @@ DError* Darray_prototype_unshift(
     return null;
 }
 
+//
+@DFD(1)
+DError* copyWithin(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(0)
+DError* entries(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* every(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* fill(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* filter(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* find(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* findIndex(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* forEach(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* includes(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* indexOf(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* keys(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* lastIndexOf(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* map(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* reduce(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* reduceRight(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* some(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* values(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}

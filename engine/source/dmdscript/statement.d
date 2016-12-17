@@ -55,16 +55,16 @@ class TopStatement
     enum uint TOPSTATEMENT_SIGNATURE = 0xBA3FE1F3;
     uint signature = TOPSTATEMENT_SIGNATURE;
 
-    line_number loc;
+    uint linnum;
     Progress done;      // 0: parsed
                         // 1: semantic
                         // 2: toIR
     StatementType st;
 
     @safe @nogc pure nothrow
-    this(line_number loc)
+    this(uint linnum)
     {
-        this.loc = loc;
+        this.linnum = linnum;
         this.done = Progress.Parsed;
         this.st = StatementType.TopStatement;
     }
@@ -89,7 +89,7 @@ class TopStatement
         assert(0, "TopStatement.toIR(" ~ toString ~ ")");
     }
 
-    void toBuffer(scope void delegate(in tchar[]) sink) const
+    void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         sink("TopStatement.toBuffer()\n");
     }
@@ -102,7 +102,7 @@ class TopStatement
 
         if (sc.exception is null)
         {
-            tstring sourcename;
+            string_t sourcename;
             if (sc.funcdef !is null)
             {
                 if      (sc.funcdef.isAnonymous)
@@ -111,7 +111,7 @@ class TopStatement
                     sourcename = sc.funcdef.name.toString;
             }
 
-            se.addTrace(sourcename, sc.getSource, loc);
+            se.addTrace(sourcename, sc.getSource, linnum);
             sc.exception = se;
         }
         assert(se !is null);
@@ -126,10 +126,10 @@ class Statement : TopStatement
     protected LabelSymbol* label;
 
     @safe @nogc pure nothrow
-    this(line_number loc)
+    this(uint linnum)
     {
-        super(loc);
-        this.loc = loc;
+        super(linnum);
+        this.linnum = linnum;
     }
 
     override Statement semantic(Scope *sc)
@@ -170,7 +170,7 @@ class Statement : TopStatement
     ScopeStatement getScope()
     { return null; }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     { sink("Statement.toBuffer()\n"); }
 }
 
@@ -179,10 +179,10 @@ class Statement : TopStatement
 final class EmptyStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc)
+    this(uint linnum)
     {
-        super(loc);
-        this.loc = loc;
+        super(linnum);
+        this.linnum = linnum;
     }
 
     override @safe @nogc pure nothrow
@@ -197,7 +197,7 @@ final class EmptyStatement : Statement
     {
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     { sink(";\n"); }
 }
 
@@ -208,10 +208,10 @@ class ExpStatement : Statement
     protected Expression exp;
 
     @safe @nogc pure nothrow
-    this(line_number loc, Expression exp)
+    this(uint linnum, Expression exp)
     {
         //writef("ExpStatement.ExpStatement(this = %x, exp = %x)\n", this, exp);
-        super(loc);
+        super(linnum);
         st = StatementType.ExpStatement;
         this.exp = exp;
     }
@@ -226,7 +226,7 @@ class ExpStatement : Statement
     override @safe pure nothrow
     TopStatement ImpliedReturn()
     {
-        return new ImpliedReturnStatement(loc, exp);
+        return new ImpliedReturnStatement(linnum, exp);
     }
 
     override void toIR(IRstate* irs)
@@ -243,7 +243,7 @@ class ExpStatement : Statement
         }
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         if(exp)
             exp.toBuffer(sink);
@@ -255,14 +255,14 @@ class ExpStatement : Statement
 
 final class VarDeclaration
 {
-    line_number loc;
+    uint linnum;
     StringKey* name;
     Expression init;
 
     @safe @nogc pure nothrow
-    this(line_number loc, StringKey* name, Expression init)
+    this(uint linnum, StringKey* name, Expression init)
     {
-        this.loc = loc;
+        this.linnum = linnum;
         this.init = init;
         this.name = name;
     }
@@ -275,9 +275,9 @@ final class VarStatement : Statement
     VarDeclaration[] vardecls;
 
     @safe @nogc pure nothrow
-    this(line_number loc)
+    this(uint linnum)
     {
-        super(loc);
+        super(linnum);
         st = StatementType.VarStatement;
     }
 
@@ -321,7 +321,7 @@ final class VarStatement : Statement
                 {
                     vd.init.toIR(irs, ret[0]);
                     property.id = StringKey.build(vd.name.toString);
-                    irs.gen!(Opcode.PutThis)(loc, ret[0], property.id);
+                    irs.gen!(Opcode.PutThis)(linnum, ret[0], property.id);
                 }
             }
             irs.release(ret);
@@ -330,7 +330,7 @@ final class VarStatement : Statement
         }
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         uint i;
 
@@ -360,9 +360,9 @@ final class BlockStatement : Statement
     TopStatement[] statements;
 
     @safe @nogc pure nothrow
-    this(line_number loc)
+    this(uint linnum)
     {
-        super(loc);
+        super(linnum);
     }
 
     override Statement semantic(Scope* sc)
@@ -403,7 +403,7 @@ final class BlockStatement : Statement
         statements = null;
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         sink("{\n");
         foreach(s; statements)
@@ -417,9 +417,9 @@ final class BlockStatement : Statement
 final class LabelStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, StringKey* ident, Statement statement)
+    this(uint linnum, StringKey* ident, Statement statement)
     {
-        super(loc);
+        super(linnum);
         this.ident = ident;
         this.statement = statement;
         gotoIP = ~0u;
@@ -443,7 +443,7 @@ final class LabelStatement : Statement
         }
         else
         {
-            ls = new LabelSymbol(loc, ident, this);
+            ls = new LabelSymbol(linnum, ident, this);
             sc.insertLabel(ls);
         }
         if(statement)
@@ -485,7 +485,7 @@ final class LabelStatement : Statement
         return scopeContext;
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         sink(ident.toString);
         sink(": ");
@@ -509,9 +509,9 @@ private:
 final class IfStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Expression condition, Statement ifbody, Statement elsebody)
+    this(uint linnum, Expression condition, Statement ifbody, Statement elsebody)
     {
-        super(loc);
+        super(linnum);
         this.condition = condition;
         this.ifbody = ifbody;
         this.elsebody = elsebody;
@@ -548,15 +548,15 @@ final class IfStatement : Statement
         condition.toIR(irs, c[0]);
         u1 = irs.getIP();
         if (condition.isBooleanResult)
-            irs.gen!(Opcode.JFB)(loc, 0, c[0]);
+            irs.gen!(Opcode.JFB)(linnum, 0, c[0]);
         else
-            irs.gen!(Opcode.JF)(loc, 0, c[0]);
+            irs.gen!(Opcode.JF)(linnum, 0, c[0]);
         irs.release(c);
         ifbody.toIR(irs);
         if(elsebody)
         {
             u2 = irs.getIP;
-            irs.gen!(Opcode.Jmp)(loc, 0);
+            irs.gen!(Opcode.Jmp)(linnum, 0);
             irs.patchJmp(u1, irs.getIP);
             elsebody.toIR(irs);
             irs.patchJmp(u2, irs.getIP);
@@ -583,9 +583,9 @@ private:
 final class SwitchStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Expression c, Statement b)
+    this(uint linnum, Expression c, Statement b)
     {
-        super(loc);
+        super(linnum);
         condition = c;
         bdy = b;
         breakIP = ~0u;
@@ -641,15 +641,15 @@ final class SwitchStatement : Statement
                 x = irs.alloc(1);
                 cs = cases[i];
                 cs.exp.toIR(irs, x[0]);
-                irs.gen!(Opcode.CID)(loc, x[0], c[0], x[0]);
+                irs.gen!(Opcode.CID)(linnum, x[0], c[0], x[0]);
                 cs.patchIP = irs.getIP;
-                irs.gen!(Opcode.JT)(loc, 0, x[0]);
+                irs.gen!(Opcode.JT)(linnum, 0, x[0]);
 
                 irs.lvm.collect(x);
             }
         }
         udefault = irs.getIP;
-        irs.gen!(Opcode.Jmp)(loc, 0);
+        irs.gen!(Opcode.Jmp)(linnum, 0);
 
         Statement breakSave = irs.breakTarget;
         irs.breakTarget = this;
@@ -705,9 +705,9 @@ private:
 final class CaseStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Expression exp)
+    this(uint linnum, Expression exp)
     {
-        super(loc);
+        super(linnum);
         this.exp = exp;
         caseIP = ~0u;
         patchIP = ~0u;
@@ -759,9 +759,9 @@ private:
 final class DefaultStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc)
+    this(uint linnum)
     {
-        super(loc);
+        super(linnum);
         defaultIP = ~0u;
     }
 
@@ -800,9 +800,9 @@ private:
 final class DoStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Statement b, Expression c)
+    this(uint linnum, Statement b, Expression c)
     {
-        super(loc);
+        super(linnum);
         bdy = b;
         condition = c;
         breakIP = ~0u;
@@ -852,9 +852,9 @@ final class DoStatement : Statement
         continueIP = irs.getIP();
         condition.toIR(irs, c[0]);
         if (condition.isBooleanResult)
-            irs.gen!(Opcode.JTB)(loc, u1 - irs.getIP, c[0]);
+            irs.gen!(Opcode.JTB)(linnum, u1 - irs.getIP, c[0]);
         else
-            irs.gen!(Opcode.JT)(loc, u1 - irs.getIP, c[0]);
+            irs.gen!(Opcode.JT)(linnum, u1 - irs.getIP, c[0]);
         breakIP = irs.getIP;
         irs.release(c);
         irs.release(marksave);
@@ -895,9 +895,9 @@ private:
 final class WhileStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Expression c, Statement b)
+    this(uint linnum, Expression c, Statement b)
     {
-        super(loc);
+        super(linnum);
         condition = c;
         bdy = b;
         breakIP = ~0u;
@@ -949,11 +949,11 @@ final class WhileStatement : Statement
         condition.toIR(irs, c[0]);
         u2 = irs.getIP();
         if (condition.isBooleanResult)
-            irs.gen!(Opcode.JFB)(loc, 0, c[0]);
+            irs.gen!(Opcode.JFB)(linnum, 0, c[0]);
         else
-            irs.gen!(Opcode.JF)(loc, 0, c[0]);
+            irs.gen!(Opcode.JF)(linnum, 0, c[0]);
         bdy.toIR(irs);
-        irs.gen!(Opcode.Jmp)(loc, u1 - irs.getIP);
+        irs.gen!(Opcode.Jmp)(linnum, u1 - irs.getIP);
         irs.patchJmp(u2, irs.getIP);
         breakIP = irs.getIP();
 
@@ -995,10 +995,10 @@ private:
 final class ForStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Statement init, Expression condition, Expression increment,
+    this(uint linnum, Statement init, Expression condition, Expression increment,
          Statement bdy)
     {
-        super(loc);
+        super(linnum);
         this.init = init;
         this.condition = condition;
         this.increment = increment;
@@ -1072,9 +1072,9 @@ final class ForStatement : Statement
                 {
                     u2 = irs.getIP();
                     if (condition.op == Tok.Less)
-                        irs.gen!(Opcode.JLTC)(loc, 0, b[0], re.value);
+                        irs.gen!(Opcode.JLTC)(linnum, 0, b[0], re.value);
                     else
-                        irs.gen!(Opcode.JLEC)(loc, 0, b[0], re.value);
+                        irs.gen!(Opcode.JLEC)(linnum, 0, b[0], re.value);
                 }
                 else
                 {
@@ -1082,9 +1082,9 @@ final class ForStatement : Statement
                     be.e2.toIR(irs, c[0]);
                     u2 = irs.getIP;
                     if (condition.op == Tok.Less)
-                        irs.gen!(Opcode.JLT)(loc, 0, b[0], c[0]);
+                        irs.gen!(Opcode.JLT)(linnum, 0, b[0], c[0]);
                     else
-                        irs.gen!(Opcode.JLE)(loc, 0, b[0], c[0]);
+                        irs.gen!(Opcode.JLE)(linnum, 0, b[0], c[0]);
                 }
                 irs.lvm.collect(c);
                 irs.lvm.collect(b);
@@ -1097,9 +1097,9 @@ final class ForStatement : Statement
                 condition.toIR(irs, c[0]);
                 u2 = irs.getIP;
                 if (condition.isBooleanResult)
-                    irs.gen!(Opcode.JFB)(loc, 0, c[0]);
+                    irs.gen!(Opcode.JFB)(linnum, 0, c[0]);
                 else
-                    irs.gen!(Opcode.JF)(loc, 0, c[0]);
+                    irs.gen!(Opcode.JF)(linnum, 0, c[0]);
 
                 irs.lvm.collect(c);
             }
@@ -1108,7 +1108,7 @@ final class ForStatement : Statement
         continueIP = irs.getIP;
         if(increment)
             increment.toIR(irs, 0);
-        irs.gen!(Opcode.Jmp)(loc, u1 - irs.getIP);
+        irs.gen!(Opcode.Jmp)(linnum, u1 - irs.getIP);
         if(condition)
             irs.patchJmp(u2, irs.getIP);
 
@@ -1155,9 +1155,9 @@ private:
 final class ForInStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Statement init, Expression inexp, Statement bdy)
+    this(uint linnum, Statement init, Expression inexp, Statement bdy)
     {
-        super(loc);
+        super(linnum);
         this.init = init;
         this.inexp = inexp;
         this.bdy = bdy;
@@ -1223,7 +1223,7 @@ final class ForInStatement : Statement
         e = irs.alloc(1);
         inexp.toIR(irs, e[0]);
         iter = irs.alloc(1);
-        irs.gen!(Opcode.Iter)(loc, iter[0], e[0]);
+        irs.gen!(Opcode.Iter)(linnum, iter[0], e[0]);
 
         Statement continueSave = irs.continueTarget;
         Statement breakSave = irs.breakTarget;
@@ -1257,19 +1257,19 @@ final class ForInStatement : Statement
         final switch (opoff)
         {
         case OpOffset.None:
-            irs.gen!(Opcode.Next)(loc, 0, base, property.index, iter[0]);
+            irs.gen!(Opcode.Next)(linnum, 0, base, property.index, iter[0]);
             break;
         case OpOffset.S:
-            irs.gen!(Opcode.NextS)(loc, 0, base, property.id, iter[0]);
+            irs.gen!(Opcode.NextS)(linnum, 0, base, property.id, iter[0]);
             break;
         case OpOffset.Scope:
-            irs.gen!(Opcode.NextScope)(loc, 0, property.id, iter[0]);
+            irs.gen!(Opcode.NextScope)(linnum, 0, property.id, iter[0]);
             break;
         case OpOffset.V:
             assert(0);
         }
         bdy.toIR(irs);
-        irs.gen!(Opcode.Jmp)(loc, continueIP - irs.getIP);
+        irs.gen!(Opcode.Jmp)(linnum, continueIP - irs.getIP);
         irs.patchJmp(continueIP, irs.getIP);
 
         breakIP = irs.getIP();
@@ -1314,9 +1314,9 @@ private:
 class ScopeStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc)
+    this(uint linnum)
     {
-        super(loc);
+        super(linnum);
         enclosingScope = null;
         depth = 1;
         npops = 1;
@@ -1333,9 +1333,9 @@ protected:
 final class WithStatement : ScopeStatement
 {
     @nogc pure nothrow
-    this(line_number loc, Expression exp, Statement bdy)
+    this(uint linnum, Expression exp, Statement bdy)
     {
-        super(loc);
+        super(linnum);
         this.exp = exp;
         this.bdy = bdy;
     }
@@ -1377,9 +1377,9 @@ final class WithStatement : ScopeStatement
 
         c = irs.alloc(1);
         exp.toIR(irs, c[0]);
-        irs.gen!(Opcode.Push)(loc, c[0]);
+        irs.gen!(Opcode.Push)(linnum, c[0]);
         bdy.toIR(irs);
-        irs.gen!(Opcode.Pop)(loc);
+        irs.gen!(Opcode.Pop)(linnum);
 
         irs.scopeContext = enclosingScope;
         irs.release(c);
@@ -1400,9 +1400,9 @@ private:
 final class ContinueStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, StringKey* ident)
+    this(uint linnum, StringKey* ident)
     {
-        super(loc);
+        super(linnum);
         this.ident = ident;
         target = null;
     }
@@ -1446,7 +1446,7 @@ final class ContinueStatement : Statement
             irs.pops(w.npops);
         }
         irs.addFixup(irs.getIP());
-        irs.gen!IRJmpToStatement(loc, this);
+        irs.gen!IRJmpToStatement(linnum, this);
     }
 
     override @safe @nogc pure nothrow
@@ -1465,9 +1465,9 @@ private:
 final class BreakStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, StringKey* ident)
+    this(uint linnum, StringKey* ident)
     {
-        super(loc);
+        super(linnum);
         this.ident = ident;
         target = null;
     }
@@ -1523,7 +1523,7 @@ final class BreakStatement : Statement
         }
 
         irs.addFixup(irs.getIP());
-        irs.gen!IRJmpToStatement(loc, this);
+        irs.gen!IRJmpToStatement(linnum, this);
     }
 
     override uint getTarget() const
@@ -1542,9 +1542,9 @@ private:
 final class GotoStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, StringKey * ident)
+    this(uint linnum, StringKey * ident)
     {
-        super(loc);
+        super(linnum);
         this.ident = ident;
         label = null;
     }
@@ -1556,7 +1556,7 @@ final class GotoStatement : Statement
         ls = sc.searchLabel(ident);
         if(!ls)
         {
-            ls = new LabelSymbol(loc, ident, null);
+            ls = new LabelSymbol(linnum, ident, null);
             sc.insertLabel(ls);
         }
         label = ls;
@@ -1585,7 +1585,7 @@ final class GotoStatement : Statement
         }
 
         irs.addFixup(irs.getIP());
-        irs.gen!IRJmpToStatement(loc, this);
+        irs.gen!IRJmpToStatement(linnum, this);
     }
 
     override @safe @nogc pure nothrow
@@ -1604,9 +1604,9 @@ private:
 final class ReturnStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Expression exp)
+    this(uint linnum, Expression exp)
     {
-        super(loc);
+        super(linnum);
         this.exp = exp;
     }
 
@@ -1637,26 +1637,26 @@ final class ReturnStatement : Statement
             exp.toIR(irs, e[0]);
             if(npops)
             {
-                irs.gen!(Opcode.ImpRet)(loc, e[0]);
+                irs.gen!(Opcode.ImpRet)(linnum, e[0]);
                 irs.pops(npops);
-                irs.gen!(Opcode.Ret)(loc);
+                irs.gen!(Opcode.Ret)(linnum);
             }
             else
-                irs.gen!(Opcode.RetExp)(loc, e[0]);
+                irs.gen!(Opcode.RetExp)(linnum, e[0]);
             irs.release(e);
         }
         else
         {
             if(npops)
                 irs.pops(npops);
-            irs.gen!(Opcode.Ret)(loc);
+            irs.gen!(Opcode.Ret)(linnum);
         }
 
         // Help GC
         exp = null;
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         //writef("ReturnStatement.toBuffer()\n");
         sink("return ");
@@ -1678,9 +1678,9 @@ private:
 final class ImpliedReturnStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Expression exp)
+    this(uint linnum, Expression exp)
     {
-        super(loc);
+        super(linnum);
         this.exp = exp;
     }
 
@@ -1697,7 +1697,7 @@ final class ImpliedReturnStatement : Statement
         {
             auto e = irs.alloc(1);
             exp.toIR(irs, e[0]);
-            irs.gen!(Opcode.ImpRet)(loc, e[0]);
+            irs.gen!(Opcode.ImpRet)(linnum, e[0]);
             irs.release(e);
 
             // Help GC
@@ -1705,7 +1705,7 @@ final class ImpliedReturnStatement : Statement
         }
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         if(exp)
             exp.toBuffer(sink);
@@ -1721,9 +1721,9 @@ private:
 final class ThrowStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Expression exp)
+    this(uint linnum, Expression exp)
     {
-        super(loc);
+        super(linnum);
         this.exp = exp;
     }
 
@@ -1734,7 +1734,7 @@ final class ThrowStatement : Statement
         else
         {
             error(sc, NoThrowExpressionError);
-            return new EmptyStatement(loc);
+            return new EmptyStatement(linnum);
         }
         return this;
     }
@@ -1744,14 +1744,14 @@ final class ThrowStatement : Statement
         assert(exp);
         auto e = irs.alloc(1);
         exp.toIR(irs, e[0]);
-        irs.gen!(Opcode.Throw)(loc, e[0]);
+        irs.gen!(Opcode.Throw)(linnum, e[0]);
         irs.release(e);
 
         // Help GC
         exp = null;
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         sink("throw ");
         if(exp)
@@ -1768,10 +1768,10 @@ private:
 final class TryStatement : ScopeStatement
 {
     @safe @nogc pure nothrow
-    this(line_number loc, Statement bdy, StringKey* catchident, Statement catchbdy,
+    this(uint linnum, Statement bdy, StringKey* catchident, Statement catchbdy,
          Statement finalbdy)
     {
-        super(loc);
+        super(linnum);
         this.bdy = bdy;
         this.catchident = catchident;
         this.catchbdy = catchbdy;
@@ -1814,42 +1814,42 @@ final class TryStatement : ScopeStatement
         if(finalbdy)
         {
             f = irs.getIP();
-            irs.gen!(Opcode.TryFinally)(loc, 0);
+            irs.gen!(Opcode.TryFinally)(linnum, 0);
             if(catchbdy)
             {
                 c = irs.getIP;
                 irs.gen!(Opcode.TryCatch)(
-                    loc, 0, StringKey.build(catchident.toString));
+                    linnum, 0, StringKey.build(catchident.toString));
                 bdy.toIR(irs);
-                irs.gen!(Opcode.Pop)(loc);           // remove catch clause
-                irs.gen!(Opcode.Pop)(loc);           // call finalbdy
+                irs.gen!(Opcode.Pop)(linnum);           // remove catch clause
+                irs.gen!(Opcode.Pop)(linnum);           // call finalbdy
 
                 e = irs.getIP;
-                irs.gen!(Opcode.Jmp)(loc, 0);
+                irs.gen!(Opcode.Jmp)(linnum, 0);
                 irs.patchJmp(c, irs.getIP);
                 catchbdy.toIR(irs);
-                irs.gen!(Opcode.Pop)(loc);           // remove catch object
-                irs.gen!(Opcode.Pop)(loc);           // call finalbdy code
+                irs.gen!(Opcode.Pop)(linnum);           // remove catch object
+                irs.gen!(Opcode.Pop)(linnum);           // call finalbdy code
                 e2 = irs.getIP;
-                irs.gen!(Opcode.Jmp)(loc, 0);        // jmp past finalbdy
+                irs.gen!(Opcode.Jmp)(linnum, 0);        // jmp past finalbdy
 
                 irs.patchJmp(f, irs.getIP);
                 irs.scopeContext = enclosingScope;
                 finalbdy.toIR(irs);
-                irs.gen!(Opcode.FinallyRet)(loc);
+                irs.gen!(Opcode.FinallyRet)(linnum);
                 irs.patchJmp(e, irs.getIP);
                 irs.patchJmp(e2, irs.getIP);
             }
             else // finalbdy only
             {
                 bdy.toIR(irs);
-                irs.gen!(Opcode.Pop)(loc);
+                irs.gen!(Opcode.Pop)(linnum);
                 e = irs.getIP;
-                irs.gen!(Opcode.Jmp)(loc, 0);
+                irs.gen!(Opcode.Jmp)(linnum, 0);
                 irs.patchJmp(f, irs.getIP);
                 irs.scopeContext = enclosingScope;
                 finalbdy.toIR(irs);
-                irs.gen!(Opcode.FinallyRet)(loc);
+                irs.gen!(Opcode.FinallyRet)(linnum);
                 irs.patchJmp(e, irs.getIP);
             }
         }
@@ -1857,14 +1857,14 @@ final class TryStatement : ScopeStatement
         {
             c = irs.getIP;
             irs.gen!(Opcode.TryCatch)(
-                loc, 0, StringKey.build(catchident.toString));
+                linnum, 0, StringKey.build(catchident.toString));
             bdy.toIR(irs);
-            irs.gen!(Opcode.Pop)(loc);
+            irs.gen!(Opcode.Pop)(linnum);
             e = irs.getIP;
-            irs.gen!(Opcode.Jmp)(loc, 0);
+            irs.gen!(Opcode.Jmp)(linnum, 0);
             irs.patchJmp(c, irs.getIP);
             catchbdy.toIR(irs);
-            irs.gen!(Opcode.Pop)(loc);
+            irs.gen!(Opcode.Pop)(linnum);
             irs.patchJmp(e, irs.getIP);
         }
         irs.scopeContext = enclosingScope;
@@ -1877,7 +1877,7 @@ final class TryStatement : ScopeStatement
         finalbdy = null;
     }
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         sink("try\n");
         bdy.toBuffer(sink);

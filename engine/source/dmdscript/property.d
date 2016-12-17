@@ -25,11 +25,11 @@ debug import std.stdio;
 struct PropertyKey
 {
     import dmdscript.value : Value;
-    import dmdscript.primitive : tchar, tstring, StringKey;
+    import dmdscript.primitive : string_t, StringKey;
     template IsKey(K)
     {
         enum IsKey = is(K : PropertyKey) || is(K : StringKey) ||
-            is(T : Value) || is(K : tstring) || is(K : uint);
+            is(T : Value) || is(K : string_t) || is(K : uint);
     }
 
     Value value;
@@ -157,7 +157,6 @@ struct Property
     @disable
     this(ref CallContext cc, Dobject obj)
     {
-        import dmdscript.primitive : Key;
         import dmdscript.errmsgs;
         bool valueOrWritable = false;
 
@@ -499,7 +498,6 @@ struct Property
     Dobject toObject()
     {
         import std.exception : enforce;
-        import dmdscript.primitive : Key;
         enum Attr = Attribute.None;
 
         auto obj = new Dobject(Dobject.getPrototype);
@@ -557,7 +555,7 @@ public static:
 final class PropTable
 {
     import dmdscript.value : Value, DError, vundefined;
-    import dmdscript.primitive : tstring;
+    import dmdscript.primitive : string_t;
     import dmdscript.dobject : Dobject;
     import dmdscript.callcontext : CallContext;
     import dmdscript.RandAA : RandAA;
@@ -865,5 +863,19 @@ private:
         }
         return true;
     }
+}
+
+private:
+
+import dmdscript.primitive : StringKey, PKey = Key;
+enum Key : StringKey
+{
+    value = PKey.value,
+
+    writable = StringKey("writable"),
+    get = StringKey("get"),
+    set = StringKey("set"),
+    enumerable = StringKey("enumerable"),
+    configurable = StringKey("configurable"),
 }
 

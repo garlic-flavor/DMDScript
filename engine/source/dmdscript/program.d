@@ -43,7 +43,7 @@ class Program
 
     // Locale info
     uint lcid;          // current locale
-    tstring slist;     // list separator
+    string_t slist;     // list separator
 
     this()
     {
@@ -80,11 +80,11 @@ class Program
      * 2. with text representing a function name & body (pfd != null)
      */
 
-    void compile(tstring progIdentifier, tstring srctext,
+    void compile(string_t progIdentifier, string_t srctext,
                  FunctionDefinition* pfd)
     {
         TopStatement[] topstatements;
-        tstring msg;
+        string_t msg;
 
         //writef("parse_common()\n");
         Parser p = new Parser(progIdentifier, srctext,
@@ -159,7 +159,7 @@ class Program
      * Throw ScriptException on error.
      */
 
-    void execute(tstring[] args)
+    void execute(string_t[] args)
     {
         // ECMA 10.2.1
         //writef("Program.execute(argc = %d, argv = %p)\n", argc, argv);
@@ -236,7 +236,7 @@ class Program
         delete p1;
     }
 
-    void toBuffer(scope void delegate(in tchar[]) sink)
+    void toBuffer(scope void delegate(in char_t[]) sink)
     {
         if(globalfunction)
             globalfunction.toBuffer(sink);

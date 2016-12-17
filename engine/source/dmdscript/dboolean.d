@@ -23,10 +23,10 @@ import dmdscript.dobject : Dobject;
 import dmdscript.value : DError, Value;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.errmsgs;
-import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 
 //==============================================================================
-//
+///
 class Dboolean : Dobject
 {
     import dmdscript.dobject : Initializer;
@@ -85,8 +85,8 @@ class DbooleanConstructor : Dconstructor
 
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toString, 0)
-DError* Dboolean_prototype_toString(
+@DFD(0)
+DError* toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -104,8 +104,8 @@ DError* Dboolean_prototype_toString(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.valueOf, 0)
-DError* Dboolean_prototype_valueOf(
+@DFD(0)
+DError* valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

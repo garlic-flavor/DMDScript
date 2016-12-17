@@ -35,25 +35,25 @@ alias PCall = DError* function(
 ///
 struct DnativeFunctionDescriptor
 {
-    import dmdscript.primitive : Key;
-
     enum Type
     {
         Prototype,
         Static,
     }
 
-    Key name;     ///
     uint length;  /// is a number of arguments.
     Type type = Type.Prototype; ///
+    string realName; ///
 
 public static:
     import dmdscript.property : Property;
     ///
-    void install(alias M)(
-        Dobject o, Property.Attribute prop = Property.Attribute.DontEnum,
-        Type type = Type.Prototype)
+    void install(alias M, T)(
+        T o, Property.Attribute prop = Property.Attribute.DontEnum)
     {
+        import dmdscript.primitive : StringKey;
+        import dmdscript.dfunction : Dconstructor;
+
         foreach(one; __traits(allMembers, M))
         {
             static if (is(typeof(__traits(getMember, M, one))))
@@ -63,13 +63,19 @@ public static:
 
             static if (is(typeof(desc) == DnativeFunctionDescriptor))
             {
-                if (type == desc.type)
+                static if ((desc.type == Type.Static) ==
+                           is(T : Dconstructor))
                 {
+                    static if (0 < desc.realName.length)
+                        enum name = StringKey(desc.realName);
+                    else
+                        enum name = StringKey(one);
+
                     o.DefineOwnProperty(
-                        desc.name,
+                        name,
                         new DnativeFunction(
                             &__traits(getMember, M, one),
-                            desc.name, desc.length, Dfunction.getPrototype),
+                            one, desc.length, Dfunction.getPrototype),
                         prop);
                 }
             }
@@ -112,18 +118,17 @@ struct DconstantDescriptor
         Static,
     }
 
-    Key name;
     Type type = Type.Prototype;
+    string realName; ///
 
 public static:
     import dmdscript.property : Property;
 
-    void install(alias M)(
+    void install(alias M, Type type = Type.Prototype)(
         Dobject o,
         Property.Attribute prop = Property.Attribute.DontEnum |
                                   Property.Attribute.DontDelete |
-                                  Property.Attribute.ReadOnly,
-        Type type = Type.Prototype)
+                                  Property.Attribute.ReadOnly)
     {
         foreach(one; __traits(allMembers, M))
         {
@@ -134,10 +139,15 @@ public static:
 
             static if (is(typeof(desc) == typeof(this)))
             {
-                if (type == desc.type)
+                static if (type == desc.type)
                 {
-                    o.DefineOwnProperty(
-                        desc.name, __traits(getMember, M, one), prop);
+                    static if (0 < desc.realName.length)
+                        enum name = StringKey(desc.realName);
+                    else
+                        enum name = StringKey(one);
+
+                    o.DefineOwnProperty(name, __traits(getMember, M, one),
+                                        prop);
                 }
             }
         }
@@ -168,19 +178,19 @@ private static:
 ///
 class DnativeFunction : Dfunction
 {
-    import dmdscript.primitive : tstring;
+    import dmdscript.primitive : string_t;
     import dmdscript.property : Property;
 
     PCall pcall;
 
-    this(PCall func, tstring name, uint length)
+    this(PCall func, string_t name, uint length)
     {
         super(length);
         this.name = name;
         pcall = func;
     }
 
-    this(PCall func, tstring name, uint length, Dobject o)
+    this(PCall func, string_t name, uint length, Dobject o)
     {
         super(length, o);
         this.name = name;

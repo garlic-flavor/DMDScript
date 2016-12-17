@@ -19,13 +19,15 @@ module dmdscript.dnumber;
 
 import std.math;
 
-import dmdscript.primitive : Key, number_t, tstring, tchar;
+import dmdscript.primitive : number_t, string_t, char_t, StringKey, Text,
+    PKey = Key;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.value : Value, DError;
 import dmdscript.errmsgs;
-import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
+    DCD = DconstantDescriptor;
 
 //==============================================================================
 ///
@@ -52,6 +54,92 @@ class Dnumber : Dobject
 //==============================================================================
 private:
 
+enum Key : StringKey
+{
+    Number = PKey.Number,
+    valueOf = PKey.valueOf,
+    toString = PKey.toString,
+    prototype = PKey.prototype,
+    constructor = PKey.constructor,
+    toLocaleString = PKey.toLocaleString,
+    NaN = PKey.NaN,
+
+    MAX_VALUE = StringKey("MAX_VALUE"),
+    MIN_VALUE = StringKey("MIN_VALUE"),
+    NEGATIVE_INFINITY = StringKey("NEGATIVE_INFINITY"),
+    POSITIVE_INFINITY = StringKey("POSITIVE_INFINITY"),
+
+    toFixed = StringKey("toFixed"),
+    toExponential = StringKey("toExponential"),
+    toPrecision = StringKey("toPrecision"),
+
+    Infinity = StringKey(Text.Infinity),
+}
+
+
+@DCD immutable EPSILON = double.epsilon;
+@DCD immutable MAX_SAFE_INTEGER = double.min_exp - 1;
+@DCD immutable MIN_SAFE_INTEGER = -double.min_exp + 1;
+@DCD immutable MIN_VALUE = double.min_normal * double.epsilon;
+@DCD immutable NaN = double.nan;
+@DCD immutable NEGATIVE_INFINITY = -double.infinity;
+@DCD immutable POSITIVE_INFINITY = double.infinity;
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isFinite(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isInteger(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isNaN(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isSafeInteger(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* parseFloat(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* parseInt(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+
 //------------------------------------------------------------------------------
 class DnumberConstructor : Dconstructor
 {
@@ -60,17 +148,22 @@ class DnumberConstructor : Dconstructor
         import dmdscript.property : Property;
 
         super(Key.Number, 1, Dfunction.getPrototype);
-        auto attributes =
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete |
-            Property.Attribute.ReadOnly;
 
-        DefineOwnProperty(Key.MAX_VALUE, double.max, attributes);
-        DefineOwnProperty(Key.MIN_VALUE, double.min_normal*double.epsilon,
-            attributes);
-        DefineOwnProperty(Key.NaN, double.nan, attributes);
-        DefineOwnProperty(Key.NEGATIVE_INFINITY, -double.infinity, attributes);
-        DefineOwnProperty(Key.POSITIVE_INFINITY, double.infinity, attributes);
+        // auto attributes =
+        //     Property.Attribute.DontEnum |
+        //     Property.Attribute.DontDelete |
+        //     Property.Attribute.ReadOnly;
+
+        // DefineOwnProperty(Key.MAX_VALUE, double.max, attributes);
+        // DefineOwnProperty(Key.MIN_VALUE, double.min_normal*double.epsilon,
+        //     attributes);
+        // DefineOwnProperty(Key.NaN, double.nan, attributes);
+        // DefineOwnProperty(Key.NEGATIVE_INFINITY, -double.infinity, attributes);
+        // DefineOwnProperty(Key.POSITIVE_INFINITY, double.infinity, attributes);
+        DCD.install!(mixin(__MODULE__)) (this,
+                                         Property.Attribute.DontEnum |
+                                         Property.Attribute.DontDelete |
+                                         Property.Attribute.ReadOnly);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,
@@ -100,13 +193,13 @@ class DnumberConstructor : Dconstructor
 
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toString, 1)
-DError* Dnumber_prototype_toString(
+@DFD(1)
+DError* toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.2
-    tstring s;
+    string_t s;
 
     // othis must be a Number
     if (auto dn = cast(Dnumber)othis)
@@ -147,8 +240,8 @@ DError* Dnumber_prototype_toString(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toLocaleString, 1)
-DError* Dnumber_prototype_toLocaleString(
+@DFD(1)
+DError* toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -168,8 +261,8 @@ DError* Dnumber_prototype_toLocaleString(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.valueOf, 0)
-DError* Dnumber_prototype_valueOf(
+@DFD(0)
+DError* valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -228,8 +321,8 @@ number_t deconstruct_real(double x, int f, out int pe)
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toFixed, 1)
-DError* Dnumber_prototype_toFixed(
+@DFD(1)
+DError* toFixed(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -242,7 +335,7 @@ DError* Dnumber_prototype_toFixed(
     Value* v;
     double x;
     double fractionDigits;
-    tstring result;
+    string_t result;
     int dup;
 
     if(arglist.length)
@@ -259,7 +352,7 @@ DError* Dnumber_prototype_toFixed(
     }
     v = &othis.value;
     x = v.toNumber(cc);
-    if(isNaN(x))
+    if(std.math.isNaN(x))
     {
         result = Key.NaN;              // return "NaN"
     }
@@ -284,7 +377,7 @@ DError* Dnumber_prototype_toFixed(
         else
         {
             number_t n;
-            tchar[32 + 1] buffer;
+            char_t[32 + 1] buffer;
             double tenf;
             int f;
 
@@ -313,10 +406,10 @@ DError* Dnumber_prototype_toFixed(
                 k = m.length;
                 if(k <= f)
                 {
-                    tchar* s;
+                    char_t* s;
                     ptrdiff_t nzeros;
 
-                    s = cast(tchar*)alloca((f + 1) * tchar.sizeof);
+                    s = cast(char_t*)alloca((f + 1) * char_t.sizeof);
                     assert(s);
                     nzeros = f + 1 - k;
                     s[0 .. nzeros] = '0';
@@ -327,7 +420,7 @@ DError* Dnumber_prototype_toFixed(
                 }
 
                 // res = "-" + m[0 .. k-f] + "." + m[k-f .. k];
-                char[] res = new tchar[sign + k + 1];
+                char[] res = new char_t[sign + k + 1];
                 if(sign)
                     res[0] = '-';
                 i = k - f;
@@ -353,8 +446,8 @@ DError* Dnumber_prototype_toFixed(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toExponential, 1)
-DError* Dnumber_prototype_toExponential(
+@DFD(1)
+DError* toExponential(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -367,7 +460,7 @@ DError* Dnumber_prototype_toExponential(
     Value* v;
     double x;
     double fractionDigits;
-    tstring result;
+    string_t result;
 
     if(arglist.length)
     {
@@ -377,7 +470,7 @@ DError* Dnumber_prototype_toExponential(
         fractionDigits = FIXED_DIGITS;
     v = &othis.value;
     x = v.toNumber(cc);
-    if(isNaN(x))
+    if(std.math.isNaN(x))
     {
         result = Key.NaN;              // return "NaN"
     }
@@ -400,9 +493,9 @@ DError* Dnumber_prototype_toExponential(
             int f;
             number_t n;
             int e;
-            tchar[] m;
+            char_t[] m;
             int i;
-            tchar[32 + 1] buffer;
+            char_t[32 + 1] buffer;
 
             if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
             {
@@ -414,9 +507,9 @@ DError* Dnumber_prototype_toExponential(
             f = cast(int)fractionDigits;
             if(x == 0)
             {
-                tchar* s;
+                char_t* s;
 
-                s = cast(tchar*)alloca((f + 1) * tchar.sizeof);
+                s = cast(char_t*)alloca((f + 1) * char_t.sizeof);
                 assert(s);
                 m = s[0 .. f + 1];
                 m[0 .. f + 1] = '0';
@@ -469,10 +562,10 @@ DError* Dnumber_prototype_toExponential(
             }
             if(f)
             {
-                tchar* s;
+                char_t* s;
 
                 // m = m[0] + "." + m[1 .. f+1];
-                s = cast(tchar*)alloca((f + 2) * tchar.sizeof);
+                s = cast(char_t*)alloca((f + 2) * char_t.sizeof);
                 assert(s);
                 s[0] = m[0];
                 s[1] = '.';
@@ -481,7 +574,7 @@ DError* Dnumber_prototype_toExponential(
             }
 
             // result = sign + m + "e" + c + e;
-            tstring c = (e >= 0) ? "+" : "";
+            string_t c = (e >= 0) ? "+" : "";
 
             result = format("%s%se%s%d", sign ? "-" : "", m, c, e);
         }
@@ -492,8 +585,8 @@ DError* Dnumber_prototype_toExponential(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toPrecision, 1)
-DError* Dnumber_prototype_toPrecision(
+@DFD(1)
+DError* toPrecision(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -507,7 +600,7 @@ DError* Dnumber_prototype_toPrecision(
     Value* v;
     double x;
     double precision;
-    tstring result;
+    string_t result;
 
     v = &othis.value;
     x = v.toNumber(cc);
@@ -523,7 +616,7 @@ DError* Dnumber_prototype_toPrecision(
     }
     else
     {
-        if(isNaN(x))
+        if(std.math.isNaN(x))
             result = Key.NaN;
         else
         {
@@ -531,9 +624,9 @@ DError* Dnumber_prototype_toPrecision(
             int e;
             int p;
             int i;
-            tchar[] m;
+            char_t[] m;
             number_t n;
-            tchar[32 + 1] buffer;
+            char_t[32 + 1] buffer;
 
             sign = 0;
             if(x < 0)
@@ -572,7 +665,7 @@ DError* Dnumber_prototype_toPrecision(
                 if(e < -6 || e >= p)
                 {
                     // result = sign + m[0] + "." + m[1 .. p] + "e" + c + e;
-                    tstring c = (e >= 0) ? "+" : "";
+                    string_t c = (e >= 0) ? "+" : "";
                     result = format("%s%s.%se%s%d",
                                                (sign ? "-" : ""), m[0], m[1 .. $], c, e);
                     goto Ldone;
@@ -582,8 +675,8 @@ DError* Dnumber_prototype_toPrecision(
             {
                 // Step 12
                 // m = array[p] of '0'
-                tchar* s;
-                s = cast(tchar*)alloca(p * tchar.sizeof);
+                char_t* s;
+                s = cast(char_t*)alloca(p * char_t.sizeof);
                 assert(s);
                 m = s[0 .. p];
                 m[] = '0';
@@ -592,13 +685,13 @@ DError* Dnumber_prototype_toPrecision(
             }
             if(e != p - 1)
             {
-                tchar* s;
+                char_t* s;
 
                 if(e >= 0)
                 {
                     // m = m[0 .. e+1] + "." + m[e+1 .. p];
 
-                    s = cast(tchar*)alloca((p + 1) * tchar.sizeof);
+                    s = cast(char_t*)alloca((p + 1) * char_t.sizeof);
                     assert(s);
                     i = e + 1;
                     s[0 .. i] = m[0 .. i];
@@ -611,7 +704,7 @@ DError* Dnumber_prototype_toPrecision(
                     // m = "0." + (-(e+1) occurrences of the character '0') + m;
                     int imax = 2 + - (e + 1);
 
-                    s = cast(tchar*)alloca((imax + p) * tchar.sizeof);
+                    s = cast(char_t*)alloca((imax + p) * char_t.sizeof);
                     assert(s);
                     s[0] = '0';
                     s[1] = '.';

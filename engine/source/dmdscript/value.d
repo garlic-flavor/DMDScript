@@ -17,7 +17,7 @@
 
 module dmdscript.value;
 
-import dmdscript.primitive : tstring, Key;
+import dmdscript.primitive : string_t, Key;
 import dmdscript.dobject : Dobject;
 import dmdscript.property : PropertyKey, Property;
 import dmdscript.errmsgs;
@@ -63,7 +63,7 @@ struct Value
     template IsPrimitiveType(T)
     {
         enum IsPrimitiveType = is(T == bool) || is(T : double) ||
-            is(T : tstring) || is(T : Dobject) || is(T == Iterator*);
+            is(T : string_t) || is(T : Dobject) || is(T == Iterator*);
     }
 
     //--------------------------------------------------------------------
@@ -106,7 +106,7 @@ struct Value
             return _number;
         }
 
-        tstring text() const
+        string_t text() const
         {
             assert (_type == Type.String);
             return _text;
@@ -173,7 +173,7 @@ struct Value
             _type = Type.Number;
             _number = t;
         }
-        else static if (is(T : tstring))
+        else static if (is(T : string_t))
         {
             _type = Type.String;
             _hash = 0;
@@ -207,7 +207,7 @@ struct Value
             _type = Type.Number;
             _number = t;
         }
-        else static if (is(T : tstring))
+        else static if (is(T : string_t))
         {
             _type = Type.String;
             _text = t;
@@ -700,7 +700,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    tstring toString()
+    string_t toString()
     {
         final switch(_type)
         {
@@ -740,13 +740,13 @@ struct Value
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // needs more implementation.
-    tstring toLocaleString()
+    string_t toLocaleString()
     {
         return toString();
     }
 
     //--------------------------------------------------------------------
-    tstring toString(in int radix)
+    string_t toString(in int radix)
     {
         import std.math : isFinite;
         import std.conv : to;
@@ -756,7 +756,7 @@ struct Value
             assert(2 <= radix && radix <= 36);
             if(!isFinite(_number))
                 return toString();
-            return _number >= 0.0 ? to!(tstring)(cast(long)_number, radix) : "-"~to!(tstring)(cast(long)-_number,radix);
+            return _number >= 0.0 ? to!(string_t)(cast(long)_number, radix) : "-"~to!(string_t)(cast(long)-_number,radix);
         }
         else
         {
@@ -765,7 +765,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    tstring toSource(ref CallContext cc)
+    string_t toSource(ref CallContext cc)
     {
         import dmdscript.dglobal : undefined;
 
@@ -773,7 +773,7 @@ struct Value
         {
         case Type.String:
         {
-            tstring s;
+            string_t s;
 
             s = "\"" ~ _text ~ "\"";
             return s;
@@ -848,7 +848,7 @@ struct Value
     //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // implement this.
     @disable
-    tstring toPropertyKey()
+    string_t toPropertyKey()
     {
         return toString;
     }
@@ -935,9 +935,9 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    tstring getTypeof()
+    string_t getTypeof()
     {
-        tstring s;
+        string_t s;
 
         final switch(_type)
         {
@@ -1177,7 +1177,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    Value* Get(in tstring PropertyName, ref CallContext cc)
+    Value* Get(in string_t PropertyName, ref CallContext cc)
     {
         import std.conv : to;
 
@@ -1187,7 +1187,7 @@ struct Value
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetFromPrimitiveError
-                .toThrow(PropertyName, _type.to!tstring, toString);
+                .toThrow(PropertyName, _type.to!string_t, toString);
             //return &vundefined;
         }
     }
@@ -1203,7 +1203,7 @@ struct Value
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetIndexFromPrimitiveError
-                .toThrow(index, _type.to!tstring, toString);
+                .toThrow(index, _type.to!string_t, toString);
             //return &vundefined;
         }
     }
@@ -1230,12 +1230,12 @@ struct Value
             else static if (is(K : uint))
             {
                 return CannotPutIndexToPrimitiveError(
-                    name, value.toString, _type.to!tstring);
+                    name, value.toString, _type.to!string_t);
             }
             else
             {
                 return CannotPutToPrimitiveError(name, value.toString,
-                                                 _type.to!tstring);
+                                                 _type.to!string_t);
             }
         }
     }
@@ -1293,9 +1293,9 @@ struct Value
         }
         else
         {
-            //PRINTF("Call method not implemented for primitive %p (%s)\n", this, tstring_ptr(toString()));
+            //PRINTF("Call method not implemented for primitive %p (%s)\n", this, string_t_ptr(toString()));
             ret.putVundefined();
-            return PrimitiveNoCallError(_type.to!tstring);
+            return PrimitiveNoCallError(_type.to!string_t);
         }
     }
 
@@ -1312,7 +1312,7 @@ struct Value
         else
         {
             ret.putVundefined();
-            return PrimitiveNoConstructError(_type.to!tstring);
+            return PrimitiveNoConstructError(_type.to!string_t);
         }
     }
 
@@ -1348,7 +1348,7 @@ private:
     {
         bool _dbool;        // can be true or false
         double  _number;
-        tstring  _text;
+        string_t  _text;
         Dobject   _object;
         int   _int32;
         uint  _uint32;
@@ -1366,7 +1366,7 @@ private:
 
     //
     @trusted @nogc pure nothrow
-    void putSignalingUndefined(tstring id)
+    void putSignalingUndefined(string_t id)
     {
         _type = Type.RefError;
         _text = id;
@@ -1385,7 +1385,7 @@ enum vnull = Value(Value.Type.Null);
 
 //------------------------------------------------------------------------------
 @safe pure nothrow
-Value* signalingUndefined(in tstring id)
+Value* signalingUndefined(in string_t id)
 {
     auto p = new Value;
     p.putSignalingUndefined(id);
@@ -1395,7 +1395,7 @@ Value* signalingUndefined(in tstring id)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // check this.
 @disable
-Value* CanonicalNumericIndexString(in tstring str)
+Value* CanonicalNumericIndexString(in string_t str)
 {
     import dmdscript.callcontext : CallContext;
     import dmdscript.dglobal : undefined;
@@ -1450,7 +1450,7 @@ struct DError
     }
 
     @safe
-    void addTrace(tstring name, tstring srctext)
+    void addTrace(string_t name, string_t srctext)
     {
         import dmdscript.protoerror;
 

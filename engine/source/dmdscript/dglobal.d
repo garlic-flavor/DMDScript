@@ -17,7 +17,8 @@
 
 module dmdscript.dglobal;
 
-import dmdscript.primitive;
+import dmdscript.primitive : string_t, char_t, StringKey, isStrWhiteSpaceChar,
+    StringNumericLiteral, Text, PKey = Key;
 import dmdscript.callcontext;
 import dmdscript.protoerror;
 import dmdscript.parse;
@@ -36,7 +37,8 @@ import dmdscript.dregexp;
 import dmdscript.dnumber;
 import dmdscript.dboolean;
 import dmdscript.dfunction;
-import dmdscript.dnative;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
+    DconstantDescriptor;
 import dmdscript.ddate;
 import dmdscript.derror;
 import dmdscript.dmath;
@@ -73,15 +75,15 @@ string banner()
 }
 
 //
-tstring arg0string(Value[] arglist)
+string_t arg0string(Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &undefined;
     return v.toString();
 }
 
 /* ====================== Dglobal_eval ================ */
-@DnativeFunctionDescriptor(Key.eval, 1)
-DError* Dglobal_eval(
+@DFD(1)
+DError* eval(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -185,8 +187,8 @@ DError* Dglobal_eval(
 
         // The this value is the same as the this value of the
         // calling context.
-        assert(cc.callerothis);
-        result = IR.call(cc, cc.callerothis, fd.code, ret, locals.ptr);
+        assert(cc.scopex.callerothis);
+        result = IR.call(cc, cc.scopex.callerothis, fd.code, ret, locals.ptr);
         if(p1)
             delete p1;
         fd = null;
@@ -211,8 +213,8 @@ Lsyntaxerror:
 }
 
 /* ====================== Dglobal_parseInt ================ */
-@DnativeFunctionDescriptor(Key.parseInt, 2)
-DError* Dglobal_parseInt(
+@DFD(2)
+DError* parseInt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -226,7 +228,7 @@ DError* Dglobal_parseInt(
     int sign = 1;
     double number;
     size_t i;
-    tstring str;
+    string_t str;
 
     str = arg0string(arglist);
 
@@ -296,7 +298,7 @@ DError* Dglobal_parseInt(
     for(z = s; i; z++, i--)
     {
         int n;
-        tchar c;
+        char_t c;
 
         c = *z;
         if('0' <= c && c <= '9')
@@ -338,8 +340,8 @@ DError* Dglobal_parseInt(
 }
 
 /* ====================== Dglobal_parseFloat ================ */
-@DnativeFunctionDescriptor(Key.parseFloat, 1)
-DError* Dglobal_parseFloat(
+@DFD(1)
+DError* parseFloat(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -347,7 +349,7 @@ DError* Dglobal_parseFloat(
     double n;
     size_t endidx;
 
-    tstring str = arg0string(arglist);
+    string_t str = arg0string(arglist);
     n = StringNumericLiteral(str, endidx, 1);
 
     ret.put(n);
@@ -363,9 +365,9 @@ int ISURIALNUM(dchar c)
            (c >= '0' && c <= '9');
 }
 
-tchar[16 + 1] TOHEX = "0123456789ABCDEF";
-@DnativeFunctionDescriptor(Key.escape, 1)
-DError* Dglobal_escape(
+char_t[16 + 1] TOHEX = "0123456789ABCDEF";
+@DFD(1)
+DError* escape(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -373,7 +375,7 @@ DError* Dglobal_escape(
     import std.string : indexOf;
 
     // ECMA 15.1.2.4
-    tstring s;
+    string_t s;
     uint escapes;
     uint unicodes;
     size_t slen;
@@ -421,7 +423,7 @@ DError* Dglobal_escape(
             }
             else
             {
-                r[0] = cast(tchar)c;
+                r[0] = cast(char_t)c;
                 r++;
             }
         }
@@ -432,8 +434,8 @@ DError* Dglobal_escape(
 }
 
 /* ====================== Dglobal_unescape ================ */
-@DnativeFunctionDescriptor(Key.unescape, 1)
-DError* Dglobal_unescape(
+@DFD(1)
+DError* unescape(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -442,14 +444,14 @@ DError* Dglobal_unescape(
     import std.utf : encode;
 
     // ECMA 15.1.2.5
-    tstring s;
-    Unqual!(ForeachType!tstring)[] R; // char[] type is assumed.
+    string_t s;
+    Unqual!(ForeachType!string_t)[] R; // char[] type is assumed.
 
     s = arg0string(arglist);
     //writefln("Dglobal.unescape(s = '%s')", s);
     for(size_t k = 0; k < s.length; k++)
     {
-        tchar c = s[k];
+        char_t c = s[k];
 
         if(c == '%')
         {
@@ -518,8 +520,8 @@ DError* Dglobal_unescape(
 }
 
 /* ====================== Dglobal_isNaN ================ */
-@DnativeFunctionDescriptor(Key.isNaN, 1)
-DError* Dglobal_isNaN(
+@DFD(1)
+DError* isNaN(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -541,8 +543,8 @@ DError* Dglobal_isNaN(
 }
 
 /* ====================== Dglobal_isFinite ================ */
-@DnativeFunctionDescriptor(Key.isFinite, 1)
-DError* Dglobal_isFinite(
+@DFD(1)
+DError* isFinite(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -565,21 +567,21 @@ DError* Dglobal_isFinite(
 
 /* ====================== Dglobal_ URI Functions ================ */
 
-DError* URI_error(tstring s)
+DError* URI_error(string_t s)
 {
     Dobject o = new urierror(s ~ "() failure");
     auto v = new DError;
     v.put(o);
     return v;
 }
-@DnativeFunctionDescriptor(Key.decodeURI, 1)
-DError* Dglobal_decodeURI(
+@DFD(1)
+DError* decodeURI(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decode, URIException;
     // ECMA v3 15.1.3.1
-    tstring s;
+    string_t s;
 
     s = arg0string(arglist);
     try
@@ -594,14 +596,14 @@ DError* Dglobal_decodeURI(
     ret.put(s);
     return null;
 }
-@DnativeFunctionDescriptor(Key.decodeURIComponent, 1)
-DError* Dglobal_decodeURIComponent(
+@DFD(1)
+DError* decodeURIComponent(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decodeComponent, URIException;
     // ECMA v3 15.1.3.2
-    tstring s;
+    string_t s;
 
     s = arg0string(arglist);
     try
@@ -616,15 +618,15 @@ DError* Dglobal_decodeURIComponent(
     ret.put(s);
     return null;
 }
-@DnativeFunctionDescriptor(Key.encodeURI, 1)
-DError* Dglobal_encodeURI(
+@DFD(1)
+DError* encodeURI(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encode, URIException;
 
     // ECMA v3 15.1.3.3
-    tstring s;
+    string_t s;
 
     s = arg0string(arglist);
     try
@@ -639,14 +641,14 @@ DError* Dglobal_encodeURI(
     ret.put(s);
     return null;
 }
-@DnativeFunctionDescriptor(Key.encodeURIComponent, 1)
-DError* Dglobal_encodeURIComponent(
+@DFD(1)
+DError* encodeURIComponent(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encodeComponent, URIException;
     // ECMA v3 15.1.3.4
-    tstring s;
+    string_t s;
 
     s = arg0string(arglist);
     try
@@ -675,7 +677,7 @@ void dglobal_print(
 
         for(i = 0; i < arglist.length; i++)
         {
-            tstring s = arglist[i].toString();
+            string_t s = arglist[i].toString();
 
             writef("%s", s);
         }
@@ -683,8 +685,9 @@ void dglobal_print(
 
     ret.putVundefined();
 }
-@DnativeFunctionDescriptor(Key.print, 1)
-DError* Dglobal_print(
+
+@DFD(1)
+DError* print(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -694,8 +697,8 @@ DError* Dglobal_print(
 }
 
 /* ====================== Dglobal_println ================ */
-@DnativeFunctionDescriptor(Key.println, 1)
-DError* Dglobal_println(
+@DFD(1)
+DError* println(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -708,8 +711,8 @@ DError* Dglobal_println(
 }
 
 /* ====================== Dglobal_readln ================ */
-@DnativeFunctionDescriptor(Key.readln, 0)
-DError* Dglobal_readln(
+@DFD(0)
+DError* readln(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -721,7 +724,7 @@ DError* Dglobal_readln(
 
     // Our own extension
     dchar c;
-    Unqual!(ForeachType!tstring)[] s;
+    Unqual!(ForeachType!string_t)[] s;
 
     for(;; )
     {
@@ -762,8 +765,8 @@ DError* Dglobal_readln(
 }
 
 /* ====================== Dglobal_getenv ================ */
-@DnativeFunctionDescriptor(Key.getenv, 1)
-DError* Dglobal_getenv(
+@DFD(1)
+DError* getenv(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -775,7 +778,7 @@ DError* Dglobal_getenv(
     ret.putVundefined();
     if(arglist.length)
     {
-        tstring s = arglist[0].toString();
+        string_t s = arglist[0].toString();
         char* p = getenv(toStringz(s));
         if(p)
             ret.put(p[0 .. strlen(p)].idup);
@@ -787,32 +790,32 @@ DError* Dglobal_getenv(
 
 
 /* ====================== Dglobal_ScriptEngine ================ */
-@DnativeFunctionDescriptor(Key.ScriptEngine, 0)
-DError* Dglobal_ScriptEngine(
+@DFD(0)
+DError* ScriptEngine(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(Text.DMDScript);
     return null;
 }
-@DnativeFunctionDescriptor(Key.ScriptEngineBuildVersion, 0)
-DError* Dglobal_ScriptEngineBuildVersion(
+@DFD(0)
+DError* ScriptEngineBuildVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(BUILD_VERSION);
     return null;
 }
-@DnativeFunctionDescriptor(Key.ScriptEngineMajorVersion, 0)
-DError* Dglobal_ScriptEngineMajorVersion(
+@DFD(0)
+DError* ScriptEngineMajorVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(MAJOR_VERSION);
     return null;
 }
-@DnativeFunctionDescriptor(Key.ScriptEngineMinorVersion, 0)
-DError* Dglobal_ScriptEngineMinorVersion(
+@DFD(0)
+DError* ScriptEngineMinorVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -820,14 +823,14 @@ DError* Dglobal_ScriptEngineMinorVersion(
     return null;
 }
 
-@DconstantDescriptor(Key.NaN) immutable NaN = double.nan;
-@DconstantDescriptor(Key.Infinity) immutable Infinity = double.infinity;
-@DconstantDescriptor(Key.undefined) auto undefined = vundefined;
+@DconstantDescriptor immutable NaN = double.nan;
+@DconstantDescriptor immutable Infinity = double.infinity;
+@DconstantDescriptor auto undefined = vundefined;
 /* ====================== Dglobal =========================== */
 
 class Dglobal : Dobject
 {
-    this(tchar[][] argv)
+    this(char_t[][] argv)
     {
         super(Dobject.getPrototype, Key.global);  // Dglobal.prototype is implementation-dependent
 
@@ -884,8 +887,7 @@ class Dglobal : Dobject
 
         DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
 //*/
-        DnativeFunctionDescriptor.install!(mixin(__MODULE__))
-            (this, Property.Attribute.DontEnum);
+        DFD.install!(mixin(__MODULE__))(this, Property.Attribute.DontEnum);
 
         // Now handled by AssertExp()
         // Put(Text.assert, Dglobal_assert(), DontEnum);
@@ -947,5 +949,28 @@ class Dglobal : Dobject
         arguments.DefineOwnProperty(Key.callee, Value.Type.Null,
                                     Property.Attribute.DontEnum);
     }
+}
+
+private:
+private enum Key : StringKey
+{
+    global = PKey.global,
+    Object = PKey.Object,
+    Function = PKey.Function,
+    Array = PKey.Array,
+    Boolean = PKey.Boolean,
+    Error = PKey.Error,
+    RegExp = PKey.RegExp,
+    String = PKey.String,
+    Number = PKey.Number,
+    Date = PKey.Date,
+    Math = PKey.Math,
+    arguments = PKey.arguments,
+    callee = PKey.callee,
+
+    decodeURI = StringKey("decodeURI"),
+    decodeURIComponent = StringKey("decodeURIComponent"),
+    encodeURI = StringKey("encodeURI"),
+    encodeURIComponent = StringKey("encodeURIComponent"),
 }
 

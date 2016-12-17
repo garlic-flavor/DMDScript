@@ -71,7 +71,7 @@ module dmdscript.ir;
 debug import std.conv : text;
 import std.meta : AliasSeq;
 
-import dmdscript.primitive : line_number, StringKey;
+import dmdscript.primitive : StringKey;
 import dmdscript.functiondefinition : FunctionDefinition;
 
 //
@@ -230,9 +230,9 @@ struct Instruction
 
     alias opcode this;
 
-    this(line_number loc, Opcode op)
+    this(uint linnum, Opcode op)
     {
-        linnum = cast(typeof(linnum))loc;
+        this.linnum = cast(typeof(this.linnum))linnum;
         opcode = op;
     }
 
@@ -251,8 +251,8 @@ private struct IR0(Opcode CODE)
 
     Instruction ir;
 
-    this(line_number loc)
-    { ir = Instruction(loc, code); }
+    this(uint linnum)
+    { ir = Instruction(linnum, code); }
 
     debug string toString() const
     { return ir.toString; }
@@ -267,15 +267,15 @@ private struct IR1(Opcode CODE)
     Instruction ir;
     idx_t acc;  // the position of an acc buffer in local variable array.
 
-    this(line_number loc, idx_t acc)
+    this(uint linnum, idx_t acc)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.acc = acc;
     }
 
-    this(line_number loc, Opcode op, idx_t acc)
+    this(uint linnum, Opcode op, idx_t acc)
     {
-        ir = Instruction(loc, op);
+        ir = Instruction(linnum, op);
         this.acc = acc;
     }
 
@@ -293,9 +293,9 @@ private struct IR2(Opcode CODE, T)
     idx_t acc;
     T operand;
 
-    this(line_number loc, idx_t acc, T operand)
+    this(uint linnum, idx_t acc, T operand)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.acc = acc;
         this.operand = operand;
     }
@@ -315,17 +315,17 @@ private struct IR3(Opcode CODE, T, U)
     T operand1;
     U operand2;
 
-    this(line_number loc, idx_t acc, T o1, U o2)
+    this(uint linnum, idx_t acc, T o1, U o2)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.acc = acc;
         operand1 = o1;
         operand2 = o2;
     }
 
-    this(line_number loc, Opcode op, idx_t acc, T o1, U o2)
+    this(uint linnum, Opcode op, idx_t acc, T o1, U o2)
     {
-        ir = Instruction(loc, op);
+        ir = Instruction(linnum, op);
         this.acc = acc;
         operand1 = o1;
         operand2 = o2;
@@ -347,9 +347,9 @@ private struct IRcall4(Opcode CODE, T)
     size_t argc;
     idx_t argv;
 
-    this(line_number loc, idx_t acc, T func, size_t argc, idx_t argv)
+    this(uint linnum, idx_t acc, T func, size_t argc, idx_t argv)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.acc = acc;
         this.func = func;
         this.argc = argc;
@@ -373,9 +373,9 @@ private struct IRcall5(Opcode CODE, T)
     size_t argc;
     idx_t argv;
 
-    this(line_number loc, idx_t acc, idx_t owner, T method, size_t argc, idx_t argv)
+    this(uint linnum, idx_t acc, idx_t owner, T method, size_t argc, idx_t argv)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.acc = acc;
         this.owner = owner;
         this.method = method;
@@ -383,10 +383,10 @@ private struct IRcall5(Opcode CODE, T)
         this.argv = argv;
     }
 
-    this(line_number loc, Opcode op, idx_t acc, idx_t owner, T method, size_t argc,
+    this(uint linnum, Opcode op, idx_t acc, idx_t owner, T method, size_t argc,
          idx_t argv)
     {
-        ir = Instruction(loc, op);
+        ir = Instruction(linnum, op);
         this.acc = acc;
         this.owner = owner;
         this.method = method;
@@ -412,9 +412,9 @@ private struct IRget3(Opcode CODE, T)
     idx_t owner;
     T method;
 
-    this(line_number loc, idx_t acc, idx_t owner, T method)
+    this(uint linnum, idx_t acc, idx_t owner, T method)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.acc = acc;
         this.owner = owner;
         this.method = method;
@@ -434,17 +434,17 @@ private struct IRScope3(Opcode CODE)
     StringKey* operand;
     size_t hash;
 
-    this(line_number loc, idx_t acc, StringKey* operand, size_t hash)
+    this(uint linnum, idx_t acc, StringKey* operand, size_t hash)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.acc = acc;
         this.operand = operand;
         this.hash = hash;
     }
 
-    this(line_number loc, Opcode op, idx_t acc, StringKey* operand, size_t hash)
+    this(uint linnum, Opcode op, idx_t acc, StringKey* operand, size_t hash)
     {
-        ir = Instruction(loc, op);
+        ir = Instruction(linnum, op);
         this.acc = acc;
         this.operand = operand;
         this.hash = hash;
@@ -465,9 +465,9 @@ private struct IRnext3(Opcode CODE, T)
     T func;
     idx_t iter;
 
-    this(line_number loc, sizediff_t offset, T func, idx_t iter)
+    this(uint linnum, sizediff_t offset, T func, idx_t iter)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.offset = offset;
         this.func = func;
         this.iter = iter;
@@ -489,9 +489,9 @@ private struct IRnext4(Opcode CODE, T)
     T method;
     idx_t iter;
 
-    this(line_number loc, sizediff_t offset, idx_t owner, T method, idx_t iter)
+    this(uint linnum, sizediff_t offset, idx_t owner, T method, idx_t iter)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.offset = offset;
         this.owner = owner;
         this.method = method;
@@ -514,9 +514,9 @@ private struct IRjump1(Opcode CODE)
     Instruction ir;
     sizediff_t offset;
 
-    this(line_number loc, sizediff_t offset)
+    this(uint linnum, sizediff_t offset)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.offset = offset;
     }
 
@@ -533,9 +533,9 @@ private struct IRjump2(Opcode CODE)
     sizediff_t offset;
     idx_t cond;
 
-    this(line_number loc, sizediff_t offset, idx_t cond)
+    this(uint linnum, sizediff_t offset, idx_t cond)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.offset = offset;
         this.cond = cond;
     }
@@ -554,9 +554,9 @@ private struct IRjump3(Opcode CODE, T = idx_t)
     idx_t operand1;
     T operand2;
 
-    this(line_number loc, sizediff_t offset, idx_t o1, T o2)
+    this(uint linnum, sizediff_t offset, idx_t o1, T o2)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.offset = offset;
         this.operand1 = o1;
         this.operand2 = o2;
@@ -577,9 +577,9 @@ struct IRJmpToStatement
     Instruction ir;
     Statement statement;
 
-    this(line_number loc, Statement statement)
+    this(uint linnum, Statement statement)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.statement = statement;
     }
 
@@ -597,9 +597,9 @@ private struct IRTryCatch
     sizediff_t offset;
     StringKey* name;
 
-    this(line_number loc, sizediff_t offset, StringKey* name)
+    this(uint linnum, sizediff_t offset, StringKey* name)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.offset = offset;
         this.name = name;
     }
@@ -622,9 +622,9 @@ private struct IRCheckRef
     Instruction ir;
     StringKey* operand;
 
-    this(line_number loc, StringKey* operand)
+    this(uint linnum, StringKey* operand)
     {
-        ir = Instruction(loc, code);
+        ir = Instruction(linnum, code);
         this.operand = operand;
     }
 
@@ -644,16 +644,14 @@ private struct IRAssert
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
     Instruction ir;
-    line_number linnum;
 
-    this(line_number loc, line_number linnum)
+    this(uint linnum)
     {
-        ir = Instruction(loc, code);
-        this.linnum = linnum;
+        ir = Instruction(linnum, code);
     }
 
     debug string toString() const
-    { return text(ir, " at line ", linnum); }
+    { return text(ir, " at line ", ir.linnum); }
 }
 
 //

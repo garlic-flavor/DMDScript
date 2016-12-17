@@ -24,7 +24,7 @@ debug import std.stdio;
 
 class DdeclaredFunction : Dconstructor
 {
-    import dmdscript.primitive : tstring, StringKey;
+    import dmdscript.primitive : string_t, StringKey;
     import dmdscript.callcontext : CallContext;
     import dmdscript.dobject : Dobject;
     import dmdscript.value : DError, Value;
@@ -121,7 +121,7 @@ class DdeclaredFunction : Dconstructor
         // make grannymail bug work
 
         // auto newCC = CallContext(cc, actobj, this, fd);
-        cc.scopex.pushVariableScope(actobj, this, fd);
+        cc.scopex.pushVariableScope(actobj, this, fd, othis);
 
         fd.instantiate(cc, Property.Attribute.DontDelete);
 
@@ -183,10 +183,10 @@ class DdeclaredFunction : Dconstructor
         return result;
     }
 
-    override tstring toString()
+    override string_t toString()
     {
         import std.array : Appender;
-        Appender!tstring buf;
+        Appender!string_t buf;
 
         fd.toBuffer(b=>buf.put(b));
         return buf.data;

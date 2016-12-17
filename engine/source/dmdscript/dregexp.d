@@ -18,7 +18,7 @@
 
 module dmdscript.dregexp;
 
-import dmdscript.primitive;
+import dmdscript.primitive : char_t, string_t, StringKey, Text, PKey = Key;
 import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.value;
@@ -27,14 +27,13 @@ import dmdscript.darray;
 import dmdscript.dfunction;
 import dmdscript.property;
 import dmdscript.errmsgs;
-import dmdscript.dnative;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.dglobal : undefined;
 
 //alias script.tchar tchar;
 
 // Values for Dregexp.exec.rettype
 enum { EXEC_STRING, EXEC_ARRAY, EXEC_BOOLEAN, EXEC_INDEX };
-
 
 /* ===================== Dregexp_constructor ==================== */
 
@@ -135,8 +134,8 @@ class DregexpConstructor : Dconstructor
 
         Value* pattern;
         Value* flags;
-        tstring P;
-        tstring F;
+        string_t P;
+        string_t F;
         Dregexp r;
         Dregexp R;
 
@@ -228,12 +227,12 @@ class DregexpConstructor : Dconstructor
         return Dfunction.SetImpl(sk, value, attributes, cc);
     }
 
-    override int CanPut(in tstring PropertyName)
+    override int CanPut(in string_t PropertyName)
     {
         return Dfunction.CanPut(perlAlias(PropertyName));
     }
 
-    override bool HasProperty(in tstring PropertyName)
+    override bool HasProperty(in string_t PropertyName)
     {
         return Dfunction.HasProperty(perlAlias(PropertyName));
     }
@@ -244,13 +243,13 @@ class DregexpConstructor : Dconstructor
     }
 
     // Translate Perl property names to script property names
-    static tstring perlAlias(tstring s)
+    static string_t perlAlias(string_t s)
     {
         import std.algorithm : countUntil;
-        tstring t;
+        string_t t;
 
-        static immutable tchar[] from = "_*&+`'";
-        static enum tstring[] to =
+        static immutable char_t[] from = "_*&+`'";
+        static enum string_t[] to =
         [
             Key.input,
             Key.multiline,
@@ -275,15 +274,15 @@ class DregexpConstructor : Dconstructor
 
 
 /* ===================== Dregexp_prototype_toString =============== */
-@DnativeFunctionDescriptor(Key.toString, 0)
-DError* Dregexp_prototype_toString(
+@DFD(0)
+DError* toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a RegExp
     if (auto r = cast(Dregexp)othis)
     {
-        tstring s;
+        string_t s;
 
         s = "/";
         s ~= r.re.pattern;
@@ -300,8 +299,8 @@ DError* Dregexp_prototype_toString(
 }
 
 /* ===================== Dregexp_prototype_test =============== */
-@DnativeFunctionDescriptor(Key.test, 1)
-DError* Dregexp_prototype_test(
+@DFD(1)
+DError* test(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -311,8 +310,8 @@ DError* Dregexp_prototype_test(
 }
 
 /* ===================== Dregexp_prototype_exec ============= */
-@DnativeFunctionDescriptor(Key.exec, 1)
-DError* Dregexp_prototype_exec(
+@DFD(1)
+DError* exec(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -321,8 +320,8 @@ DError* Dregexp_prototype_exec(
 
 
 /* ===================== Dregexp_prototype_compile ============= */
-@DnativeFunctionDescriptor(Key.compile, 2)
-DError* Dregexp_prototype_compile(
+@DFD(2)
+DError* compile(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -331,8 +330,8 @@ DError* Dregexp_prototype_compile(
     // othis must be a RegExp
     if (auto dr = cast(Dregexp)othis)
     {
-        tstring pattern;
-        tstring attributes;
+        string_t pattern;
+        string_t attributes;
         RegExp r;
 
         switch(arglist.length)
@@ -417,7 +416,7 @@ class Dregexp : Dobject
 
     RegExp re;
 
-    this(tstring pattern, tstring attributes)
+    this(string_t pattern, string_t attributes)
     {
         super(getPrototype, Key.RegExp);
 
@@ -469,7 +468,7 @@ class Dregexp : Dobject
         }
     }
 
-    this(Dobject prototype, tstring cname = Key.RegExp)
+    this(Dobject prototype, string_t cname = Key.RegExp)
     {
         super(prototype, cname);
 
@@ -535,7 +534,7 @@ static:
         // othis must be a RegExp
         if (auto dr = cast(Dregexp)othis)
         {
-            tstring s;
+            string_t s;
             RegExp r;
             DregexpConstructor dc;
             uint i;
@@ -986,6 +985,39 @@ package
     private:
         Regex!char r;
         RegexMatch!string m;
-        tstring src;
+        string_t src;
     }
 }
+
+private:
+enum Key : StringKey
+{
+    RegExp = PKey.RegExp,
+    prototype = PKey.prototype,
+    constructor = PKey.constructor,
+    global = PKey.global,
+
+    input = StringKey("input"),
+    multiline = StringKey("multiline"),
+    lastIndex = StringKey("lastIndex"),
+    lastMatch = StringKey("lastMatch"),
+    lastParen = StringKey("lastParen"),
+    leftContext = StringKey("leftContext"),
+    rightContext = StringKey("rightContext"),
+
+    dollar1 = StringKey("$1"),
+    dollar2 = StringKey("$2"),
+    dollar3 = StringKey("$3"),
+    dollar4 = StringKey("$4"),
+    dollar5 = StringKey("$5"),
+    dollar6 = StringKey("$6"),
+    dollar7 = StringKey("$7"),
+    dollar8 = StringKey("$8"),
+    dollar9 = StringKey("$9"),
+    index = StringKey("index"),
+
+    source = StringKey("source"),
+    ignoreCase = StringKey("ignoreCase"),
+    exec = StringKey("exec"),
+}
+

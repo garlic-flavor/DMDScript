@@ -25,7 +25,7 @@ debug import std.stdio;
 class Symbol
 {
     import dmdscript.scopex : Scope;
-    import dmdscript.primitive : tchar, StringKey;
+    import dmdscript.primitive : char_t, StringKey;
 
     StringKey* ident;
 
@@ -69,7 +69,7 @@ class Symbol
     }
 
     final
-    void toBuffer(scope void delegate(in tchar[]) sink) const
+    void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         sink(toString);
     }
@@ -116,17 +116,16 @@ struct SymbolTable
 //------------------------------------------------------------------------------
 class LabelSymbol : Symbol
 {
-    import dmdscript.primitive : line_number;
     import dmdscript.statement : LabelStatement;
 
-    line_number loc;
+    uint linnum;
     LabelStatement statement;
 
     @safe @nogc pure nothrow
-    this(line_number loc, StringKey* ident, LabelStatement statement)
+    this(uint linnum, StringKey* ident, LabelStatement statement)
     {
         super(ident);
-        this.loc = loc;
+        this.linnum = linnum;
         this.statement = statement;
     }
 }

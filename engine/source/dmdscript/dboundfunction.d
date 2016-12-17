@@ -22,7 +22,7 @@ import dmdscript.dobject : Dobject;
 // NOT IMPLEMENTED YET.
 class DboundFunction : Dobject
 {
-    import dmdscript.primitive : tstring, Text;
+    import dmdscript.primitive : string_t, Text;
     import dmdscript.dfunction : Dfunction;
     import dmdscript.value : Value, DError;
     import dmdscript.callcontext : CallContext;
@@ -40,7 +40,7 @@ class DboundFunction : Dobject
     }
 
     override
-    tstring getTypeof() const
+    string_t getTypeof() const
     {
         return Text._function;
     }

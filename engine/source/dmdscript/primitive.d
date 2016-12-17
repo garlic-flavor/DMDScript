@@ -18,13 +18,12 @@ module dmdscript.primitive;
 
 //------------------------------------------------------------------------------
 //
-alias tchar = char;
-alias line_number = uint;
-alias tstring = immutable(tchar)[];
-alias d_time = long;
+alias char_t = char;
+alias string_t = immutable(char_t)[];
+alias d_time = long; // to be replaced.
 
-alias number_t = ulong;
-alias real_t = double;
+alias number_t = ulong; // needed?
+alias real_t = double; // needed?
 
 enum d_time_nan = long.min;
 
@@ -33,7 +32,7 @@ enum d_time_nan = long.min;
 package:
 
 //------------------------------------------------------------------------------
-enum Text : tstring
+enum Text : string_t
 {
     Empty = "",
     Infinity = "Infinity",
@@ -81,36 +80,24 @@ enum Text : tstring
 
     date = "date",
     unknown = "unknown",
-
-    Iterator = "Iterator",
 }
 
 //------------------------------------------------------------------------------
 enum Key : StringKey
 {
-    source = StringKey("source"),
     global = StringKey("global"),
-    ignoreCase = StringKey("ignoreCase"),
-    multiline = StringKey("multiline"),
-    lastIndex = StringKey("lastIndex"),
-    input = StringKey("input"),
-    lastMatch = StringKey("lastMatch"),
-    lastParen = StringKey("lastParen"),
-    leftContext = StringKey("leftContext"),
-    rightContext = StringKey("rightContext"),
+    toLocaleString = StringKey("toLocaleString"),
     prototype = StringKey("prototype"),
     constructor = StringKey("constructor"),
     toString = StringKey("toString"),
-    toLocaleString = StringKey("toLocaleString"),
     toSource = StringKey("toSource"),
     valueOf = StringKey("valueOf"),
     message = StringKey("message"),
     description = StringKey("description"),
-    Error = StringKey("Error"),
     name = StringKey("name"),
     length = StringKey("length"),
+
     NaN = StringKey("NaN"),
-    Infinity = StringKey(Text.Infinity),
     undefined = StringKey("undefined"),
     number = StringKey("number"),
     Object = StringKey("Object"),
@@ -120,196 +107,30 @@ enum Key : StringKey
     Date = StringKey("Date"),
     Array = StringKey("Array"),
     RegExp = StringKey("RegExp"),
-    arity = StringKey("arity"),
+    Error = StringKey("Error"),
+    Symbol = StringKey("Symbol"),
+    Map = StringKey("Map"),
+    Set = StringKey("Set"),
+    WeakMap = StringKey("WeakMap"),
+    WeakSet =StringKey("WeakSet"),
+    ArrayBuffer = StringKey("ArrayBuffer"),
+    DataView = StringKey("DataView"),
+    JSON = StringKey("JSON"),
+    Promise = StringKey("Promise"),
+    Reflect = StringKey("Reflect"),
+    Proxy = StringKey("Proxy"),
+
     arguments = StringKey("arguments"),
     callee = StringKey("callee"),
     caller = StringKey("caller"),                  // extension
 
-    fromCharCode = StringKey("fromCharCode"),
-    charAt = StringKey("charAt"),
-    charCodeAt = StringKey("charCodeAt"),
-    concat = StringKey("concat"),
-    indexOf = StringKey("indexOf"),
-    lastIndexOf = StringKey("lastIndexOf"),
-    localeCompare = StringKey("localeCompare"),
-    match = StringKey("match"),
-    replace = StringKey("replace"),
-    search = StringKey("search"),
-    slice = StringKey("slice"),
-    split = StringKey("split"),
-    substr = StringKey("substr"),
-    substring = StringKey("substring"),
-    toLowerCase = StringKey("toLowerCase"),
-    toLocaleLowerCase = StringKey("toLocaleLowerCase"),
-    toUpperCase = StringKey("toUpperCase"),
-    toLocaleUpperCase = StringKey("toLocaleUpperCase"),
-    hasOwnProperty = StringKey("hasOwnProperty"),
-    isPrototypeOf = StringKey("isPrototypeOf"),
-    propertyIsEnumerable = StringKey("propertyIsEnumerable"),
-    dollar1 = StringKey("$1"),
-    dollar2 = StringKey("$2"),
-    dollar3 = StringKey("$3"),
-    dollar4 = StringKey("$4"),
-    dollar5 = StringKey("$5"),
-    dollar6 = StringKey("$6"),
-    dollar7 = StringKey("$7"),
-    dollar8 = StringKey("$8"),
-    dollar9 = StringKey("$9"),
-    index = StringKey("index"),
-    compile = StringKey("compile"),
-    test = StringKey("test"),
-    exec = StringKey("exec"),
-    MAX_VALUE = StringKey("MAX_VALUE"),
-    MIN_VALUE = StringKey("MIN_VALUE"),
-    NEGATIVE_INFINITY = StringKey("NEGATIVE_INFINITY"),
-    POSITIVE_INFINITY = StringKey("POSITIVE_INFINITY"),
-
-    toFixed = StringKey("toFixed"),
-    toExponential = StringKey("toExponential"),
-    toPrecision = StringKey("toPrecision"),
-    abs = StringKey("abs"),
-    acos = StringKey("acos"),
-    asin = StringKey("asin"),
-    atan = StringKey("atan"),
-    atan2 = StringKey("atan2"),
-    ceil = StringKey("ceil"),
-    cos = StringKey("cos"),
-    exp = StringKey("exp"),
-    floor = StringKey("floor"),
-    log = StringKey("log"),
-    max = StringKey("max"),
-    min = StringKey("min"),
-    pow = StringKey("pow"),
-    random = StringKey("random"),
-    round = StringKey("round"),
-    sin = StringKey("sin"),
-    sqrt = StringKey("sqrt"),
-    tan = StringKey("tan"),
-    E = StringKey("E"),
-    LN10 = StringKey("LN10"),
-    LN2 = StringKey("LN2"),
-    LOG2E = StringKey("LOG2E"),
-    LOG10E = StringKey("LOG10E"),
-    PI = StringKey("PI"),
-    SQRT1_2 = StringKey("SQRT1_2"),
-    SQRT2 = StringKey("SQRT2"),
-    parse = StringKey("parse"),
-    UTC = StringKey("UTC"),
-
-    getTime = StringKey("getTime"),
-    getYear = StringKey("getYear"),
-    getFullYear = StringKey("getFullYear"),
-    getUTCFullYear = StringKey("getUTCFullYear"),
-    getDate = StringKey("getDate"),
-    getUTCDate = StringKey("getUTCDate"),
-    getMonth = StringKey("getMonth"),
-    getUTCMonth = StringKey("getUTCMonth"),
-    getDay = StringKey("getDay"),
-    getUTCDay = StringKey("getUTCDay"),
-    getHours = StringKey("getHours"),
-    getUTCHours = StringKey("getUTCHours"),
-    getMinutes = StringKey("getMinutes"),
-    getUTCMinutes = StringKey("getUTCMinutes"),
-    getSeconds = StringKey("getSeconds"),
-    getUTCSeconds = StringKey("getUTCSeconds"),
-    getMilliseconds = StringKey("getMilliseconds"),
-    getUTCMilliseconds = StringKey("getUTCMilliseconds"),
-    getTimezoneOffset = StringKey("getTimezoneOffset"),
-    getVarDate = StringKey("getVarDate"),
-
-    setTime = StringKey("setTime"),
-    setYear = StringKey("setYear"),
-    setFullYear = StringKey("setFullYear"),
-    setUTCFullYear = StringKey("setUTCFullYear"),
-    setDate = StringKey("setDate"),
-    setUTCDate = StringKey("setUTCDate"),
-    setMonth = StringKey("setMonth"),
-    setUTCMonth = StringKey("setUTCMonth"),
-    setDay = StringKey("setDay"),
-    setUTCDay = StringKey("setUTCDay"),
-    setHours = StringKey("setHours"),
-    setUTCHours = StringKey("setUTCHours"),
-    setMinutes = StringKey("setMinutes"),
-    setUTCMinutes = StringKey("setUTCMinutes"),
-    setSeconds = StringKey("setSeconds"),
-    setUTCSeconds = StringKey("setUTCSeconds"),
-    setMilliseconds = StringKey("setMilliseconds"),
-    setUTCMilliseconds = StringKey("setUTCMilliseconds"),
-
-    toDateString = StringKey("toDateString"),
-    toTimeString = StringKey("toTimeString"),
-    toLocaleDateString = StringKey("toLocaleDateString"),
-    toLocaleTimeString = StringKey("toLocaleTimeString"),
-    toUTCString = StringKey("toUTCString"),
-    toGMTString = StringKey("toGMTString"),
-
-    join = StringKey("join"),
-    pop = StringKey("pop"),
-    push = StringKey("push"),
-    reverse = StringKey("reverse"),
-    shift = StringKey("shift"),
-    sort = StringKey("sort"),
-    splice = StringKey("splice"),
-    unshift = StringKey("unshift"),
-    apply = StringKey("apply"),
-    call = StringKey("call"),
-
-    eval = StringKey("eval"),
-    parseInt = StringKey("parseInt"),
-    parseFloat = StringKey("parseFloat"),
-    escape = StringKey("escape"),
-    unescape = StringKey("unescape"),
-    isNaN = StringKey("isNaN"),
-    isFinite = StringKey("isFinite"),
-    decodeURI = StringKey("decodeURI"),
-    decodeURIComponent = StringKey("decodeURIComponent"),
-    encodeURI = StringKey("encodeURI"),
-    encodeURIComponent = StringKey("encodeURIComponent"),
-
-    print = StringKey("print"),
-    println = StringKey("println"),
-    readln = StringKey("readln"),
-    getenv = StringKey("getenv"),
-
     Function = StringKey("Function"),
     Math = StringKey("Math"),
 
-    anchor = StringKey("anchor"),
-    big = StringKey("big"),
-    blink = StringKey("blink"),
-    bold = StringKey("bold"),
-    fixed = StringKey("fixed"),
-    fontcolor = StringKey("fontcolor"),
-    fontsize = StringKey("fontsize"),
-    italics = StringKey("italics"),
-    link = StringKey("link"),
-    small = StringKey("small"),
-    strike = StringKey("strike"),
-    sub = StringKey("sub"),
-    sup = StringKey("sup"),
-
-    ScriptEngine = StringKey("ScriptEngine"),
-    ScriptEngineBuildVersion = StringKey("ScriptEngineBuildVersion"),
-    ScriptEngineMajorVersion = StringKey("ScriptEngineMajorVersion"),
-    ScriptEngineMinorVersion = StringKey("ScriptEngineMinorVersion"),
-
     value = StringKey("value"),
-    writable = StringKey("writable"),
-    get = StringKey("get"),
-    set = StringKey("set"),
-    enumerable = StringKey("enumerable"),
-    configurable = StringKey("configurable"),
-
-    EvalError = StringKey("EvalError"),
-    RangeError = StringKey("RangeError"),
-    ReferenceError = StringKey("ReferenceError"),
-    SyntaxError = StringKey("SyntaxError"),
-    TypeError = StringKey("TypeError"),
-    URIError = StringKey("URIError"),
 
     hasInstance = StringKey("hasInstance"),
-    done = StringKey("done"),
-    next = StringKey("next"),
+    Iterator = StringKey("Iterator"),
 }
 
 //------------------------------------------------------------------------------
@@ -317,12 +138,12 @@ enum Key : StringKey
 struct StringKey
 {
     //
-    tstring entity;
+    string_t entity;
     alias entity this;
 
     //
     @safe @nogc pure nothrow
-    this(tstring str)
+    this(string_t str)
     {
         entity = str;
         if (__ctfe)
@@ -331,7 +152,7 @@ struct StringKey
 
     //
     @safe @nogc pure nothrow
-    this(tstring str, size_t h)
+    this(string_t str, size_t h)
     {
         entity = str;
         _hash = h;
@@ -342,7 +163,7 @@ struct StringKey
     this(in uint idx)
     {
         import std.conv : to;
-        entity = idx.to!tstring;
+        entity = idx.to!string_t;
         if (__ctfe)
             _hash = calcHash(entity);
     }
@@ -381,18 +202,19 @@ struct StringKey
 
     //
     @safe @nogc pure nothrow
-    bool opEquals(in tstring rvalue) const
+    bool opEquals(in string_t rvalue) const
     {
         return entity == rvalue;
     }
 
     //
     @safe @nogc pure nothrow
-    tstring toString() const
+    string_t toString() const
     {
         return entity;
     }
 
+    //
     @safe @nogc pure nothrow
     size_t toHash()
     {
@@ -401,6 +223,7 @@ struct StringKey
         return _hash;
     }
 
+    //
     @safe @nogc pure nothrow
     size_t toHash() const
     {
@@ -410,8 +233,9 @@ struct StringKey
             return _hash;
     }
 
+    //
     @safe @nogc pure nothrow
-    void put(tstring str)
+    void put(string_t str)
     {
         entity = str;
         _hash = calcHash(entity);
@@ -420,11 +244,11 @@ struct StringKey
 private:
     size_t _hash;
 
-public static:
+package static:
 
     //
     @safe pure nothrow
-    StringKey* build(tstring key)
+    StringKey* build(string_t key)
     {
         return new StringKey(key, calcHash(key));
     }
@@ -474,7 +298,7 @@ bool StringToIndex(string name, out uint index)
 
         for(uint j = 0; j < name.length; j++)
         {
-            tchar c = name[j];
+            char_t c = name[j];
 
             switch(c)
             {
@@ -506,7 +330,7 @@ Input:
                   1: convert per ECMA 15.1.2.3 (global.parseFloat())
 */
 @trusted
-double StringNumericLiteral(tstring str, out size_t endidx, int parsefloat)
+double StringNumericLiteral(string_t str, out size_t endidx, int parsefloat)
 {
     import std.string : toStringz;
     import core.sys.posix.stdlib : strtod;
@@ -574,7 +398,7 @@ double StringNumericLiteral(tstring str, out size_t endidx, int parsefloat)
             i += 2;
             for(; i < len; i++)
             {
-                tchar c;
+                char_t c;
 
                 c = str[i];          // don't need to decode UTF here
                 if('0' <= c && c <= '9')
@@ -615,14 +439,14 @@ double StringNumericLiteral(tstring str, out size_t endidx, int parsefloat)
 }
 
 //------------------------------------------------------------------------------
-tstring NumberToString(in double n)
+string_t NumberToString(in double n)
 {
     import std.format : sformat;
     import core.stdc.string : strlen;
     import std.math : isInfinity, isNaN;
 
-    tstring str;
-    enum tstring[10]  strs =
+    string_t str;
+    enum string_t[10]  strs =
         [ Text._0, Text._1, Text._2, Text._3, Text._4,
           Text._5, Text._6, Text._7, Text._8, Text._9 ];
 
@@ -639,9 +463,9 @@ tstring NumberToString(in double n)
     }
     else
     {
-        tchar[100] buffer;                // should shrink this to max size,
+        char_t[100] buffer;                // should shrink this to max size,
         // but doesn't really matter
-        tchar* p;
+        char_t* p;
 
         // ECMA 262 requires %.21g (21 digits) of precision. But, the
         // C runtime library doesn't handle that. Until the C runtime
@@ -658,8 +482,8 @@ tstring NumberToString(in double n)
 
 
         {             // Trim any 0's following exponent 'e'
-            tchar* q;
-            tchar* t;
+            char_t* q;
+            char_t* t;
 
             for(q = p; *q; q++)
             {
@@ -714,7 +538,7 @@ size_t calcHash(in double d)
 //------------------------------------------------------------------------------
 //
 @trusted @nogc pure nothrow
-size_t calcHash(in tstring s)
+size_t calcHash(in string_t s)
 {
     size_t hash;
 
@@ -723,7 +547,7 @@ size_t calcHash(in tstring s)
      * This means that "1234" hashes to the same value as 1234.
      */
     hash = 0;
-    foreach(tchar c; s)
+    foreach(char_t c; s)
     {
         switch(c)
         {
@@ -804,7 +628,7 @@ we don't care about lexicographic ordering.
 This is faster.
 */
 @trusted @nogc pure nothrow
-int stringcmp(in tstring s1, in tstring s2)
+int stringcmp(in string_t s1, in string_t s2)
 {
     import core.stdc.string : memcmp;
 

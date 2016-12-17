@@ -23,7 +23,7 @@ import std.random;
 import dmdscript.callcontext : CallContext;
 import dmdscript.value : DError, Value, vundefined;
 import dmdscript.dobject : Dobject;
-import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor,
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
     DconstantDescriptor;
 import dmdscript.primitive : Key;
 import dmdscript.dglobal : undefined;
@@ -35,8 +35,8 @@ double math_helper(ref CallContext cc, Value[] arglist)
     v = arglist.length ? &arglist[0] : &undefined;
     return v.toNumber(cc);
 }
-@DnativeFunctionDescriptor(Key.abs, 1)
-DError* Dmath_abs(
+@DFD(1)
+DError* abs(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -47,44 +47,44 @@ DError* Dmath_abs(
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.acos, 1)
-DError* Dmath_acos(
+@DFD(1)
+DError* acos(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.2
     double result;
 
-    result = acos(math_helper(cc, arglist));
+    result = std.math.acos(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.asin, 1)
-DError* Dmath_asin(
+@DFD(1)
+DError* asin(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.3
     double result;
 
-    result = asin(math_helper(cc, arglist));
+    result = std.math.asin(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.atan, 1)
-DError* Dmath_atan(
+@DFD(1)
+DError* atan(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.4
     double result;
 
-    result = atan(math_helper(cc, arglist));
+    result = std.math.atan(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.atan2, 2)
-DError* Dmath_atan2(
+@DFD(2)
+DError* atan2(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -95,37 +95,37 @@ DError* Dmath_atan2(
 
     n1 = math_helper(cc, arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
-    result = atan2(n1, v2.toNumber(cc));
+    result = std.math.atan2(n1, v2.toNumber(cc));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.ceil, 1)
-DError* Dmath_ceil(
+@DFD(1)
+DError* ceil(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.6
     double result;
 
-    result = ceil(math_helper(cc, arglist));
+    result = std.math.ceil(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
 
-@DnativeFunctionDescriptor(Key.cos, 1)
-DError* Dmath_cos(
+@DFD(1)
+DError* cos(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.7
     double result;
 
-    result = cos(math_helper(cc, arglist));
+    result = std.math.cos(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.exp, 1)
-DError* Dmath_exp(
+@DFD(1)
+DError* exp(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -136,8 +136,8 @@ DError* Dmath_exp(
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.floor, 1)
-DError* Dmath_floor(
+@DFD(1)
+DError* floor(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -148,20 +148,20 @@ DError* Dmath_floor(
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.log, 1)
-DError* Dmath_log(
+@DFD(1)
+DError* log(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.10
     double result;
 
-    result = log(math_helper(cc, arglist));
+    result = std.math.log(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.max, 2)
-DError* Dmath_max(
+@DFD(2)
+DError* max(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -191,8 +191,8 @@ DError* Dmath_max(
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.min, 2)
-DError* Dmath_min(
+@DFD(2)
+DError* min(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -222,8 +222,8 @@ DError* Dmath_min(
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.pow, 2)
-DError* Dmath_pow(
+@DFD(2)
+DError* pow(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -234,12 +234,12 @@ DError* Dmath_pow(
 
     n1 = math_helper(cc, arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
-    result = pow(n1, v2.toNumber(cc));
+    result = std.math.pow(n1, v2.toNumber(cc));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.random, 0)
-DError* Dmath_random(
+@DFD(0)
+DError* random(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -268,8 +268,8 @@ DError* Dmath_random(
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.round, 1)
-DError* Dmath_round(
+@DFD(1)
+DError* round(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -282,51 +282,178 @@ DError* Dmath_round(
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.sin, 1)
-DError* Dmath_sin(
+@DFD(1)
+DError* sin(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.16
     double result;
 
-    result = sin(math_helper(cc, arglist));
+    result = std.math.sin(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.sqrt, 1)
-DError* Dmath_sqrt(
+@DFD(1)
+DError* sqrt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.17
     double result;
 
-    result = sqrt(math_helper(cc, arglist));
+    result = std.math.sqrt(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
-@DnativeFunctionDescriptor(Key.tan, 1)
-DError* Dmath_tan(
+@DFD(1)
+DError* tan(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.18
     double result;
 
-    result = tan(math_helper(cc, arglist));
+    result = std.math.tan(math_helper(cc, arglist));
     ret.put(result);
     return null;
 }
 
-@DconstantDescriptor(Key.E) immutable E = std.math.E;
-@DconstantDescriptor(Key.LN10) immutable LN10 = std.math.LN10;
-@DconstantDescriptor(Key.LN2) immutable LN2 = std.math.LN2;
-@DconstantDescriptor(Key.LOG2E) immutable LOG2E = std.math.LOG2E;
-@DconstantDescriptor(Key.LOG10E) immutable LOG10E = std.math.LOG10E;
-@DconstantDescriptor(Key.PI) immutable PI = std.math.PI;
-@DconstantDescriptor(Key.SQRT1_2) immutable SQRT1_2 = std.math.SQRT1_2;
-@DconstantDescriptor(Key.SQRT2) immutable SQRT2 = std.math.SQRT2;
+//
+@DFD(1)
+DError* cbrt(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* clz32(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* cosh(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* expm1(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* fround(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* hypot(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(2)
+DError* imul(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* log1p(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* log10(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* log2(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* sign(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* sinh(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* tanh(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1)
+DError* trunc(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+
+@DconstantDescriptor immutable E = std.math.E;
+@DconstantDescriptor immutable LN10 = std.math.LN10;
+@DconstantDescriptor immutable LN2 = std.math.LN2;
+@DconstantDescriptor immutable LOG2E = std.math.LOG2E;
+@DconstantDescriptor immutable LOG10E = std.math.LOG10E;
+@DconstantDescriptor immutable PI = std.math.PI;
+@DconstantDescriptor immutable SQRT1_2 = std.math.SQRT1_2;
+@DconstantDescriptor immutable SQRT2 = std.math.SQRT2;
 
 /* ===================== Dmath ==================== */
 
@@ -345,7 +472,7 @@ class Dmath : Dobject
 
         DconstantDescriptor.install!(mixin(__MODULE__))(this, attributes);
 
-        DnativeFunctionDescriptor.install!(mixin(__MODULE__))(this, attributes);
+        DFD.install!(mixin(__MODULE__))(this, attributes);
     }
 
 static:

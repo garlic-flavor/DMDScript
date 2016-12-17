@@ -62,7 +62,7 @@ class FunctionDefinition : TopStatement
     IR* code;
     uint nlocals;
 
-    tstring srctext;
+    string_t srctext;
 
     @safe @nogc pure nothrow
     this(TopStatement[] topstatements)
@@ -74,10 +74,10 @@ class FunctionDefinition : TopStatement
     }
 
     @safe @nogc pure nothrow
-    this(tstring srctext, line_number loc, bool isglobal, StringKey*  name,
+    this(string_t srctext, uint linnum, bool isglobal, StringKey*  name,
          StringKey*[] parameters, TopStatement[] topstatements)
     {
-        super(loc);
+        super(linnum);
 
         //writef("FunctionDefinition('%ls')\n", name ? name.string : L"");
         st = StatementType.FunctionDefinition;
@@ -274,7 +274,7 @@ class FunctionDefinition : TopStatement
     }
 
 
-    override void toBuffer(scope void delegate(in tchar[]) sink) const
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
         if(!isglobal)
         {

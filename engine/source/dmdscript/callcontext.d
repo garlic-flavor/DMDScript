@@ -27,14 +27,15 @@ struct CallContext
     import dmdscript.property : PropertyKey, Property;
     import dmdscript.value : Value, DError;
 
-    Dobject callerothis;   /// caller's othis for eval().
+// deprecated
+//     Dobject callerothis;   /// caller's othis for eval().
 
     //--------------------------------------------------------------------
     ///
     @safe pure nothrow
     this(Program prog, Dobject global)
     {
-        _scopex = new ScopeStack(global);
+        _scopex = ScopeStack(global);
         _prog = prog;
     }
 
@@ -134,7 +135,7 @@ function func1()
    variable searching scope.
 */
 ///
-final class ScopeStack
+struct ScopeStack
 {
     import std.array : Appender;
     import dmdscript.dobject : Dobject;
@@ -144,13 +145,6 @@ final class ScopeStack
     import dmdscript.value : Value, DError;
 
     //--------------------------------------------------------------------
-    ///
-    @property @safe @nogc pure nothrow
-    inout(Dfunction) caller() inout
-    {
-        return _variable.caller;
-    }
-
     ///
     @property @safe @nogc pure nothrow
     inout(Dobject) global() inout
@@ -163,6 +157,20 @@ final class ScopeStack
     inout(Dobject) variable() inout
     {
         return _variable.variable;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Dfunction) caller() inout
+    {
+        return _variable.caller;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Dobject) callerothis() inout
+    {
+        return _variable.callerothis;
     }
 
     ///
@@ -197,14 +205,14 @@ final class ScopeStack
     ///
     @safe pure nothrow
     void pushVariableScope(Dobject variable, Dfunction caller,
-                      FunctionDefinition callerf)
+                           FunctionDefinition callerf, Dobject callerothis)
     {
         assert (variable !is null);
 
         _stack.put(variable);
-        _variable = VariableScope(_stack.data.length, variable,
-                                  caller, callerf);
-        _scopes.put(_variable);
+        _scopes.put(VariableScope(_stack.data.length, variable,
+                                  caller, callerf, callerothis));
+        _variable = &_scopes.data[$-1];
     }
 
     ///
@@ -215,11 +223,11 @@ final class ScopeStack
         if (sd.length <= GLOBAL_ROOT)
             return false;
 
-        assert(GLOBAL_ROOT < _variable.scoperoot);
+        assert (GLOBAL_ROOT < _variable.scoperoot);
 
         _stack.shrinkTo(_variable.scoperoot - 1);
-        _variable = sd[$ - 2];
         _scopes.shrinkTo(sd.length - 1);
+        _variable = &_scopes.data[$-1];
         return true;
     }
 
@@ -330,14 +338,26 @@ private:
         size_t scoperoot;
         Dobject variable;
         Dfunction caller;
-        FunctionDefinition callerf;
+        FunctionDefinition callerf; // not used, now.
+        Dobject callerothis;
     }
 
     Dobject _global;
-    VariableScope _variable;
-
+    VariableScope* _variable;
     Appender!(Dobject[]) _stack;
     Appender!(VariableScope[]) _scopes;
+
+    invariant
+    {
+        assert (_global !is null);
+
+        assert (_variable !is null);
+        assert (GLOBAL_ROOT <= _variable.scoperoot);
+        assert (_variable.variable !is null);
+
+        assert (0 < _stack.data.length);
+        assert (0 < _scopes.data.length);
+    }
 
     ///
     @safe pure nothrow
@@ -347,7 +367,7 @@ private:
 
         _global = global;
         _stack.put(global);
-        _variable = VariableScope(GLOBAL_ROOT, global, null, null);
-        _scopes.put(_variable);
+        _scopes.put(VariableScope(GLOBAL_ROOT, global, null, null, null));
+        _variable = &_scopes.data[$-1];
     }
 }

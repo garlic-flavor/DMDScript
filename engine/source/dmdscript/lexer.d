@@ -20,10 +20,7 @@
 
 module dmdscript.lexer;
 
-import dmdscript.primitive;
-import dmdscript.scopex;
-import dmdscript.errmsgs;
-import dmdscript.exception;
+import dmdscript.primitive : string_t;
 
 debug import std.stdio;
 
@@ -116,22 +113,23 @@ enum Tok : int
 
 struct Token
 {
-    import dmdscript.templateliteral;
+    import dmdscript.primitive : char_t, number_t, real_t, StringKey;
+    import dmdscript.templateliteral : TemplateLiteral;
 
     Tok    value;
     alias value this;
 
     Token* next;
     // pointer to first character of this token within buffer
-    immutable(tchar)* ptr;
+    immutable(char_t)* ptr;
     uint   linnum;
     // where we saw the last line terminator
-    immutable(tchar)* sawLineTerminator;
+    immutable(char_t)* sawLineTerminator;
     union
     {
         number_t    intvalue;
         real_t      realvalue;
-        tstring     str;
+        string_t     str;
         StringKey*  ident;
         TemplateLiteral* tliteral;
     };
@@ -139,24 +137,24 @@ struct Token
     // static tstring[Tok.max+1] tochars;
     // alias tochars = ._tochars;
 
-    tstring toString()
+    string_t toString()
     {
         import std.conv : to;
 
-        tstring p;
+        string_t p;
 
         switch(value)
         {
         case Tok.Number:
-            p = intvalue.to!tstring;
+            p = intvalue.to!string_t;
             break;
 
         case Tok.Real:
             long l = cast(long)realvalue;
             if(l == realvalue)
-                p = l.to!tstring;
+                p = l.to!string_t;
             else
-                p = realvalue.to!tstring;
+                p = realvalue.to!string_t;
             break;
 
         case Tok.String:
@@ -182,23 +180,27 @@ struct Token
 
 class Lexer
 {
+    import dmdscript.primitive : char_t, StringKey;
+    import dmdscript.exception : ScriptException;
+    import dmdscript.errmsgs;
+
     enum UseStringtable { No, Yes}
 
 protected:
     Token token;
     uint currentline;
     ScriptException exception;            // syntax error information
-    tstring base;             // pointer to start of buffer
+    string_t base;             // pointer to start of buffer
 
     @trusted pure nothrow
-    this(tstring sourcename, tstring base, UseStringtable useStringtable)
+    this(string_t sourcename, string_t base, UseStringtable useStringtable)
     {
         //writefln("Lexer::Lexer(base = '%s')\n",base);
 
         this.useStringtable = useStringtable;
         this.sourcename = sourcename;
         if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
-            base ~= cast(tchar)0x1A;
+            base ~= cast(char_t)0x1A;
         this.base = base;
         this.end = base.ptr + base.length;
         p = base.ptr;
@@ -260,7 +262,7 @@ protected:
     }
 
     //
-    void insertSemicolon(immutable(tchar)* loc)
+    void insertSemicolon(immutable(char_t)* loc)
     {
         // Push current token back into the input, and
         // create a new current token that is a semicolon
@@ -290,9 +292,9 @@ private:
     Token* freelist;
 
     UseStringtable useStringtable;        // use for Identifiers
-    StringKey[tstring] stringtable;
+    StringKey[string_t] stringtable;
 
-    tstring sourcename;       // for error message strings
+    string_t sourcename;       // for error message strings
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
 
@@ -313,7 +315,7 @@ private:
     }
 
     @trusted pure
-    dchar get(immutable(tchar)* p)
+    dchar get(immutable(char_t)* p)
     {
         import std.utf : decode;
         assert(base.ptr <= p && p < base.ptr + base.length);
@@ -322,7 +324,7 @@ private:
     }
 
     @trusted pure
-    immutable(tchar)* inc(immutable(tchar) * p)
+    immutable(char_t)* inc(immutable(char_t)* p)
     {
         import std.utf : stride;
         assert(base.ptr <= p && p < base.ptr + base.length);
@@ -340,11 +342,12 @@ private:
         import std.range : popFront;
         import std.uni : isAlpha;
         import std.utf : encode;
+        import dmdscript.primitive : isStrWhiteSpaceChar;
 
-        tchar c;
+        char_t c;
         dchar d;
-        tstring id;
-        tchar[] buf;
+        string_t id;
+        char_t[] buf;
 
         //writefln("Lexer.scan()");
         t.sawLineTerminator = null;
@@ -576,7 +579,7 @@ private:
                 return;
 
             case '.':
-                immutable(tchar)* q;
+                immutable(char_t)* q;
                 q = p + 1;
                 c = *q;
                 if(isDigit(c))
@@ -641,7 +644,7 @@ private:
                     if(*p == '>')
                     {
                         // Scan ahead to see if it's the last token
-                        immutable(tchar) * q;
+                        immutable(char_t) * q;
 
                         q = p;
                         for(;; )
@@ -996,16 +999,16 @@ private:
     /**************************************
      */
     @trusted
-    tstring chompString(tchar quote)
+    string_t chompString(char_t quote)
     {
         import std.array : Appender;
         import std.utf : encode, stride;
 
-        tchar c;
+        char_t c;
         dchar d;
         uint len;
-        tchar[dchar.sizeof / tchar.sizeof] unibuf;
-        static Appender!(tchar[]) stringbuffer;
+        char_t[dchar.sizeof / char_t.sizeof] unibuf;
+        static Appender!(char_t[]) stringbuffer;
 
         assert(*p == quote);
 
@@ -1057,13 +1060,13 @@ private:
      * pointer intact if it is not a regexp.
      */
     @trusted pure nothrow
-    tstring regexp()
+    string_t regexp()
     {
         import std.ascii : isAlphaNum;
 
-        tchar c;
-        immutable(tchar)* s;
-        immutable(tchar)* start;
+        char_t c;
+        immutable(char_t)* s;
+        immutable(char_t)* start;
 
         /*
             RegExpLiteral:  RegExpBody RegExpFlags
@@ -1191,12 +1194,13 @@ private:
         import std.ascii : isDigit, isHexDigit;
         import std.string : toStringz;
         import core.sys.posix.stdlib : strtod;
+        import dmdscript.primitive : number_t;
 
-        immutable(tchar) * start;
+        immutable(char_t)* start;
         number_t intvalue;
         real realvalue;
         int base = 10;
-        tchar c;
+        char_t c;
 
         start = p;
         for(;; )
@@ -1225,7 +1229,7 @@ private:
                 if(base == 0)
                     base = 10;
                 intvalue = 0;
-                foreach(tchar v; start[0 .. p - start])
+                foreach(char_t v; start[0 .. p - start])
                 {
                     if('0' <= v && v <= '9')
                         v -= '0';
@@ -1239,7 +1243,7 @@ private:
                     if((number_t.max - v) / base < intvalue)
                     {
                         realvalue = 0;
-                        foreach(tchar w; start[0 .. p - start])
+                        foreach(char_t w; start[0 .. p - start])
                         {
                             if('0' <= w && w <= '9')
                                 w -= '0';
@@ -1306,7 +1310,7 @@ private:
     }
 
     static @safe @nogc pure nothrow
-    Tok isKeyword(const (tchar)[] s)
+    Tok isKeyword(const(char_t)[] s)
     {
         if(s[0] >= 'a' && s[0] <= 'w')
             switch(s.length)
@@ -1504,7 +1508,7 @@ private:
 // This function seems that only be called at error handling,
 // and for debugging.
 private @safe pure
-tstring tochars(Tok tok)
+string_t tochars(Tok tok)
 {
     import std.conv : to;
     import std.string : toLower;
@@ -1557,7 +1561,7 @@ tstring tochars(Tok tok)
     case Tok.Plusplus: return "++";
     case Tok.Minusminus: return "--";
     default:
-        return tok.to!tstring.toLower;
+        return tok.to!string_t.toLower;
     }
     assert(0);
 }

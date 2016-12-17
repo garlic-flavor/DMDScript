@@ -17,11 +17,12 @@
 
 module dmdscript.dobject;
 
-import dmdscript.primitive : tstring, Key;
+import dmdscript.primitive : string_t, Key;
 import dmdscript.value : Value, DError;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dfunction : Dconstructor;
-import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.dglobal : undefined;
 import dmdscript.errmsgs;
 
@@ -30,7 +31,7 @@ import dmdscript.errmsgs;
 //==============================================================================
 class Dobject
 {
-    import dmdscript.primitive : tstring, Text, StringKey;
+    import dmdscript.primitive : string_t, Text, StringKey;
     import dmdscript.property : PropertyKey, Property, PropTable;
 
     PropTable proptable;
@@ -41,7 +42,7 @@ class Dobject
 
     //
     @safe pure nothrow
-    this(Dobject prototype = getPrototype, tstring cn = Key.Object)
+    this(Dobject prototype = getPrototype, string_t cn = Key.Object)
     {
         proptable = new PropTable;
         SetPrototypeOf(prototype);
@@ -59,7 +60,7 @@ class Dobject
     {
         //
         @property @safe @nogc pure nothrow
-        tstring classname() const
+        string_t classname() const
         {
             return _classname;
         }
@@ -157,14 +158,14 @@ class Dobject
                     throw new Exception("not a valid key ", v.toString);
                 }
             }
-            else static if (is(K == Key))
+            else static if (is(K : uint) || is(K == StringKey))
+                return GetImpl(name, cc);
+            else static if (is(K : StringKey))
             {
                 auto sk = cast(StringKey)name;
                 return GetImpl(sk, cc);
             }
-            else static if (is(K : uint) || is(K : StringKey))
-                return GetImpl(name, cc);
-            else static if (is(K : tstring))
+            else static if (is(K : string_t))
             {
                 auto sk = StringKey(name);
                 return GetImpl(sk, cc);
@@ -206,7 +207,15 @@ class Dobject
                     throw new Exception("not a valid key ", v.toString);
                 }
             }
-            else static if (is(K == Key))
+            else static if (is(K : uint) || is(K == StringKey))
+            {
+                static if (is(V : Value))
+                    alias v = value;
+                else
+                    auto v = Value(value);
+                return SetImpl(name, v, attributes, cc);
+            }
+            else static if (is(K : StringKey))
             {
                 auto sk = cast(StringKey)name;
                 static if (is(V : Value))
@@ -215,15 +224,7 @@ class Dobject
                     auto v = Value(value);
                 return SetImpl(sk, v, attributes, cc);
             }
-            else static if (is(K : uint) || is(K : StringKey))
-            {
-                static if (is(V : Value))
-                    alias v = value;
-                else
-                    auto v = Value(value);
-                return SetImpl(name, v, attributes, cc);
-            }
-            else static if (is(K : tstring))
+            else static if (is(K : string_t))
             {
                 auto sk = StringKey(name);
                 static if (is(V : Value))
@@ -289,7 +290,7 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.7
-    bool HasProperty(in tstring name)
+    bool HasProperty(in string_t name)
     {
         return OrdinaryHasProperty(name);
     }
@@ -410,7 +411,7 @@ class Dobject
         return FunctionNotLvalueError;
     }
 
-    int CanPut(in tstring PropertyName)
+    int CanPut(in string_t PropertyName)
     {
         // ECMA 8.6.2.3
         auto key = PropertyKey(PropertyName);
@@ -433,7 +434,7 @@ class Dobject
 
         Dobject o;
         Value* v;
-        static enum tstring[2] table = [Key.toString, Key.valueOf];
+        static enum string_t[2] table = [Key.toString, Key.valueOf];
         int i = 0;                      // initializer necessary for /W4
 
         // ECMA 8.6.2.6
@@ -483,7 +484,7 @@ class Dobject
     }
 
     @safe @nogc pure nothrow
-    tstring getTypeof() const
+    string_t getTypeof() const
     {   // ECMA 11.4.3
         return Text.object;
     }
@@ -672,7 +673,7 @@ class Dobject
 
 private:
 
-    tstring _classname;
+    string_t _classname;
     Dobject _prototype;
     bool _extensible = true;
 
@@ -730,6 +731,7 @@ public static:
     ///
     void initFuncs()
     {
+        import dmdscript.primitive : Key;
         import dmdscript.property : Property;
         import dmdscript.dnative : DnativeFunctionDescriptor;
 
@@ -744,11 +746,12 @@ public static:
                                        Property.Attribute.DontDelete |
                                        Property.Attribute.ReadOnly);
 
+        DnativeFunctionDescriptor.install!(mixin(M))(_constructor);
         DnativeFunctionDescriptor.install!(mixin(M))(_prototype);
     }
 
 private static:
-    Dfunction _constructor;
+    Dconstructor _constructor;
     Dobject _prototype;
 }
 
@@ -769,6 +772,16 @@ void dobject_init()
     import dmdscript.derror : Derror;
     import dmdscript.protoerror : syntaxerror, evalerror, referenceerror,
         rangeerror, typeerror, urierror;
+    import dmdscript.darraybuffer : DarrayBuffer;
+    import dmdscript.ddataview : DdataView;
+    import dmdscript.djson : DJSON;
+    import dmdscript.dmap : Dmap;
+    import dmdscript.dpromise : Dpromise;
+    import dmdscript.dproxy : Dproxy;
+    import dmdscript.dreflect : Dreflect;
+    import dmdscript.dset : Dset;
+    import dmdscript.dweakmap : DweakMap;
+    import dmdscript.dweakset : DweakSet;
 
     if(Dobject._Initializer._prototype !is null)
         return;                 // already initialized for this thread
@@ -796,6 +809,16 @@ void dobject_init()
         Ddate,
         Dregexp,
         Derror,
+        DarrayBuffer,
+        DdataView,
+        DJSON,
+        Dmap,
+        Dpromise,
+        Dproxy,
+        Dreflect,
+        Dset,
+        DweakMap,
+        DweakSet,
         );
 
     Dmath.initialize();
@@ -806,10 +829,161 @@ void dobject_init()
     rangeerror.init;
     typeerror.init;
     urierror.init;
+
+    debug
+    {
+        CallContext cc;
+        assert(Dstring.getConstructor.Get("fromCharCode", cc));
+    }
 }
 
 //==============================================================================
 private:
+
+//------------------------------------------------------------------------------
+//
+@DFD(2, DFD.Type.Static)
+DError* assign(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(2, DFD.Type.Static)
+DError* create(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(2, DFD.Type.Static)
+DError* defineProperties(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(3, DFD.Type.Static)
+DError* defineProperty(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* freeze(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(2, DFD.Type.Static)
+DError* getOwnPropertyDescriptor(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* getOwnPropertySymbol(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* getPrototypeOf(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(2, DFD.Type.Static, "is")
+DError* _is(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isExtensible(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isFrozen(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isSealed(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* keys(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* preventExtensions(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* seal(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
+
+//
+@DFD(2, DFD.Type.Static)
+DError* setPrototypeOf(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
+}
 
 //------------------------------------------------------------------------------
 class DobjectConstructor : Dconstructor
@@ -880,15 +1054,15 @@ class DobjectConstructor : Dconstructor
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toString, 0)
-DError* Dobject_prototype_toString(
+@DFD(0)
+DError* toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.format : format;
 
-    tstring s;
-    tstring str;
+    string_t s;
+    string_t str;
 
     s = othis.classname;
 /+
@@ -903,8 +1077,8 @@ DError* Dobject_prototype_toString(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toLocaleString, 0)
-DError* Dobject_prototype_toLocaleString(
+@DFD(0)
+DError* toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -928,8 +1102,8 @@ DError* Dobject_prototype_toLocaleString(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.valueOf, 0)
-DError* Dobject_prototype_valueOf(
+@DFD(0)
+DError* valueOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -938,14 +1112,14 @@ DError* Dobject_prototype_valueOf(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toSource, 0)
-DError* Dobject_prototype_toSource(
+@DFD(0)
+DError* toSource(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.property : Property, PropertyKey;
 
-    tstring buf;
+    string_t buf;
     int any;
 
     buf = "{";
@@ -968,8 +1142,8 @@ DError* Dobject_prototype_toSource(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.hasOwnProperty, 1)
-DError* Dobject_prototype_hasOwnProperty(
+@DFD(1)
+DError* hasOwnProperty(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -982,8 +1156,8 @@ DError* Dobject_prototype_hasOwnProperty(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.isPrototypeOf, 0)
-DError* Dobject_prototype_isPrototypeOf(
+@DFD(0)
+DError* isPrototypeOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1014,8 +1188,8 @@ DError* Dobject_prototype_isPrototypeOf(
 }
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.propertyIsEnumerable, 0)
-DError* Dobject_prototype_propertyIsEnumerable(
+@DFD(0)
+DError* propertyIsEnumerable(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

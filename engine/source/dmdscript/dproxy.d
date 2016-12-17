@@ -14,21 +14,34 @@
  * For a C++ implementation of DMDScript, including COM support, see
  * http://www.digitalmars.com/dscript/cppscript.html
  */
-module dmdscript.dproxyobject;
 
+module dmdscript.dproxy;
+
+import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.value : DError, Value;
+import dmdscript.callcontext : CallContext;
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // NOT IMPLEMENTED YET.
-class DproxyObject : Dobject
+class Dproxy : Dobject
 {
     import dmdscript.dfunction : Dfunction;
+    import dmdscript.dobject : Initializer;
 
     this()
     {
         super(null);
     }
 
+    this(Dobject prototype)
+    {
+        import dmdscript.primitive : Key;
+        super(prototype, Key.Proxy);
+    }
+
+    mixin Initializer!DproxyConstructor;
 private:
 
     Dfunction _getPrototypeOf;
@@ -44,4 +57,31 @@ private:
     Dfunction _ownkeys;
     Dfunction _apply;
     Dfunction _construct;
+}
+
+//==============================================================================
+private:
+
+//
+@DFD(2, DFD.Type.Static)
+DError* revocable(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+class DproxyConstructor : Dconstructor
+{
+    this()
+    {
+        import dmdscript.primitive : Key;
+        super(Key.Proxy, 1, Dfunction.getPrototype);
+    }
+
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        assert (0);
+    }
 }

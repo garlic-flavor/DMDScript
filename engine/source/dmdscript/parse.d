@@ -32,7 +32,7 @@ class Parser : Lexer
 {
     FunctionDefinition lastnamedfunc;
 
-    this(tstring sourcename, tstring base, UseStringtable useStringtable)
+    this(string_t sourcename, string_t base, UseStringtable useStringtable)
     {
         //writefln("Parser.this(base = '%s')", base);
         super(sourcename, base, useStringtable);
@@ -43,7 +43,7 @@ class Parser : Lexer
     /**********************************************
      */
     static ScriptException parseFunctionDefinition(
-        out FunctionDefinition pfd, tstring params, tstring bdy)
+        out FunctionDefinition pfd, string_t params, string_t bdy)
     {
         import std.array : Appender;
         Parser p;
@@ -167,10 +167,10 @@ private:
         TopStatement[] topstatements;
         FunctionDefinition f;
         Expression e = null;
-        line_number loc;
+        uint linnum;
 
         //writef("parseFunction()\n");
-        loc = currentline;
+        linnum = currentline;
         nextToken();
         name = null;
         if(token == Tok.Identifier)
@@ -186,7 +186,7 @@ private:
                 //	A.B = function() { }
                 // This is not ECMA, but a jscript feature
 
-                e = new IdentifierExpression(loc, name);
+                e = new IdentifierExpression(linnum, name);
                 name = null;
 
                 while(token == Tok.Dot)
@@ -194,7 +194,7 @@ private:
                     nextToken();
                     if(token == Tok.Identifier)
                     {
-                        e = new DotExp(loc, e, token.ident);
+                        e = new DotExp(linnum, e, token.ident);
                         nextToken();
                     }
                     else
@@ -236,7 +236,7 @@ private:
         topstatements = parseTopStatements();
         check(Tok.Rbrace);
 
-        f = new FunctionDefinition(base, loc, 0, name, parameters.data,
+        f = new FunctionDefinition(base, linnum, 0, name, parameters.data,
                                    topstatements);
         f.isliteral = flag == ParseFlag.literal;
         lastnamedfunc = f;
@@ -248,11 +248,11 @@ private:
         // Construct:
         //	A.B = function() { }
 
-        Expression e2 = new FunctionLiteral(loc, f);
+        Expression e2 = new FunctionLiteral(linnum, f);
 
-        e = new AssignExp(loc, e, e2);
+        e = new AssignExp(linnum, e, e2);
 
-        Statement s = new ExpStatement(loc, e);
+        Statement s = new ExpStatement(linnum, e);
 
         return s;
     }
@@ -264,10 +264,10 @@ private:
     {
         Statement s;
         Token* t;
-        line_number loc;
+        uint linnum;
 
         //writefln("parseStatement()");
-        loc = currentline;
+        linnum = currentline;
         switch(token.value)
         {
         case Tok.Identifier:
@@ -280,7 +280,7 @@ private:
                 nextToken();
                 nextToken();
                 s = parseStatement();
-                s = new LabelStatement(loc, ident, s);
+                s = new LabelStatement(linnum, ident, s);
             }
             else if(t.value == Tok.Assign ||
                     t.value == Tok.Dot ||
@@ -288,13 +288,13 @@ private:
             {
                 auto exp = parseExpression();
                 parseOptionalSemi();
-                s = new ExpStatement(loc, exp);
+                s = new ExpStatement(linnum, exp);
             }
             else
             {
                 auto exp = parseExpression(Flag.initial);
                 parseOptionalSemi();
-                s = new ExpStatement(loc, exp);
+                s = new ExpStatement(linnum, exp);
             }
             break;
 
@@ -317,7 +317,7 @@ private:
         {
           auto exp = parseExpression(Flag.initial);
           parseOptionalSemi();
-          s = new ExpStatement(loc, exp);
+          s = new ExpStatement(linnum, exp);
           break;
         }
         case Tok.Var:
@@ -327,13 +327,13 @@ private:
             VarDeclaration v;
             VarStatement vs;
 
-            vs = new VarStatement(loc);
+            vs = new VarStatement(linnum);
             s = vs;
 
             nextToken();
             for(;; )
             {
-                loc = currentline;
+                linnum = currentline;
 
                 if(token != Tok.Identifier)
                 {
@@ -353,7 +353,7 @@ private:
                     init = parseAssignExp();
                     flags = flags_save;
                 }
-                v = new VarDeclaration(loc, ident, init);
+                v = new VarDeclaration(linnum, ident, init);
                 vs.vardecls ~= v;
                 if(token != Tok.Comma)
                     break;
@@ -367,7 +367,7 @@ private:
         case Tok.Lbrace:
         {
           nextToken();
-          auto bs = new BlockStatement(loc);
+          auto bs = new BlockStatement(linnum);
           /*while(token.value != Tok.Rbrace)
           {
               if(token.value == Tok.Eof)
@@ -404,7 +404,7 @@ private:
             }
             else
                 elsebody = null;
-            s = new IfStatement(loc, condition, ifbody, elsebody);
+            s = new IfStatement(linnum, condition, ifbody, elsebody);
             break;
         }
         case Tok.Switch:
@@ -412,7 +412,7 @@ private:
             nextToken();
             auto condition = parseParenExp();
             auto bdy = parseStatement();
-            s = new SwitchStatement(loc, condition, bdy);
+            s = new SwitchStatement(linnum, condition, bdy);
             break;
         }
         case Tok.Case:
@@ -420,13 +420,13 @@ private:
             nextToken();
             auto exp = parseExpression();
             check(Tok.Colon);
-            s = new CaseStatement(loc, exp);
+            s = new CaseStatement(linnum, exp);
             break;
         }
         case Tok.Default:
             nextToken();
             check(Tok.Colon);
-            s = new DefaultStatement(loc);
+            s = new DefaultStatement(linnum);
             break;
 
         case Tok.While:
@@ -434,12 +434,12 @@ private:
           nextToken();
           auto condition = parseParenExp();
           auto bdy = parseStatement();
-          s = new WhileStatement(loc, condition, bdy);
+          s = new WhileStatement(linnum, condition, bdy);
           break;
         }
         case Tok.Semicolon:
             nextToken();
-            s = new EmptyStatement(loc);
+            s = new EmptyStatement(linnum);
             break;
 
         case Tok.Do:
@@ -453,7 +453,7 @@ private:
             if(token == Tok.Semicolon)
                 nextToken();
             //parseOptionalSemi();
-            s = new DoStatement(loc, bdy, condition);
+            s = new DoStatement(linnum, bdy, condition);
             break;
         }
         case Tok.For:
@@ -471,7 +471,7 @@ private:
             else
             {
                 auto e = parseOptionalExpression(Flag.noIn);
-                init = e ? new ExpStatement(loc, e) : null;
+                init = e ? new ExpStatement(linnum, e) : null;
             }
 
             if(token == Tok.Semicolon)
@@ -484,7 +484,7 @@ private:
                 flags &= ~Flag.inForHeader;
 
                 bdy = parseStatement();
-                s = new ForStatement(loc, init, condition, increment, bdy);
+                s = new ForStatement(linnum, init, condition, increment, bdy);
             }
             else if(token == Tok.In)
             {
@@ -505,7 +505,7 @@ private:
                 check(Tok.Rparen);
                 flags &= ~Flag.inForHeader;
                 bdy = parseStatement();
-                s = new ForInStatement(loc, init, inexp, bdy);
+                s = new ForInStatement(linnum, init, inexp, bdy);
             }
             else
             {
@@ -520,7 +520,7 @@ private:
             nextToken();
             auto exp = parseParenExp();
             auto bdy = parseStatement();
-            s = new WithStatement(loc, exp, bdy);
+            s = new WithStatement(linnum, exp, bdy);
             break;
         }
         case Tok.Break:
@@ -543,7 +543,7 @@ private:
                     ident = null;
                 parseOptionalSemi();
             }
-            s = new BreakStatement(loc, ident);
+            s = new BreakStatement(linnum, ident);
             break;
         }
         case Tok.Continue:
@@ -566,7 +566,7 @@ private:
                     ident = null;
                 parseOptionalSemi();
             }
-            s = new ContinueStatement(loc, ident);
+            s = new ContinueStatement(linnum, ident);
             break;
         }
         case Tok.Goto:
@@ -583,7 +583,7 @@ private:
             ident = token.ident;
             nextToken();
             parseOptionalSemi();
-            s = new GotoStatement(loc, ident);
+            s = new GotoStatement(linnum, ident);
             break;
         }
         case Tok.Return:
@@ -591,13 +591,13 @@ private:
             nextToken();
             if(token.sawLineTerminator && token != Tok.Semicolon)
             {         // Assume we saw a semicolon
-                s = new ReturnStatement(loc, null);
+                s = new ReturnStatement(linnum, null);
             }
             else
             {
                 auto exp = parseOptionalExpression();
                 parseOptionalSemi();
-                s = new ReturnStatement(loc, exp);
+                s = new ReturnStatement(linnum, exp);
             }
             break;
         }
@@ -606,7 +606,7 @@ private:
             nextToken();
             auto exp = parseExpression();
             parseOptionalSemi();
-            s = new ThrowStatement(loc, exp);
+            s = new ThrowStatement(linnum, exp);
             break;
         }
         case Tok.Try:
@@ -650,7 +650,7 @@ private:
             }
             else
             {
-                s = new TryStatement(loc, bdy, catchident, catchbody,
+                s = new TryStatement(linnum, bdy, catchident, catchbody,
                                      finalbody);
             }
             break;
@@ -713,49 +713,49 @@ private:
     Expression parsePrimaryExp(int innew)
     {
         Expression e;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         switch(token.value)
         {
         case Tok.This:
-            e = new ThisExpression(loc);
+            e = new ThisExpression(linnum);
             nextToken();
             break;
 
         case Tok.Null:
-            e = new NullExpression(loc);
+            e = new NullExpression(linnum);
             nextToken();
             break;
         case Tok.True:
-            e = new BooleanExpression(loc, 1);
+            e = new BooleanExpression(linnum, 1);
             nextToken();
             break;
 
         case Tok.False:
-            e = new BooleanExpression(loc, 0);
+            e = new BooleanExpression(linnum, 0);
             nextToken();
             break;
 
         case Tok.Real:
-            e = new RealExpression(loc, token.realvalue);
+            e = new RealExpression(linnum, token.realvalue);
             nextToken();
             break;
 
         case Tok.String:
-            e = new StringExpression(loc, token.str);
+            e = new StringExpression(linnum, token.str);
             token.str = null;        // release to gc
             nextToken();
             break;
 
         case Tok.Regexp:
-            e = new RegExpLiteral(loc, token.str);
+            e = new RegExpLiteral(linnum, token.str);
             token.str = null;        // release to gc
             nextToken();
             break;
 
         case Tok.Identifier:
-            e = new IdentifierExpression(loc, token.ident);
+            e = new IdentifierExpression(linnum, token.ident);
             token.ident = null;                 // release to gc
             nextToken();
             break;
@@ -792,7 +792,7 @@ private:
             nextToken();
             newarg = parsePrimaryExp(1);
             arguments = parseArguments();
-            e = new NewExp(loc, newarg, arguments);
+            e = new NewExp(linnum, newarg, arguments);
             break;
         }
         default:
@@ -833,10 +833,10 @@ private:
         import std.array : Appender;
         Expression e;
         Appender!(Expression[]) elements;
-        line_number loc;
+        uint linnum;
 
         //writef("parseArrayLiteral()\n");
-        loc = currentline;
+        linnum = currentline;
         check(Tok.Lbracket);
         if(token != Tok.Rbracket)
         {
@@ -864,7 +864,7 @@ private:
             }
         }
         check(Tok.Rbracket);
-        e = new ArrayLiteral(loc, elements.data);
+        e = new ArrayLiteral(linnum, elements.data);
         return e;
     }
 
@@ -873,10 +873,10 @@ private:
         import std.array : Appender;
         Expression e;
         Appender!(Field[]) fields;
-        line_number loc;
+        uint linnum;
 
         //writef("parseObjectLiteral()\n");
-        loc = currentline;
+        linnum = currentline;
         check(Tok.Lbrace);
         if(token.value == Tok.Rbrace)
             nextToken();
@@ -908,27 +908,27 @@ private:
             }
             check(Tok.Rbrace);
         }
-        e = new ObjectLiteral(loc, fields.data);
+        e = new ObjectLiteral(linnum, fields.data);
         return e;
     }
 
     Expression parseFunctionLiteral()
     {
         FunctionDefinition f;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         f = cast(FunctionDefinition)parseFunction(ParseFlag.literal);
-        return new FunctionLiteral(loc, f);
+        return new FunctionLiteral(linnum, f);
     }
 
     Expression parsePostExp(Expression e, int innew)
     {
-        line_number loc;
+        uint linnum;
 
         for(;; )
         {
-            loc = currentline;
+            linnum = currentline;
             //loc = (line_number)token.ptr;
             switch(token.value)
             {
@@ -936,7 +936,7 @@ private:
                 nextToken();
                 if(token == Tok.Identifier)
                 {
-                    e = new DotExp(loc, e, token.ident);
+                    e = new DotExp(linnum, e, token.ident);
                 }
                 else
                 {
@@ -948,7 +948,7 @@ private:
             case Tok.Plusplus:
                 if(token.sawLineTerminator && !(flags & Flag.inForHeader))
                     goto Linsert;
-                e = new PostIncExp(loc, e);
+                e = new PostIncExp(linnum, e);
                 break;
 
             case Tok.Minusminus:
@@ -959,7 +959,7 @@ private:
                     insertSemicolon(token.sawLineTerminator);
                     return e;
                 }
-                e = new PostDecExp(loc, e);
+                e = new PostDecExp(linnum, e);
                 break;
 
             case Tok.Lparen:
@@ -969,7 +969,7 @@ private:
                 if(innew)
                     return e;
                 arguments = parseArguments();
-                e = new CallExp(loc, e, arguments);
+                e = new CallExp(linnum, e, arguments);
                 continue;
             }
 
@@ -980,7 +980,7 @@ private:
                 nextToken();
                 index = parseExpression();
                 check(Tok.Rbracket);
-                e = new ArrayExp(loc, e, index);
+                e = new ArrayExp(linnum, e, index);
                 continue;
             }
 
@@ -995,63 +995,63 @@ private:
     Expression parseUnaryExp()
     {
         Expression e;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         switch(token.value)
         {
         case Tok.Plusplus:
             nextToken();
             e = parseUnaryExp();
-            e = new PreExp(loc, Opcode.PreInc, e);
+            e = new PreExp(linnum, Opcode.PreInc, e);
             break;
 
         case Tok.Minusminus:
             nextToken();
             e = parseUnaryExp();
-            e = new PreExp(loc, Opcode.PreDec, e);
+            e = new PreExp(linnum, Opcode.PreDec, e);
             break;
 
         case Tok.Minus:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, Tok.Neg, Opcode.Neg, e);
+            e = new XUnaExp(linnum, Tok.Neg, Opcode.Neg, e);
             break;
 
         case Tok.Plus:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, Tok.Pos, Opcode.Pos, e);
+            e = new XUnaExp(linnum, Tok.Pos, Opcode.Pos, e);
             break;
 
         case Tok.Not:
             nextToken();
             e = parseUnaryExp();
-            e = new NotExp(loc, e);
+            e = new NotExp(linnum, e);
             break;
 
         case Tok.Tilde:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, Tok.Tilde, Opcode.Com, e);
+            e = new XUnaExp(linnum, Tok.Tilde, Opcode.Com, e);
             break;
 
         case Tok.Delete:
             nextToken();
             e = parsePrimaryExp(0);
-            e = new DeleteExp(loc, e);
+            e = new DeleteExp(linnum, e);
             break;
 
         case Tok.Typeof:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, Tok.Typeof, Opcode.Typeof, e);
+            e = new XUnaExp(linnum, Tok.Typeof, Opcode.Typeof, e);
             break;
 
         case Tok.Void:
             nextToken();
             e = parseUnaryExp();
-            e = new XUnaExp(loc, Tok.Void, Opcode.Undefined, e);
+            e = new XUnaExp(linnum, Tok.Void, Opcode.Undefined, e);
             break;
 
         default:
@@ -1065,9 +1065,9 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseUnaryExp();
         for(;; )
         {
@@ -1076,7 +1076,7 @@ private:
             case Tok.Multiply:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, Tok.Multiply, Opcode.Mul, e, e2);
+                e = new XBinExp(linnum, Tok.Multiply, Opcode.Mul, e, e2);
                 continue;
 
             case Tok.Regexp:
@@ -1086,13 +1086,13 @@ private:
             case Tok.Divide:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, Tok.Divide, Opcode.Div, e, e2);
+                e = new XBinExp(linnum, Tok.Divide, Opcode.Div, e, e2);
                 continue;
 
             case Tok.Percent:
                 nextToken();
                 e2 = parseUnaryExp();
-                e = new XBinExp(loc, Tok.Percent, Opcode.Mod, e, e2);
+                e = new XBinExp(linnum, Tok.Percent, Opcode.Mod, e, e2);
                 continue;
 
             default:
@@ -1107,9 +1107,9 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseMulExp();
         for(;; )
         {
@@ -1118,13 +1118,13 @@ private:
             case Tok.Plus:
                 nextToken();
                 e2 = parseMulExp();
-                e = new AddExp(loc, e, e2);
+                e = new AddExp(linnum, e, e2);
                 continue;
 
             case Tok.Minus:
                 nextToken();
                 e2 = parseMulExp();
-                e = new XBinExp(loc, Tok.Minus, Opcode.Sub, e, e2);
+                e = new XBinExp(linnum, Tok.Minus, Opcode.Sub, e, e2);
                 continue;
 
             default:
@@ -1139,9 +1139,9 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseAddExp();
         for(;; )
         {
@@ -1157,7 +1157,7 @@ private:
             L1:
                 nextToken();
                 e2 = parseAddExp();
-                e = new XBinExp(loc, op, ircode, e, e2);
+                e = new XBinExp(linnum, op, ircode, e, e2);
                 continue;
 
             default:
@@ -1172,9 +1172,9 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseShiftExp();
         for(;; )
         {
@@ -1191,13 +1191,13 @@ private:
                 L1:
                 nextToken();
                 e2 = parseShiftExp();
-                e = new CmpExp(loc, op, ircode, e, e2);
+                e = new CmpExp(linnum, op, ircode, e, e2);
                 continue;
 
             case Tok.Instanceof:
                 nextToken();
                 e2 = parseShiftExp();
-                e = new XBinExp(loc, Tok.Instanceof, Opcode.Instance, e, e2);
+                e = new XBinExp(linnum, Tok.Instanceof, Opcode.Instance, e, e2);
                 continue;
 
             case Tok.In:
@@ -1205,7 +1205,7 @@ private:
                     break;              // disallow
                 nextToken();
                 e2 = parseShiftExp();
-                e = new InExp(loc, e, e2);
+                e = new InExp(linnum, e, e2);
                 continue;
 
             default:
@@ -1220,9 +1220,9 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseRelExp();
         for(;; )
         {
@@ -1239,7 +1239,7 @@ private:
                 L1:
                 nextToken();
                 e2 = parseRelExp();
-                e = new CmpExp(loc, op, ircode, e, e2);
+                e = new CmpExp(linnum, op, ircode, e, e2);
                 continue;
 
             default:
@@ -1254,15 +1254,15 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseEqualExp();
         while(token == Tok.And)
         {
             nextToken();
             e2 = parseEqualExp();
-            e = new XBinExp(loc, Tok.And, Opcode.And, e, e2);
+            e = new XBinExp(linnum, Tok.And, Opcode.And, e, e2);
         }
         return e;
     }
@@ -1271,15 +1271,15 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseAndExp();
         while(token == Tok.Xor)
         {
             nextToken();
             e2 = parseAndExp();
-            e = new XBinExp(loc, Tok.Xor, Opcode.Xor, e, e2);
+            e = new XBinExp(linnum, Tok.Xor, Opcode.Xor, e, e2);
         }
         return e;
     }
@@ -1288,15 +1288,15 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseXorExp();
         while(token == Tok.Or)
         {
             nextToken();
             e2 = parseXorExp();
-            e = new XBinExp(loc, Tok.Or, Opcode.Or, e, e2);
+            e = new XBinExp(linnum, Tok.Or, Opcode.Or, e, e2);
         }
         return e;
     }
@@ -1305,15 +1305,15 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseOrExp();
         while(token == Tok.Andand)
         {
             nextToken();
             e2 = parseOrExp();
-            e = new AndAndExp(loc, e, e2);
+            e = new AndAndExp(linnum, e, e2);
         }
         return e;
     }
@@ -1322,15 +1322,15 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseAndAndExp();
         while(token == Tok.Oror)
         {
             nextToken();
             e2 = parseAndAndExp();
-            e = new OrOrExp(loc, e, e2);
+            e = new OrOrExp(linnum, e, e2);
         }
         return e;
     }
@@ -1340,9 +1340,9 @@ private:
         Expression e;
         Expression e1;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseOrOrExp();
         if(token == Tok.Question)
         {
@@ -1350,7 +1350,7 @@ private:
             e1 = parseAssignExp();
             check(Tok.Colon);
             e2 = parseAssignExp();
-            e = new CondExp(loc, e, e1, e2);
+            e = new CondExp(linnum, e, e1, e2);
         }
         return e;
     }
@@ -1359,9 +1359,9 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
 
-        loc = currentline;
+        linnum = currentline;
         e = parseCondExp();
         for(;; )
         {
@@ -1373,13 +1373,13 @@ private:
             case Tok.Assign:
                 nextToken();
                 e2 = parseAssignExp();
-                e = new AssignExp(loc, e, e2);
+                e = new AssignExp(linnum, e, e2);
                 continue;
 
             case Tok.Plusass:
                 nextToken();
                 e2 = parseAssignExp();
-                e = new AddAssignExp(loc, e, e2);
+                e = new AddAssignExp(linnum, e, e2);
                 continue;
 
             case Tok.Minusass:       ircode = Opcode.Sub;  goto L1;
@@ -1395,7 +1395,7 @@ private:
 
                 L1: nextToken();
                 e2 = parseAssignExp();
-                e = new BinAssignExp(loc, op, ircode, e, e2);
+                e = new BinAssignExp(linnum, op, ircode, e, e2);
                 continue;
 
             default:
@@ -1410,19 +1410,19 @@ private:
     {
         Expression e;
         Expression e2;
-        line_number loc;
+        uint linnum;
         Flag flags_save;
 
         //writefln("Parser.parseExpression()");
         flags_save = this.flags;
         this.flags = flags;
-        loc = currentline;
+        linnum = currentline;
         e = parseAssignExp();
         while(token == Tok.Comma)
         {
             nextToken();
             e2 = parseAssignExp();
-            e = new CommaExp(loc, e, e2);
+            e = new CommaExp(linnum, e, e2);
         }
         this.flags = flags_save;
         return e;

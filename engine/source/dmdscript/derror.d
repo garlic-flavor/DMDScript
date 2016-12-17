@@ -22,7 +22,7 @@ import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.value : Value, DError;
-import dmdscript.dnative : DnativeFunction, DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 
 //==============================================================================
 ///
@@ -144,8 +144,8 @@ class DerrorConstructor : Dconstructor
 
 
 //------------------------------------------------------------------------------
-@DnativeFunctionDescriptor(Key.toString, 0)
-DError* Derror_prototype_toString(
+@DFD(0)
+DError* toString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

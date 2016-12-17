@@ -18,123 +18,12 @@
 
 module dmdscript.protoerror;
 
-import dmdscript.primitive : Key;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dfunction;
 
-// int foo;        // cause this module to be linked in
 
-/* ===================== D0_constructor ==================== */
-
-private class D0_constructor : Dfunction
-{
-    import dmdscript.callcontext : CallContext;
-    import dmdscript.value : DError, Value;
-    import dmdscript.dglobal : undefined;
-    import dmdscript.primitive : tstring;
-
-    tstring text_d1;
-    Dobject function(tstring) newD0;
-
-    this(tstring text_d1, Dobject function(tstring) newD0)
-    {
-        super(1, Dfunction.getPrototype);
-        this.text_d1 = text_d1;
-        this.newD0 = newD0;
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        // ECMA 15.11.7.2
-        Value* m;
-        Dobject o;
-        tstring s;
-
-        m = (arglist.length) ? &arglist[0] : &undefined;
-        // ECMA doesn't say what we do if m is undefined
-        if(m.isUndefined())
-            s = text_d1;
-        else
-            s = m.toString();
-        o = (*newD0)(s);
-        ret.put(o);
-        return null;
-    }
-
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
-                          Value[] arglist)
-    {
-        // ECMA v3 15.11.7.1
-        return Construct(cc, ret, arglist);
-    }
-}
-
-
-package class D0base : Dobject
-{
-    import dmdscript.primitive : tstring;
-    import dmdscript.exception : ScriptException;
-
-    ScriptException exception;
-
-    protected this(Dobject prototype)
-    {
-        super(prototype, Key.Error);
-    }
-
-    protected this(Dobject prototype, tstring m)
-    {
-        import dmdscript.property : Property;
-
-        this(prototype);
-
-        DefineOwnProperty(Key.message, m, Property.Attribute.None);
-        DefineOwnProperty(Key.description, m, Property.Attribute.None);
-        DefineOwnProperty(Key.number, cast(double)0, Property.Attribute.None);
-        exception = new ScriptException(m);
-    }
-
-    protected this(Dobject prototype, ScriptException exception)
-    {
-        import dmdscript.property : Property;
-
-        this(prototype);
-        assert(exception !is null);
-        this.exception = exception;
-
-        DefineOwnProperty(Key.message, exception.msg, Property.Attribute.None);
-        DefineOwnProperty(Key.description, exception.toString,
-                          Property.Attribute.None);
-        DefineOwnProperty(Key.number, cast(double)exception.code,
-                          Property.Attribute.None);
-    }
-}
-
-// template proto(alias TEXT_D1)
-// {
-    /* ===================== D0_prototype ==================== */
-
-/*
-    class D0_prototype : D0
-    {
-        this()
-        {
-            super(Derror.getPrototype);
-
-            tstring s;
-
-            DefineOwnProperty(Key.constructor, _ctor, Property.Attribute.DontEnum);
-            DefineOwnProperty(Key.name, TEXT_D1, Property.Attribute.None);
-            s = TEXT_D1 ~ ".prototype.message";
-            DefineOwnProperty(Key.message, s, Property.Attribute.None);
-            DefineOwnProperty(Key.description, s, Property.Attribute.None);
-            DefineOwnProperty(Key.number, cast(double)0, Property.Attribute.None);
-        }
-    }
-//*/
-/* ===================== D0 ==================== */
-
+//------------------------------------------------------------------------------
+///
 class D0(alias TEXT_D1) : D0base
 {
     enum Text = TEXT_D1;
@@ -144,7 +33,7 @@ class D0(alias TEXT_D1) : D0base
         super(prototype);
     }
 
-    this(tstring m)
+    this(string_t m)
     {
         super(D0.getPrototype, m);
     }
@@ -198,16 +87,127 @@ private static:
     Dobject _prototype;
     Dfunction _ctor;
 
-    Dobject newD0(tstring s)
+    Dobject newD0(string_t s)
     {
         return new D0(s);
     }
 }
-// }
+
 alias syntaxerror = D0!(Key.SyntaxError);
 alias evalerror = D0!(Key.EvalError);
 alias referenceerror = D0!(Key.ReferenceError);
 alias rangeerror = D0!(Key.RangeError);
 alias typeerror = D0!(Key.TypeError);
 alias urierror = D0!(Key.URIError);
+
+//==============================================================================
+package:
+
+class D0base : Dobject
+{
+    import dmdscript.primitive : string_t;
+    import dmdscript.exception : ScriptException;
+
+    ScriptException exception;
+
+    protected this(Dobject prototype)
+    {
+        super(prototype, Key.Error);
+    }
+
+    protected this(Dobject prototype, string_t m)
+    {
+        import dmdscript.property : Property;
+
+        this(prototype);
+
+        DefineOwnProperty(Key.message, m, Property.Attribute.None);
+        DefineOwnProperty(Key.description, m, Property.Attribute.None);
+        DefineOwnProperty(Key.number, cast(double)0, Property.Attribute.None);
+        exception = new ScriptException(m);
+    }
+
+    protected this(Dobject prototype, ScriptException exception)
+    {
+        import dmdscript.property : Property;
+
+        this(prototype);
+        assert(exception !is null);
+        this.exception = exception;
+
+        DefineOwnProperty(Key.message, exception.msg, Property.Attribute.None);
+        DefineOwnProperty(Key.description, exception.toString,
+                          Property.Attribute.None);
+        // DefineOwnProperty(Key.number, cast(double)exception.code,
+        //                   Property.Attribute.None);
+    }
+}
+
+
+//==============================================================================
+private:
+
+import dmdscript.primitive : StringKey, PKey = Key;
+enum Key : StringKey
+{
+    prototype = PKey.prototype,
+    constructor = PKey.constructor,
+    message = PKey.message,
+    description = PKey.description,
+    name = PKey.name,
+    number = PKey.number,
+    Error = PKey.Error,
+
+    EvalError = StringKey("EvalError"),
+    RangeError = StringKey("RangeError"),
+    ReferenceError = StringKey("ReferenceError"),
+    SyntaxError = StringKey("SyntaxError"),
+    TypeError = StringKey("TypeError"),
+    URIError = StringKey("URIError"),
+}
+
+//------------------------------------------------------------------------------
+class D0_constructor : Dfunction
+{
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.value : DError, Value;
+    import dmdscript.dglobal : undefined;
+    import dmdscript.primitive : string_t;
+
+    string_t text_d1;
+    Dobject function(string_t) newD0;
+
+    this(string_t text_d1, Dobject function(string_t) newD0)
+    {
+        super(1, Dfunction.getPrototype);
+        this.text_d1 = text_d1;
+        this.newD0 = newD0;
+    }
+
+    override DError* Construct(ref CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        // ECMA 15.11.7.2
+        Value* m;
+        Dobject o;
+        string_t s;
+
+        m = (arglist.length) ? &arglist[0] : &undefined;
+        // ECMA doesn't say what we do if m is undefined
+        if(m.isUndefined())
+            s = text_d1;
+        else
+            s = m.toString();
+        o = (*newD0)(s);
+        ret.put(o);
+        return null;
+    }
+
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
+    {
+        // ECMA v3 15.11.7.1
+        return Construct(cc, ret, arglist);
+    }
+}
 

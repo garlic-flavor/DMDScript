@@ -16,7 +16,7 @@
  */
 module dmdscript.exception;
 
-import dmdscript.primitive;
+import dmdscript.primitive : string_t, char_t;
 
 //------------------------------------------------------------------------------
 ///
@@ -24,66 +24,72 @@ class ScriptException : Exception
 {
     import dmdscript.opcodes : IR;
 
-    int code; // for what?
+    // int code; // for what?
 
+    //--------------------------------------------------------------------
+    ///
     @nogc @safe pure nothrow
-    this(tstring msg, tstring file = __FILE__, size_t line = __LINE__)
+    this(string_t msg, string_t file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line);
     }
-
+    /// ditto
     @safe pure
-    this(tstring message, tstring sourcename, tstring source,
-         immutable(tchar)* pos, string file = __FILE__, size_t line = __LINE__)
+    this(string_t message, string_t sourcename, string_t source,
+         immutable(char_t)* pos, string file = __FILE__, size_t line = __LINE__)
     {
         super(message, file, line); addTrace(sourcename, source, pos);
     }
-
+    /// ditto
     @safe pure
-    this(tstring message, tstring sourcename, tstring source,
-         line_number loc, string file = __FILE__, size_t line = __LINE__)
+    this(string_t message, string_t sourcename, string_t source,
+         uint linnum, string file = __FILE__, size_t line = __LINE__)
     {
-        super(message, file, line); addTrace(sourcename, source, loc);
+        super(message, file, line); addTrace(sourcename, source, linnum);
     }
-
+    /// ditto
     @safe pure
-    this(tstring msg, line_number loc, string file = __FILE__,
+    this(string_t msg, uint linnum, string file = __FILE__,
          size_t line = __LINE__)
     {
-        super(msg, file, line); addTrace(loc);
+        super(msg, file, line); addTrace(linnum);
     }
 
+    //--------------------------------------------------------------------
+    ///
     @safe pure
-    void addTrace(tstring sourcename, tstring source, line_number loc)
+    void addTrace(string_t sourcename, string_t source, uint linnum)
     {
-        trace ~= SourceDescriptor(sourcename, source, loc);
+        trace ~= SourceDescriptor(sourcename, source, linnum);
     }
-
+    /// ditto
     @safe pure
-    void addTrace(tstring sourcename, tstring source,
-                   immutable(tchar)* pos)
+    void addTrace(string_t sourcename, string_t source,
+                   immutable(char_t)* pos)
     {
         trace ~= SourceDescriptor(sourcename, source, pos);
     }
-
+    /// ditto
     @safe pure
-    void addTrace(line_number loc)
+    void addTrace(uint linnum)
     {
-        trace ~= SourceDescriptor(loc);
+        trace ~= SourceDescriptor(linnum);
     }
-
+    /// ditto
     @safe pure
     void addTrace(const(IR)* base, const(IR)* code)
     {
         trace ~= SourceDescriptor(base, code);
     }
-
+    /// ditto
     @safe @nogc pure nothrow
-    void addTrace(tstring sourcename, tstring source)
+    void addTrace(string_t sourcename, string_t source)
     {
         foreach (ref one; trace) one.addTrace(sourcename, source);
     }
 
+    //--------------------------------------------------------------------
+    ///
     override void toString(scope void delegate(in char[]) sink) const
     {
         debug
@@ -126,26 +132,19 @@ class ScriptException : Exception
     }
     alias toString = super.toString;
 
+    //====================================================================
 private:
     import core.internal.traits : externDFunc;
     alias sizeToTempString = externDFunc!(
         "core.internal.string.unsignedToTempString",
         char[] function(ulong, char[], uint) @safe pure nothrow @nogc);
 
+    //--------------------------------------------------------------------
     struct SourceDescriptor
     {
-        tstring name;
-
-        tstring buf;
-        immutable(tchar)* pos; // pos is in buf.
-
-        const(IR)* base;
-        const(IR)* code;
-
-        line_number linnum; // source line number (1 based, 0 if not available)
-
+        //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        this(tstring name, tstring buf, immutable(tchar)* pos)
+        this(string_t name, string_t buf, immutable(char_t)* pos)
         {
             this.name = name;
             this.buf = buf;
@@ -154,15 +153,15 @@ private:
             assert (buf.length == 0 || pos is null ||
                     (buf.ptr <= pos && pos < buf.ptr + buf.length));
         }
-
+        //
         @safe @nogc pure nothrow
-        this(tstring name, tstring buf, line_number linnum)
+        this(string_t name, string_t buf, uint linnum)
         {
             this.name = name;
             this.buf = buf;
             this.linnum = linnum;
         }
-
+        //
         @safe @nogc pure nothrow
         this(const(IR)* base, const(IR)* code)
         {
@@ -172,15 +171,16 @@ private:
             assert(code !is null);
             assert(base <= code);
         }
-
+        //
         @safe @nogc pure nothrow
-        this(line_number linnum)
+        this(uint linnum)
         {
             this.linnum = linnum;
         }
 
+        //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        void addTrace(tstring name, tstring buf)
+        void addTrace(string_t name, string_t buf)
         {
             if (this.name.length == 0 && this.buf.length == 0)
             {
@@ -192,6 +192,7 @@ private:
                     (buf.ptr <= pos && pos < buf.ptr + buf.length));
         }
 
+        //----------------------------------------------------------
         void toString(scope void delegate(in char[]) sink) const
         {
              import std.conv : to;
@@ -202,7 +203,7 @@ private:
              char[2] tmpBuff = void;
              string srcline;
              int charpos = -1;
-             line_number linnum = code !is null ? code.opcode.linnum : this.linnum;
+             uint linnum = code !is null ? code.opcode.linnum : this.linnum;
              enum Tab = "    ";
 
              if (0 < buf.length)
@@ -261,6 +262,17 @@ private:
              }
         }
 
+        //==========================================================
+    private:
+        string_t name;
+
+        string_t buf;
+        immutable(char_t)* pos; // pos is in buf.
+
+        const(IR)* base;
+        const(IR)* code;
+
+        uint linnum; // source line number (1 based, 0 if not available)
     }
     SourceDescriptor[] trace;
 }
@@ -270,8 +282,8 @@ private:
 
 //------------------------------------------------------------------------------
 @trusted @nogc pure nothrow
-tstring getLineAt(tstring base, const(tchar)* p,
-                   out line_number linnum, out int charpos)
+string_t getLineAt(string_t base, const(char_t)* p,
+                   out uint linnum, out int charpos)
 {
     immutable(char)* s;
     immutable(char)* slinestart;
@@ -312,11 +324,11 @@ tstring getLineAt(tstring base, const(tchar)* p,
 
 //------------------------------------------------------------------------------
 @safe @nogc pure nothrow
-tstring getLineAt(tstring src, line_number loc)
+string_t getLineAt(string_t src, uint linnum)
 {
     size_t slinestart = 0;
     size_t i;
-    uint linnum = 1;
+    uint ln = 1;
 
     if(0 == src.length)
         return null;
@@ -325,9 +337,9 @@ tstring getLineAt(tstring src, line_number loc)
         switch(src[i])
         {
         case '\n':
-            if(loc <= linnum) break loop;
+            if(linnum <= ln) break loop;
             slinestart = i + 1;
-            ++linnum;
+            ++ln;
             break;
 
         case 0:
