@@ -27,9 +27,6 @@ struct CallContext
     import dmdscript.property : PropertyKey, Property;
     import dmdscript.value : Value, DError;
 
-// deprecated
-//     Dobject callerothis;   /// caller's othis for eval().
-
     //--------------------------------------------------------------------
     ///
     @safe pure nothrow
@@ -42,7 +39,7 @@ struct CallContext
     //--------------------------------------------------------------------
     ///
     @property @safe @nogc pure nothrow
-    inout(ScopeStack) scopex() inout
+    ref inout(ScopeStack) scopex() inout
     {
         return _scopex;
     }
@@ -184,7 +181,7 @@ struct ScopeStack
     @property @safe @nogc pure nothrow
     bool isVariableRoot() const
     {
-        return _stack.data.length == _variable.scoperoot;
+        return _stack.data.length <= _variable.scoperoot;
     }
 
     /// Get a Dobject that is not a Catch nor a Finally.
@@ -287,7 +284,7 @@ struct ScopeStack
         if (PropertyKey.IsKey!K)
     {
         auto stack = _stack.data;
-        for (size_t d = stack.length; 0 < d; --d)
+        for (size_t d = stack.length; GLOBAL_ROOT <= d; --d)
         {
             if (auto v = stack[d-1].Get(key, cc))
                 return v;
@@ -328,6 +325,21 @@ struct ScopeStack
         assert(_variable.variable !is null);
         return _variable.variable.Set(key, value, attr, cc);
     }
+
+    debug
+    string dump()
+    {
+        import std.conv : text;
+        import std.array : Appender;
+        Appender!string buf;
+
+        buf.put(text("{ stack.length = ", _stack.data.length, "\n"));
+        buf.put(text("  scopes.length = ", _scopes.data.length, "\n"));
+        buf.put(text("  scoperoot = ", _variable.scoperoot, "}"));
+
+        return buf.data;
+    }
+
 
     //====================================================================
 private:

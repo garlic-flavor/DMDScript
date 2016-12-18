@@ -17,51 +17,31 @@
 
 module dmdscript.dglobal;
 
-import dmdscript.primitive : string_t, char_t, StringKey, isStrWhiteSpaceChar,
-    StringNumericLiteral, Text, PKey = Key;
-import dmdscript.callcontext;
-import dmdscript.protoerror;
-import dmdscript.parse;
-import dmdscript.dobject;
-import dmdscript.value;
-import dmdscript.statement;
-import dmdscript.functiondefinition;
-import dmdscript.scopex;
-import dmdscript.opcodes;
-import dmdscript.property;
-import dmdscript.exception;
-
-import dmdscript.dstring;
-import dmdscript.darray;
-import dmdscript.dregexp;
-import dmdscript.dnumber;
-import dmdscript.dboolean;
-import dmdscript.dfunction;
+import dmdscript.primitive : string_t, char_t, StringKey, Key;
+import dmdscript.callcontext : CallContext;
+import dmdscript.dobject : Dobject;
+import dmdscript.value : Value, DError, vundefined;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
-    DconstantDescriptor;
-import dmdscript.ddate;
-import dmdscript.derror;
-import dmdscript.dmath;
+    installConstants;
 
 debug import std.stdio;
 
 //------------------------------------------------------------------------------
 // Configuration
-enum MAJOR_VERSION = 5;       // ScriptEngineMajorVersion
-enum MINOR_VERSION = 5;       // ScriptEngineMinorVersion
+enum MAJOR_VERSION = 5;       /// ScriptEngineMajorVersion
+enum MINOR_VERSION = 5;       /// ScriptEngineMinorVersion
 
-enum BUILD_VERSION = 1;       // ScriptEngineBuildVersion
+enum BUILD_VERSION = 1;       /// ScriptEngineBuildVersion
 
-enum JSCRIPT_CATCH_BUG = 1;   // emulate Jscript's bug in scoping of
-                              // catch objects in violation of ECMA
-enum JSCRIPT_ESCAPEV_BUG = 0; // emulate Jscript's bug where \v is
-                              // not recognized as vertical tab
+enum JSCRIPT_CATCH_BUG = 1;   /// emulate Jscript's bug in scoping of
+                              /// catch objects in violation of ECMA
+enum JSCRIPT_ESCAPEV_BUG = 0; /// emulate Jscript's bug where \v is
+                              /// not recognized as vertical tab
 
-//
-enum COPYRIGHT = "Copyright (c) 1999-2010 by Digital Mars";
-enum WRITTEN = "by Walter Bright";
+enum COPYRIGHT = "Copyright (c) 1999-2010 by Digital Mars"; ///
+enum WRITTEN = "by Walter Bright"; ///
 
-//
+///
 @safe pure nothrow
 string banner()
 {
@@ -76,20 +56,129 @@ string banner()
         ].join("\n");
 }
 
-//
-string_t arg0string(Value[] arglist)
+//==============================================================================
+///
+class Dglobal : Dobject
 {
-    Value* v = arglist.length ? &arglist[0] : &undefined;
-    return v.toString();
+    this(char_t[][] argv)
+    {
+        import dmdscript.dfunction : Dfunction;
+        import dmdscript.property : Property;
+        import dmdscript.darray : Darray;
+        import dmdscript.dstring : Dstring;
+        import dmdscript.dboolean : Dboolean;
+        import dmdscript.dnumber : Dnumber;
+        import dmdscript.ddate : Ddate;
+        import dmdscript.dregexp : Dregexp;
+        import dmdscript.derror : Derror;
+        import dmdscript.protoerror;
+        import dmdscript.dmath : Dmath;
+
+        CallContext cc;
+
+        // Dglobal.prototype is implementation-dependent
+        super(Dobject.getPrototype, Key.global);
+
+        Dobject f = Dfunction.getPrototype();
+
+        // ECMA 15.1
+        // Add in built-in objects which have attribute { DontEnum }
+
+        // Value properties
+
+
+        installConstants!(
+            "NaN", double.nan,
+            "Infinity", double.infinity,
+            "undefined", vundefined)(this);
+
+        debug
+        {
+            auto v = Get("Infinity", cc);
+            assert(!v.isUndefined);
+            assert(v.toNumber(cc) is double.infinity);
+        }
+
+        DFD.install!(mixin(__MODULE__))(this, Property.Attribute.DontEnum);
+
+        // Now handled by AssertExp()
+        // Put(Text.assert, Dglobal_assert(), DontEnum);
+
+        // Constructor properties
+        DefineOwnProperty(Key.Object, Dobject.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.Function, Dfunction.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.Array, Darray.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.String, Dstring.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.Boolean, Dboolean.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.Number, Dnumber.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.Date, Ddate.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.RegExp, Dregexp.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.Error, Derror.getConstructor,
+            Property.Attribute.DontEnum);
+
+        DefineOwnProperty(syntaxerror.Text, syntaxerror.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(evalerror.Text, evalerror.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(referenceerror.Text, referenceerror.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(rangeerror.Text, rangeerror.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(typeerror.Text, typeerror.getConstructor,
+            Property.Attribute.DontEnum);
+        DefineOwnProperty(urierror.Text, urierror.getConstructor,
+            Property.Attribute.DontEnum);
+
+
+        // Other properties
+        assert(Dmath.object);
+        DefineOwnProperty(Key.Math, Dmath.object, Property.Attribute.DontEnum);
+
+        // Build an "arguments" property out of argv[],
+        // and add it to the global object.
+        Darray arguments;
+
+        arguments = new Darray();
+        DefineOwnProperty(Key.arguments, arguments,
+                          Property.Attribute.DontDelete);
+        arguments.length.put(argv.length);
+        for(int i = 0; i < argv.length; i++)
+        {
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Where is this definition?
+            arguments.Set(i, argv[i].idup, Property.Attribute.DontEnum, cc);
+        }
+        arguments.DefineOwnProperty(Key.callee, Value.Type.Null,
+                                    Property.Attribute.DontEnum);
+    }
 }
 
-/* ====================== Dglobal_eval ================ */
+//==============================================================================
+private:
+
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* eval(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
+    import dmdscript.functiondefinition : FunctionDefinition;
+    import dmdscript.exception : ScriptException;
+    import dmdscript.statement : TopStatement;
+    import dmdscript.parse : Parser;
+    import dmdscript.scopex : Scope;
+    import dmdscript.property : Property;
+    import dmdscript.opcodes : IR;
+    import dmdscript.protoerror : syntaxerror;
 
     // ECMA 15.1.2.1
     Value* v;
@@ -97,6 +186,7 @@ DError* eval(
     FunctionDefinition fd;
     ScriptException exception;
     DError* result;
+    Dobject callerothis;
 
     v = arglist.length ? &arglist[0] : &undefined;
     if(v.type != Value.Type.String)
@@ -112,6 +202,13 @@ DError* eval(
     if((exception = p.parseProgram(topstatements)) !is null)
         goto Lsyntaxerror;
 
+    debug
+    {
+        import dmdscript.program : Program;
+        if (cc.program.dumpMode & Program.DumpMode.Statement)
+            TopStatement.dump(topstatements).writeln;
+    }
+
     // Analyze, generate code
     fd = new FunctionDefinition(topstatements);
     fd.iseval = 1;
@@ -123,9 +220,25 @@ DError* eval(
         exception = sc.exception;
         sc.dtor();
     }
+
+    debug
+    {
+        if (cc.program.dumpMode & Program.dumpMode.Statement)
+            TopStatement.dump(topstatements).writeln;
+    }
+
+
     if(exception !is null)
         goto Lsyntaxerror;
     fd.toIR(null);
+
+    debug
+    {
+        import dmdscript.opcodes : IR;
+        if (cc.program.dumpMode & Program.dumpMode.IR)
+            IR.toString(fd.code).writeln;
+    }
+
 
     // Execute code
     Value[] locals;
@@ -186,13 +299,22 @@ DError* eval(
 
         // The this value is the same as the this value of the
         // calling context.
-        assert(cc.scopex.callerothis);
+        callerothis = cc.scopex.callerothis;
+        assert(callerothis);
+
+        cc.scopex.pushVariableScope(callerothis, pthis, fd, callerothis);
         result = IR.call(cc, cc.scopex.callerothis, fd.code, ret, locals.ptr);
+        if (result !is null)
+        {
+            result.addTrace("eval", fd.srctext);
+        }
+        cc.scopex.popVariableScope;
+
         if(p1)
             delete p1;
         fd = null;
-        if (result) writeln("result = ", result.toScriptException.toString);
-        assert (result is null);
+
+
         return result;
     }
 
@@ -212,13 +334,14 @@ Lsyntaxerror:
     return v2;
 }
 
-/* ====================== Dglobal_parseInt ================ */
+//------------------------------------------------------------------------------
 @DFD(2)
 DError* parseInt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : decode;
+    import dmdscript.primitive : isStrWhiteSpaceChar;
 
     // ECMA 15.1.2.2
     Value* v2;
@@ -339,12 +462,14 @@ DError* parseInt(
     return null;
 }
 
-/* ====================== Dglobal_parseFloat ================ */
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* parseFloat(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : StringNumericLiteral;
+
     // ECMA 15.1.2.3
     double n;
     size_t endidx;
@@ -356,8 +481,7 @@ DError* parseFloat(
     return null;
 }
 
-/* ====================== Dglobal_escape ================ */
-
+//------------------------------------------------------------------------------
 int ISURIALNUM(dchar c)
 {
     return (c >= 'a' && c <= 'z') ||
@@ -366,6 +490,7 @@ int ISURIALNUM(dchar c)
 }
 
 char_t[16 + 1] TOHEX = "0123456789ABCDEF";
+
 @DFD(1)
 DError* escape(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -433,7 +558,7 @@ DError* escape(
     }
 }
 
-/* ====================== Dglobal_unescape ================ */
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* unescape(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -519,7 +644,7 @@ DError* unescape(
     return null;
 }
 
-/* ====================== Dglobal_isNaN ================ */
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* isNaN(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -542,7 +667,7 @@ DError* isNaN(
     return null;
 }
 
-/* ====================== Dglobal_isFinite ================ */
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* isFinite(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -565,10 +690,11 @@ DError* isFinite(
     return null;
 }
 
-/* ====================== Dglobal_ URI Functions ================ */
-
+//------------------------------------------------------------------------------
 DError* URI_error(string_t s)
 {
+    import dmdscript.protoerror : urierror;
+
     Dobject o = new urierror(s ~ "() failure");
     auto v = new DError;
     v.put(o);
@@ -591,11 +717,13 @@ DError* decodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(Key.decodeURI);
+        return URI_error(__FUNCTION__);
     }
     ret.put(s);
     return null;
 }
+
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* decodeURIComponent(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -613,11 +741,13 @@ DError* decodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(Key.decodeURIComponent);
+        return URI_error(__FUNCTION__);
     }
     ret.put(s);
     return null;
 }
+
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* encodeURI(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -636,11 +766,13 @@ DError* encodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(Key.encodeURI);
+        return URI_error(__FUNCTION__);
     }
     ret.put(s);
     return null;
 }
+
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* encodeURIComponent(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -658,14 +790,13 @@ DError* encodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(Key.encodeURIComponent);
+        return URI_error(__FUNCTION__);
     }
     ret.put(s);
     return null;
 }
 
-/* ====================== Dglobal_print ================ */
-
+//------------------------------------------------------------------------------
 void dglobal_print(
     ref CallContext cc, Dobject othis, out Value ret, Value[] arglist)
 {
@@ -686,6 +817,7 @@ void dglobal_print(
     ret.putVundefined();
 }
 
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* print(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -696,7 +828,7 @@ DError* print(
     return null;
 }
 
-/* ====================== Dglobal_println ================ */
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* println(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -710,7 +842,7 @@ DError* println(
     return null;
 }
 
-/* ====================== Dglobal_readln ================ */
+//------------------------------------------------------------------------------
 @DFD(0)
 DError* readln(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -764,7 +896,7 @@ DError* readln(
     return null;
 }
 
-/* ====================== Dglobal_getenv ================ */
+//------------------------------------------------------------------------------
 @DFD(1)
 DError* getenv(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -789,15 +921,19 @@ DError* getenv(
 }
 
 
-/* ====================== Dglobal_ScriptEngine ================ */
+//------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngine(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : Text;
+
     ret.put(Text.DMDScript);
     return null;
 }
+
+//------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineBuildVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -806,6 +942,8 @@ DError* ScriptEngineBuildVersion(
     ret.put(BUILD_VERSION);
     return null;
 }
+
+//------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineMajorVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -814,6 +952,8 @@ DError* ScriptEngineMajorVersion(
     ret.put(MAJOR_VERSION);
     return null;
 }
+
+//------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineMinorVersion(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
@@ -823,154 +963,15 @@ DError* ScriptEngineMinorVersion(
     return null;
 }
 
-@DconstantDescriptor immutable NaN = double.nan;
-@DconstantDescriptor immutable Infinity = double.infinity;
-@DconstantDescriptor auto undefined = vundefined;
-/* ====================== Dglobal =========================== */
+//------------------------------------------------------------------------------
 
-class Dglobal : Dobject
+//
+string_t arg0string(Value[] arglist)
 {
-    this(char_t[][] argv)
-    {
-        super(Dobject.getPrototype, Key.global);  // Dglobal.prototype is implementation-dependent
+    Value* v = arglist.length ? &arglist[0] : &undefined;
+    return v.toString();
+}
 
-        //writef("Dglobal.Dglobal(%x)\n", this);
-
-        Dobject f = Dfunction.getPrototype();
-
-        // ECMA 15.1
-        // Add in built-in objects which have attribute { DontEnum }
-
-        // Value properties
-
-/*
-        DefineOwnProperty(Key.NaN, double.nan,
-               Property.Attribute.DontEnum |
-               Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.Infinity, double.infinity,
-               Property.Attribute.DontEnum |
-               Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.undefined, vundefined,
-               Property.Attribute.DontEnum |
-               Property.Attribute.DontDelete);
-//*/
-        DconstantDescriptor.install!(mixin(__MODULE__))
-            (this, Property.Attribute.DontEnum | Property.Attribute.DontDelete);
-/*
-        static enum NativeFunctionData[] nfd =
-        [
-            // Function properties
-            { Key.eval, &Dglobal_eval, 1 },
-            { Key.parseInt, &Dglobal_parseInt, 2 },
-            { Key.parseFloat, &Dglobal_parseFloat, 1 },
-            { Key.escape, &Dglobal_escape, 1 },
-            { Key.unescape, &Dglobal_unescape, 1 },
-            { Key.isNaN, &Dglobal_isNaN, 1 },
-            { Key.isFinite, &Dglobal_isFinite, 1 },
-            { Key.decodeURI, &Dglobal_decodeURI, 1 },
-            { Key.decodeURIComponent, &Dglobal_decodeURIComponent, 1 },
-            { Key.encodeURI, &Dglobal_encodeURI, 1 },
-            { Key.encodeURIComponent, &Dglobal_encodeURIComponent, 1 },
-
-            // Dscript unique function properties
-            { Key.print, &Dglobal_print, 1 },
-            { Key.println, &Dglobal_println, 1 },
-            { Key.readln, &Dglobal_readln, 0 },
-            { Key.getenv, &Dglobal_getenv, 1 },
-
-            // Jscript compatible extensions
-            { Key.ScriptEngine, &Dglobal_ScriptEngine, 0 },
-            { Key.ScriptEngineBuildVersion, &Dglobal_ScriptEngineBuildVersion, 0 },
-            { Key.ScriptEngineMajorVersion, &Dglobal_ScriptEngineMajorVersion, 0 },
-            { Key.ScriptEngineMinorVersion, &Dglobal_ScriptEngineMinorVersion, 0 },
-        ];
-
-        DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
-//*/
-        DFD.install!(mixin(__MODULE__))(this, Property.Attribute.DontEnum);
-
-        // Now handled by AssertExp()
-        // Put(Text.assert, Dglobal_assert(), DontEnum);
-
-        // Constructor properties
-
-        DefineOwnProperty(Key.Object, Dobject.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Function, Dfunction.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Array, Darray.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.String, Dstring.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Boolean, Dboolean.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Number, Dnumber.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Date, Ddate.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.RegExp, Dregexp.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Error, Derror.getConstructor,
-            Property.Attribute.DontEnum);
-
-        DefineOwnProperty(syntaxerror.Text, syntaxerror.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(evalerror.Text, evalerror.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(referenceerror.Text, referenceerror.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(rangeerror.Text, rangeerror.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(typeerror.Text, typeerror.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(urierror.Text, urierror.getConstructor,
-            Property.Attribute.DontEnum);
-
-
-        // Other properties
-
-        assert(Dmath.object);
-        DefineOwnProperty(Key.Math, Dmath.object, Property.Attribute.DontEnum);
-
-        // Build an "arguments" property out of argv[],
-        // and add it to the global object.
-        Darray arguments;
-
-        arguments = new Darray();
-        DefineOwnProperty(Key.arguments, arguments, Property.Attribute.DontDelete);
-        arguments.length.put(argv.length);
-        CallContext cc;
-        for(int i = 0; i < argv.length; i++)
-        {
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Where is this definition?
-            arguments.Set(i, argv[i].idup, Property.Attribute.DontEnum, cc);
-        }
-        arguments.DefineOwnProperty(Key.callee, Value.Type.Null,
-                                    Property.Attribute.DontEnum);
-    }
-}
-
-private:
-private enum Key : StringKey
-{
-    global = PKey.global,
-    Object = PKey.Object,
-    Function = PKey.Function,
-    Array = PKey.Array,
-    Boolean = PKey.Boolean,
-    Error = PKey.Error,
-    RegExp = PKey.RegExp,
-    String = PKey.String,
-    Number = PKey.Number,
-    Date = PKey.Date,
-    Math = PKey.Math,
-    arguments = PKey.arguments,
-    callee = PKey.callee,
-
-    decodeURI = StringKey("decodeURI"),
-    decodeURIComponent = StringKey("decodeURIComponent"),
-    encodeURI = StringKey("encodeURI"),
-    encodeURIComponent = StringKey("encodeURIComponent"),
-}
-
+// I want to remove this.
+auto undefined = vundefined;

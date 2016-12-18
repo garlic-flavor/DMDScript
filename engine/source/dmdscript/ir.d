@@ -301,7 +301,12 @@ private struct IR2(Opcode CODE, T)
     }
 
     debug string toString()
-    { return text(ir, " ", acc, ", ", operand); }
+    {
+        static if (is(typeof(operand.toString)))
+            return text(ir, " ", acc, ", \"", operand.toString, "\"");
+        else
+            return text(ir, " ", acc, ", ", operand);
+    }
 }
 
 //

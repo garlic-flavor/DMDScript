@@ -22,6 +22,7 @@ import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dfunction;
 import dmdscript.value : Value, DError;
+import dmdscript.property : Property;
 debug import std.stdio;
 
 //------------------------------------------------------------------------------
@@ -30,6 +31,35 @@ alias PCall = DError* function(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist);
 
+//------------------------------------------------------------------------------
+///
+class DnativeFunction : Dfunction
+{
+    import dmdscript.primitive : string_t;
+    import dmdscript.property : Property;
+
+    PCall pcall;
+
+    this(PCall func, string_t name, uint length)
+    {
+        super(length);
+        this.name = name;
+        pcall = func;
+    }
+
+    this(PCall func, string_t name, uint length, Dobject o)
+    {
+        super(length, o);
+        this.name = name;
+        pcall = func;
+    }
+
+    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
+    {
+        return (*pcall)(this, cc, othis, ret, arglist);
+    }
+}
 
 //------------------------------------------------------------------------------
 ///
@@ -108,98 +138,31 @@ private static:
 
 //------------------------------------------------------------------------------
 ///
-struct DconstantDescriptor
+void installConstants(ARGS...)(
+    Dobject o, Property.Attribute prop = Property.Attribute.DontEnum |
+                                         Property.Attribute.DontDelete |
+                                         Property.Attribute.ReadOnly)
 {
-    import dmdscript.primitive : Key;
-
-    enum Type
+    static if      (0 == ARGS.length){}
+    else
     {
-        Prototype,
-        Static,
-    }
+        import dmdscript.primitive : StringKey;
+        import dmdscript.value : Value;
 
-    Type type = Type.Prototype;
-    string realName; ///
+        static assert (1 < ARGS.length, "bad arguments");
+        static assert (is(typeof(ARGS[0]) : string), "bad key");
 
-public static:
-    import dmdscript.property : Property;
+        enum key = StringKey(ARGS[0]);
 
-    void install(alias M, Type type = Type.Prototype)(
-        Dobject o,
-        Property.Attribute prop = Property.Attribute.DontEnum |
-                                  Property.Attribute.DontDelete |
-                                  Property.Attribute.ReadOnly)
-    {
-        foreach(one; __traits(allMembers, M))
-        {
-            static if (is(typeof(__traits(getMember, M, one))))
-                enum desc = select!(__traits(getMember, M, one));
-            else
-                enum desc = false;
+        static if      (is(typeof(ARGS[1]) : Value))
+            auto value = ARGS[1];
+        else static if (Value.IsPrimitiveType!(typeof(ARGS[1])))
+            auto value = Value(ARGS[1]);
+        else static assert (0, "bad value");
 
-            static if (is(typeof(desc) == typeof(this)))
-            {
-                static if (type == desc.type)
-                {
-                    static if (0 < desc.realName.length)
-                        enum name = StringKey(desc.realName);
-                    else
-                        enum name = StringKey(one);
+        o.DefineOwnProperty(key, value, prop);
 
-                    o.DefineOwnProperty(name, __traits(getMember, M, one),
-                                        prop);
-                }
-            }
-        }
-    }
-
-private static:
-    //
-    template select(alias F)
-    {
-        template _impl(T...)
-        {
-            static if      (0 == T.length)
-                enum _impl = false;
-            else static if (is(typeof(T[0]) == typeof(this)))
-                enum _impl = T[0];
-            else
-                enum _impl = _impl!(T[1..$]);
-        }
-        static if (is(typeof(__traits(getAttributes, F))))
-            enum select = _impl!(__traits(getAttributes, F));
-        else
-            enum select = false;
+        installConstants!(ARGS[2..$])(o, prop);
     }
 }
 
-
-//------------------------------------------------------------------------------
-///
-class DnativeFunction : Dfunction
-{
-    import dmdscript.primitive : string_t;
-    import dmdscript.property : Property;
-
-    PCall pcall;
-
-    this(PCall func, string_t name, uint length)
-    {
-        super(length);
-        this.name = name;
-        pcall = func;
-    }
-
-    this(PCall func, string_t name, uint length, Dobject o)
-    {
-        super(length, o);
-        this.name = name;
-        pcall = func;
-    }
-
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
-                          Value[] arglist)
-    {
-        return (*pcall)(this, cc, othis, ret, arglist);
-    }
-}

@@ -130,7 +130,7 @@ class Program
 
         debug
         {
-            import dmdscript.opcodes;
+            import dmdscript.opcodes : IR;
             if (dumpMode & DumpMode.IR)
                 IR.toString(globalfunction.code).writeln;
         }

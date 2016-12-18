@@ -27,7 +27,7 @@ import dmdscript.dfunction : Dconstructor;
 import dmdscript.value : Value, DError;
 import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
-    DCD = DconstantDescriptor;
+    installConstants;
 
 //==============================================================================
 ///
@@ -75,15 +75,6 @@ enum Key : StringKey
 
     Infinity = StringKey(Text.Infinity),
 }
-
-
-@DCD immutable EPSILON = double.epsilon;
-@DCD immutable MAX_SAFE_INTEGER = double.min_exp - 1;
-@DCD immutable MIN_SAFE_INTEGER = -double.min_exp + 1;
-@DCD immutable MIN_VALUE = double.min_normal * double.epsilon;
-@DCD immutable NaN = double.nan;
-@DCD immutable NEGATIVE_INFINITY = -double.infinity;
-@DCD immutable POSITIVE_INFINITY = double.infinity;
 
 //
 @DFD(1, DFD.Type.Static)
@@ -160,10 +151,19 @@ class DnumberConstructor : Dconstructor
         // DefineOwnProperty(Key.NaN, double.nan, attributes);
         // DefineOwnProperty(Key.NEGATIVE_INFINITY, -double.infinity, attributes);
         // DefineOwnProperty(Key.POSITIVE_INFINITY, double.infinity, attributes);
-        DCD.install!(mixin(__MODULE__)) (this,
-                                         Property.Attribute.DontEnum |
-                                         Property.Attribute.DontDelete |
-                                         Property.Attribute.ReadOnly);
+        // DCD.install!(mixin(__MODULE__)) (this,
+        //                                  Property.Attribute.DontEnum |
+        //                                  Property.Attribute.DontDelete |
+        //                                  Property.Attribute.ReadOnly);
+
+        installConstants!(
+            "EPSILON", double.epsilon,
+            "MAX_SAFE_INTEGER", double.min_exp - 1,
+            "MIN_SAFE_INTEGER", -double.min_exp + 1,
+            "MIN_VALUE", double.min_normal * double.epsilon,
+            "NaN", double.nan,
+            "NEGATIVE_INFINITY", -double.infinity,
+            "POSITIVE_INFINITY", double.infinity)(this);
     }
 
     override DError* Construct(ref CallContext cc, out Value ret,

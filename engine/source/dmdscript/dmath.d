@@ -24,7 +24,7 @@ import dmdscript.callcontext : CallContext;
 import dmdscript.value : DError, Value, vundefined;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
-    DconstantDescriptor;
+    installConstants;
 import dmdscript.primitive : Key;
 import dmdscript.dglobal : undefined;
 
@@ -445,16 +445,6 @@ DError* trunc(
     assert (0);
 }
 
-
-@DconstantDescriptor immutable E = std.math.E;
-@DconstantDescriptor immutable LN10 = std.math.LN10;
-@DconstantDescriptor immutable LN2 = std.math.LN2;
-@DconstantDescriptor immutable LOG2E = std.math.LOG2E;
-@DconstantDescriptor immutable LOG10E = std.math.LOG10E;
-@DconstantDescriptor immutable PI = std.math.PI;
-@DconstantDescriptor immutable SQRT1_2 = std.math.SQRT1_2;
-@DconstantDescriptor immutable SQRT2 = std.math.SQRT2;
-
 /* ===================== Dmath ==================== */
 
 class Dmath : Dobject
@@ -470,7 +460,15 @@ class Dmath : Dobject
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly;
 
-        DconstantDescriptor.install!(mixin(__MODULE__))(this, attributes);
+        installConstants!(
+            "E", std.math.E,
+            "LN10", std.math.LN10,
+            "LN2", std.math.LN2,
+            "LOG2E", std.math.LOG2E,
+            "LOG10E", std.math.LOG10E,
+            "PI", std.math.PI,
+            "SQRT1_2", std.math.SQRT1_2,
+            "SQRT2", std.math.SQRT2)(this);
 
         DFD.install!(mixin(__MODULE__))(this, attributes);
     }

@@ -212,38 +212,6 @@ class FunctionDefinition : TopStatement
         nlocals = irs.lvm.max;
     }
 
-/+
-    deprecated
-    final
-    void instantiate(Dobject[] scopex, Dobject actobj,
-                     Property.Attribute attributes)
-    {
-        // Instantiate all the Var's per 10.1.3
-        CallContext cc;
-        foreach(Identifier* name; varnames)
-        {
-            // If name is already declared, don't override it
-            actobj.Put(name.toString, vundefined,
-                       Property.Attribute.Instantiate |
-                       Property.Attribute.DontOverride | attributes, cc);
-        }
-
-        // Instantiate the Function's per 10.1.3
-        foreach(FunctionDefinition fd; functiondefinitions)
-        {
-            // Set [[Scope]] property per 13.2 step 7
-            Dfunction fobject = new DdeclaredFunction(fd);
-            fobject.scopex = scopex;
-
-            if(fd.name !is null && !fd.isliteral) // skip anonymous functions
-            {
-                actobj.Put(fd.name.toString, fobject,
-                           Property.Attribute.Instantiate | attributes, cc);
-            }
-        }
-    }
-+/
-
     final
     void instantiate(ref CallContext cc, Property.Attribute attributes)
     {

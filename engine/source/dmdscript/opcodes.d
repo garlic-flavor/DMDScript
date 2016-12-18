@@ -63,7 +63,6 @@ struct IR
     /****************************
      * This is the main interpreter loop.
      */
-
     static DError* call(ref CallContext cc, Dobject othis,
                         IR* code, out Value ret, Value* locals)
     {
@@ -96,6 +95,7 @@ struct IR
         Catch ca;
         Finally f;
         IR* codestart = code;
+        writeln("codestart = ", codestart);
         //Finally blocks are sort of called, sort of jumped to
         //So we are doing "push IP in some stack" + "jump"
         IR*[] finallyStack;      //it's a stack of backreferences for finally
@@ -113,19 +113,16 @@ struct IR
         {
             // assert(scopex.length && scopex[0] !is null,
             //        "Null in scopex, Line " ~ code.opcode.linnum.to!string);
+            assert (err !is null);
 
             for(;; )
             {
                 if (cc.scopex.isVariableRoot)
-                // if(scopex.length <= dimsave)
                 {
                     ret.putVundefined();
                     return err;
                 }
-                // o = scopex[$ - 1];
-                // scopex = scopex[0 .. $ - 1]; // pop entry off scope chain
-                o = cc.scopex.pop;
-
+                o = cc.scopex.pop; // pop entry off scope chain
                 if(auto ca = cast(Catch)o)
                 {
                     o = new Dobject(Dobject.getPrototype);
@@ -138,10 +135,9 @@ struct IR
                         o.Set(ca.name, err.entity,
                               Property.Attribute.DontDelete, cc);
                     }
-                    // scopex ~= o;
-                    // cc.scopex = scopex;
                     cc.scopex.push(o);
                     code = codestart + ca.offset;
+                    toString(code).writeln;
                     break;
                 }
                 else
@@ -318,7 +314,8 @@ struct IR
                     {
                         // v = scope_get(cc, scopex, id);
                         v = cc.get(*id);
-                        if(!v){
+                        if(v is null)
+                        {
                             v = signalingUndefined(s);
                             cc.set(*id, *v);
                         }
@@ -1428,7 +1425,7 @@ struct IR
                     // v = scope_get_lambda(cc, scopex, id, o);
                     v = cc.get(*id, o);
 
-                    if(!v)
+                    if(v is null)
                     {
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
                         sta = UndefinedVarError(s);
@@ -1611,7 +1608,8 @@ struct IR
 
                 case Opcode.ImpRet:
                     a = locals + (code + 1).index;
-                    a.checkReference();
+                    assert (a !is null);
+                    a.checkReference;
                     ret = *a;
 
                     code += IRTypes[Opcode.ImpRet].size;
@@ -1674,12 +1672,11 @@ struct IR
             catch(Throwable t)
             {
                 sta = unwindStack(t.toDError!typeerror);
-                if (sta)
+                if (sta !is null)
                 {
                     sta.addTrace(codestart, code);
                     return sta;
                 }
-
             }
         } // the end of the for(;;) loop.
 
@@ -1722,7 +1719,7 @@ struct IR
 
     debug static string_t toString(const(IR)* code)
     {
-        import std.conv : to;
+        import std.format : format;
         import std.array : Appender;
 
         Appender!string_t buf;
@@ -1730,9 +1727,8 @@ struct IR
 
         for(;; )
         {
-            buf.put(code.opcode.linnum.to!string_t);
+            buf.put(format("%04d", cast(size_t)(code - codestart)));
             buf.put(":");
-            buf.put((cast(size_t)(code - codestart)).to!string_t);
             toBuffer(code - codestart, code, b=>buf.put(b));
             buf.put("\n");
             if(code.opcode == Opcode.End)
