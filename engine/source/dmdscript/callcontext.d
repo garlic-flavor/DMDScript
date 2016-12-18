@@ -32,14 +32,14 @@ struct CallContext
     @safe pure nothrow
     this(Program prog, Dobject global)
     {
-        _scopex = ScopeStack(global);
+        _scopex = new ScopeStack(global);
         _prog = prog;
     }
 
     //--------------------------------------------------------------------
     ///
     @property @safe @nogc pure nothrow
-    ref inout(ScopeStack) scopex() inout
+    inout(ScopeStack) scopex() inout
     {
         return _scopex;
     }
@@ -132,7 +132,7 @@ function func1()
    variable searching scope.
 */
 ///
-struct ScopeStack
+final class ScopeStack
 {
     import std.array : Appender;
     import dmdscript.dobject : Dobject;
