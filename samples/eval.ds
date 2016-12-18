@@ -3,12 +3,12 @@
 
 var evalLine = "";
 do{
-	evalLine = readln();
+        evalLine = readln();
 
-//	try{
-		var r = eval(evalLine);
-		println(r);
-//	}catch(e){
-//		println(e);
-//	}
+        try{
+                var r = eval(evalLine);
+                println(r);
+        }catch(e){
+                println(e);
+        }
 }while(evalLine);

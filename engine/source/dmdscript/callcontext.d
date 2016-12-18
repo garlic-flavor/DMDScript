@@ -367,7 +367,7 @@ private:
 
         _global = global;
         _stack.put(global);
-        _scopes.put(VariableScope(GLOBAL_ROOT, global, null, null, null));
+        _scopes.put(VariableScope(GLOBAL_ROOT, global, null, null, global));
         _variable = &_scopes.data[$-1];
     }
 }

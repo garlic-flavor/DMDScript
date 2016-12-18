@@ -43,6 +43,8 @@ import dmdscript.ddate;
 import dmdscript.derror;
 import dmdscript.dmath;
 
+debug import std.stdio;
+
 //------------------------------------------------------------------------------
 // Configuration
 enum MAJOR_VERSION = 5;       // ScriptEngineMajorVersion
@@ -91,12 +93,10 @@ DError* eval(
 
     // ECMA 15.1.2.1
     Value* v;
-    immutable(char)[] s;
+    string_t s;
     FunctionDefinition fd;
     ScriptException exception;
     DError* result;
-
-    //FuncLog funclog(L"Global.eval()");
 
     v = arglist.length ? &arglist[0] : &undefined;
     if(v.type != Value.Type.String)
@@ -104,8 +104,7 @@ DError* eval(
         ret = *v;
         return null;
     }
-    s = v.toString();
-    //writef("eval('%ls')\n", s);
+    s = v.toString;
 
     // Parse program
     TopStatement[] topstatements;
@@ -192,7 +191,8 @@ DError* eval(
         if(p1)
             delete p1;
         fd = null;
-        // if (result) writef("result = '%s'\n", (cast(Value* )result).toString());
+        if (result) writeln("result = ", result.toScriptException.toString);
+        assert (result is null);
         return result;
     }
 
