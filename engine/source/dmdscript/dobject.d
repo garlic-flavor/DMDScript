@@ -26,6 +26,7 @@ import dmdscript.dnative : DnativeFunction,
 import dmdscript.dglobal : undefined;
 import dmdscript.errmsgs;
 
+debug import std.stdio;
 //debug = LOG;
 
 //==============================================================================
@@ -89,6 +90,8 @@ class Dobject
                     return false;
             }
             _prototype = p;
+            if (p !is null)
+                proptable.previous(p.proptable);
             return true;
         }
 
@@ -434,7 +437,7 @@ class Dobject
 
         Dobject o;
         Value* v;
-        static enum string_t[2] table = [Key.toString, Key.valueOf];
+        enum Key[2] table = [Key.toString, Key.valueOf];
         int i = 0;                      // initializer necessary for /W4
 
         // ECMA 8.6.2.6
@@ -458,13 +461,11 @@ class Dobject
 
             v = Get(htab, cc);
 
-            if(v && !v.isPrimitive())   // if it's an Object
+            if(v !is null && !v.isPrimitive())   // if it's an Object
             {
                 DError* a;
-                //CallContext* cc2;
 
                 o = v.object;
-                //cc2 = &Program.getProgram().callcontext;
                 a = o.Call(cc, this, ret, null);
                 if(a)                   // if exception was thrown
                     return a;
@@ -474,8 +475,6 @@ class Dobject
             i ^= 1;
         }
         return NoDefaultValueError;
-        //ErrInfo errinfo;
-        //return RuntimeError(&errinfo, DTEXT("no Default Value for object"));
     }
 
     DError* HasInstance(ref CallContext cc, out Value ret, ref Value v)
@@ -714,45 +713,45 @@ public static:
     @safe @nogc nothrow
     Dobject getPrototype()
     {
-        assert (_prototype !is null);
-        return _prototype;
+        assert (_class_prototype !is null);
+        return _class_prototype;
     }
 
     ///
     void initPrototype()
     {
-        assert (_prototype is null);
+        assert (_class_prototype is null);
         static if (is (typeof(this) == Dobject))
-            _prototype = new Dobject(null);
+            _class_prototype = new Dobject(null);
         else
-            _prototype = new Dobject;
+            _class_prototype = new Dobject;
     }
 
     ///
-    void initFuncs()
+    void initFuncs(ARGS...)(ARGS args)
     {
         import dmdscript.primitive : Key;
         import dmdscript.property : Property;
         import dmdscript.dnative : DnativeFunctionDescriptor;
 
-        assert (_prototype !is null);
+        assert (_class_prototype !is null);
         assert (_constructor is null);
 
-        _constructor = new Constructor;
-        _prototype.DefineOwnProperty(Key.constructor, _constructor,
-                                     Property.Attribute.DontEnum);
-        _constructor.DefineOwnProperty(Key.prototype, _prototype,
+        _constructor = new Constructor(args);
+        _class_prototype.DefineOwnProperty(Key.constructor, _constructor,
+                                          Property.Attribute.DontEnum);
+        _constructor.DefineOwnProperty(Key.prototype, _class_prototype,
                                        Property.Attribute.DontEnum |
                                        Property.Attribute.DontDelete |
                                        Property.Attribute.ReadOnly);
 
         DnativeFunctionDescriptor.install!(mixin(M))(_constructor);
-        DnativeFunctionDescriptor.install!(mixin(M))(_prototype);
+        DnativeFunctionDescriptor.install!(mixin(M))(_class_prototype);
     }
 
 private static:
     Dconstructor _constructor;
-    Dobject _prototype;
+    Dobject _class_prototype;
 }
 
 
@@ -783,7 +782,7 @@ void dobject_init()
     import dmdscript.dweakmap : DweakMap;
     import dmdscript.dweakset : DweakSet;
 
-    if(Dobject._Initializer._prototype !is null)
+    if(Dobject._Initializer._class_prototype !is null)
         return;                 // already initialized for this thread
 
     void init(Types...)()
@@ -819,16 +818,16 @@ void dobject_init()
         Dset,
         DweakMap,
         DweakSet,
+        syntaxerror,
+        evalerror,
+        referenceerror,
+        rangeerror,
+        typeerror,
+        urierror,
         );
 
     Dmath.initialize();
 
-    syntaxerror.init;
-    evalerror.init;
-    referenceerror.init;
-    rangeerror.init;
-    typeerror.init;
-    urierror.init;
 
     debug
     {

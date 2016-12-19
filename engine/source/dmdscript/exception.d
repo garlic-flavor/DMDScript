@@ -109,6 +109,8 @@ class ScriptException : Exception
         if (0 < msg.length)
         { sink(msg); sink("\n"); }
 
+        sink("--------------------\n");
+
         try
         {
             foreach (one; trace)
@@ -216,6 +218,7 @@ private:
 
              if (0 < name.length && 0 < linnum)
              {
+                 sink("@");
                  sink(name);
                  sink("(");
                  sink(sizeToTempString(linnum, tmpBuff, 10));
@@ -224,7 +227,7 @@ private:
 
              if (0 < srcline.length)
              {
-                 sink("\n"); sink(srcline.replace("\t", Tab).to!string);
+                 sink("\n>"); sink(srcline.replace("\t", Tab).to!string);
 
                  if (0 <= charpos)
                  {

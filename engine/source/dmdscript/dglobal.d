@@ -202,13 +202,6 @@ DError* eval(
     if((exception = p.parseProgram(topstatements)) !is null)
         goto Lsyntaxerror;
 
-    debug
-    {
-        import dmdscript.program : Program;
-        if (cc.program.dumpMode & Program.DumpMode.Statement)
-            TopStatement.dump(topstatements).writeln;
-    }
-
     // Analyze, generate code
     fd = new FunctionDefinition(topstatements);
     fd.iseval = 1;
@@ -223,7 +216,8 @@ DError* eval(
 
     debug
     {
-        if (cc.program.dumpMode & Program.dumpMode.Statement)
+        import dmdscript.program : Program;
+        if (cc.dumpMode & Program.DumpMode.Statement)
             TopStatement.dump(topstatements).writeln;
     }
 
@@ -235,7 +229,7 @@ DError* eval(
     debug
     {
         import dmdscript.opcodes : IR;
-        if (cc.program.dumpMode & Program.dumpMode.IR)
+        if (cc.dumpMode & Program.DumpMode.IR)
             IR.toString(fd.code).writeln;
     }
 
@@ -299,16 +293,15 @@ DError* eval(
 
         // The this value is the same as the this value of the
         // calling context.
-        callerothis = cc.scopex.callerothis;
-        assert(callerothis);
+        assert(cc.scopex.callerothis);
 
-        cc.scopex.pushVariableScope(callerothis, pthis, fd, callerothis);
+        cc.pushEvalScope(pthis, fd);
         result = IR.call(cc, cc.scopex.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace("eval", fd.srctext);
+            result.addTrace("eval", s);
         }
-        cc.scopex.popVariableScope;
+        cc.popVariableScope;
 
         if(p1)
             delete p1;

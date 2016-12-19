@@ -77,14 +77,14 @@ public static:
 
         _Initializer.initPrototype;
 
-        _prototype.DefineOwnProperty(Key.name, Key.Error,
-                                     Property.Attribute.None);
-        _prototype.DefineOwnProperty(Key.message, Text.Empty,
-                                     Property.Attribute.None);
-        _prototype.DefineOwnProperty(Key.description, Text.Empty,
-                                     Property.Attribute.None);
-        _prototype.DefineOwnProperty(Key.number, cast(double)(/*FACILITY |*/ 0),
-                                     Property.Attribute.None);
+        _class_prototype.DefineOwnProperty(Key.name, Key.Error,
+                                           Property.Attribute.None);
+        _class_prototype.DefineOwnProperty(Key.message, Text.Empty,
+                                           Property.Attribute.None);
+        _class_prototype.DefineOwnProperty(Key.description, Text.Empty,
+                                           Property.Attribute.None);
+        _class_prototype.DefineOwnProperty(Key.number, cast(double)0,
+                                           Property.Attribute.None);
     }
 }
 

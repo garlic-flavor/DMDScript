@@ -239,7 +239,10 @@ struct Instruction
     Opcode opAssign(in Opcode op){ opcode = op; return opcode;}
 
     debug string toString() const
-    { return text(linnum, ":", opcode); }
+    {
+        import std.format : format;
+        return format("% 4d:%s", linnum, opcode);
+    }
 }
 static assert (Instruction.sizeof == size_t.sizeof);
 
@@ -362,7 +365,14 @@ private struct IRcall4(Opcode CODE, T)
     }
 
     debug string toString() const
-    { return text(ir, " ", acc, " = ", func, "(", argv, "[0..", argc, "])"); }
+    {
+        static if (is(T : StringKey*))
+            return text(ir, " ", acc, " = ", func.toString,
+                        "(", argv, "[0..", argc, "])");
+        else
+            return text(ir, " ", acc, " = ", func,
+                        "(", argv, "[0..", argc, "])");
+    }
 }
 //
 private struct IRcall5(Opcode CODE, T)

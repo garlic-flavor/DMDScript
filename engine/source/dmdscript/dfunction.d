@@ -358,7 +358,7 @@ DError* apply(
     }
 
     if(thisArg.isUndefinedOrNull())
-        o = cc.scopex.global;
+        o = cc.global;
     else
         o = thisArg.toObject();
 
@@ -439,14 +439,14 @@ DError* call(
 
     if(arglist.length == 0)
     {
-        o = cc.scopex.global;
+        o = cc.global;
         v = othis.Call(cc, o, ret, arglist);
     }
     else
     {
         thisArg = &arglist[0];
         if(thisArg.isUndefinedOrNull())
-            o = cc.scopex.global;
+            o = cc.global;
         else
             o = thisArg.toObject();
         v = othis.Call(cc, o, ret, arglist[1 .. $]);

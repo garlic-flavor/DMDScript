@@ -29,8 +29,11 @@ class Program
         import dmdscript.dobject : dobject_init;
         import dmdscript.dglobal : Dglobal;
 
+
         dobject_init();
-        callcontext = CallContext(this, new Dglobal(null));
+        callcontext = CallContext(new Dglobal(null));
+
+        debug callcontext.program = this;
 
         debug
         {
@@ -113,12 +116,6 @@ class Program
             throw sc.exception;
         }
 
-        debug
-        {
-            if (dumpMode & DumpMode.Semantics)
-                TopStatement.dump(topstatements).writeln;
-        }
-
         if(pfd)
             // If expecting a function, that is the only topstatement we should
             // have had
@@ -160,7 +157,7 @@ class Program
         Value ret;
         DError* result;
         Darray arguments;
-        Dobject dglobal = callcontext.scopex.global;
+        Dobject dglobal = callcontext.global;
 
         // Set argv and argc for execute
         arguments = new Darray();
@@ -196,7 +193,8 @@ class Program
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
 
         ret.putVundefined();
-        result = IR.call(callcontext, callcontext.scopex.global,
+        callcontext.pushEvalScope(null, globalfunction);
+        result = IR.call(callcontext, callcontext.global,
                          globalfunction.code, ret, locals.ptr);
         if(result)
         {
@@ -208,6 +206,7 @@ class Program
                 globalfunction.srctext);
             throw exception;
         }
+        callcontext.popVariableScope;
 
         delete p1;
     }
@@ -231,9 +230,8 @@ debug public:
     {
         None       = 0x00,
         Statement  = 0x01,
-        Semantics  = 0x02,
-        IR         = 0x04,
-        All        = 0x07,
+        IR         = 0x02,
+        All        = 0x03,
     }
     DumpMode dumpMode;
 }

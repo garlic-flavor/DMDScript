@@ -107,11 +107,11 @@ int main(string[] args)
             case "-dumpStatement":
                 dumpMode |= Program.DumpMode.Statement;
                 break;
-            case "-dumpSemantics":
-                dumpMode |= Program.DumpMode.Semantics;
-                break;
             case "-dumpIR":
                 dumpMode |= Program.DumpMode.IR;
+                break;
+            case "-dump":
+                dumpMode |= Program.DumpMode.All;
                 break;
         }
         default:

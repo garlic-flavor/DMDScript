@@ -1626,13 +1626,13 @@ class Ddate : Dobject
 
     this(double n)
     {
-        super(_prototype, Key.Date);
+        super(getPrototype, Key.Date);
         value.put(n);
     }
 
     this(d_time n)
     {
-        super(_prototype, Key.Date);
+        super(getPrototype, Key.Date);
         value.putVtime(n);
     }
 

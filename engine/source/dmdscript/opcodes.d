@@ -87,15 +87,9 @@ struct IR
         Value.Type tx;
         Value.Type ty;
         Dobject o;
-// deprecated
-//         Dobject[] scopex;
-// deprecated
-//         uint dimsave;
         uint offset;
-        Catch ca;
-        Finally f;
-        IR* codestart = code;
-        writeln("codestart = ", codestart);
+        const IR* codestart = code;
+
         //Finally blocks are sort of called, sort of jumped to
         //So we are doing "push IP in some stack" + "jump"
         IR*[] finallyStack;      //it's a stack of backreferences for finally
@@ -122,7 +116,7 @@ struct IR
                     ret.putVundefined();
                     return err;
                 }
-                o = cc.scopex.pop; // pop entry off scope chain
+                o = cc.popScope; // pop entry off scope chain
                 if(auto ca = cast(Catch)o)
                 {
                     o = new Dobject(Dobject.getPrototype);
@@ -135,9 +129,8 @@ struct IR
                         o.Set(ca.name, err.entity,
                               Property.Attribute.DontDelete, cc);
                     }
-                    cc.scopex.push(o);
-                    code = codestart + ca.offset;
-                    toString(code).writeln;
+                    cc.pushScope(o);
+                    code = cast(IR*)codestart + ca.offset;
                     break;
                 }
                 else
@@ -1440,7 +1433,11 @@ struct IR
                     debug(VERIFY)
                         assert(checksum == IR.verify(__LINE__, codestart));
                     if(sta)
+                    {
+                        sta.addTrace(codestart, code);
+                        cc.addTraceInfoTo(sta);
                         goto Lthrow;
+                    }
                     code += IRTypes[Opcode.CallScope].size;
                     // goto Lnext;
                     break;
@@ -1563,7 +1560,7 @@ struct IR
                     }
                     // scopex ~= o;                // push entry onto scope chain
                     // cc.scopex = scopex;
-                    cc.scopex.push(o);
+                    cc.pushScope(o);
                     code += IRTypes[Opcode.Push].size;
                     break;
 
@@ -1572,7 +1569,7 @@ struct IR
                     // o = scopex[$ - 1];
                     // scopex = scopex[0 .. $ - 1];        // pop entry off scope chain
                     // cc.scopex = scopex;
-                    o = cc.scopex.pop;
+                    o = cc.popScope;
                     // If it's a Finally, we need to execute
                     // the finally block
                     code += IRTypes[Opcode.Pop].size;
@@ -1595,8 +1592,8 @@ struct IR
                     break;
 
                 case Opcode.Ret:
-                    version(SCOPECACHE_LOG)
-                        printf("scopecache_cnt = %d\n", scopecache_cnt);
+                    // version(SCOPECACHE_LOG)
+                    //     printf("scopecache_cnt = %d\n", scopecache_cnt);
                     return null;
 
                 case Opcode.RetExp:
@@ -1632,19 +1629,17 @@ struct IR
                     SCOPECACHE_CLEAR();
                     offset = (code - codestart) + (code + 1).offset;
                     s = *(code + 2).id;
-                    ca = new Catch(offset, s);
                     // scopex ~= ca;
                     // cc.scopex = scopex;
-                    cc.scopex.push(ca);
+                    cc.pushScope(new Catch(offset, s));
                     code += IRTypes[Opcode.TryCatch].size;
                     break;
 
                 case Opcode.TryFinally:
                     SCOPECACHE_CLEAR();
-                    f = new Finally(code + (code + 1).offset);
                     // scopex ~= f;
                     // cc.scopex = scopex;
-                    cc.scopex.push(f);
+                    cc.pushScope(new Finally(code + (code + 1).offset));
                     code += IRTypes[Opcode.TryFinally].size;
                     break;
 

@@ -865,6 +865,7 @@ private:
     }
 }
 
+//==============================================================================
 private:
 
 import dmdscript.primitive : StringKey, PKey = Key;

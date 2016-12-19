@@ -903,6 +903,14 @@ final class DoStatement : Statement
         return scopeContext;
     }
 
+    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    {
+        sink("while(");
+        condition.toBuffer(sink);
+        sink(")");
+        bdy.toBuffer(sink);
+    }
+
 private:
     Statement bdy;
     Expression condition;

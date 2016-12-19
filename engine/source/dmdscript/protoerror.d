@@ -19,73 +19,56 @@
 module dmdscript.protoerror;
 
 import dmdscript.dobject : Dobject;
-import dmdscript.dfunction : Dfunction;
+import dmdscript.dfunction : Dconstructor;
+import dmdscript.callcontext : CallContext;
+import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.value : DError, Value;
 
+debug import std.stdio;
 
 //------------------------------------------------------------------------------
 ///
 class D0(alias TEXT_D1) : D0base
 {
-    enum Text = TEXT_D1;
+    import dmdscript.dfunction : Dfunction;
+    import dmdscript.dobject : Initializer;
 
-    private this(Dobject prototype)
-    {
-        super(prototype);
-    }
+    enum Text = TEXT_D1;
 
     this(string_t m)
     {
-        super(D0.getPrototype, m);
+        super(getPrototype, m);
     }
 
     this(ScriptException exception)
     {
-        super(D0.getPrototype, exception);
+        super(getPrototype, exception);
+        assert (getPrototype !is null);
     }
 
-public static:
-    //
-    Dfunction getConstructor()
-    {
-        return _ctor;
-    }
+    mixin Initializer!D0_constructor _Initializer;
+
+package static:
 
     //
-    Dobject getPrototype()
-    {
-        return _prototype;
-    }
-
-    //
-    void init()
+    void initFuncs()
     {
         import dmdscript.property : Property;
 
-        _ctor = new D0_constructor(TEXT_D1, &newD0);
+        _Initializer.initFuncs(TEXT_D1, &newD0);
 
-        _prototype = new Dobject();
-
-        _ctor.DefineOwnProperty(Key.prototype, _prototype,
-                                Property.Attribute.DontEnum |
-                                Property.Attribute.DontDelete |
-                                Property.Attribute.ReadOnly);
-
-        _prototype.DefineOwnProperty(Key.constructor, _ctor,
-                                     Property.Attribute.DontEnum);
-        _prototype.DefineOwnProperty(Key.name, TEXT_D1,
-                                     Property.Attribute.None);
+        _class_prototype.DefineOwnProperty(Key.name, TEXT_D1,
+                                           Property.Attribute.None);
         auto s = TEXT_D1 ~ ".prototype.message";
-        _prototype.DefineOwnProperty(Key.message, s,
-                                     Property.Attribute.None);
-        _prototype.DefineOwnProperty(Key.description, s,
-                                     Property.Attribute.None);
-        _prototype.DefineOwnProperty(Key.number, cast(double)0,
-                                     Property.Attribute.None);
-
+        _class_prototype.DefineOwnProperty(Key.message, s,
+                                           Property.Attribute.None);
+        _class_prototype.DefineOwnProperty(Key.description, s,
+                                           Property.Attribute.None);
+        _class_prototype.DefineOwnProperty(Key.number, 0,
+                                           Property.Attribute.None);
     }
+
 private static:
-    Dobject _prototype;
-    Dfunction _ctor;
 
     Dobject newD0(string_t s)
     {
@@ -93,19 +76,19 @@ private static:
     }
 }
 
-alias syntaxerror = D0!(Key.SyntaxError);
-alias evalerror = D0!(Key.EvalError);
-alias referenceerror = D0!(Key.ReferenceError);
-alias rangeerror = D0!(Key.RangeError);
-alias typeerror = D0!(Key.TypeError);
-alias urierror = D0!(Key.URIError);
+alias syntaxerror = D0!"SyntaxError";
+alias evalerror = D0!"EvalError";
+alias referenceerror = D0!"ReferenceError";
+alias rangeerror = D0!"RangeError";
+alias typeerror = D0!"TypeError";
+alias urierror = D0!"URIError";
 
 //==============================================================================
 package:
 
 class D0base : Dobject
 {
-    import dmdscript.primitive : string_t;
+    import dmdscript.primitive : string_t, Key;
     import dmdscript.exception : ScriptException;
 
     ScriptException exception;
@@ -147,27 +130,8 @@ class D0base : Dobject
 //==============================================================================
 private:
 
-import dmdscript.primitive : StringKey, PKey = Key;
-enum Key : StringKey
-{
-    prototype = PKey.prototype,
-    constructor = PKey.constructor,
-    message = PKey.message,
-    description = PKey.description,
-    name = PKey.name,
-    number = PKey.number,
-    Error = PKey.Error,
-
-    EvalError = StringKey("EvalError"),
-    RangeError = StringKey("RangeError"),
-    ReferenceError = StringKey("ReferenceError"),
-    SyntaxError = StringKey("SyntaxError"),
-    TypeError = StringKey("TypeError"),
-    URIError = StringKey("URIError"),
-}
-
 //------------------------------------------------------------------------------
-class D0_constructor : Dfunction
+class D0_constructor : Dconstructor
 {
     import dmdscript.callcontext : CallContext;
     import dmdscript.value : DError, Value;
@@ -211,3 +175,28 @@ class D0_constructor : Dfunction
     }
 }
 
+//------------------------------------------------------------------------------
+//
+@DFD(0)
+DError* toString(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    import dmdscript.primitive : Key;
+    if (auto d0 = cast(D0base)othis)
+        ret.put(d0.exception.toString);
+    else
+        ret.put(othis.Get(Key.message, cc));
+    return null;
+}
+
+//
+@DFD(0)
+DError* valueOf(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    import dmdscript.primitive : Key;
+    ret.put(othis.Get(Key.number, cc));
+    return null;
+}

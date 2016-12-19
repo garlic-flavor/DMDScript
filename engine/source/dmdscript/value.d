@@ -241,6 +241,17 @@ struct Value
         _hash = h;
     }
 
+    // ditto
+    @trusted @nogc pure nothrow
+    void put(Value* v)
+    {
+        if (v is null)
+            putVundefined;
+        else
+            this = *v;
+    }
+
+
     //--------------------------------------------------------------------
     void toPrimitive(ref CallContext cc, out Value v,
                      in Type PreferredType = Type.RefError)

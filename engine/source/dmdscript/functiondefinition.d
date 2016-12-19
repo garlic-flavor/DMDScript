@@ -216,7 +216,7 @@ class FunctionDefinition : TopStatement
     void instantiate(ref CallContext cc, Property.Attribute attributes)
     {
         // Instantiate all the Var's per 10.1.3
-        auto actobj = cc.scopex.variable;
+        auto actobj = cc.variable;
         foreach(StringKey* name; varnames)
         {
             // If name is already declared, don't override it
