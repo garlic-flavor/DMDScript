@@ -177,7 +177,7 @@ struct IR
             }
         }
 
-        debug(VERIFY) uint checksum = IR.verify(__LINE__, code);
+        debug(VERIFY) uint checksum = IR.verify(code);
 
         // scopex = cc.scopex;
 
@@ -1391,7 +1391,7 @@ struct IR
                                                    [0 .. (code + 4).index]);
                     }
                     debug(VERIFY)
-                        assert(checksum == IR.verify(__LINE__, codestart));
+                        assert(checksum == IR.verify(codestart));
                     if(sta)
                         goto Lthrow;
 
@@ -1428,7 +1428,7 @@ struct IR
                                                [0 .. (code + 3).index]);
 
                     debug(VERIFY)
-                        assert(checksum == IR.verify(__LINE__, codestart));
+                        assert(checksum == IR.verify(codestart));
                     if(sta)
                     {
                         sta.addTrace(codestart, code);
@@ -1539,7 +1539,7 @@ struct IR
                     a.putVundefined();
                     sta = b.Construct(cc, *a, (locals + (code + 4).index)[0 .. (code + 3).index]);
                     debug(VERIFY)
-                        assert(checksum == IR.verify(__LINE__, codestart));
+                        assert(checksum == IR.verify(codestart));
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.New].size;
@@ -1575,7 +1575,7 @@ struct IR
                     {
                         callFinally(fin);
                         debug(VERIFY)
-                            assert(checksum == IR.verify(__LINE__, codestart));
+                            assert(checksum == IR.verify(codestart));
                     }
 
                     // goto Lnext;
@@ -1734,7 +1734,7 @@ struct IR
      * Verify that it is a correct sequence of code.
      * Useful for isolating memory corruption bugs.
      */
-    debug static uint verify(uint linnum, IR* codestart)
+    debug static uint verify(IR* codestart, size_t linnum = __LINE__)
     {
         debug(VERIFY)
         {
