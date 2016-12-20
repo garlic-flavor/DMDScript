@@ -179,6 +179,7 @@ DError* eval(
     import dmdscript.property : Property;
     import dmdscript.opcodes : IR;
     import dmdscript.protoerror : syntaxerror;
+    import dmdscript.callcontext : VariableScope;
 
     // ECMA 15.1.2.1
     Value* v;
@@ -187,6 +188,7 @@ DError* eval(
     ScriptException exception;
     DError* result;
     Dobject callerothis;
+    VariableScope ccs;
 
     v = arglist.length ? &arglist[0] : &undefined;
     if(v.type != Value.Type.String)
@@ -295,13 +297,14 @@ DError* eval(
         // calling context.
         assert(cc.scopex.callerothis);
 
-        cc.pushEvalScope(pthis, fd);
+        ccs = VariableScope(pthis, fd);
+        cc.pushEvalScope(ccs);
         result = IR.call(cc, cc.scopex.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
             result.addTrace("eval", s);
         }
-        cc.popVariableScope;
+        cc.popVariableScope(ccs);
 
         if(p1)
             delete p1;

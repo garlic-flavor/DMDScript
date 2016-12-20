@@ -69,6 +69,7 @@ module dmdscript.ir;
 */
 
 debug import std.conv : text;
+debug import std.format : format;
 import std.meta : AliasSeq;
 
 import dmdscript.primitive : StringKey;
@@ -205,6 +206,7 @@ enum idx_t idxNull = 0;
 //
 struct Instruction
 {
+align(1):
     static if      (size_t.sizeof == 4)
     {
         version(LittleEndian)
@@ -240,7 +242,6 @@ struct Instruction
 
     debug string toString() const
     {
-        import std.format : format;
         return format("% 4d:%s", linnum, opcode);
     }
 }
@@ -267,6 +268,7 @@ private struct IR1(Opcode CODE)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     idx_t acc;  // the position of an acc buffer in local variable array.
 
@@ -292,6 +294,7 @@ private struct IR2(Opcode CODE, T)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     idx_t acc;
     T operand;
@@ -306,9 +309,9 @@ private struct IR2(Opcode CODE, T)
     debug string toString()
     {
         static if (is(typeof(operand.toString)))
-            return text(ir, " ", acc, ", \"", operand.toString, "\"");
+            return text(ir, " [", acc, "] = \"", operand.toString, "\"");
         else
-            return text(ir, " ", acc, ", ", operand);
+            return text(ir, " [", acc, "] = ", operand);
     }
 }
 
@@ -318,6 +321,7 @@ private struct IR3(Opcode CODE, T, U)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     idx_t acc;
     T operand1;
@@ -349,6 +353,7 @@ private struct IRcall4(Opcode CODE, T)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     idx_t acc;
     T func; // the name of the function. idx_t or StringKey*.
@@ -367,11 +372,11 @@ private struct IRcall4(Opcode CODE, T)
     debug string toString() const
     {
         static if (is(T : StringKey*))
-            return text(ir, " ", acc, " = ", func.toString,
-                        "(", argv, "[0..", argc, "])");
+            return text(ir, " [", acc, "] = ", func.toString,
+                        "([", argv, "..", argv + argc, "])");
         else
-            return text(ir, " ", acc, " = ", func,
-                        "(", argv, "[0..", argc, "])");
+            return text(ir, " [", acc, "] = [", func,
+                        "]([", argv, "..", argv + argc, "])");
     }
 }
 //
@@ -380,7 +385,7 @@ private struct IRcall5(Opcode CODE, T)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
-
+align(size_t.sizeof):
     Instruction ir;
     idx_t acc;
     idx_t owner; // the owner of the method.
@@ -422,6 +427,7 @@ private struct IRget3(Opcode CODE, T)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     idx_t acc;
     idx_t owner;
@@ -444,6 +450,7 @@ private struct IRScope3(Opcode CODE)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     idx_t acc;
     StringKey* operand;
@@ -466,7 +473,7 @@ private struct IRScope3(Opcode CODE)
     }
 
     debug string toString() const
-    { return text(ir, " ", acc, " = ", *operand, ", ", hash); }
+    { return text(ir, " [", acc, "] = \"", *operand, "\"(#", hash, ")"); }
 }
 
 // if (func iter) goto offset; iter = iter.next;
@@ -475,6 +482,7 @@ private struct IRnext3(Opcode CODE, T)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     sizediff_t offset;
     T func;
@@ -498,6 +506,7 @@ private struct IRnext4(Opcode CODE, T)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     sizediff_t offset;
     idx_t owner;
@@ -526,6 +535,7 @@ private struct IRjump1(Opcode CODE)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     sizediff_t offset;
 
@@ -536,7 +546,9 @@ private struct IRjump1(Opcode CODE)
     }
 
     debug string toString(size_t base = 0) const
-    { return text(ir, " ", offset + base); }
+    {
+        return "%s goto %04d".format(ir, offset + base);
+    }
 }
 //
 private struct IRjump2(Opcode CODE)
@@ -544,6 +556,7 @@ private struct IRjump2(Opcode CODE)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     sizediff_t offset;
     idx_t cond;
@@ -564,6 +577,7 @@ private struct IRjump3(Opcode CODE, T = idx_t)
     enum Opcode code = CODE;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     sizediff_t offset;
     idx_t operand1;
@@ -578,7 +592,26 @@ private struct IRjump3(Opcode CODE, T = idx_t)
     }
 
     debug string toString(size_t base = 0) const
-    { return text(ir, " if(", operand1, ", ", operand2, ") ", offset, base); }
+    {
+        import std.format;
+
+        static if      (CODE == Opcode.JLT || CODE == Opcode.JLTC)
+            enum cmp = "<";
+        else static if (CODE == Opcode.JLE || CODE == Opcode.JLEC)
+            enum cmp = "<=";
+        else
+            enum cmp = ", ";
+
+        static if      (CODE == Opcode.JLT || CODE == Opcode.JLE)
+            return "%s if([%d] %s [%d]) else goto %04d".format(
+                ir, operand1, cmp, operand2, base + offset);
+        else static if (CODE == Opcode.JLTC || CODE == Opcode.JLEC)
+            return "%s if([%d] %s %s) else goto %04d".format(
+                ir, operand1, cmp, operand2, base + offset);
+        else
+            return "%s if([%d] %s %s) else goto %04d".format(
+                ir, operand1, cmp, operand2, base + offset);
+    }
 }
 
 //
@@ -589,6 +622,7 @@ struct IRJmpToStatement
     enum Opcode code = Opcode.Jmp;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     Statement statement;
 
@@ -608,6 +642,7 @@ private struct IRTryCatch
     enum Opcode code = Opcode.TryCatch;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     sizediff_t offset;
     StringKey* name;
@@ -634,6 +669,7 @@ private struct IRCheckRef
     enum Opcode code = Opcode.CheckRef;
     enum size_t size = typeof(this).sizeof / Instruction.sizeof;
 
+align(size_t.sizeof):
     Instruction ir;
     StringKey* operand;
 

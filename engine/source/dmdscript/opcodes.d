@@ -111,13 +111,13 @@ struct IR
 
             for(;; )
             {
-                if (cc.scopex.isVariableRoot)
+                // pop entry off scope chain
+                if      ((o = cc.popScope) is null)
                 {
-                    ret.putVundefined();
+                    ret.putVundefined;
                     return err;
                 }
-                o = cc.popScope; // pop entry off scope chain
-                if(auto ca = cast(Catch)o)
+                else if (auto ca = cast(Catch)o)
                 {
                     o = new Dobject(Dobject.getPrototype);
                     version(JSCRIPT_CATCH_BUG)
@@ -133,13 +133,10 @@ struct IR
                     code = cast(IR*)codestart + ca.offset;
                     break;
                 }
-                else
+                else if (auto fin = cast(Finally)o)
                 {
-                    if(auto fin = cast(Finally)o)
-                    {
-                        callFinally(fin);
-                        break;
-                    }
+                    callFinally(fin);
+                    break;
                 }
             }
             return null;
@@ -1762,7 +1759,8 @@ struct IR
                 default:
                     if(code.opcode >= Opcode.max)
                     {
-                        writef("undefined opcode %d in code %p\n", code.opcode, codestart);
+                        writef("undefined opcode %d in code %p\n",
+                               code.opcode, codestart);
                         assert(0);
                     }
                     sz = IR.size(code.opcode);

@@ -1460,12 +1460,12 @@ struct DError
         return d0.exception;
     }
 
-    @safe
+    @safe @nogc pure nothrow
     void addTrace(string_t name, string_t srctext)
     {
         import dmdscript.protoerror;
 
-        if (auto d0 = cast(D0base)entity.toObject)
+        if (auto d0 = cast(D0base)entity.object)
         {
             assert(d0.exception);
             d0.exception.addTrace(name, srctext);
@@ -1474,12 +1474,11 @@ struct DError
             assert(0);
     }
 
-    @safe
+    @safe pure
     void addTrace(const(IR)* base, const(IR)* code)
     {
         import dmdscript.protoerror;
-
-        if (auto d0 = cast(D0base)entity.toObject)
+        if (auto d0 = cast(D0base)entity.object)
         {
             assert(d0.exception);
             d0.exception.addTrace(base, code);

@@ -67,6 +67,7 @@ class DdeclaredFunction : Dconstructor
         import dmdscript.ir : Opcode;
         import dmdscript.opcodes : IR;
         import dmdscript.value : vundefined;
+        import dmdscript.callcontext : VariableScope;
 
         Dobject actobj;         // activation object
         Darguments args;
@@ -120,7 +121,8 @@ class DdeclaredFunction : Dconstructor
         // make grannymail bug work
 
         // auto newCC = CallContext(cc, actobj, this, fd);
-        cc.pushVariableScope(actobj, this, fd, othis);
+        auto ccs = VariableScope(actobj, this, fd, othis);
+        cc.pushFunctionScope(ccs);
 
         fd.instantiate(cc, Property.Attribute.DontDelete);
 
@@ -144,7 +146,7 @@ class DdeclaredFunction : Dconstructor
                             fd.srctext);
         }
 
-        cc.popVariableScope;
+        cc.popVariableScope(ccs);
 
         delete p1;
 

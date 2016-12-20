@@ -150,6 +150,7 @@ class Program
         import dmdscript.dobject : Dobject;
         import dmdscript.property : Property;
         import dmdscript.opcodes : IR;
+        import dmdscript.callcontext : VariableScope;
 
         // ECMA 10.2.1
 
@@ -193,10 +194,11 @@ class Program
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
 
         ret.putVundefined();
-        callcontext.pushEvalScope(null, globalfunction);
+        auto ccs = VariableScope(globalfunction, callcontext.global);
+        callcontext.pushEvalScope(ccs);
         result = IR.call(callcontext, callcontext.global,
                          globalfunction.code, ret, locals.ptr);
-        if(result)
+        if(result !is null)
         {
             auto exception = result.toScriptException;
             p1 = null;
@@ -206,7 +208,7 @@ class Program
                 globalfunction.srctext);
             throw exception;
         }
-        callcontext.popVariableScope;
+        callcontext.popVariableScope(ccs);
 
         delete p1;
     }
