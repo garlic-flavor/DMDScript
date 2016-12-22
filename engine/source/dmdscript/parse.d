@@ -85,7 +85,7 @@ class Parser : Lexer
             topstatements.put(p.parseStatement());
         }
 
-        fd = new FunctionDefinition(bdy, 0, 0, null, parameters.data,
+        fd = new FunctionDefinition(bdy, 0, 0, null, null, parameters.data,
                                     topstatements.data);
 
         Lreturn:
@@ -236,8 +236,8 @@ private:
         topstatements = parseTopStatements();
         check(Tok.Rbrace);
 
-        f = new FunctionDefinition(base, linnum, 0, name, parameters.data,
-                                   topstatements);
+        f = new FunctionDefinition(base, linnum, 0, name, sourcename,
+                                   parameters.data, topstatements);
         f.isliteral = flag == ParseFlag.literal;
         lastnamedfunc = f;
 

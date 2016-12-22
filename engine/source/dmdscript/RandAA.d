@@ -332,6 +332,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         }
     }
 
+    //====================================================================
 private:
 
     // Store keys, values in parallel arrays.  This prevents us from having
@@ -506,6 +507,7 @@ private:
         }
     }
 
+    //====================================================================
 private static:
     enum : ubyte
     {
@@ -629,7 +631,7 @@ private static:
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 private:
 
 // It's faster to store the hash if it's expensive to compute, but
@@ -641,7 +643,7 @@ template shouldStoreHash(K)
     enum bool shouldStoreHash = !isFloatingPoint!K && !isIntegral!K;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 version (unittest)
 {
     package auto randString(String = string)(size_t size)

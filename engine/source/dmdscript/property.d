@@ -14,77 +14,89 @@
  * For a C++ implementation of DMDScript, including COM support, see
  * http://www.digitalmars.com/dscript/cppscript.html
  */
-
-
 module dmdscript.property;
 
 debug import std.stdio;
 
 //==============================================================================
-// PropertyKey must have a pre-calculated hash value.
+/// PropertyKey must have a pre-calculated hash value.
 struct PropertyKey
 {
     import dmdscript.value : Value;
     import dmdscript.primitive : string_t, StringKey;
+
+    ///
     template IsKey(K)
     {
         enum IsKey = is(K : PropertyKey) || is(K : StringKey) ||
             is(T : Value) || is(K : string_t) || is(K : uint);
     }
 
-    Value value;
+    Value value; ///
     alias value this;
 
+    //--------------------------------------------------------------------
+    ///
     @safe @nogc pure nothrow
     this(T)(in auto ref T arg) if (IsKey!T && !is(T : Value))
     {
         value.put(arg, calcHash(arg));
     }
-
+    /// ditto
     @safe @nogc pure nothrow
     this(T)(in ref auto T arg, in size_t hash) if (IsKey!T)
     {
         value.put(arg, hash);
     }
-
+    /// ditto
     @safe
     this(T : Value)(ref T arg)
     {
         value.put(arg, arg.toHash);
     }
 
+    //--------------------------------------------------------------------
+    ///
     @safe @nogc pure nothrow
     void put(T)(T arg) if (Value.IsPrimitiveType!T)
     {
         value.put(arg, calcHash(arg));
     }
-
+    /// ditto
     @safe @nogc pure nothrow
     void put(T)(T arg, size_t h) if (Value.IsPrimitiveType!T)
     {
         value.put(arg, h);
     }
 
+    //--------------------------------------------------------------------
+    ///
     @safe @nogc pure nothrow
     size_t toHash() const
     {
         return value.hash;
     }
 
+    //--------------------------------------------------------------------
+    ///
     @safe
     bool opEquals(in ref PropertyKey rvalue) const
     {
         return hash == rvalue.hash && value == rvalue.value;
     }
 
+    //--------------------------------------------------------------------
+    ///
     @safe @nogc pure nothrow
     StringKey toStringKey() const
     {
         return StringKey(value.text, value.hash);
     }
 
+    //====================================================================
 static:
 
+    //
     alias calcHash = dmdscript.primitive.calcHash;
 
     //
@@ -98,8 +110,8 @@ static:
 //==============================================================================
 
 //==============================================================================
-// See_Also: Ecma-262-v7/6.1.7.1/Property Attributes
-//                      /6.2.4
+/// See_Also: Ecma-262-v7/6.1.7.1/Property Attributes
+///                      /6.2.4
 struct Property
 {
     import dmdscript.value : Value, DError;
@@ -107,7 +119,7 @@ struct Property
     import dmdscript.dobject : Dobject;
     import dmdscript.callcontext : CallContext;
 
-    // attribute flags
+    /// attribute flags
     enum Attribute : uint
     {
         None           = 0x0000,
@@ -127,21 +139,21 @@ struct Property
         Accessor       = 0x8000, // This is an Accessor Property.
     }
 
-    //
+    ///
     template IsValue(V)
     {
         enum IsValue = is(V : Value) || Value.IsPrimitiveType!V;
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     @trusted @nogc pure nothrow
     this(T)(auto ref T v, in Attribute a) if (IsValue!T)
     {
         _value.put(v);
         _attr = a & ~Attribute.Accessor & ~Attribute.DontOverride;
     }
-
-    //
+    /// ditto
     @trusted @nogc pure nothrow
     this(Dfunction getter, Dfunction setter, in Attribute a)
     {
@@ -217,7 +229,8 @@ struct Property
     See_Also: Ecma-262-v7/9.1.6.3 ValidateAndApplyPropertyDescriptor.
     */
 
-    //
+    //--------------------------------------------------------------------
+    ///
     @trusted @nogc pure nothrow
     bool canBeData(ref Attribute a) const
     {
@@ -243,8 +256,7 @@ struct Property
         a = na;
         return true;
     }
-
-    //
+    /// ditto
     @trusted @nogc pure nothrow
     bool canBeAccessor(ref Attribute a) const
     {
@@ -271,7 +283,8 @@ struct Property
         return true;
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     @safe @nogc pure nothrow
     bool config(Attribute a)
     {
@@ -293,8 +306,7 @@ struct Property
         }
         return false;
     }
-
-    //
+    /// ditto
     @trusted @nogc pure nothrow
     bool config(T)(auto ref T v, Attribute a) if (IsValue!T)
     {
@@ -309,8 +321,7 @@ struct Property
         else
             return _value == v;
     }
-
-    //
+    /// ditto
     @trusted @nogc pure nothrow
     bool config(Dfunction getter, Dfunction setter, Attribute a)
     {
@@ -328,7 +339,8 @@ struct Property
             return false;
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     Value* get(ref CallContext cc, Dobject othis)
     {
         if (_attr & Attribute.Accessor)
@@ -352,7 +364,8 @@ struct Property
         return null;
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     bool canSetValue(ref Attribute a)
     {
         if (_attr & Attribute.Accessor)
@@ -384,8 +397,8 @@ struct Property
         return true;
     }
 
-
-    //
+    //--------------------------------------------------------------------
+    ///
     DError* set(T)(auto ref T _v, in Attribute a,
                    ref CallContext cc, Dobject othis,)
         if (IsValue!T)
@@ -414,27 +427,29 @@ struct Property
         return null;
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     @property @safe @nogc pure nothrow
     bool isAccessor() const
     {
         return 0 == (_attr & Attribute.Accessor);
     }
 
+    ///
     @property @safe @nogc pure nothrow
     bool isNoneAttribute() const
     {
         return Attribute.None == _attr;
     }
 
-    //
+    ///
     @property @safe @nogc pure nothrow
     bool writable() const
     {
         return 0 == (_attr & Attribute.ReadOnly);
     }
 
-    //
+    ///
     @safe @nogc pure nothrow
     void preventExtensions()
     {
@@ -444,28 +459,28 @@ struct Property
             _attr |= Attribute.ReadOnly;
     }
 
-    //
+    ///
     @property @safe @nogc pure nothrow
     bool enumerable() const
     {
         return 0 == (_attr & Attribute.DontEnum);
     }
 
-    //
+    ///
     @property @safe @nogc pure nothrow
     bool deletable() const
     {
         return 0 == (_attr & (Attribute.DontDelete | Attribute.DontConfig));
     }
 
-    //
+    ///
     @property @safe @nogc pure nothrow
     bool configurable() const
     {
         return 0 == (_attr & Attribute.DontConfig);
     }
 
-    // See_Also: Ecma-262-v7/6.2.4.1
+    /// See_Also: Ecma-262-v7/6.2.4.1
     @property @trusted @nogc pure nothrow
     bool IsAccessorDescriptor() const
     {
@@ -476,7 +491,7 @@ struct Property
         return true;
     }
 
-    // See_Also: Ecma-262-v7/6.2.4.2
+    /// See_Also: Ecma-262-v7/6.2.4.2
     @property @trusted @nogc pure nothrow
     bool IsDataDescriptor() const
     {
@@ -487,14 +502,16 @@ struct Property
         return true;
     }
 
-    // See_Also: Ecma-262-v7/6.2.4.3
+    /// See_Also: Ecma-262-v7/6.2.4.3
     @property @safe @nogc pure nothrow
     bool IsGenericDescriptor() const
     {
         return !IsAccessorDescriptor && !IsDataDescriptor;
     }
 
-    // See_Also: Ecma-262-v7/6.2.4.4
+    //--------------------------------------------------------------------
+    /// See_Also: Ecma-262-v7/6.2.4.4
+    @disable
     Dobject toObject()
     {
         import std.exception : enforce;
@@ -526,6 +543,7 @@ struct Property
         return obj;
     }
 
+    //====================================================================
 private:
     union
     {
@@ -539,7 +557,7 @@ private:
 
     Attribute  _attr;
 
-
+    //====================================================================
 public static:
 
     // See_Also: Ecma-262-v7/6.2.4.6
@@ -552,6 +570,7 @@ public static:
 }
 
 //==============================================================================
+///
 final class PropTable
 {
     import dmdscript.value : Value, DError, vundefined;
@@ -560,36 +579,40 @@ final class PropTable
     import dmdscript.callcontext : CallContext;
     import dmdscript.RandAA : RandAA;
 
+    ///
     template IsKeyValue(K, V)
     {
         enum IsKeyValue = PropertyKey.IsKey!K && Property.IsValue!V;
     }
 
+    ///
     alias Table = RandAA!(PropertyKey, Property, false);
 
-    //
+    //--------------------------------------------------------------------
+    ///
     @safe pure nothrow
     this()
     {
         _table = new Table;
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     int opApply(scope int delegate(ref Property) dg)
     {
         return _table.opApply(dg);
     }
-
-    //
+    /// ditto
     int opApply(scope int delegate(ref PropertyKey, ref Property) dg)
     {
         return _table.opApply(dg);
     }
 
-    /*******************************
-     * Look up name and get its corresponding Property.
-     * Return null if not found.
-     */
+    //--------------------------------------------------------------------
+    /**
+    Look up name and get its corresponding Property.
+    Return null if not found.
+    */
     @trusted
     Property* getProperty(K)(in auto ref K k)
         if (PropertyKey.IsKey!K)
@@ -607,7 +630,8 @@ final class PropTable
         return null;
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     @safe
     Property* getOwnProperty(K)(in auto ref K k) if (PropertyKey.IsKey!K)
     {
@@ -619,6 +643,8 @@ final class PropTable
         return _table.findExistingAlt(key, key.hash);
     }
 
+    //--------------------------------------------------------------------
+    ///
     Value* get(K)(in auto ref K key, ref CallContext cc, Dobject othis)
         if (PropertyKey.IsKey!K)
     {
@@ -653,8 +679,8 @@ final class PropTable
         return null;
     }
 +/
-
-    //
+    //--------------------------------------------------------------------
+    ///
     DError* set(K, V)(in auto ref K k, auto ref V value,
                 in Property.Attribute attributes,
                 ref CallContext cc, Dobject othis)
@@ -700,7 +726,8 @@ final class PropTable
         }
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     @safe
     bool config(K)(in auto ref K k, in Property.Attribute attributes)
         if (PropertyKey.IsKey!K)
@@ -727,7 +754,7 @@ final class PropTable
         return true;
     }
 
-    //
+    /// ditto
     @safe
     bool config(K, V)(in auto ref K k, auto ref V value,
                       in Property.Attribute attributes, in bool extensible)
@@ -772,7 +799,8 @@ final class PropTable
             return false;
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
     @trusted
     bool canset(K)(in auto ref K k) const
         if (PropertyKey.IsKey!K)
@@ -797,6 +825,8 @@ final class PropTable
         return true;                    // success
     }
 
+    //--------------------------------------------------------------------
+    ///
     @safe
     bool del(K)(in auto ref K k)
     {
@@ -814,24 +844,30 @@ final class PropTable
         return true;                    // not found
     }
 
+    //--------------------------------------------------------------------
+    ///
     @property @safe pure nothrow
     PropertyKey[] keys()
     {
         return _table.keys;
     }
 
+    ///
     @property @safe @nogc pure nothrow
     size_t length() const
     {
         return _table.length;
     }
 
+    ///
     @property @safe @nogc pure nothrow
     void previous(PropTable p)
     {
         _previous = p;
     }
 
+    //--------------------------------------------------------------------
+    ///
     @safe
     Property* opBinaryRight(string OP : "in", K)(in auto ref K k)
         if (PropertyKey.IsKey!K)
@@ -844,6 +880,7 @@ final class PropTable
         return _table.findExistingAlt(key, key.hash);
     }
 
+    //====================================================================
 private:
     Table _table;
     PropTable _previous;

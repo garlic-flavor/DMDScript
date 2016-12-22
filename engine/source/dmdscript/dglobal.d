@@ -302,7 +302,7 @@ DError* eval(
         result = IR.call(cc, cc.scopex.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace("eval", s);
+            result.addTrace(null, "eval", s);
         }
         cc.popVariableScope(ccs);
 

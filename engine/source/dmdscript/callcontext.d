@@ -554,11 +554,13 @@ final class ScopeStack
 
         foreach_reverse(ref one; _scopes.data)
         {
-            if (one.callerf !is null && one.callerf.name !is null &&
-                one.callerf.srctext !is null)
+            if (auto f = one.callerf)
             {
-                err.addTrace(one.callerf.name.toString, one.callerf.srctext);
-                break;
+                err.addTrace(f.sourcename,
+                             f.name !is null ? f.name.toString : null,
+                             f.srctext);
+                if (0 < f.sourcename.length)
+                    break;
             }
         }
     }

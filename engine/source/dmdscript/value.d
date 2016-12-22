@@ -23,6 +23,9 @@ import dmdscript.property : PropertyKey, Property;
 import dmdscript.errmsgs;
 debug import std.stdio;
 
+// !!! NOTICE !!!
+// I can't implement this porting issues bellow.
+
 // Porting issues:
 // A lot of scaling is done on arrays of Value's. Therefore, adjusting
 // it to come out to a size of 16 bytes makes the scaling an efficient
@@ -1252,7 +1255,6 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    @disable
     Value* GetV(K)(in auto ref K PropertyName, ref CallContext cc)
         if (PropertyKey.IsKey!K)
     {
@@ -1298,7 +1300,8 @@ struct Value
             //if (a) writef("Vobject.Call() returned %x\n", a);
             return a;
         }
-        else if(_type == Type.RefError){
+        else if(_type == Type.RefError)
+        {
             throwRefError();
             assert(0);
         }
@@ -1340,7 +1343,6 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    @disable
     DError* Invoke(K)(in auto ref K key, ref CallContext cc,
                       out Value ret, Value[] args)
         if (PropertyKey.IsKey!K)
@@ -1403,6 +1405,7 @@ Value* signalingUndefined(in string_t id)
     return p;
 }
 
+//------------------------------------------------------------------------------
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // check this.
 @disable
@@ -1436,18 +1439,53 @@ Value* CanonicalNumericIndexString(in string_t str)
 }
 
 
+//------------------------------------------------------------------------------
 /* DError contains the ending status of a function.
 Mostly, this contains a ScriptException.
-DError is needed for catch statements in ths script.
+DError is needed for catch statements in the script.
  */
 struct DError
 {
     import dmdscript.opcodes : IR;
     import dmdscript.exception : ScriptException;
+    import dmdscript.protoerror : D0base;
+    import dmdscript.callcontext : CallContext;
 
     Value entity;
     alias entity this;
 
+    ///
+    this(ref CallContext cc, ref Value v,
+         string_t file = __FILE__, size_t line = __LINE__)
+    {
+        import dmdscript.protoerror : typeerror;
+
+        if (v.type == Value.Type.Object)
+        {
+            if      (auto err = cast(D0base)v.object)
+                this(err);
+            else
+            {
+                Value str;
+                v.Invoke(Key.toString, cc, str, null);
+                this(new typeerror(new ScriptException(str.toString,
+                                                       file, line)));
+            }
+        }
+        else
+        {
+            this(new typeerror(new ScriptException(v.toString, file, line)));
+        }
+    }
+
+    ///
+    @safe @nogc pure nothrow
+    this(D0base err)
+    {
+        entity.put(err);
+    }
+
+    ///
     @safe
     ScriptException toScriptException()
     {
@@ -1460,34 +1498,38 @@ struct DError
         return d0.exception;
     }
 
+    ///
     @safe @nogc pure nothrow
-    void addTrace(string_t name, string_t srctext)
+    void addTrace(string_t sourcename, string_t funcname, string_t srctext)
     {
         import dmdscript.protoerror;
 
         if (auto d0 = cast(D0base)entity.object)
         {
             assert(d0.exception);
-            d0.exception.addTrace(name, srctext);
+            d0.exception.addTrace(sourcename, funcname, srctext);
         }
         else
             assert(0);
     }
 
+    ///
     @safe pure
-    void addTrace(const(IR)* base, const(IR)* code)
+    void addTrace(const(IR)* base, const(IR)* code,
+                  string_t f = __FILE__, size_t l = __LINE__)
     {
         import dmdscript.protoerror;
         if (auto d0 = cast(D0base)entity.object)
         {
             assert(d0.exception);
-            d0.exception.addTrace(base, code);
+            d0.exception.addTrace(base, code, f, l);
         }
         else
             assert(0);
     }
 }
 
+//==============================================================================
 package:
 
 @trusted
@@ -1502,8 +1544,6 @@ DError* toDError(alias Proto = typeerror)(Throwable t)
     else exception = new ScriptException(t.toString, t.file, t.line);
     assert(exception !is null);
 
-    auto v = new DError;
-    v.put(new Proto(exception));
-    return v;
+    return new DError(new Proto(exception));
 }
 

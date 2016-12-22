@@ -48,6 +48,7 @@ class FunctionDefinition : TopStatement
         int, "_padding", 5));
 
     StringKey* name;             // null for anonymous function
+    string sourcename;
     StringKey*[] parameters;     // array of Identifier's
     TopStatement[] topstatements; // array of TopStatement's
 
@@ -75,7 +76,7 @@ class FunctionDefinition : TopStatement
 
     @safe @nogc pure nothrow
     this(string_t srctext, uint linnum, bool isglobal, StringKey*  name,
-         StringKey*[] parameters, TopStatement[] topstatements)
+         string srcname, StringKey*[] parameters, TopStatement[] topstatements)
     {
         super(linnum);
 
@@ -84,6 +85,7 @@ class FunctionDefinition : TopStatement
         this.srctext = srctext;
         this.isglobal = isglobal;
         this.name = name;
+        this.sourcename = srcname;
         this.parameters = parameters;
         this.topstatements = topstatements;
     }

@@ -84,7 +84,7 @@ class Program
         // Make globalfunction an anonymous one (by passing in null for name) so
         // it won't get instantiated as a property
         globalfunction = new FunctionDefinition(
-            srctext, 0, 1, StringKey.build(progIdentifier), null,
+            srctext, 0, 1, null, progIdentifier, null,
             topstatements);
 
         // Any functions parsed in topstatements wind up in the global
@@ -198,18 +198,15 @@ class Program
         callcontext.pushEvalScope(ccs);
         result = IR.call(callcontext, callcontext.global,
                          globalfunction.code, ret, locals.ptr);
+
         if(result !is null)
         {
             auto exception = result.toScriptException;
-            p1 = null;
-            exception.addTrace(
-                globalfunction.name !is null ? globalfunction.name.toString
-                : "anonymous",
-                globalfunction.srctext);
+            exception.addTrace(globalfunction.sourcename, null,
+                               globalfunction.srctext);
             throw exception;
         }
         callcontext.popVariableScope(ccs);
-
         delete p1;
     }
 

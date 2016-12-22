@@ -36,56 +36,63 @@ class ScriptException : Exception
     /// ditto
     @safe pure
     this(string_t message, string_t sourcename, string_t source,
-         immutable(char_t)* pos, string file = __FILE__, size_t line = __LINE__)
-    {
-        super(message, file, line); addTrace(sourcename, source, pos);
-    }
-    /// ditto
-    @safe pure
-    this(string_t message, string_t sourcename, string_t source,
          uint linnum, string file = __FILE__, size_t line = __LINE__)
     {
-        super(message, file, line); addTrace(sourcename, source, linnum);
+        super(message, file, line);
+        addTrace(sourcename, source, linnum, file, line);
     }
     /// ditto
     @safe pure
     this(string_t msg, uint linnum, string file = __FILE__,
          size_t line = __LINE__)
     {
-        super(msg, file, line); addTrace(linnum);
+        super(msg, file, line);
+        addTrace(linnum, file, line);
     }
 
     //--------------------------------------------------------------------
     ///
     @safe pure
-    void addTrace(string_t sourcename, string_t source, uint linnum)
+    void addTrace(string_t sourcename, string_t source, uint linnum,
+                  string_t file = __FILE__, size_t line = __LINE__)
     {
-        trace ~= SourceDescriptor(sourcename, source, linnum);
+        auto sd = SourceDescriptor(sourcename, source, linnum, file, line);
+        if (!alreadyExists(sd))
+            trace ~= sd;
     }
     /// ditto
     @safe pure
     void addTrace(string_t sourcename, string_t source,
-                   immutable(char_t)* pos)
+                  immutable(char_t)* pos,
+                  string_t f = __FILE__, size_t l = __LINE__)
     {
-        trace ~= SourceDescriptor(sourcename, source, pos);
+        auto sd = SourceDescriptor(sourcename, source, pos, f, l);
+        if (!alreadyExists(sd))
+            trace ~= sd;
     }
     /// ditto
     @safe pure
-    void addTrace(uint linnum)
+    void addTrace(uint linnum, string_t f = __FILE__, size_t l = __LINE__)
     {
-        trace ~= SourceDescriptor(linnum);
+        auto sd = SourceDescriptor(linnum, f, l);
+        if (!alreadyExists(sd))
+            trace ~= sd;
     }
     /// ditto
     @safe pure
-    void addTrace(const(IR)* base, const(IR)* code)
+    void addTrace(const(IR)* base, const(IR)* code,
+                  string_t f = __FILE__, size_t l = __LINE__)
     {
-        trace ~= SourceDescriptor(base, code);
+        auto sd = SourceDescriptor(base, code, f, l);
+        if (!alreadyExists(sd))
+            trace ~= sd;
     }
     /// ditto
     @safe @nogc pure nothrow
-    void addTrace(string_t sourcename, string_t source)
+    void addTrace(string_t sourcename, string_t funcname, string_t source)
     {
-        foreach (ref one; trace) one.addTrace(sourcename, source);
+        foreach (ref one; trace)
+            one.addTrace(sourcename, funcname, source);
     }
 
     //--------------------------------------------------------------------
@@ -94,11 +101,11 @@ class ScriptException : Exception
     {
         debug
         {
-            char[20] tmpBuff = void;
+            import std.conv : to;
 
             sink(typeid(this).name);
             sink("@"); sink(file);
-            sink("("); sink(sizeToTempString(line, tmpBuff, 10)); sink(")");
+            sink("("); sink(line.to!string_t); sink(")");
 
             if (0 < msg.length)
                 sink(": ");
@@ -136,58 +143,79 @@ class ScriptException : Exception
 
     //====================================================================
 private:
-    import core.internal.traits : externDFunc;
-    alias sizeToTempString = externDFunc!(
-        "core.internal.string.unsignedToTempString",
-        char[] function(ulong, char[], uint) @safe pure nothrow @nogc);
+    // import core.internal.traits : externDFunc;
+    // alias sizeToTempString = externDFunc!(
+    //     "core.internal.string.unsignedToTempString",
+    //     char[] function(ulong, char[], uint) @safe pure nothrow @nogc);
 
     //--------------------------------------------------------------------
     struct SourceDescriptor
     {
         //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        this(string_t name, string_t buf, immutable(char_t)* pos)
+        this(string_t name, string_t buf, immutable(char_t)* pos,
+             string_t dfile, size_t dline)
         {
-            this.name = name;
+            this.sourcename = name;
             this.buf = buf;
             this.pos = pos;
+
+            this.dFilename = dfile;
+            this.dLinnum = dline;
 
             assert (buf.length == 0 || pos is null ||
                     (buf.ptr <= pos && pos < buf.ptr + buf.length));
         }
         //
         @safe @nogc pure nothrow
-        this(string_t name, string_t buf, uint linnum)
+        this(string_t name, string_t buf, uint linnum,
+             string_t dfile, size_t dline)
         {
-            this.name = name;
+            this.sourcename = name;
             this.buf = buf;
             this.linnum = linnum;
+
+            this.dFilename = dfile;
+            this.dLinnum = dline;
         }
         //
         @safe @nogc pure nothrow
-        this(const(IR)* base, const(IR)* code)
+        this(const(IR)* base, const(IR)* code, string_t dfile, size_t dline)
         {
             this.base = base;
             this.code = code;
             assert(base !is null);
             assert(code !is null);
             assert(base <= code);
+
+            this.dFilename = dfile;
+            this.dLinnum = dline;
         }
         //
         @safe @nogc pure nothrow
-        this(uint linnum)
+        this(uint linnum, string_t dfile, size_t dline)
         {
             this.linnum = linnum;
+
+            this.dFilename = dfile;
+            this.dLinnum = dline;
         }
 
         //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        void addTrace(string_t name, string_t buf)
+        void addTrace(string_t sourcename, string_t funcname, string_t buf)
         {
-            if (this.name.length == 0 && this.buf.length == 0)
+            if (this.sourcename.length == 0 && this.buf.length == 0)
             {
-                this.name = name;
                 this.buf = buf;
+            }
+            if (this.sourcename.length == 0)
+            {
+                this.sourcename = sourcename;
+            }
+            if (this.funcname.length == 0)
+            {
+                this.funcname = funcname;
             }
 
             assert (buf.length == 0 || pos is null ||
@@ -202,7 +230,6 @@ private:
              import std.range : repeat, take;
              import dmdscript.ir : Opcode;
 
-             char[2] tmpBuff = void;
              string srcline;
              int charpos = -1;
              uint linnum = code !is null ? code.opcode.linnum : this.linnum;
@@ -216,13 +243,27 @@ private:
                      srcline = buf.getLineAt(linnum);
              }
 
-             if (0 < name.length && 0 < linnum)
+             if ((0 < sourcename.length || 0 < funcname.length) && 0 < linnum)
              {
                  sink("@");
-                 sink(name);
+                 if (0 < sourcename.length)
+                     sink(sourcename);
+                 if (0 < funcname.length)
+                 {
+                     if (0 < sourcename.length)
+                         sink("/");
+                     sink(funcname);
+                 }
                  sink("(");
-                 sink(sizeToTempString(linnum, tmpBuff, 10));
+                 sink(linnum.to!string_t);
                  sink(")");
+             }
+
+             debug
+             {
+                 sink("[@");
+                 sink(dFilename);
+                 sink("("); sink(dLinnum.to!string_t); sink(")]");
              }
 
              if (0 < srcline.length)
@@ -265,9 +306,28 @@ private:
              }
         }
 
+        //
+        @safe @nogc pure nothrow
+        bool opEquals(in ref SourceDescriptor r) const
+        {
+            return
+                (base !is null && base is r.base &&
+                 code !is null && code is r.code) ||
+
+                (0 < buf.length && buf is r.buf &&
+                 pos !is null && pos is r.pos) ||
+
+                (0 < sourcename.length && sourcename is r.sourcename &&
+                 0 < linnum && linnum is r.linnum);
+        }
+
         //==========================================================
     private:
-        string_t name;
+        string_t sourcename;
+        string_t funcname;
+
+        string_t dFilename;
+        size_t dLinnum;
 
         string_t buf;
         immutable(char_t)* pos; // pos is in buf.
@@ -278,6 +338,13 @@ private:
         uint linnum; // source line number (1 based, 0 if not available)
     }
     SourceDescriptor[] trace;
+
+    //
+    @safe @nogc pure nothrow
+    bool alreadyExists(in ref SourceDescriptor sd) const
+    {
+        return 0 < trace.length && trace[$-1] == sd;
+    }
 }
 
 //==============================================================================

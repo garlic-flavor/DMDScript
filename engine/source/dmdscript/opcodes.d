@@ -1612,7 +1612,7 @@ struct IR
 
                 case Opcode.Throw:
                     a = locals + (code + 1).index;
-                    sta = new DError(*a);
+                    sta = new DError(cc, *a);
                     Lthrow:
                     // assert(scopex[0] !is null);
                     sta = unwindStack(sta);

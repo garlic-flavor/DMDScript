@@ -141,7 +141,7 @@ class DdeclaredFunction : Dconstructor
         result = IR.call(cc, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace(fd.name !is null ?
+            result.addTrace(fd.sourcename, fd.name !is null ?
                             "function " ~ fd.name.toString : "anonymous",
                             fd.srctext);
         }

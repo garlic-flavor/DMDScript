@@ -190,7 +190,8 @@ protected:
     Token token;
     uint currentline;
     ScriptException exception;            // syntax error information
-    string_t base;             // pointer to start of buffer
+    const string_t base;             // pointer to start of buffer
+    const string_t sourcename;       // for error message strings
 
     @trusted pure nothrow
     this(string_t sourcename, string_t base, UseStringtable useStringtable)
@@ -294,7 +295,6 @@ private:
     UseStringtable useStringtable;        // use for Identifiers
     StringKey[string_t] stringtable;
 
-    string_t sourcename;       // for error message strings
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
 
