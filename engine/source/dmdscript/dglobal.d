@@ -298,6 +298,7 @@ DError* eval(
         assert(cc.scopex.callerothis);
 
         ccs = VariableScope(pthis, fd);
+
         cc.pushEvalScope(ccs);
         result = IR.call(cc, cc.scopex.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
@@ -305,6 +306,7 @@ DError* eval(
             result.addTrace(null, "eval", s);
         }
         cc.popVariableScope(ccs);
+
 
         if(p1)
             delete p1;
@@ -315,19 +317,13 @@ DError* eval(
     }
 
 Lsyntaxerror:
-    Dobject o;
-
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // solve this.
     // For eval()'s, use location of caller, not the string
     // errinfo.linnum = 0;
-
     ret.putVundefined();
-    o = new syntaxerror(exception);
-    auto v2 = new DError;
-    v2.put(o);
-    return v2;
+    return new DError(new syntaxerror(exception));
 }
 
 //------------------------------------------------------------------------------

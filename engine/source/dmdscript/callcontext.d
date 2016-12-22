@@ -39,6 +39,11 @@ struct VariableScope
     this(Dobject variable, Dfunction caller, FunctionDefinition callerf,
          Dobject callerothis)
     {
+        assert (variable !is null);
+        assert (caller !is null);
+        assert (callerf !is null);
+        assert (callerothis !is null);
+
         this.variable = variable;
         this.caller = caller;
         this.callerf = callerf;
@@ -49,16 +54,29 @@ struct VariableScope
     @safe @nogc pure nothrow
     this(Dfunction caller, FunctionDefinition callerf)
     {
+        assert (caller !is null);
+        assert (callerf !is null);
         this.caller = caller;
         this.callerf = callerf;
     }
 
     ///
     @safe @nogc pure nothrow
-    this(FunctionDefinition callerf, Dobject callerothis)
+    this(FunctionDefinition callerf)
     {
+        assert (callerf !is null);
         this.callerf = callerf;
-        this.callerothis = callerothis;
+    }
+
+    ///
+    @safe pure
+    string toString() const
+    {
+        import std.conv : text;
+        string name;
+        if (callerf !is null && callerf.name !is null)
+            name = callerf.name.toString;
+        return text("{name=", name, ", scoperoot=", scoperoot, ", prevlength=", prevlength, "}");
     }
 
     //====================================================================
@@ -70,6 +88,10 @@ private:
     this(Dobject variable, Dfunction caller, FunctionDefinition callerf,
          Dobject callerothis, size_t scoperoot, size_t prevlength)
     {
+        assert (variable !is null);
+        assert (callerothis !is null);
+        assert (prevlength <= scoperoot);
+
         this.variable = variable;
         this.caller = caller;
         this.callerf = callerf;
@@ -246,7 +268,7 @@ struct CallContext
     When the innermost field is composing a function or an eval, no object will
     be removed form the stack, and a null will be returned.
     */
-    @safe pure
+    // @safe pure
     Dobject popScope()
     {
         return _scopex.pop;
@@ -300,6 +322,11 @@ package debug:
     void program(Program p)
     {
         _prog = p;
+    }
+
+    string dump()
+    {
+        return _scopex.dump;
     }
 
 private debug:
@@ -419,6 +446,7 @@ final class ScopeStack
     void pushFunctionScope(ref VariableScope s)
     {
         assert (s.variable !is null);
+        assert (s.callerothis !is null);
 
         s.prevlength = _stack.data.length;
         _stack.put(s.variable);
@@ -426,6 +454,9 @@ final class ScopeStack
 
         _scopes.put(&s);
         _variable = &s;
+
+        assert (_variable.scoperoot <= _stack.data.length);
+        assert (_variable.prevlength < _stack.data.length);
     }
 
     //--------------------------------------------------------------------
@@ -434,17 +465,22 @@ final class ScopeStack
     void pushEvalScope(ref VariableScope s)
     {
         assert (s.variable is null);
+        assert (s.callerothis is null);
+
         s.prevlength = s.scoperoot = _stack.data.length;
         s.variable = _variable.variable;
         s.callerothis = _variable.callerothis;
 
         _scopes.put(&s);
         _variable = &s;
+
+        assert (_variable.scoperoot <= _stack.data.length);
+        assert (_variable.prevlength <= _stack.data.length);
     }
 
     //--------------------------------------------------------------------
     //
-    @trusted pure
+   @trusted pure
     bool popVariableScope(ref VariableScope s)
     {
         assert (_variable is &s);
@@ -457,6 +493,7 @@ final class ScopeStack
 
         _stack.shrinkTo(_variable.prevlength);
         _scopes.shrinkTo(sd.length - 1);
+        assert(0 < _scopes.data.length);
         _variable = _scopes.data[$-1];
         return true;
     }
@@ -476,11 +513,14 @@ final class ScopeStack
     {
         auto sd = _stack.data;
         auto len = sd.length;
+
         if (len <= _variable.scoperoot)
             return null;
 
         auto ret = sd[len - 1];
         _stack.shrinkTo(len - 1);
+
+        assert (_variable.scoperoot <= _stack.data.length);
         return ret;
     }
 
@@ -609,11 +649,22 @@ private:
 
     invariant
     {
+        import std.conv : to;
+
         assert (_global !is null);
 
-        assert (_variable !is null);
-        assert (GLOBAL_ROOT <= _variable.scoperoot);
+        assert (_variable !is null, "variable is null");
+        assert (GLOBAL_ROOT <= _variable.scoperoot, "_variable.scoperoot is " ~
+            _variable.scoperoot.to!string);
         assert (_variable.variable !is null);
+        assert (_variable.scoperoot <= _stack.data.length,
+                _variable.scoperoot.to!string ~ " < " ~
+                _stack.data.length.to!string);
+        assert (_variable.prevlength <= _stack.data.length,
+            _variable.prevlength.to!string);
+
+        assert (_variable.callerothis !is null);
+        assert (_variable.prevlength <= _variable.scoperoot);
 
         assert (0 < _stack.data.length);
         assert (0 < _scopes.data.length);
@@ -641,15 +692,19 @@ private:
 package debug:
 
     //
-    string dump()
+    @safe pure
+    string dump() const
     {
         import std.conv : text;
         import std.array : Appender;
         Appender!string buf;
 
         buf.put(text("{ stack.length = ", _stack.data.length, "\n",
-                     "  scopes.length = ", _scopes.data.length, "\n",
-                     "  scoperoot = ", _variable.scoperoot, "}"));
+                     "  scopes = "));
+        foreach(one; _scopes.data)
+            buf.put(text(*one));
+
+        buf.put(text("}"));
 
         return buf.data;
     }

@@ -269,7 +269,7 @@ struct err(alias Proto, ARGS...)
                    size_t line = __LINE__) const
     {
         import std.format : format;
-        return new ScriptException(fmt.format(args), file, line)
+        return new ScriptException(Proto.Text, fmt.format(args), file, line)
             .toDError!Proto;
     }
     alias opCall this;
@@ -280,7 +280,7 @@ struct err(alias Proto, ARGS...)
                             size_t line = __LINE__) const
     {
         import std.format : format;
-        return new ScriptException(fmt.format(args), file, line);
+        return new ScriptException(Proto.Text, fmt.format(args), file, line);
     }
 
     //
@@ -290,8 +290,8 @@ struct err(alias Proto, ARGS...)
                             size_t l = __LINE__) const
     {
         import std.format : format;
-        return new ScriptException(fmt.format(args), sourcename, source,
-                                   linnum, f, l);
+        return new ScriptException(Proto.Text, fmt.format(args), sourcename,
+                                   source, linnum, f, l);
     }
 }
 
@@ -313,7 +313,8 @@ struct syntaxerr(ARGS...)
     {
         import std.format : format;
 
-        return new ScriptException(fmt.format(args), linnum, file, line);
+        return new ScriptException(syntaxerror.Text, fmt.format(args), linnum,
+                                   file, line);
     }
     alias opCall this;
 }

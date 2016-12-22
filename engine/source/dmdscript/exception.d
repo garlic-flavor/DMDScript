@@ -29,25 +29,39 @@ class ScriptException : Exception
     //--------------------------------------------------------------------
     ///
     @nogc @safe pure nothrow
-    this(string_t msg, string_t file = __FILE__, size_t line = __LINE__)
+    this(string_t type, string_t msg,
+         string_t file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line);
+        typename = type;
     }
+
+    ///
+    @nogc @safe pure nothrow
+    this(string_t type, string_t msg, Throwable next,
+         string_t file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
+        typename = type;
+    }
+
     /// ditto
     @safe pure
-    this(string_t message, string_t sourcename, string_t source,
+    this(string_t type, string_t message, string_t sourcename, string_t source,
          uint linnum, string file = __FILE__, size_t line = __LINE__)
     {
         super(message, file, line);
         addTrace(sourcename, source, linnum, file, line);
+        typename = type;
     }
     /// ditto
     @safe pure
-    this(string_t msg, uint linnum, string file = __FILE__,
+    this(string_t type, string_t msg, uint linnum, string file = __FILE__,
          size_t line = __LINE__)
     {
         super(msg, file, line);
         addTrace(linnum, file, line);
+        typename = type;
     }
 
     //--------------------------------------------------------------------
@@ -120,6 +134,9 @@ class ScriptException : Exception
             else
                 sink("\n");
         }
+
+        sink(typename);
+        sink(": ");
 
         if (0 < msg.length)
         {
@@ -230,9 +247,6 @@ private:
             {
                 this.funcname = funcname;
             }
-
-            assert (buf.length == 0 || pos is null ||
-                    (buf.ptr <= pos && pos < buf.ptr + buf.length));
         }
 
         //----------------------------------------------------------
@@ -297,9 +311,11 @@ private:
 
                      sink("\n");
                      sink(' '.repeat.take(col).to!string);
-                     sink("^");
+                     sink("^\n");
                  }
              }
+             else
+                 sink("\n");
 
              debug
              {
@@ -353,6 +369,7 @@ private:
         uint linnum; // source line number (1 based, 0 if not available)
     }
     SourceDescriptor[] trace;
+    string_t typename;
 
     //
     @safe @nogc pure nothrow

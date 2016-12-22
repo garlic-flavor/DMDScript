@@ -425,7 +425,7 @@ private:
                         for(;; )
                         {
                             d = get(p);
-                            if(d == '\\' && p[1] == 'u')
+                            if (d == '\\' && p[1] == 'u')
                             {
                                 auto pstart = p;
                                 p++;
@@ -442,7 +442,7 @@ private:
                                     goto Lidentifier3;
                                 }
                             }
-                            else if(isidletter(d))
+                            else if (isidletter(d))
                             {
                                 buf = null;
                                 encode(buf, d);
@@ -456,9 +456,8 @@ private:
                 } while(isidletter(d));
                 id = t.ptr[0 .. p - t.ptr];
             Lidentifier3:
-                //printf("id = '%.*s'\n", id);
                 t.value = isKeyword(id);
-                if(t.value)
+                if(Tok.reserved < t.value)
                     return;
                 if(useStringtable == UseStringtable.Yes)
                 {     //Identifier* i = &stringtable[id];
@@ -1312,7 +1311,7 @@ private:
     static @safe @nogc pure nothrow
     Tok isKeyword(const(char_t)[] s)
     {
-        if(s[0] >= 'a' && s[0] <= 'w')
+        if(0 < s.length && s[0] >= 'a' && s[0] <= 'w')
             switch(s.length)
             {
             case 2:

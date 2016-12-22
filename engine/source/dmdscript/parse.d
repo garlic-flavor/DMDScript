@@ -27,6 +27,7 @@ import dmdscript.statement;
 import dmdscript.ir;
 import dmdscript.errmsgs;
 import dmdscript.exception;
+debug import std.stdio;
 
 class Parser : Lexer
 {
@@ -95,12 +96,26 @@ class Parser : Lexer
 
     /**********************************************
      */
+    nothrow
     ScriptException parseProgram(out TopStatement[] topstatements)
     {
-        topstatements = parseTopStatements();
-        check(Tok.Eof);
-        //writef("parseProgram done\n");
-        //clearstack();
+        try
+        {
+            topstatements = parseTopStatements();
+            check(Tok.Eof);
+            //writef("parseProgram done\n");
+            //clearstack();
+        }
+        catch(ScriptException se)
+        {
+            exception = se;
+        }
+        catch(Throwable t)
+        {
+            import dmdscript.protoerror : syntaxerror;
+            exception = new ScriptException(syntaxerror.Text,
+                                            "Unexpected exception.", t);
+        }
         return exception;
     }
 

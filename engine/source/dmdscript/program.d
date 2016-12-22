@@ -194,7 +194,8 @@ class Program
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
 
         ret.putVundefined();
-        auto ccs = VariableScope(globalfunction, callcontext.global);
+        assert (callcontext.global !is null);
+        auto ccs = VariableScope(globalfunction);
         callcontext.pushEvalScope(ccs);
         result = IR.call(callcontext, callcontext.global,
                          globalfunction.code, ret, locals.ptr);

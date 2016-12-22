@@ -1468,13 +1468,15 @@ struct DError
             {
                 Value str;
                 v.Invoke(Key.toString, cc, str, null);
-                this(new typeerror(new ScriptException(str.toString,
-                                                       file, line)));
+                this(new typeerror(
+                         new ScriptException(typeerror.Text, str.toString,
+                                             file, line)));
             }
         }
         else
         {
-            this(new typeerror(new ScriptException(v.toString, file, line)));
+            this(new typeerror(new ScriptException(typeerror.Text, v.toString,
+                                                   file, line)));
         }
     }
 

@@ -110,7 +110,7 @@ struct IR
             //        "Null in scopex, Line " ~ code.opcode.linnum.to!string);
             assert (err !is null);
 
-            for(;; )
+            for(auto counter = 0;; ++counter)
             {
                 // pop entry off scope chain
                 if      ((o = cc.popScope) is null)

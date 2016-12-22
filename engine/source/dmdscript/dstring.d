@@ -18,7 +18,7 @@
 
 module dmdscript.dstring;
 
-import dmdscript.primitive : Key, string_t;
+import dmdscript.primitive : Key, string_t, char_t;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : Value, DError;
@@ -43,7 +43,7 @@ class Dstring : Dobject
         super(getPrototype, Key.String);
 
         CallContext cc;
-        Set(Key.length, toUCSindex(s, s.length),
+        Set(Key.length, /*toUCSindex(s, s.length)*/s.length16,
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly, cc);
@@ -69,6 +69,35 @@ class Dstring : Dobject
 
 //==============================================================================
 private:
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// SO DIRTY IMPLEMENTATION!
+@safe pure
+size_t stride16(in char_t[] src, ref size_t needle)
+{
+    import std.utf : stride;
+    auto len = stride(src, needle);
+    needle += len;
+    return len < 4 ? 1 : 2;
+}
+//
+@safe pure
+size_t length16(in char[] src)
+{
+    size_t len = 0;
+    for(size_t l = 0; l < src.length;)
+    {
+        len += stride16(src, l);
+    }
+    return len;
+}
+//
+@safe pure
+bool isSurrogate(in char_t[] src, size_t needle)
+{
+    import std.utf : stride;
+    return 4 <= stride(src, needle);
+}
 
 //------------------------------------------------------------------------------
 @DFD(1, DFD.Type.Static)
@@ -256,13 +285,13 @@ DError* charCodeAt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import std.utf : decode, stride;
+    import std.utf : decode, stride, encode;
 
     // ECMA 15.5.4.5
 
     Value* v;
-    int pos;            // ECMA says pos should be a d_number,
-                        // but int should behave the same
+    size_t pos;            // ECMA says pos should be a d_number,
+                           // but int should behave the same
     string_t s;
     uint len;
     double result;
@@ -274,6 +303,46 @@ DError* charCodeAt(
 
     result = double.nan;
 
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // SO DIRTY IMPLEMENTATION!!
+    for (size_t i = 0, p = 0, l = 0; i < s.length && p <= pos; i += l)
+    {
+        l = stride(s, i);
+        if      (l < 4)
+        {
+            if (p == pos)
+            {
+                result = decode(s, i);
+                break;
+            }
+            else
+                ++p;
+        }
+        else if (l == 4) // surrogate pair.
+        {
+            if      (p == pos)
+            {
+                auto d = decode(s, i);
+                wchar[2] buf;
+                encode(buf, d);
+                result = buf[0];
+            }
+            else if (p + 1 == pos)
+            {
+                auto d = decode(s, i);
+                wchar[2] buf;
+                encode(buf, d);
+                result = buf[1];
+            }
+            else
+                p += 2;
+        }
+        else
+            assert (0);
+    }
+
+
+/*
     if(pos >= 0)
     {
         size_t idx;
@@ -292,6 +361,7 @@ DError* charCodeAt(
             pos--;
         }
     }
+*/
 
     ret.put(result);
     return null;

@@ -37,7 +37,7 @@ class D0(alias TEXT_D1) : D0base
 
     this(string_t m)
     {
-        super(getPrototype, m);
+        super(TEXT_D1, getPrototype, m);
     }
 
     this(ScriptException exception)
@@ -98,7 +98,7 @@ class D0base : Dobject
         super(prototype, Key.Error);
     }
 
-    protected this(Dobject prototype, string_t m)
+    protected this(string_t typename, Dobject prototype, string_t m)
     {
         import dmdscript.property : Property;
 
@@ -107,7 +107,7 @@ class D0base : Dobject
         DefineOwnProperty(Key.message, m, Property.Attribute.None);
         DefineOwnProperty(Key.description, m, Property.Attribute.None);
         DefineOwnProperty(Key.number, cast(double)0, Property.Attribute.None);
-        exception = new ScriptException(m);
+        exception = new ScriptException(typename, m);
     }
 
     protected this(Dobject prototype, ScriptException exception)
@@ -138,13 +138,11 @@ class D0_constructor : Dconstructor
     import dmdscript.dglobal : undefined;
     import dmdscript.primitive : string_t;
 
-    string_t text_d1;
     Dobject function(string_t) newD0;
 
     this(string_t text_d1, Dobject function(string_t) newD0)
     {
-        super(1, Dfunction.getPrototype);
-        this.text_d1 = text_d1;
+        super(text_d1, 1, Dfunction.getPrototype);
         this.newD0 = newD0;
     }
 
@@ -159,7 +157,7 @@ class D0_constructor : Dconstructor
         m = (arglist.length) ? &arglist[0] : &undefined;
         // ECMA doesn't say what we do if m is undefined
         if(m.isUndefined())
-            s = text_d1;
+            s = classname;
         else
             s = m.toString();
         o = (*newD0)(s);

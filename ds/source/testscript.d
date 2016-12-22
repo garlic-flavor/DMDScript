@@ -153,7 +153,12 @@ int main(string[] args)
         m.read();
         if (verbose)
             writefln("compile %s:", m.srcfile);
-        m.compile();
+        try m.compile();
+        catch (Throwable t)
+        {
+            errout(t);
+            return EXITCODE_RUNTIME_ERROR;
+        }
 
         debug
         {
@@ -165,22 +170,41 @@ int main(string[] args)
         try m.execute();
         catch(Throwable t)
         {
-            version (Windows) // Fuuu****uuuck!
-            {
-                import std.windows.charset : toMBSz;
-                stdout.flush;
-                t.toString((b){printf("%s", b.toMBSz);});
-                writeln;
-                stdout.flush;
-            }
-            else
-            {
-                stdout.flush;
-                throw t;
-            }
+            errout(t);
+            return EXITCODE_RUNTIME_ERROR;
         }
     }
     return EXIT_SUCCESS;
+}
+
+void errout(Throwable t) nothrow
+{
+    version (Windows) // Fuuu****uuuck!
+    {
+        import std.windows.charset : toMBSz;
+        import core.stdc.stdio : fprintf, stderr, fflush;
+
+        try
+        {
+            stdout.flush;
+            fflush(stderr);
+            t.toString((b){fprintf(stderr, "%s", b.toMBSz);});
+            fprintf(stderr, "\n");
+            fflush(stderr);
+        }
+        catch(Throwable){}
+    }
+    else
+    {
+        try
+        {
+            stdout.flush;
+            stderr.flush;
+            stderr.writeln(t.toString);
+            stderr.flush;
+        }
+        catch(Throwable){}
+    }
 }
 
 
