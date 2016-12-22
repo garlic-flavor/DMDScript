@@ -52,6 +52,14 @@ class ScriptException : Exception
 
     //--------------------------------------------------------------------
     ///
+    @safe pure nothrow
+    void addMessage(string_t message)
+    {
+        msg ~= message;
+    }
+
+    //--------------------------------------------------------------------
+    ///
     @safe pure
     void addTrace(string_t sourcename, string_t source, uint linnum,
                   string_t file = __FILE__, size_t line = __LINE__)
@@ -114,7 +122,12 @@ class ScriptException : Exception
         }
 
         if (0 < msg.length)
-        { sink(msg); sink("\n"); }
+        {
+            auto savedcolor = setConsoleColorRed;
+            sink(msg);
+            setConsoleColor(savedcolor);
+            sink("\n");
+        }
 
         sink("--------------------\n");
 
@@ -245,6 +258,7 @@ private:
 
              if ((0 < sourcename.length || 0 < funcname.length) && 0 < linnum)
              {
+                 auto savedcolor = setConsoleColorIntensity;
                  sink("@");
                  if (0 < sourcename.length)
                      sink(sourcename);
@@ -257,6 +271,7 @@ private:
                  sink("(");
                  sink(linnum.to!string_t);
                  sink(")");
+                 setConsoleColor(savedcolor);
              }
 
              debug
@@ -345,6 +360,59 @@ private:
     {
         return 0 < trace.length && trace[$-1] == sd;
     }
+
+
+    //
+    static short setConsoleColorRed()
+    {
+        version (Windows)
+        {
+            import core.sys.windows.windows;
+
+            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            assert (hConsole !is INVALID_HANDLE_VALUE);
+            CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+            GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+            auto saved_attributes = consoleInfo.wAttributes;
+            SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+            return saved_attributes;
+        }
+        else
+            return 0;
+    }
+
+    //
+    static short setConsoleColorIntensity()
+    {
+        version (Windows)
+        {
+            import core.sys.windows.windows;
+
+            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            assert (hConsole !is INVALID_HANDLE_VALUE);
+            CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+            GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+            auto saved_attributes = consoleInfo.wAttributes;
+            SetConsoleTextAttribute(hConsole, FOREGROUND_INTENSITY);
+            return saved_attributes;
+        }
+        else
+            return 0;
+    }
+
+    //
+    static void setConsoleColor(short saved_attributes)
+    {
+        version (Windows)
+        {
+            import core.sys.windows.windows;
+
+            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            assert (hConsole !is INVALID_HANDLE_VALUE);
+            SetConsoleTextAttribute(hConsole, saved_attributes);
+        }
+    }
+
 }
 
 //==============================================================================

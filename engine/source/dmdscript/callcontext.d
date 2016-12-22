@@ -84,6 +84,7 @@ private:
 ///
 struct CallContext
 {
+    import dmdscript.primitive : string_t;
     import dmdscript.dobject : Dobject;
     import dmdscript.property : PropertyKey, Property;
     import dmdscript.value : Value, DError;
@@ -259,6 +260,20 @@ struct CallContext
     }
 
 
+    //--------------------------------------------------------------------
+    ///
+    string_t[] searchSimilarWord(string_t name)
+    {
+        return _scopex.searchSimilarWord(name);
+    }
+    /// ditto
+    static string_t[] searchSimilarWord(Dobject target, string_t name)
+    {
+        import std.string : soundexer;
+        auto key = name.soundexer;
+        return ScopeStack.searchSimilarWord(target, key);
+    }
+
 private:
     ScopeStack _scopex;     // current scope chain
     bool _interrupt;        // !=0 if cancelled due to interrupt
@@ -326,6 +341,7 @@ final class ScopeStack
     import dmdscript.dfunction : Dfunction;
     import dmdscript.property : Property, PropertyKey;
     import dmdscript.value : Value, DError;
+    import dmdscript.primitive : string_t;
 
     //
     @safe pure nothrow
@@ -565,6 +581,23 @@ final class ScopeStack
         }
     }
 
+    //--------------------------------------------------------------------
+    string_t[] searchSimilarWord(string_t name)
+    {
+        import std.string : soundexer;
+        import std.array : Appender, join;
+
+        Appender!(string_t[][]) result;
+
+        auto key = name.soundexer;
+        foreach_reverse (one; _stack.data)
+        {
+            if (auto r = searchSimilarWord(one, key))
+                result.put(r);
+        }
+        return result.data.join;
+    }
+
     //====================================================================
 private:
     enum GLOBAL_ROOT = 1;
@@ -585,6 +618,24 @@ private:
         assert (0 < _stack.data.length);
         assert (0 < _scopes.data.length);
     }
+
+    static string_t[] searchSimilarWord(Dobject target, in ref char[4] key)
+    {
+        import std.string : soundexer;
+
+        Appender!(string_t[]) result;
+        foreach (one; target.OwnPropertyKeys)
+        {
+            auto name = one.toString;
+            if (name.soundexer == key)
+                result.put(name);
+        }
+        if (auto p = target.GetPrototypeOf)
+            return result.data ~ searchSimilarWord(p, key);
+        else
+            return result.data;
+    }
+
 
     //==========================================================
 package debug:

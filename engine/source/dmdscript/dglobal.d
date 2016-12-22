@@ -804,9 +804,28 @@ void dglobal_print(
 
         for(i = 0; i < arglist.length; i++)
         {
-            string_t s = arglist[i].toString();
+            version (Windows) // FUUU******UUUCK!!
+            {
+                import dmdscript.protoerror : D0base;
+                import std.windows.charset : toMBSz;
 
-            writef("%s", s);
+                if (arglist[i].type == Value.Type.Object)
+                {
+                    if (auto err = cast(D0base)arglist[i].object)
+                    {
+                        err.exception.toString((b){printf("%s", b.toMBSz);});
+                        continue;
+                    }
+                }
+
+                printf("%s", arglist[i].toString.toMBSz);
+            }
+            else
+            {
+                string_t s = arglist[i].toString();
+
+                writef("%s", s);
+            }
         }
     }
 

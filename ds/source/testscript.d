@@ -165,8 +165,19 @@ int main(string[] args)
         try m.execute();
         catch(Throwable t)
         {
-            stdout.flush;
-            throw t;
+            version (Windows) // Fuuu****uuuck!
+            {
+                import std.windows.charset : toMBSz;
+                stdout.flush;
+                t.toString((b){printf("%s", b.toMBSz);});
+                writeln;
+                stdout.flush;
+            }
+            else
+            {
+                stdout.flush;
+                throw t;
+            }
         }
     }
     return EXIT_SUCCESS;

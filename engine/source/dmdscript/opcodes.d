@@ -66,6 +66,7 @@ struct IR
     static DError* call(ref CallContext cc, Dobject othis,
                         IR* code, out Value ret, Value* locals)
     {
+        import std.array : join;
         import std.conv : to;
         import std.string : cmp;
 
@@ -383,23 +384,27 @@ struct IR
                     {
                         v.toPrimitive(cc, *v);
                         a.toPrimitive(cc, *a);
-                        if(v.isString())
+                        if(v.isString)
                         {
-                            s2 = v.toString() ~a.toString();
+                            if (a.isUndefined)
+                                s2 = v.toString;
+                            else
+                                s2 = v.toString ~ a.toString;
                             a.put(s2);
-                            *v = *a;
                         }
-                        else if(a.isString())
+                        else if(a.isString)
                         {
-                            s2 = v.toString() ~a.toString();
+                            if (v.isUndefined)
+                                s2 = a.toString;
+                            else
+                                s2 = v.toString ~ a.toString;
                             a.put(s2);
-                            *v = *a;
                         }
                         else
                         {
                             a.put(a.toNumber(cc) + v.toNumber(cc));
-                            *v = *a;//full copy
                         }
+                        *v = *a;//full copy // needed ?
                     }
 
                     static assert(IRTypes[Opcode.AddAsS].size
@@ -1405,6 +1410,12 @@ struct IR
                     {
                         sta = UndefinedNoCall3Error(b.type.to!string_t,
                                                     b.toString, s);
+                        if (auto didyoumean = cc.searchSimilarWord(o, s))
+                        {
+                            sta.addMessage(", did you mean \"" ~
+                                           didyoumean.join("\" or \"") ~
+                                           "\"?");
+                        }
                         goto Lthrow;
                     }
 
@@ -1419,6 +1430,12 @@ struct IR
                     {
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
                         sta = UndefinedVarError(s);
+                        if (auto didyoumean = cc.searchSimilarWord(s))
+                        {
+                            sta.addMessage(", did you mean \"" ~
+                                           didyoumean.join("\" or \"") ~
+                                           "\"?");
+                        }
                         goto Lthrow;
                     }
                     // Should we pass othis or o? I think othis.

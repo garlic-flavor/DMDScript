@@ -256,7 +256,7 @@ struct Value
 
 
     //--------------------------------------------------------------------
-    void toPrimitive(ref CallContext cc, out Value v,
+    void toPrimitive(ref CallContext cc, ref Value v,
                      in Type PreferredType = Type.RefError)
     {
         if(_type == Type.Object)
@@ -1523,6 +1523,21 @@ struct DError
         {
             assert(d0.exception);
             d0.exception.addTrace(base, code, f, l);
+        }
+        else
+            assert(0);
+    }
+
+    ///
+    @safe pure
+    void addMessage(string_t message)
+    {
+        import dmdscript.protoerror;
+
+        if (auto d0 = cast(D0base)entity.object)
+        {
+            assert(d0.exception);
+            d0.exception.addMessage(message);
         }
         else
             assert(0);

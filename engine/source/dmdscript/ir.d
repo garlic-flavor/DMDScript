@@ -416,8 +416,12 @@ align(size_t.sizeof):
 
     debug string toString() const
     {
-        return text(ir, " ", acc, " = ", owner, ".", method, "(", argv, "[0..",
-                    argc, "])");
+        static if (is(T : StringKey*))
+            return text(ir, " [", acc, "] = [", owner, "].\"", method.toString,
+                        "\"([", argv, " .. ", argv + argc, "])");
+        else
+            return text(ir, " [", acc, "] = [", owner, "].[", method,
+                        "]([", argv, " .. ", argv + argc, "])");
     }
 }
 
@@ -473,7 +477,13 @@ align(size_t.sizeof):
     }
 
     debug string toString() const
-    { return text(ir, " [", acc, "] = \"", *operand, "\"(#", hash, ")"); }
+    {
+        static if (CODE == Opcode.AddAsSScope)
+            return text(ir, " [", acc, "] = \"", *operand,
+                        "\"(#", hash, ") += [", acc, "]");
+        else
+            return text(ir, " [", acc, "] = \"", *operand, "\"(#", hash, ")");
+    }
 }
 
 // if (func iter) goto offset; iter = iter.next;

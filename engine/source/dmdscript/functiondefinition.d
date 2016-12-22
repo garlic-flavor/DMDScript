@@ -259,7 +259,7 @@ class FunctionDefinition : TopStatement
                     sink(",");
                 sink(parameters[i].toString);
             }
-            sink(")\n{ \n");
+            sink("){ ");
         }
         if(topstatements)
         {
@@ -268,7 +268,7 @@ class FunctionDefinition : TopStatement
         }
         if(!isglobal)
         {
-            sink("}\n");
+            sink("}");
         }
     }
 }
