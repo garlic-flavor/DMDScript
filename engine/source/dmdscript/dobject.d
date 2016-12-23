@@ -158,7 +158,7 @@ class Dobject
                     auto v = cast(Value)name.value;
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // use errmsgs.
-                    throw new Exception("not a valid key ", v.toString);
+                    throw new Exception("not a valid key ", v.toString(cc));
                 }
             }
             else static if (is(K : uint) || is(K == StringKey))
@@ -632,7 +632,7 @@ class Dobject
             Value ret;
             auto err = instOfHandler.Call(cc, c, ret, [this.value]);
             if (err !is null)
-                throw err.toScriptException;
+                throw err.toScriptException(cc);
             return ret.toBoolean;
         }
         if (auto df = cast(Dfunction)c)
@@ -1130,7 +1130,7 @@ DError* toSource(
             if(any)
                 buf ~= ',';
             any = 1;
-            buf ~= key.toString();
+            buf ~= key.toString(cc);
             buf ~= ':';
             buf ~= p.get(cc, othis).toSource(cc);
         }

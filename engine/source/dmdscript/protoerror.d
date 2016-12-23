@@ -40,9 +40,16 @@ class D0(alias TEXT_D1) : D0base
         super(TEXT_D1, getPrototype, m);
     }
 
+
     this(ScriptException exception)
     {
         super(getPrototype, exception);
+        assert (getPrototype !is null);
+    }
+
+    this(string_t name, ScriptException exception)
+    {
+        super(name, getPrototype, exception);
         assert (getPrototype !is null);
     }
 
@@ -93,16 +100,11 @@ class D0base : Dobject
 
     ScriptException exception;
 
-    protected this(Dobject prototype)
-    {
-        super(prototype, Key.Error);
-    }
-
     protected this(string_t typename, Dobject prototype, string_t m)
     {
         import dmdscript.property : Property;
 
-        this(prototype);
+        super(prototype, typename);
 
         DefineOwnProperty(Key.message, m, Property.Attribute.None);
         DefineOwnProperty(Key.description, m, Property.Attribute.None);
@@ -114,7 +116,23 @@ class D0base : Dobject
     {
         import dmdscript.property : Property;
 
-        this(prototype);
+        super(prototype, Key.Error);
+        assert(exception !is null);
+        this.exception = exception;
+
+        DefineOwnProperty(Key.message, exception.msg, Property.Attribute.None);
+        DefineOwnProperty(Key.description, exception.toString,
+                          Property.Attribute.None);
+        // DefineOwnProperty(Key.number, cast(double)exception.code,
+        //                   Property.Attribute.None);
+    }
+
+    protected this(string_t typename, Dobject prototype,
+                   ScriptException exception)
+    {
+        import dmdscript.property : Property;
+
+        super(prototype, typename);
         assert(exception !is null);
         this.exception = exception;
 
@@ -125,6 +143,7 @@ class D0base : Dobject
         //                   Property.Attribute.None);
     }
 }
+
 
 
 //==============================================================================
@@ -159,7 +178,7 @@ class D0_constructor : Dconstructor
         if(m.isUndefined())
             s = classname;
         else
-            s = m.toString();
+            s = m.toString(cc);
         o = (*newD0)(s);
         ret.put(o);
         return null;

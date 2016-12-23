@@ -286,14 +286,14 @@ struct CallContext
     ///
     string_t[] searchSimilarWord(string_t name)
     {
-        return _scopex.searchSimilarWord(name);
+        return _scopex.searchSimilarWord(this, name);
     }
     /// ditto
-    static string_t[] searchSimilarWord(Dobject target, string_t name)
+    string_t[] searchSimilarWord(Dobject target, string_t name)
     {
         import std.string : soundexer;
         auto key = name.soundexer;
-        return ScopeStack.searchSimilarWord(target, key);
+        return ScopeStack.searchSimilarWord(this, target, key);
     }
 
 private:
@@ -622,7 +622,7 @@ final class ScopeStack
     }
 
     //--------------------------------------------------------------------
-    string_t[] searchSimilarWord(string_t name)
+    string_t[] searchSimilarWord(ref CallContext cc, string_t name)
     {
         import std.string : soundexer;
         import std.array : Appender, join;
@@ -632,7 +632,7 @@ final class ScopeStack
         auto key = name.soundexer;
         foreach_reverse (one; _stack.data)
         {
-            if (auto r = searchSimilarWord(one, key))
+            if (auto r = searchSimilarWord(cc, one, key))
                 result.put(r);
         }
         return result.data.join;
@@ -670,19 +670,20 @@ private:
         assert (0 < _scopes.data.length);
     }
 
-    static string_t[] searchSimilarWord(Dobject target, in ref char[4] key)
+    static string_t[] searchSimilarWord(ref CallContext cc, Dobject target,
+                                        in ref char[4] key)
     {
         import std.string : soundexer;
 
         Appender!(string_t[]) result;
         foreach (one; target.OwnPropertyKeys)
         {
-            auto name = one.toString;
+            auto name = one.toString(cc);
             if (name.soundexer == key)
                 result.put(name);
         }
         if (auto p = target.GetPrototypeOf)
-            return result.data ~ searchSimilarWord(p, key);
+            return result.data ~ searchSimilarWord(cc, p, key);
         else
             return result.data;
     }

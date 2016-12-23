@@ -195,7 +195,7 @@ struct IR
 
             try
             {
-                assert(code.opcode < Opcode.max,
+                assert(code.opcode <= Opcode.max,
                        "Unrecognized IR instruction " ~ code.opcode.to!string);
 
                 final switch(code.opcode)
@@ -213,7 +213,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = cannotConvert(b);
+                        sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
                     c = locals + (code + 3).index;
@@ -225,7 +225,7 @@ struct IR
                     }
                     else
                     {
-                        v = o.Get(c.toString, cc);
+                        v = o.Get(c.toString(cc), cc);
                     }
                     if(!v)
                         v = &undefined;
@@ -249,7 +249,7 @@ struct IR
                     }
                     else
                     {
-                        s = c.toString();
+                        s = c.toString(cc);
                         sta = b.Set(s, *a, cc);
                     }
                     if(sta)
@@ -265,7 +265,7 @@ struct IR
                     if(!o)
                     {
                         sta = CannotConvertToObject3Error(
-                            b.type.to!string_t, b.toString, s);
+                            b.type.to!string_t, b.toString(cc), s);
                         goto Lthrow;
                     }
                     v = o.Get(s, cc);
@@ -281,7 +281,7 @@ struct IR
                     id = (code+1).id;
                     s = *id;
                     // if(!scope_get(cc, scopex, id))
-                    if (!cc.get(*id))
+                    if (cc.get(*id) is null)
                         throw UndefinedVarError.toThrow(s);
                     code += IRTypes[Opcode.CheckRef].size;
                     break;
@@ -329,7 +329,7 @@ struct IR
 
                 case Opcode.AddAsS:              // a = (b.c += a)
                     c = locals + (code + 3).index;
-                    s = c.toString();
+                    s = c.toString(cc);
                     goto Laddass;
 
                 case Opcode.AddAsSS:             // a = (b.s += a)
@@ -387,17 +387,17 @@ struct IR
                         if(v.isString)
                         {
                             if (a.isUndefined)
-                                s2 = v.toString;
+                                s2 = v.toString(cc);
                             else
-                                s2 = v.toString ~ a.toString;
+                                s2 = v.toString(cc) ~ a.toString(cc);
                             a.put(s2);
                         }
                         else if(a.isString)
                         {
                             if (v.isUndefined)
-                                s2 = a.toString;
+                                s2 = a.toString(cc);
                             else
-                                s2 = v.toString ~ a.toString;
+                                s2 = v.toString(cc) ~ a.toString(cc);
                             a.put(s2);
                         }
                         else
@@ -420,7 +420,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = cannotConvert(b);
+                        sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
                     sta = o.Set(*(code + 3).id, *a,
@@ -609,7 +609,7 @@ struct IR
 
                         if(vb.isString() || vc.isString())
                         {
-                            s = vb.toString() ~vc.toString();
+                            s = vb.toString(cc) ~vc.toString(cc);
                             a.put(s);
                         }
                         else
@@ -714,10 +714,11 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    s = b.toString();
+                    s = b.toString(cc);
                     o = c.toObject();
                     if(!o)
-                        throw RhsMustBeObjectError.toThrow("in", c.toString);
+                        throw RhsMustBeObjectError.toThrow(
+                            "in", c.toString(cc));
 
                     a.put(o.HasProperty(s));
                     code += IRTypes[Opcode.In].size;
@@ -727,7 +728,7 @@ struct IR
 
                 case Opcode.PreInc:     // a = ++b.c
                     c = locals + (code + 3).index;
-                    s = c.toString();
+                    s = c.toString(cc);
                     goto Lpreinc;
                 case Opcode.PreIncS:    // a = ++b.s
                     s = *(code + 3).id;
@@ -807,7 +808,7 @@ struct IR
 
                 case Opcode.PreDec:     // a = --b.c
                     c = locals + (code + 3).index;
-                    s = c.toString();
+                    s = c.toString(cc);
                     goto Lpredec;
                 case Opcode.PreDecS:    // a = --b.s
                     s = *(code + 3).id;
@@ -823,7 +824,7 @@ struct IR
 
                 case Opcode.PostInc:     // a = b.c++
                     c = locals + (code + 3).index;
-                    s = c.toString();
+                    s = c.toString(cc);
                     goto Lpostinc;
                 case Opcode.PostIncS:    // a = b.s++
                     s = *(code + 3).id;
@@ -866,7 +867,7 @@ struct IR
 
                 case Opcode.PostDec:     // a = b.c--
                     c = locals + (code + 3).index;
-                    s = c.toString();
+                    s = c.toString(cc);
                     goto Lpostdec;
                 case Opcode.PostDecS:    // a = b.s--
                     s = *(code + 3).id;
@@ -917,11 +918,11 @@ struct IR
                         o = b.toObject();
                         if(!o)
                         {
-                            sta = cannotConvert(b);
+                            sta = cannotConvert(cc, b);
                             goto Lthrow;
                         }
                         s = (code.opcode == Opcode.Del)
-                            ? (locals + (code + 3).index).toString()
+                            ? (locals + (code + 3).index).toString(cc)
                             : *(code + 3).id;
                         if(o.implementsDelete())
                             bo = !!o.Delete(StringKey(s));
@@ -968,8 +969,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString();
-                            string_t y = c.toString();
+                            string_t x = b.toString(cc);
+                            string_t y = c.toString(cc);
 
                             res = cmp(x, y) < 0;
                         }
@@ -993,8 +994,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString();
-                            string_t y = c.toString();
+                            string_t x = b.toString(cc);
+                            string_t y = c.toString(cc);
 
                             res = cmp(x, y) <= 0;
                         }
@@ -1018,8 +1019,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString();
-                            string_t y = c.toString();
+                            string_t x = b.toString(cc);
+                            string_t y = c.toString(cc);
 
                             res = cmp(x, y) > 0;
                         }
@@ -1044,8 +1045,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString();
-                            string_t y = c.toString();
+                            string_t x = b.toString(cc);
+                            string_t y = c.toString(cc);
 
                             res = cmp(x, y) >= 0;
                         }
@@ -1253,8 +1254,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString();
-                            string_t y = c.toString();
+                            string_t x = b.toString(cc);
+                            string_t y = c.toString(cc);
 
                             res = cmp(x, y) < 0;
                         }
@@ -1285,8 +1286,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString();
-                            string_t y = c.toString();
+                            string_t x = b.toString(cc);
+                            string_t y = c.toString(cc);
 
                             res = cmp(x, y) <= 0;
                         }
@@ -1323,7 +1324,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = cannotConvert(b);
+                        sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
                     sta = o.putIterator(*a);
@@ -1334,7 +1335,7 @@ struct IR
 
                 case Opcode.Next:        // a, b.c, iter
                     // if (!(b.c = iter)) goto a; iter = iter.next
-                    s = (locals + (code + 3).index).toString();
+                    s = (locals + (code + 3).index).toString(cc);
                     goto case_next;
 
                 case Opcode.NextS:       // a, b.s, iter
@@ -1370,7 +1371,7 @@ struct IR
                     break;
 
                 case Opcode.Call:        // a = b.c(argc, argv)
-                    s = (locals + (code + 3).index).toString();
+                    s = (locals + (code + 3).index).toString(cc);
                     goto case_call;
 
                 case Opcode.CallS:       // a = b.s(argc, argv)
@@ -1409,7 +1410,7 @@ struct IR
                     Lcallerror:
                     {
                         sta = UndefinedNoCall3Error(b.type.to!string_t,
-                                                    b.toString, s);
+                                                    b.toString(cc), s);
                         if (auto didyoumean = cc.searchSimilarWord(o, s))
                         {
                             sta.addMessage(", did you mean \"" ~
@@ -1463,7 +1464,7 @@ struct IR
                     if(!o)
                     {
                         sta = UndefinedNoCall2Error(b.type.to!string_t,
-                                                    b.toString);
+                                                    b.toString(cc));
                         goto Lthrow;
                     }
                     // cc.callerothis = othis;        // pass othis to eval()
@@ -1476,7 +1477,7 @@ struct IR
                     break;
 
                 case Opcode.PutCall:        // b.c(argc, argv) = a
-                    s = (locals + (code + 3).index).toString();
+                    s = (locals + (code + 3).index).toString(cc);
                     goto case_putcall;
 
                 case Opcode.PutCallS:       //  b.s(argc, argv) = a
@@ -1540,7 +1541,7 @@ struct IR
                     {
                         //writef("%s %s is undefined and has no Call method\n", b.getType(), b.toString());
                         sta = UndefinedNoCall2Error(b.type.to!string_t,
-                                                    b.toString);
+                                                    b.toString(cc));
                         goto Lthrow;
                     }
                     sta = o.put_Value(*(locals + (code + 1).index), (locals + (code + 4).index)[0 .. (code + 3).index]);
@@ -1569,7 +1570,7 @@ struct IR
                     o = a.toObject();
                     if(!o)
                     {
-                        sta = cannotConvert(a);
+                        sta = cannotConvert(cc, a);
                         goto Lthrow;
                     }
                     // scopex ~= o;                // push entry onto scope chain
@@ -1867,7 +1868,7 @@ class Finally : Dobject
 /*
 Helper function for Values that cannot be converted to Objects.
  */
-DError* cannotConvert(Value* b)
+DError* cannotConvert(ref CallContext cc, Value* b)
 {
     import std.conv : to;
     DError* sta;
@@ -1878,7 +1879,7 @@ DError* cannotConvert(Value* b)
     }
     else
     {
-        sta = CannotConvertToObject2Error(b.type.to!string_t, b.toString);
+        sta = CannotConvertToObject2Error(b.type.to!string_t, b.toString(cc));
     }
     return sta;
 }

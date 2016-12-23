@@ -31,13 +31,12 @@ class Derror : Dobject
     import dmdscript.dobject : Initializer;
     import dmdscript.property : Property;
 
-    this(Value * m, Value * v2)
+    this(ref CallContext cc, Value * m, Value * v2)
     {
         super(getPrototype, Key.Error);
 
         immutable(char)[] msg;
-        msg = m.toString();
-        CallContext cc;
+        msg = m.toString(cc);
         Set(Key.message, msg, Property.Attribute.None, cc);
         Set(Key.description, msg, Property.Attribute.None, cc);
         if(m.isString())
@@ -51,8 +50,8 @@ class Derror : Dobject
         }
         if(v2.isString())
         {
-            Set(Key.description, v2.toString, Property.Attribute.None, cc);
-            Set(Key.message, v2.toString, Property.Attribute.None, cc);
+            Set(Key.description, v2.toString(cc), Property.Attribute.None, cc);
+            Set(Key.message, v2.toString(cc), Property.Attribute.None, cc);
         }
         else if(v2.isNumber())
         {
@@ -136,7 +135,7 @@ class DerrorConstructor : Dconstructor
             n = &arglist[1];
             break;
         }
-        o = new Derror(m, n);
+        o = new Derror(cc, m, n);
         ret.put(o);
         return null;
     }
@@ -159,7 +158,7 @@ DError* toString(
     v = othis.Get(Key.message, cc);
     if(!v)
         v = &undefined;
-    ret.put(othis.Get(Key.name, cc).toString()~": "~v.toString());
+    ret.put(othis.Get(Key.name, cc).toString(cc)~": "~v.toString(cc));
     return null;
 }
 

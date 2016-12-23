@@ -93,7 +93,7 @@ DError* toString(
     // othis must be a Boolean
     if (auto db = cast(Dboolean)othis)
     {
-        ret.put(db.value.toString);
+        ret.put(db.value.toString(cc));
     }
     else
     {

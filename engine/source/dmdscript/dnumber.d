@@ -214,7 +214,7 @@ DError* toString(
 
             radix = arglist[0].toNumber(cc);
             if(radix == 10.0 || arglist[0].isUndefined())
-                s = v.toString();
+                s = v.toString(cc);
             else
             {
                 int r;
@@ -222,13 +222,13 @@ DError* toString(
                 r = cast(int)radix;
                 // radix must be an integer 2..36
                 if(r == radix && r >= 2 && r <= 36)
-                    s = v.toString(r);
+                    s = v.toString(cc, r);
                 else
-                    s = v.toString();
+                    s = v.toString(cc);
             }
         }
         else
-            s = v.toString();
+            s = v.toString(cc);
         ret.put(s);
     }
     else
@@ -250,7 +250,7 @@ DError* toLocaleString(
     // othis must be a Number
     if (auto dn = cast(Dnumber)othis)
     {
-        ret.put(dn.value.toLocaleString);
+        ret.put(dn.value.toLocaleString(cc));
     }
     else
     {
@@ -371,7 +371,7 @@ DError* toFixed(
         {
             Value vn;
             vn.put(x);
-            ret.put(vn.toString());
+            ret.put(vn.toString(cc));
             return null;
         }
         else
@@ -612,7 +612,7 @@ DError* toPrecision(
         Value vn;
 
         vn.put(x);
-        result = vn.toString();
+        result = vn.toString(cc);
     }
     else
     {

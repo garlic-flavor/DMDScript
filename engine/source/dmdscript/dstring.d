@@ -43,10 +43,22 @@ class Dstring : Dobject
         super(getPrototype, Key.String);
 
         CallContext cc;
-        Set(Key.length, /*toUCSindex(s, s.length)*/s.length16,
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete |
-            Property.Attribute.ReadOnly, cc);
+
+        version (TEST262)
+        {
+            Set(Key.length, /*toUCSindex(s, s.length)*/s.length16,
+                Property.Attribute.DontEnum |
+                Property.Attribute.DontDelete |
+                Property.Attribute.ReadOnly, cc);
+        }
+        else
+        {
+            Set(Key.length, toUCSindex(s, s.length),
+                Property.Attribute.DontEnum |
+                Property.Attribute.DontDelete |
+                Property.Attribute.ReadOnly, cc);
+        }
+
         value.put(s);
     }
 
@@ -65,38 +77,119 @@ class Dstring : Dobject
     }
 
     mixin Initializer!DstringConstructor;
+
+
+    alias GetImpl = Dobject.GetImpl;
+    override Value* GetImpl(in uint index, ref CallContext cc)
+    {
+        version(TEST262)
+        {
+            import std.exception : assumeUnique;
+            char_t[] buf;
+            badencode(buf, value.text.charCodeAt16(index));
+            return new Value(buf.assumeUnique);
+        }
+        else static assert (0);
+    }
 }
 
 //==============================================================================
 private:
 
+version (TEST262)
+{
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // SO DIRTY IMPLEMENTATION!
-@safe pure
-size_t stride16(in char_t[] src, ref size_t needle)
-{
-    import std.utf : stride;
-    auto len = stride(src, needle);
-    needle += len;
-    return len < 4 ? 1 : 2;
-}
-//
-@safe pure
-size_t length16(in char[] src)
-{
-    size_t len = 0;
-    for(size_t l = 0; l < src.length;)
+    @safe pure
+    size_t stride16(in char_t[] src, ref size_t needle)
     {
-        len += stride16(src, l);
+        import std.utf : stride;
+        static if      (is(char_t == char))
+        {
+            auto len = stride(src, needle);
+            needle += len;
+            return len < 4 ? 1 : 2;
+        }
+        else static if (is(char_t == wchar))
+        {
+            auto len = stride(src, needle);
+            needle += len;
+            return len;
+        }
+        else static if (is(char_t == dchar))
+        {
+            import std.uni : isSurrogate;
+            auto len = src[needle].isSurrogate ? 2 : 1;
+            needle++;
+            return len;
+        }
+        else static assert (0);
     }
-    return len;
-}
-//
-@safe pure
-bool isSurrogate(in char_t[] src, size_t needle)
-{
-    import std.utf : stride;
-    return 4 <= stride(src, needle);
+    //
+    @safe pure
+    size_t length16(in char[] src)
+    {
+        size_t len = 0;
+        for(size_t l = 0; l < src.length;)
+        {
+            len += stride16(src, l);
+        }
+        return len;
+    }
+    //
+    @safe pure
+    bool isSurrogate(in char_t[] src, size_t needle)
+    {
+        import std.utf : stride;
+        return 4 <= stride(src, needle);
+    }
+
+    //
+    @safe pure
+    dchar charCodeAt16(in char_t[] buf, size_t pos)
+    {
+        import std.utf : stride, decode, encode;
+        dchar result = 0;
+
+        for (size_t i = 0, p = 0, l = 0; i < buf.length && p <= pos; i += l)
+        {
+            l = stride(buf, i);
+            if      (l < 4)
+            {
+                if (p == pos)
+                {
+                    result = decode(buf, i);
+                    break;
+                }
+                else
+                    ++p;
+            }
+            else if (l == 4) // surrogate pair.
+            {
+                auto d = decode(buf, i);
+                wchar[2] wbuf;
+                encode(wbuf, d);
+                if      (p == pos)
+                    result = wbuf[0];
+                else if (p + 1 == pos)
+                    result = wbuf[1];
+                else
+                    p += 2;
+            }
+            else assert (0);
+        }
+        return result;
+    }
+
+    @safe pure
+    void badencode(ref char_t[] buf, dchar d)
+    {
+        import std.utf : encode, isValidDchar;
+        if (!isValidDchar(d))
+            buf ~= ' ';
+        else
+            encode(buf, d);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -106,11 +199,10 @@ DError* fromCharCode(
     Value[] arglist)
 {
     import std.exception : assumeUnique;
-    import std.traits : Unqual, ForeachType;
     import std.utf : encode, isValidDchar;
 
     // ECMA 15.5.3.2
-    Unqual!(ForeachType!string_t)[] s = null;
+    char_t[] s = null;
 
     for(size_t i = 0; i < arglist.length; i++)
     {
@@ -119,14 +211,21 @@ DError* fromCharCode(
 
         v = &arglist[i];
         u = v.toUint16(cc);
-        //writef("string.fromCharCode(%x)", u);
-        if(!isValidDchar(u))
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // BAD IMPLEMENTATION!!!
+        version (TEST262)
         {
-            ret.putVundefined();
-            return NotValidUTFError("String", "fromCharCode()", u);
+            badencode(s, u);
         }
-        encode(s, u);
-        //writefln("s[0] = %x, s = '%s'", s[0], s);
+        else
+        {
+            if(!isValidDchar(u))
+            {
+                ret.putVundefined();
+                return NotValidUTFError("String", "fromCharCode()", u);
+            }
+            encode(s, u);
+        }
     }
     ret.put(s.assumeUnique);
     return null;
@@ -172,7 +271,7 @@ class DstringConstructor : Dconstructor
         string_t s;
         Dobject o;
 
-        s = (arglist.length) ? arglist[0].toString() : Text.Empty;
+        s = (arglist.length) ? arglist[0].toString(cc) : Text.Empty;
         o = new Dstring(s);
         ret.put(o);
         return null;
@@ -186,7 +285,7 @@ class DstringConstructor : Dconstructor
         // ECMA 15.5.1
         string_t s;
 
-        s = (arglist.length) ? arglist[0].toString() : Text.Empty;
+        s = (arglist.length) ? arglist[0].toString(cc) : Text.Empty;
         ret.put(s);
         return null;
     }
@@ -251,7 +350,7 @@ DError* charAt(
     string_t result;
 
     v = &othis.value;
-    s = v.toString();
+    s = v.toString(cc);
     v = arglist.length ? &arglist[0] : &undefined;
     pos = cast(int)v.toInteger(cc);
 
@@ -297,71 +396,37 @@ DError* charCodeAt(
     double result;
 
     v = &othis.value;
-    s = v.toString();
+    s = v.toString(cc);
     v = arglist.length ? &arglist[0] : &undefined;
     pos = cast(int)v.toInteger(cc);
 
     result = double.nan;
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // SO DIRTY IMPLEMENTATION!!
-    for (size_t i = 0, p = 0, l = 0; i < s.length && p <= pos; i += l)
+    version (TEST262)
     {
-        l = stride(s, i);
-        if      (l < 4)
-        {
-            if (p == pos)
-            {
-                result = decode(s, i);
-                break;
-            }
-            else
-                ++p;
-        }
-        else if (l == 4) // surrogate pair.
-        {
-            if      (p == pos)
-            {
-                auto d = decode(s, i);
-                wchar[2] buf;
-                encode(buf, d);
-                result = buf[0];
-            }
-            else if (p + 1 == pos)
-            {
-                auto d = decode(s, i);
-                wchar[2] buf;
-                encode(buf, d);
-                result = buf[1];
-            }
-            else
-                p += 2;
-        }
-        else
-            assert (0);
+        result = charCodeAt16(s, pos);
     }
-
-
-/*
-    if(pos >= 0)
+    else
     {
-        size_t idx;
-
-        while(1)
+        if(pos >= 0)
         {
-            assert(idx <= s.length);
-            if(idx == s.length)
-                break;
-            if(pos == 0)
+            size_t idx;
+
+            while(1)
             {
-                result = decode(s, idx);
-                break;
+                assert(idx <= s.length);
+                if(idx == s.length)
+                    break;
+                if(pos == 0)
+                {
+                    result = decode(s, idx);
+                    break;
+                }
+                idx += stride(s, idx);
+                pos--;
             }
-            idx += stride(s, idx);
-            pos--;
         }
     }
-*/
 
     ret.put(result);
     return null;
@@ -378,9 +443,9 @@ DError* concat(
 
     //writefln("Dstring.prototype.concat()");
 
-    s = othis.value.toString();
+    s = othis.value.toString(cc);
     for(size_t a = 0; a < arglist.length; a++)
-        s ~= arglist[a].toString();
+        s ~= arglist[a].toString(cc);
 
     ret.put(s);
     return null;
@@ -410,13 +475,13 @@ DError* indexOf(
 
     Value xx;
     xx.put(othis);
-    s = xx.toString();
+    s = xx.toString(cc);
     sUCSdim = toUCSindex(s, s.length);
 
     v1 = arglist.length ? &arglist[0] : &undefined;
     v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
 
-    searchString = v1.toString();
+    searchString = v1.toString(cc);
     pos = cast(int)v2.toInteger(cc);
 
     if(pos < 0)
@@ -469,7 +534,7 @@ DError* lastIndexOf(
             a = v.Call(cc, othis, ret, null);
             if(a)                       // if exception was thrown
                 return a;
-            s = ret.toString();
+            s = ret.toString(cc);
         }
     }
     else
@@ -480,7 +545,7 @@ DError* lastIndexOf(
     sUCSdim = toUCSindex(s, s.length);
 
     v1 = arglist.length ? &arglist[0] : &undefined;
-    searchString = v1.toString();
+    searchString = v1.toString(cc);
     if(arglist.length >= 2)
     {
         double n;
@@ -531,8 +596,8 @@ DError* localeCompare(
     Value* v;
 
     v = &othis.value;
-    s1 = v.toString();
-    s2 = arglist.length ? arglist[0].toString() : undefined.toString();
+    s1 = v.toString(cc);
+    s2 = arglist.length ? arglist[0].toString(cc) : undefined.toString(cc);
     n = localeCompare(cc, s1, s2);
     ret.put(n);
     return null;
@@ -635,7 +700,7 @@ DError* replace(
     Value* v;
 
     v = &othis.value;
-    str = v.toString();
+    str = v.toString(cc);
     searchValue = (arglist.length >= 1) ? &arglist[0] : &undefined;
     replaceValue = (arglist.length >= 2) ? &arglist[1] : &undefined;
     r = Dregexp.isRegExp(searchValue);
@@ -670,11 +735,11 @@ DError* replace(
                 alist[m + 1].put(re.index);
                 alist[m + 2].put(str);
                 f.Call(cc, f, ret, alist[0 .. m + 3]);
-                replacement = ret.toString();
+                replacement = ret.toString(cc);
             }
             else
             {
-                newstring = replaceValue.toString();
+                newstring = replaceValue.toString(cc);
                 replacement = re.replace(newstring);
             }
             ptrdiff_t starti = re.index;
@@ -702,7 +767,7 @@ DError* replace(
     }
     else
     {
-        searchString = searchValue.toString();
+        searchString = searchValue.toString(cc);
         ptrdiff_t match = indexOf(str, searchString);
         if(match >= 0)
         {
@@ -715,11 +780,11 @@ DError* replace(
                 alist[1].put(match);
                 alist[2].put(str);
                 f.Call(cc, f, ret, alist);
-                replacement = ret.toString();
+                replacement = ret.toString(cc);
             }
             else
             {
-                newstring = replaceValue.toString();
+                newstring = replaceValue.toString(cc);
                 replacement = RegExp.replace3(newstring, str, pmatch[]);
             }
             result = str[0 .. match] ~
@@ -780,7 +845,7 @@ DError* slice(
     Value* v;
 
     v = &othis.value;
-    s = v.toString();
+    s = v.toString(cc);
     sUCSdim = toUCSindex(s, s.length);
     switch(arglist.length)
     {
@@ -873,7 +938,7 @@ DError* split(
 
     Value* v;
     v = &othis.value;
-    S = v.toString();
+    S = v.toString(cc);
     A = new Darray;
     if(limit.isUndefined())
         lim = ~0u;
@@ -891,7 +956,7 @@ DError* split(
     else        // string
     {
         re = null;
-        rs = separator.toString();
+        rs = separator.toString(cc);
         str = 1;
     }
     if(lim == 0)
@@ -1042,7 +1107,7 @@ DError* substr(
     double length;
     string_t s;
 
-    s = othis.value.toString();
+    s = othis.value.toString(cc);
     size_t sUCSdim = toUCSindex(s, s.length);
     start = 0;
     length = 0;
@@ -1080,7 +1145,7 @@ DError* substring(
     string_t s;
 
     //writefln("String.prototype.substring()");
-    s = othis.value.toString();
+    s = othis.value.toString(cc);
     size_t sUCSdim = toUCSindex(s, s.length);
     start = 0;
     end = sUCSdim;
@@ -1104,13 +1169,13 @@ enum CASE
     LocaleUpper
 };
 
-DError* tocase(Dobject othis, out Value ret, CASE caseflag)
+DError* tocase(ref CallContext cc, Dobject othis, out Value ret, CASE caseflag)
 {
     import std.string : toLower, toUpper;
 
     string_t s;
 
-    s = othis.value.toString();
+    s = othis.value.toString(cc);
     switch(caseflag)
     {
     case CASE.Lower:
@@ -1143,7 +1208,7 @@ DError* toLowerCase(
     // String.prototype.toLowerCase()
 
     //writef("Dstring_prototype_toLowerCase()\n");
-    return tocase(othis, ret, CASE.Lower);
+    return tocase(cc, othis, ret, CASE.Lower);
 }
 
 //------------------------------------------------------------------------------
@@ -1155,7 +1220,7 @@ DError* toLocaleLowerCase(
     // ECMA v3 15.5.4.17
 
     //writef("Dstring_prototype_toLocaleLowerCase()\n");
-    return tocase(othis, ret, CASE.LocaleLower);
+    return tocase(cc, othis, ret, CASE.LocaleLower);
 }
 
 //------------------------------------------------------------------------------
@@ -1167,7 +1232,7 @@ DError* toUpperCase(
     // ECMA 15.5.4.12
     // String.prototype.toUpperCase()
 
-    return tocase(othis, ret, CASE.Upper);
+    return tocase(cc, othis, ret, CASE.Upper);
 }
 
 //------------------------------------------------------------------------------
@@ -1178,21 +1243,22 @@ DError* toLocaleUpperCase(
 {
     // ECMA v3 15.5.4.18
 
-    return tocase(othis, ret, CASE.LocaleUpper);
+    return tocase(cc, othis, ret, CASE.LocaleUpper);
 }
 
 //------------------------------------------------------------------------------
 DError* dstring_anchor(
-    Dobject othis, out Value ret, string_t tag, string_t name, Value[] arglist)
+    ref CallContext cc, Dobject othis, out Value ret, string_t tag,
+    string_t name, Value[] arglist)
 {
     // For example:
     //	"foo".anchor("bar")
     // produces:
     //	<tag name="bar">foo</tag>
 
-    string_t foo = othis.value.toString();
+    string_t foo = othis.value.toString(cc);
     Value* va = arglist.length ? &arglist[0] : &undefined;
-    string_t bar = va.toString();
+    string_t bar = va.toString(cc);
 
     string_t s;
 
@@ -1225,7 +1291,7 @@ DError* anchor(
     // produces:
     //	<A NAME="bar">foo</A>
 
-    return dstring_anchor(othis, ret, "A", "NAME", arglist);
+    return dstring_anchor(cc, othis, ret, "A", "NAME", arglist);
 }
 
 //------------------------------------------------------------------------------
@@ -1234,7 +1300,7 @@ DError* fontcolor(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_anchor(othis, ret, "FONT", "COLOR", arglist);
+    return dstring_anchor(cc, othis, ret, "FONT", "COLOR", arglist);
 }
 
 //------------------------------------------------------------------------------
@@ -1243,7 +1309,7 @@ DError* fontsize(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_anchor(othis, ret, "FONT", "SIZE", arglist);
+    return dstring_anchor(cc, othis, ret, "FONT", "SIZE", arglist);
 }
 
 //------------------------------------------------------------------------------
@@ -1252,7 +1318,7 @@ DError* link(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_anchor(othis, ret, "A", "HREF", arglist);
+    return dstring_anchor(cc, othis, ret, "A", "HREF", arglist);
 }
 
 
@@ -1260,9 +1326,10 @@ DError* link(
 /*
 Produce <tag>othis</tag>
 */
-DError* dstring_bracket(Dobject othis, out Value ret, string_t tag)
+DError* dstring_bracket(ref CallContext cc, Dobject othis, out Value ret,
+                        string_t tag)
 {
-    string_t foo = othis.value.toString();
+    string_t foo = othis.value.toString(cc);
     string_t s;
 
     s = "<"     ~
@@ -1290,7 +1357,7 @@ DError* big(
     // produces:
     //	<BIG>foo</BIG>
 
-    return dstring_bracket(othis, ret, "BIG");
+    return dstring_bracket(cc, othis, ret, "BIG");
 }
 
 //------------------------------------------------------------------------------
@@ -1299,7 +1366,7 @@ DError* blink(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(othis, ret, "BLINK");
+    return dstring_bracket(cc, othis, ret, "BLINK");
 }
 
 //------------------------------------------------------------------------------
@@ -1308,7 +1375,7 @@ DError* bold(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(othis, ret, "B");
+    return dstring_bracket(cc, othis, ret, "B");
 }
 
 //------------------------------------------------------------------------------
@@ -1317,7 +1384,7 @@ DError* fixed(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(othis, ret, "TT");
+    return dstring_bracket(cc, othis, ret, "TT");
 }
 
 //------------------------------------------------------------------------------
@@ -1326,7 +1393,7 @@ DError* italics(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(othis, ret, "I");
+    return dstring_bracket(cc, othis, ret, "I");
 }
 
 //------------------------------------------------------------------------------
@@ -1335,7 +1402,7 @@ DError* small(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(othis, ret, "SMALL");
+    return dstring_bracket(cc, othis, ret, "SMALL");
 }
 
 //------------------------------------------------------------------------------
@@ -1344,7 +1411,7 @@ DError* strike(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(othis, ret, "STRIKE");
+    return dstring_bracket(cc, othis, ret, "STRIKE");
 }
 
 //------------------------------------------------------------------------------
@@ -1353,7 +1420,7 @@ DError* sub(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(othis, ret, "SUB");
+    return dstring_bracket(cc, othis, ret, "SUB");
 }
 
 //------------------------------------------------------------------------------
@@ -1362,7 +1429,7 @@ DError* sup(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(othis, ret, "SUP");
+    return dstring_bracket(cc, othis, ret, "SUP");
 }
 
 //

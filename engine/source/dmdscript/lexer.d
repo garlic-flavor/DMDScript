@@ -414,7 +414,7 @@ private:
                         auto ps = p;
                         p++;
                         d = unicode();
-                        if(!isidletter(d))
+                        if (!isidletter(d))
                         {
                             p = ps;
                             break;
@@ -512,10 +512,16 @@ private:
 
                         case 0:
                         case 0x1A:
-                            error(BadCCommentError);
-                            t.value = Tok.Eof;
-                            return;
-
+                            version (TEST262)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                error(BadCCommentError);
+                                t.value = Tok.Eof;
+                                return;
+                            }
                         default:
                             continue;
                         }
@@ -642,24 +648,32 @@ private:
                     // with a // comment.
                     if(*p == '>')
                     {
-                        // Scan ahead to see if it's the last token
-                        immutable(char_t) * q;
-
-                        q = p;
-                        for(;; )
+                        version (TEST262)
                         {
-                            switch(*++q)
+                            import dmdscript.protoerror : syntaxerror;
+                            error(new ScriptException(syntaxerror.Text, "a HTMLCloseComment is Detected."));
+                        }
+                        else
+                        {
+                            // Scan ahead to see if it's the last token
+                            immutable(char_t) * q;
+
+                            q = p;
+                            for(;; )
                             {
-                            case 0, 0x1A:
-                                t.value = Tok.Eof;
-                                p = q;
-                                return;
+                                switch(*++q)
+                                {
+                                case 0, 0x1A:
+                                    t.value = Tok.Eof;
+                                    p = q;
+                                    return;
 
-                            case ' ', '\t', '\v', '\f', '\n', '\r', 0xA0:
-                                continue;
+                                case ' ', '\t', '\v', '\f', '\n', '\r', 0xA0:
+                                    continue;
 
-                            default:
-                                assert(0);
+                                default:
+                                    assert(0);
+                                }
                             }
                         }
                     }
@@ -871,6 +885,13 @@ private:
                 d = get(p);
                 if(d >= 0x80 && isAlpha(d))
                     goto Lidentifier;
+                else if (d == 0x2028 || d == 0x2029) // <LS> / <PS>
+                {
+                    p = inc(p);
+                    currentline++;
+                    t.sawLineTerminator = p;
+                    continue;
+                }
                 else if(isStrWhiteSpaceChar(d))
                 {
                     p = inc(p);            //also skip unicode whitespace
@@ -1045,6 +1066,14 @@ private:
                 error(UnterminatedStringError);
                 return null;
 
+            case 0xe2:
+                // <LS> / <PS>
+                if (p[1] == 0x80 && (p[2] == 0xa8 || p[2] == 0xa9))
+                {
+                    error(UnterminatedStringError);
+                    return null;
+                }
+                goto default;
             default:
                 p++;
                 break;
@@ -1058,7 +1087,7 @@ private:
      * Scan regular expression. Return null with buffer
      * pointer intact if it is not a regexp.
      */
-    @trusted pure nothrow
+//    @trusted pure nothrow
     string_t regexp()
     {
         import std.ascii : isAlphaNum;
@@ -1095,6 +1124,7 @@ private:
         {
             c = *s;
             s++;
+
             switch(c)
             {
             case '\\':
@@ -1124,9 +1154,14 @@ private:
             case 0:                             // end of file
             case 0x1A:                          // end of file
                 return null;                    // not a regexp
-
             case '*':
                 if(s == p + 1)
+                    return null;
+                goto default;
+
+            case 0xe2:
+                // <LS> / <PS>
+                if (s[0] == 0x80 && (s[1] == 0xa8 || s[1] == 0xa9))
                     return null;
                 goto default;
             default:

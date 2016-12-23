@@ -417,7 +417,7 @@ DError* toLocaleString(
                 a = o.Call(cc, ot, rt, null);
                 if(a)                   // if exception was thrown
                     return a;
-                r ~= rt.toString();
+                r ~= rt.toString(cc);
             }
         }
     }
@@ -502,7 +502,7 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
     if(arglist.length == 0 || arglist[0].isUndefined())
         separator = Text.comma;
     else
-        separator = arglist[0].toString();
+        separator = arglist[0].toString(cc);
 
     for(k = 0; k != len; k++)
     {
@@ -510,7 +510,7 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
             r ~= separator;
         v = othis.Get(k, cc);
         if(v && !v.isUndefinedOrNull())
-            r ~= v.toString();
+            r ~= v.toString(cc);
     }
 
     ret.put(r);
@@ -890,8 +890,8 @@ extern (C) int compare_value(const void* x, const void* y)
         }
         else
         {
-            sx = vx.toString();
-            sy = vy.toString();
+            sx = vx.toString(*comparecc);
+            sy = vy.toString(*comparecc);
             cmp = stdcmp(sx, sy);
             if(cmp < 0)
                 cmp = -1;

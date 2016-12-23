@@ -308,7 +308,9 @@ align(size_t.sizeof):
 
     debug string toString()
     {
-        static if (is(typeof(operand.toString)))
+        static if (CODE == Opcode.PutScope)
+            return text(ir, " \"", operand.toString, "\" = [", acc, "]");
+        else static if (is(typeof(operand.toString)))
             return text(ir, " [", acc, "] = \"", operand.toString, "\"");
         else
             return text(ir, " [", acc, "] = ", operand);

@@ -114,7 +114,7 @@ DError* parse(
         n = d_time_nan;
     else
     {
-        s = arglist[0].toString();
+        s = arglist[0].toString(cc);
         n = parseDateString(cc, s);
     }
 

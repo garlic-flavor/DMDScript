@@ -170,8 +170,8 @@ class DregexpConstructor : Dconstructor
         }
         else
         {
-            P = pattern.isUndefined() ? "" : pattern.toString();
-            F = flags.isUndefined() ? "" : flags.toString();
+            P = pattern.isUndefined() ? "" : pattern.toString(cc);
+            F = flags.isUndefined() ? "" : flags.toString(cc);
         }
         r = new Dregexp(P, F);
         if(r.re.errors)
@@ -340,10 +340,10 @@ DError* compile(
             break;
 
         default:
-            attributes = arglist[1].toString();
+            attributes = arglist[1].toString(cc);
             goto case;
         case 1:
-            pattern = arglist[0].toString();
+            pattern = arglist[0].toString(cc);
             break;
         }
 
@@ -542,7 +542,7 @@ static:
             CallContext cc;
 
             if(arglist.length)
-                s = arglist[0].toString();
+                s = arglist[0].toString(cc);
             else
             {
                 Dfunction df;

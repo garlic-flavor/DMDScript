@@ -21,6 +21,7 @@ import dmdscript.primitive : string_t, Key;
 import dmdscript.dobject : Dobject;
 import dmdscript.property : PropertyKey, Property;
 import dmdscript.errmsgs;
+import dmdscript.callcontext : CallContext;
 debug import std.stdio;
 
 // !!! NOTICE !!!
@@ -46,7 +47,6 @@ struct Value
 {
     import dmdscript.iterator : Iterator;
     import dmdscript.primitive;
-    import dmdscript.callcontext : CallContext;
     import dmdscript.property : PropTable;
 
     //--------------------------------------------------------------------
@@ -274,7 +274,7 @@ struct Value
              */
             assert(_object);
             if (auto a = _object.DefaultValue(cc, v, PreferredType))
-                throw a.toScriptException;
+                throw a.toScriptException(cc);
             if(!v.isPrimitive)
             {
                 v.putVundefined;
@@ -714,7 +714,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    string_t toString()
+    string_t toString(ref CallContext cc)
     {
         final switch(_type)
         {
@@ -735,14 +735,13 @@ struct Value
         {
             Value val;
             Value* v = &val;
-            CallContext cc;
             // void* a;
 
             //writef("Vobject.toString()\n");
             toPrimitive(cc, *v, Type.String);
             //assert(!a);
             if(v.isPrimitive)
-                return v.toString;
+                return v.toString(cc);
             else
                 return v.toObject.classname;
         }
@@ -754,13 +753,13 @@ struct Value
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // needs more implementation.
-    string_t toLocaleString()
+    string_t toLocaleString(ref CallContext cc)
     {
-        return toString();
+        return toString(cc);
     }
 
     //--------------------------------------------------------------------
-    string_t toString(in int radix)
+    string_t toString(ref CallContext cc, in int radix)
     {
         import std.math : isFinite;
         import std.conv : to;
@@ -769,12 +768,12 @@ struct Value
         {
             assert(2 <= radix && radix <= 36);
             if(!isFinite(_number))
-                return toString();
+                return toString(cc);
             return _number >= 0.0 ? to!(string_t)(cast(long)_number, radix) : "-"~to!(string_t)(cast(long)-_number,radix);
         }
         else
         {
-            return toString();
+            return toString(cc);
         }
     }
 
@@ -816,12 +815,12 @@ struct Value
                     debug writef("Vobject.toSource() failed with %x\n", a);
                 }
                 else if(ret.isPrimitive())
-                    return ret.toString();
+                    return ret.toString(cc);
             }
             return Key.undefined;
         }
         default:
-            return toString();
+            return toString(cc);
         }
         assert(0);
     }
@@ -862,9 +861,9 @@ struct Value
     //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // implement this.
     @disable
-    string_t toPropertyKey()
+    string_t toPropertyKey(ref CallContext cc)
     {
-        return toString;
+        return toString(cc);
     }
 
     //--------------------------------------------------------------------
@@ -1201,7 +1200,7 @@ struct Value
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetFromPrimitiveError
-                .toThrow(PropertyName, _type.to!string_t, toString);
+                .toThrow(PropertyName, _type.to!string_t, toString(cc));
             //return &vundefined;
         }
     }
@@ -1217,7 +1216,7 @@ struct Value
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetIndexFromPrimitiveError
-                .toThrow(index, _type.to!string_t, toString);
+                .toThrow(index, _type.to!string_t, toString(cc));
             //return &vundefined;
         }
     }
@@ -1244,11 +1243,11 @@ struct Value
             else static if (is(K : uint))
             {
                 return CannotPutIndexToPrimitiveError(
-                    name, value.toString, _type.to!string_t);
+                    name, value.toString(cc), _type.to!string_t);
             }
             else
             {
-                return CannotPutToPrimitiveError(name, value.toString,
+                return CannotPutToPrimitiveError(name, value.toString(cc),
                                                  _type.to!string_t);
             }
         }
@@ -1278,7 +1277,7 @@ struct Value
             else
             {
                 auto pk = PropertyKey(PropertyName);
-                throw NotCallableError.toThrow(pk.toString);
+                throw NotCallableError.toThrow(pk.toString(cc));
             }
         }
         else
@@ -1409,9 +1408,8 @@ Value* signalingUndefined(in string_t id)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // check this.
 @disable
-Value* CanonicalNumericIndexString(in string_t str)
+Value* CanonicalNumericIndexString(ref CallContext cc, in string_t str)
 {
-    import dmdscript.callcontext : CallContext;
     import dmdscript.dglobal : undefined;
     import dmdscript.primitive : stringcmp;
 
@@ -1423,14 +1421,13 @@ Value* CanonicalNumericIndexString(in string_t str)
     else
     {
         Value v;
-        CallContext cc;
         v.put(str);
         auto number = v.toNumber(cc);
         debug
         {
             Value v2;
             v2.put(number);
-            if(0 != stringcmp(v2.toString, str))
+            if(0 != stringcmp(v2.toString(cc), str))
                 return &undefined;
         }
         value.put(number);
@@ -1462,21 +1459,20 @@ struct DError
 
         if (v.type == Value.Type.Object)
         {
-            if      (auto err = cast(D0base)v.object)
-                this(err);
-            else
-            {
-                Value str;
-                v.Invoke(Key.toString, cc, str, null);
-                this(new typeerror(
-                         new ScriptException(typeerror.Text, str.toString,
-                                             file, line)));
-            }
+            // if      (auto err = cast(D0base)v.object)
+            //     this(err);
+            // else
+            // {
+            //     this(new typeerror(name, new ScriptException(name, str.toString,
+            //                                                  file, line)));
+            // }
+            entity = v;
         }
         else
         {
-            this(new typeerror(new ScriptException(typeerror.Text, v.toString,
-                                                   file, line)));
+            entity.put(new typeerror(
+                           new ScriptException(typeerror.Text, v.toString(cc),
+                                               file, line)));
         }
     }
 
@@ -1488,16 +1484,20 @@ struct DError
     }
 
     ///
-    @safe
-    ScriptException toScriptException()
+    ScriptException toScriptException(ref CallContext cc)
     {
         import dmdscript.protoerror;
 
-        auto d0 = cast(D0base)entity.toObject;
-        assert(d0);
-        assert(d0.exception);
-
-        return d0.exception;
+        if (auto d0 = cast(D0base)entity.toObject)
+            return d0.exception;
+        else
+        {
+            auto msg = entity.toString(cc);
+            string_t name = typeerror.Text;
+            if (auto constructor = entity.Get(Key.constructor, cc))
+                name = constructor.object.classname;
+            return new ScriptException(name, msg);
+        }
     }
 
     ///
@@ -1511,8 +1511,6 @@ struct DError
             assert(d0.exception);
             d0.exception.addTrace(sourcename, funcname, srctext);
         }
-        else
-            assert(0);
     }
 
     ///
@@ -1526,8 +1524,6 @@ struct DError
             assert(d0.exception);
             d0.exception.addTrace(base, code, f, l);
         }
-        else
-            assert(0);
     }
 
     ///
@@ -1541,8 +1537,6 @@ struct DError
             assert(d0.exception);
             d0.exception.addMessage(message);
         }
-        else
-            assert(0);
     }
 }
 

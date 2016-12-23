@@ -202,7 +202,7 @@ class Program
 
         if(result !is null)
         {
-            auto exception = result.toScriptException;
+            auto exception = result.toScriptException(callcontext);
             exception.addTrace(globalfunction.sourcename, null,
                                globalfunction.srctext);
             throw exception;

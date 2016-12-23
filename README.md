@@ -39,8 +39,12 @@ An implementation of the ECMA 262 (Javascript) programming language
       + [x] Add manual stack tracing.
       + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(48/23509)
-* [ ] Implement. (0/586)
+* [ ] Run test262.(126/23509)
+      + [x] language/comments/*
+      + [x] language/line-terminators/*
+      + [x] language/source-text/*
+      + [x] language/white-space/*
+* [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
 

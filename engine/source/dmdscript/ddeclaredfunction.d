@@ -37,7 +37,10 @@ class DdeclaredFunction : Dconstructor
         import dmdscript.primitive : Key;
         import dmdscript.property : Property;
 
-        super(cast(uint)fd.parameters.length, Dfunction.getPrototype);
+        assert (fd !is null);
+
+        string_t name = fd.name is null ? Key.Function : fd.name.entity;
+        super(name, cast(uint)fd.parameters.length, Dfunction.getPrototype);
         assert(Dfunction.getPrototype);
         assert(GetPrototypeOf);
         this.fd = fd;

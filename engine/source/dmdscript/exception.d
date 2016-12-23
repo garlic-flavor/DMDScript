@@ -298,6 +298,8 @@ private:
              if (0 < srcline.length)
              {
                  sink("\n>"); sink(srcline.replace("\t", Tab).to!string);
+                 if (srcline[$-1] != '\n')
+                     sink("\n");
 
                  if (0 <= charpos)
                  {

@@ -207,21 +207,21 @@ struct Property
         if (auto v = obj.Get(Key.get, cc))
         {
             if (valueOrWritable)
-                throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
+                throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
             _attr |= Attribute.Accessor;
             _Get = cast(Dfunction)v.toObject;
             if (_Get is null)
-                throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
+                throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
         }
 
         if (auto v = obj.Get(Key.set, cc))
         {
             if (valueOrWritable)
-                throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
+                throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
             _attr |= Attribute.Accessor;
             _Set = cast(Dfunction)v.toObject;
             if (_Set is null)
-                throw CannotPutError.toScriptException; // !!!!!!!!!!!!!!!!!!!
+                throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
         }
     }
 
@@ -353,7 +353,7 @@ struct Property
                     return ret;
                 else
                 {
-                    debug throw err.toScriptException;
+                    debug throw err.toScriptException(cc);
                     else return null;
                 }
             }

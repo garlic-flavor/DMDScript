@@ -247,14 +247,14 @@ class DfunctionConstructor : Dconstructor
         // Get parameter list (P) and body from arglist[]
         if(arglist.length)
         {
-            bdy = arglist[arglist.length - 1].toString();
+            bdy = arglist[arglist.length - 1].toString(cc);
             if(arglist.length >= 2)
             {
                 for(uint a = 0; a < arglist.length - 1; a++)
                 {
                     if(a)
                         P ~= ',';
-                    P ~= arglist[a].toString();
+                    P ~= arglist[a].toString(cc);
                 }
             }
         }

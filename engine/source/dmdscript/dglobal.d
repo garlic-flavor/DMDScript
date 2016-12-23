@@ -196,7 +196,7 @@ DError* eval(
         ret = *v;
         return null;
     }
-    s = v.toString;
+    s = v.toString(cc);
 
     // Parse program
     TopStatement[] topstatements;
@@ -345,7 +345,7 @@ DError* parseInt(
     size_t i;
     string_t str;
 
-    str = arg0string(arglist);
+    str = arg0string(cc, arglist);
 
     //writefln("Dglobal_parseInt('%s')", string);
 
@@ -466,7 +466,7 @@ DError* parseFloat(
     double n;
     size_t endidx;
 
-    string_t str = arg0string(arglist);
+    string_t str = arg0string(cc, arglist);
     n = StringNumericLiteral(str, endidx, 1);
 
     ret.put(n);
@@ -497,7 +497,7 @@ DError* escape(
     uint unicodes;
     size_t slen;
 
-    s = arg0string(arglist);
+    s = arg0string(cc, arglist);
     escapes = 0;
     unicodes = 0;
     foreach(dchar c; s)
@@ -564,7 +564,7 @@ DError* unescape(
     string_t s;
     Unqual!(ForeachType!string_t)[] R; // char[] type is assumed.
 
-    s = arg0string(arglist);
+    s = arg0string(cc, arglist);
     //writefln("Dglobal.unescape(s = '%s')", s);
     for(size_t k = 0; k < s.length; k++)
     {
@@ -701,7 +701,7 @@ DError* decodeURI(
     // ECMA v3 15.1.3.1
     string_t s;
 
-    s = arg0string(arglist);
+    s = arg0string(cc, arglist);
     try
     {
         s = decode(s);
@@ -725,7 +725,7 @@ DError* decodeURIComponent(
     // ECMA v3 15.1.3.2
     string_t s;
 
-    s = arg0string(arglist);
+    s = arg0string(cc, arglist);
     try
     {
         s = decodeComponent(s);
@@ -750,7 +750,7 @@ DError* encodeURI(
     // ECMA v3 15.1.3.3
     string_t s;
 
-    s = arg0string(arglist);
+    s = arg0string(cc, arglist);
     try
     {
         s = encode(s);
@@ -774,7 +774,7 @@ DError* encodeURIComponent(
     // ECMA v3 15.1.3.4
     string_t s;
 
-    s = arg0string(arglist);
+    s = arg0string(cc, arglist);
     try
     {
         s = encodeComponent(s);
@@ -814,11 +814,11 @@ void dglobal_print(
                     }
                 }
 
-                printf("%s", arglist[i].toString.toMBSz);
+                printf("%s", arglist[i].toString(cc).toMBSz);
             }
             else
             {
-                string_t s = arglist[i].toString();
+                string_t s = arglist[i].toString(cc);
 
                 writef("%s", s);
             }
@@ -921,7 +921,7 @@ DError* getenv(
     ret.putVundefined();
     if(arglist.length)
     {
-        string_t s = arglist[0].toString();
+        string_t s = arglist[0].toString(cc);
         char* p = getenv(toStringz(s));
         if(p)
             ret.put(p[0 .. strlen(p)].idup);
@@ -977,10 +977,10 @@ DError* ScriptEngineMinorVersion(
 //------------------------------------------------------------------------------
 
 //
-string_t arg0string(Value[] arglist)
+string_t arg0string(ref CallContext cc, Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &undefined;
-    return v.toString();
+    return v.toString(cc);
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
