@@ -112,6 +112,10 @@ enum Opcode : ubyte
     Put,
     PutS     = Put + OpOffset.S,
     PutScope = Put + OpOffset.Scope,
+    PutGetter,                      // Put getter property.
+    PutGetterS    = PutGetter + OpOffset.S,
+    PutSetter,                      // Put setter property.
+    PutSetterS = PutSetter + OpOffset.S,
     Del,
     DelS     = Del + OpOffset.S,
     DelScope = Del + OpOffset.Scope,
@@ -308,12 +312,19 @@ align(size_t.sizeof):
 
     debug string toString()
     {
-        static if (CODE == Opcode.PutScope)
-            return text(ir, " \"", operand.toString, "\" = [", acc, "]");
-        else static if (is(typeof(operand.toString)))
-            return text(ir, " [", acc, "] = \"", operand.toString, "\"");
+        import dmdscript.opcodes : IR;
+        static if      (is(T : StringKey*))
+            auto opName = text("\"", *operand, "\"");
+        else static if (is(T : FunctionDefinition))
+            auto opName = text("function\n{\n", IR.toString(operand.code),
+                               "}");
         else
-            return text(ir, " [", acc, "] = ", operand);
+            auto opName = text("[", operand, "]");
+
+        static if (isGet!CODE)
+            return text(ir, " [", acc, "] = ", opName);
+        else
+            return text(ir, opName, " = [", acc, "]");
     }
 }
 
@@ -448,7 +459,17 @@ align(size_t.sizeof):
     }
 
     debug string toString() const
-    { return text(ir, " ", acc, " = ", owner, ".", method); }
+    {
+        static if (is(T : StringKey*))
+            auto mName = text("\"", *method, "\"");
+        else
+            auto mName = text("[", method, "]");
+
+        static if (isGet!CODE)
+            return text(ir, " [", acc, "] = [", owner, "].", mName);
+        else
+            return text(ir, " [", owner, "].", mName, " = [", acc, "]");
+    }
 }
 
 private struct IRScope3(Opcode CODE)
@@ -748,6 +769,12 @@ alias IRTypes = AliasSeq!(
     IRget3!(Opcode.Put, idx_t), // owner.method = acc
     IRget3!(Opcode.PutS, StringKey*), // owner.method = acc
     IR2!(Opcode.PutScope, StringKey*), // s = acc,
+
+    IRget3!(Opcode.PutGetter, idx_t),       // owner.property = getter
+    IRget3!(Opcode.PutGetterS, StringKey*),
+    IRget3!(Opcode.PutSetter, idx_t),       // owner.property = setter
+    IRget3!(Opcode.PutSetterS, StringKey*),
+
     IRget3!(Opcode.Del, idx_t), // acc = delete owner.method
     IRget3!(Opcode.DelS, StringKey*), // acc = delete owner.method
     IR2!(Opcode.DelScope, StringKey*), // acc = delete operand
@@ -914,6 +941,16 @@ auto IRTypeDispatcher(alias PROC, ARGS...)(Opcode op, ARGS args)
         return PROC!(IRTypes[Opcode.PutS])(args);
     case Opcode.PutScope:
         return PROC!(IRTypes[Opcode.PutScope])(args);
+
+    case Opcode.PutGetter:
+        return PROC!(IRTypes[Opcode.PutGetter])(args);
+    case Opcode.PutGetterS:
+        return PROC!(IRTypes[Opcode.PutGetterS])(args);
+    case Opcode.PutSetter:
+        return PROC!(IRTypes[Opcode.PutSetter])(args);
+    case Opcode.PutSetterS:
+        return PROC!(IRTypes[Opcode.PutSetterS])(args);
+
     case Opcode.Del:
         return PROC!(IRTypes[Opcode.Del])(args);
     case Opcode.DelS:
@@ -1059,4 +1096,70 @@ auto IRTypeDispatcher(alias PROC, ARGS...)(Opcode op, ARGS args)
     case Opcode.CheckRef:
         return PROC!(IRTypes[Opcode.CheckRef])(args);
     }
+}
+
+
+//
+private template isGet(Opcode CODE)
+{
+    bool _impl(Opcode code)
+    {
+        final switch(code)
+        {
+        case Opcode.Error, Opcode.Nop, Opcode.End,
+            Opcode.PutCall, Opcode.PutCallS, Opcode.PutCallScope,
+            Opcode.PutCallV,
+
+            Opcode.Put, Opcode.PutS, Opcode.PutScope, Opcode.PutGetter,
+            Opcode.PutGetterS, Opcode.PutSetter, Opcode.PutSetterS,
+
+            Opcode.Next, Opcode.NextS, Opcode.NextScope,
+
+            Opcode.PutThis, Opcode.PutDefault,
+
+            Opcode.Ret, Opcode.RetExp, Opcode.ImpRet,
+
+            Opcode.New,
+
+            Opcode.JT, Opcode.JF, Opcode.JTB, Opcode.JFB, Opcode.Jmp,
+            Opcode.JLT, Opcode.JLE, Opcode.JLTC, Opcode.JLEC,
+
+            Opcode.Push, Opcode.Pop,
+            Opcode.Assert,
+
+            Opcode.Throw, Opcode.TryCatch, Opcode.TryFinally,
+            Opcode.FinallyRet, Opcode.CheckRef:
+
+            return false;
+
+        case Opcode.String, Opcode.ThisGet, Opcode.Number, Opcode.Object,
+            Opcode.This, Opcode.Null, Opcode.Undefined, Opcode.Boolean,
+            Opcode.Call, Opcode.CallS, Opcode.CallScope, Opcode.CallV,
+            Opcode.Get, Opcode.GetS, Opcode.GetScope,
+
+            Opcode.Del, Opcode.DelS, Opcode.DelScope,
+
+            Opcode.AddAsS, Opcode.AddAsSS, Opcode.AddAsSScope,
+
+            Opcode.Mov,
+
+            Opcode.Neg, Opcode.Pos, Opcode.Com, Opcode.Not, Opcode.Add,
+            Opcode.Sub, Opcode.Mul, Opcode.Div, Opcode.Mod, Opcode.ShL,
+            Opcode.ShR, Opcode.UShR, Opcode.And, Opcode.Or, Opcode.Xor,
+            Opcode.In,
+            Opcode.PreInc, Opcode.PreIncS, Opcode.PreIncScope, Opcode.PreDec,
+            Opcode.PreDecS, Opcode.PreDecScope, Opcode.PostInc, Opcode.PostIncS,
+            Opcode.PostIncScope, Opcode.PostDec, Opcode.PostDecS,
+            Opcode.PostDecScope,
+
+            Opcode.CLT, Opcode.CLE, Opcode.CGT, Opcode.CGE, Opcode.CEq,
+            Opcode.CNE, Opcode.CID, Opcode.CNID,
+
+            Opcode.Typeof, Opcode.Instance,
+
+            Opcode.Iter:
+            return true;
+        }
+    }
+    enum isGet = _impl(CODE);
 }

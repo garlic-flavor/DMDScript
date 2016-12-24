@@ -250,6 +250,7 @@ class Dobject
         {
             return proptable.keys;
         }
+
     }
 
     //--------------------------------------------------------------------
@@ -337,6 +338,26 @@ class Dobject
         // ECMA 8.6.2.2
         auto key = PropertyKey(index);
         return proptable.set(key, value, attributes, cc, this);
+    }
+
+    //--------------------------------------------------------------------
+    //
+    bool SetGetter(in ref StringKey PropertyName, ref Value value,
+                   in Property.Attribute attribute, ref CallContext cc)
+    {
+        auto getter = cast(Dfunction)value.object;
+        assert (getter !is null);
+        return proptable.configGetter(PropertyName, getter, attribute,
+                                      _extensible);
+    }
+    //
+    bool SetSetter(in ref StringKey PropertyName, ref Value value,
+                   in Property.Attribute attribute, ref CallContext cc)
+    {
+        auto setter = cast(Dfunction)value.object;
+        assert (setter !is null);
+        return proptable.configSetter(PropertyName, setter, attribute,
+                                      _extensible);
     }
 
     //--------------------------------------------------------------------
@@ -431,7 +452,7 @@ class Dobject
 
     final @trusted
     DError* DefaultValue(ref CallContext cc, out Value ret,
-                         in Value.Type Hint = Value.Type.RefError)
+                         in Value.Type hint = Value.Type.RefError)
     {
         import dmdscript.ddate : Ddate;
 
@@ -442,13 +463,13 @@ class Dobject
 
         // ECMA 8.6.2.6
 
-        if(Hint == Value.Type.String ||
-           (Hint == Value.Type.RefError && (cast(Ddate)this) !is null))
+        if(hint == Value.Type.String ||
+           (hint == Value.Type.RefError && (cast(Ddate)this) !is null))
         {
             i = 0;
         }
-        else if(Hint == Value.Type.Number ||
-                Hint == Value.Type.RefError)
+        else if(hint == Value.Type.Number ||
+                hint == Value.Type.RefError)
         {
             i = 1;
         }

@@ -153,7 +153,8 @@ struct Property
         _value.put(v);
         _attr = a & ~Attribute.Accessor & ~Attribute.DontOverride;
     }
-    /// ditto
+
+    //--------------------------------------------------------------------
     @trusted @nogc pure nothrow
     this(Dfunction getter, Dfunction setter, in Attribute a)
     {
@@ -321,22 +322,53 @@ struct Property
         else
             return _value == v;
     }
+
+/*
     /// ditto
-    @trusted @nogc pure nothrow
-    bool config(Dfunction getter, Dfunction setter, Attribute a)
+    bool configGetter(Dfunction getter, Attribute a)
     {
-        auto na = a;
         if      (canBeAccessor(a))
         {
             _attr = a;
             _Get = getter;
+            return true;
+        }
+        else if (_attr & Attribute.Accessor)
+            return _Get is getter;
+        else
+            return false;
+
+    }
+    /// ditto
+    bool configSetter(Dfunction setter, Attribute a)
+    {
+        if      (canBeAccessor(a))
+        {
+            _attr = a;
             _Set = setter;
             return true;
         }
         else if (_attr & Attribute.Accessor)
-            return _Get is getter && _Set is setter;
+            return _Set is setter;
         else
             return false;
+
+    }
+*/
+
+    /// ditto
+    @trusted @nogc pure nothrow
+    private void configSetterForce(Dfunction setter, in Attribute a)
+    {
+        _Set = setter;
+        _attr = a;
+    }
+    /// ditto
+    @trusted @nogc pure nothrow
+    private void configGetterForce(Dfunction getter, in Attribute a)
+    {
+        _Get = getter;
+        _attr = a;
     }
 
     //--------------------------------------------------------------------
@@ -399,15 +431,14 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    DError* set(T)(auto ref T _v, in Attribute a,
+    DError* set(T)(auto ref T _v, Attribute a,
                    ref CallContext cc, Dobject othis,)
         if (IsValue!T)
     {
-        auto na = cast(Attribute)a;
-        if (!canSetValue(na))
+        if (!canSetValue(a))
             return null;
 
-        _attr = na;
+        _attr = a;
         if (_attr & Attribute.Accessor)
         {
             if (_Set !is null)
@@ -432,7 +463,7 @@ struct Property
     @property @safe @nogc pure nothrow
     bool isAccessor() const
     {
-        return 0 == (_attr & Attribute.Accessor);
+        return 0 != (_attr & Attribute.Accessor);
     }
 
     ///
@@ -577,6 +608,7 @@ final class PropTable
     import dmdscript.primitive : string_t;
     import dmdscript.dobject : Dobject;
     import dmdscript.callcontext : CallContext;
+    import dmdscript.dfunction : Dfunction;
     import dmdscript.RandAA : RandAA;
 
     ///
@@ -791,6 +823,96 @@ final class PropTable
             }
 
             auto p = Property(value, attributes);
+            _table.insertAlt(key, p, key.hash);
+
+            return true;
+        }
+        else
+            return false;
+    }
+
+    /// ditto
+    @safe
+    bool configGetter(K)(in auto ref K k, Dfunction getter,
+                         in Property.Attribute attributes, in bool extensible)
+        if (PropertyKey.IsKey!K)
+    {
+        static if (is(K : PropertyKey))
+            alias key = k;
+        else
+            auto key = PropertyKey(k);
+
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canBeAccessor(na))
+            {
+                return false;
+            }
+
+            if (!_canExtend(key))
+            {
+                p.preventExtensions;
+                return false;
+            }
+
+            p.configGetterForce(getter, na);
+
+            return true;
+        }
+        else if (extensible)
+        {
+            if (!_canExtend(key))
+            {
+                return false;
+            }
+
+            auto p = Property(getter, null, attributes);
+            _table.insertAlt(key, p, key.hash);
+
+            return true;
+        }
+        else
+            return false;
+    }
+
+    /// ditto
+    @safe
+    bool configSetter(K)(in auto ref K k, Dfunction setter,
+                         in Property.Attribute attributes, in bool extensible)
+        if (PropertyKey.IsKey!K)
+    {
+        static if (is(K : PropertyKey))
+            alias key = k;
+        else
+            auto key = PropertyKey(k);
+
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canBeAccessor(na))
+            {
+                return false;
+            }
+
+            if (!_canExtend(key))
+            {
+                p.preventExtensions;
+                return false;
+            }
+
+            p.configSetterForce(setter, na);
+
+            return true;
+        }
+        else if (extensible)
+        {
+            if (!_canExtend(key))
+            {
+                return false;
+            }
+
+            auto p = Property(null, setter, attributes);
             _table.insertAlt(key, p, key.hash);
 
             return true;

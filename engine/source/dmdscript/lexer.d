@@ -20,7 +20,7 @@
 
 module dmdscript.lexer;
 
-import dmdscript.primitive : string_t;
+import dmdscript.primitive : string_t, StringKey;
 
 debug import std.stdio;
 
@@ -72,6 +72,7 @@ enum Tok : int
     Plusplus, Minusminus, Dot,
     Question, Andand, Oror,
 
+
     // Leaf operators
     Number, Identifier, String,
     Regexp, Real,
@@ -86,6 +87,9 @@ enum Tok : int
     Switch, This, True,
     Typeof, Var, Void,
     While, With,
+    Yield,
+    Set, Get,
+    Await,
 
     // Reserved for ECMA extensions
     Catch, Class,
@@ -93,6 +97,7 @@ enum Tok : int
     Enum, Extends,
     Finally, Super,
     Throw, Try,
+    Let,
 
     // Java keywords reserved for unknown reasons
     Abstract, Boolean,
@@ -113,7 +118,7 @@ enum Tok : int
 
 struct Token
 {
-    import dmdscript.primitive : char_t, number_t, real_t, StringKey;
+    import dmdscript.primitive : char_t, number_t, real_t;
     import dmdscript.templateliteral : TemplateLiteral;
 
     Tok    value;
@@ -1384,6 +1389,18 @@ private:
                     if(s[1] == 'a' && s[2] == 'r')
                         return Tok.Var;
                     break;
+                case 'l':
+                    if (s[1] == 'e' && s[2] == 't')
+                        return Tok.Let;
+                    break;
+                case 's':
+                    if (s[1] == 'e' && s[2] == 't')
+                        return Tok.Set;
+                    break;
+                case 'g':
+                    if (s[1] == 'e' && s[2] == 't')
+                        return Tok.Get;
+                    break;
                 default:
                     break;
                 }
@@ -1453,7 +1470,8 @@ private:
                 case "super":               return Tok.Super;
                 case "throw":               return Tok.Throw;
                 case "while":               return Tok.While;
-              //case "await":
+                case "yield":               return Tok.Yield;
+                case "await":               return Tok.Await;
                 default:
                     break;
                 }
@@ -1536,6 +1554,124 @@ private:
     }
 }
 
+StringKey* propertyName(Token token)
+{
+    template CharsOf(Tok token)
+    {
+        import std.conv : to;
+        import std.string : toLower;
+        enum CharsOf = token.to!string_t.toLower;
+    }
+
+    switch (token)
+    {
+    case Tok.Identifier:
+        return token.ident;
+    case Tok.String, Tok.Number, Tok.Real:
+        return StringKey.build(token.toString);
+
+    // Reserved words are allowed.
+    case Tok.Null:
+        return StringKey.build(CharsOf!(Tok.Null));
+    case Tok.True:
+        return StringKey.build(CharsOf!(Tok.True));
+    case Tok.False:
+        return StringKey.build(CharsOf!(Tok.False));
+    case Tok.In:
+        return StringKey.build(CharsOf!(Tok.In));
+    case Tok.Try:
+        return StringKey.build(CharsOf!(Tok.Try));
+    case Tok.Class:
+        return StringKey.build(CharsOf!(Tok.Class));
+    case Tok.Enum:
+        return StringKey.build(CharsOf!(Tok.Enum));
+    case Tok.Extends:
+        return StringKey.build(CharsOf!(Tok.Extends));
+    case Tok.Super:
+        return StringKey.build(CharsOf!(Tok.Super));
+    case Tok.Const:
+        return StringKey.build(CharsOf!(Tok.Const));
+    case Tok.Export:
+        return StringKey.build(CharsOf!(Tok.Export));
+    case Tok.Import:
+        return StringKey.build(CharsOf!(Tok.Import));
+    case Tok.Implements:
+        return StringKey.build(CharsOf!(Tok.Implements));
+    case Tok.Let:
+        return StringKey.build(CharsOf!(Tok.Let));
+    case Tok.Private:
+        return StringKey.build(CharsOf!(Tok.Private));
+    case Tok.Public:
+        return StringKey.build(CharsOf!(Tok.Public));
+    case Tok.Yield:
+        return StringKey.build(CharsOf!(Tok.Yield));
+    case Tok.Set:
+        return StringKey.build(CharsOf!(Tok.Set));
+    case Tok.Get:
+        return StringKey.build(CharsOf!(Tok.Get));
+    case Tok.Await:
+        return StringKey.build(CharsOf!(Tok.Await));
+    case Tok.Interface:
+        return StringKey.build(CharsOf!(Tok.Interface));
+    case Tok.Package:
+        return StringKey.build(CharsOf!(Tok.Package));
+    case Tok.Protected:
+        return StringKey.build(CharsOf!(Tok.Protected));
+    case Tok.Static:
+        return StringKey.build(CharsOf!(Tok.Static));
+    case Tok.Break:
+        return StringKey.build(CharsOf!(Tok.Break));
+    case Tok.Case:
+        return StringKey.build(CharsOf!(Tok.Case));
+    case Tok.Do:
+        return StringKey.build(CharsOf!(Tok.Do));
+    case Tok.Instanceof:
+        return StringKey.build(CharsOf!(Tok.Instanceof));
+    case Tok.Typeof:
+        return StringKey.build(CharsOf!(Tok.Typeof));
+    case Tok.Else:
+        return StringKey.build(CharsOf!(Tok.Else));
+    case Tok.New:
+        return StringKey.build(CharsOf!(Tok.New));
+    case Tok.Var:
+        return StringKey.build(CharsOf!(Tok.Var));
+    case Tok.Catch:
+        return StringKey.build(CharsOf!(Tok.Catch));
+    case Tok.Finally:
+        return StringKey.build(CharsOf!(Tok.Finally));
+    case Tok.Return:
+        return StringKey.build(CharsOf!(Tok.Return));
+    case Tok.Void:
+        return StringKey.build(CharsOf!(Tok.Void));
+    case Tok.Continue:
+        return StringKey.build(CharsOf!(Tok.Continue));
+    case Tok.For:
+        return StringKey.build(CharsOf!(Tok.For));
+    case Tok.Switch:
+        return StringKey.build(CharsOf!(Tok.Switch));
+    case Tok.While:
+        return StringKey.build(CharsOf!(Tok.While));
+    case Tok.Debugger:
+        return StringKey.build(CharsOf!(Tok.Debugger));
+    case Tok.Function:
+        return StringKey.build(CharsOf!(Tok.Function));
+    case Tok.This:
+        return StringKey.build(CharsOf!(Tok.This));
+    case Tok.With:
+        return StringKey.build(CharsOf!(Tok.With));
+    case Tok.Default:
+        return StringKey.build(CharsOf!(Tok.Default));
+    case Tok.If:
+        return StringKey.build(CharsOf!(Tok.If));
+    case Tok.Throw:
+        return StringKey.build(CharsOf!(Tok.Throw));
+    case Tok.Delete:
+        return StringKey.build(CharsOf!(Tok.Delete));
+    default:
+        return null;
+    }
+}
+
 
 /****************************************
  */
@@ -1594,6 +1730,7 @@ string_t tochars(Tok tok)
     case Tok.Oror: return "||";
     case Tok.Plusplus: return "++";
     case Tok.Minusminus: return "--";
+
     default:
         return tok.to!string_t.toLower;
     }

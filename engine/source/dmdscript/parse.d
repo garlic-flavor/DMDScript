@@ -145,7 +145,7 @@ private:
             switch(token.value)
             {
             case Tok.Function:
-                topstatements.put(parseFunction(ParseFlag.statement));
+                topstatements.put(parseFunction!(ParseFlag.statement));
                 break;
 
             case Tok.Eof:
@@ -172,9 +172,10 @@ private:
     {
         statement = 0,
         literal   = 1,
+        property  = 2,
     }
 
-    TopStatement parseFunction(ParseFlag flag)
+    auto parseFunction(ParseFlag flag)()
     {
         import std.array : Appender;
         StringKey* name;
@@ -184,39 +185,49 @@ private:
         Expression e = null;
         uint linnum;
 
-        //writef("parseFunction()\n");
         linnum = currentline;
         nextToken();
         name = null;
-        if(token == Tok.Identifier)
+
+        static if (flag == ParseFlag.property)
+            name = propertyName(token);
+        else
         {
-            name = token.ident;
+            if (token == Tok.Identifier)
+                name = token.ident;
+        }
+
+        if(name !is null)
+        {
             nextToken();
 
-            if(flag == ParseFlag.statement && token == Tok.Dot)
+            static if (flag == ParseFlag.statement)
             {
-                // Regard:
-                //	function A.B() { }
-                // as:
-                //	A.B = function() { }
-                // This is not ECMA, but a jscript feature
-
-                e = new IdentifierExpression(linnum, name);
-                name = null;
-
-                while(token == Tok.Dot)
+                if(token == Tok.Dot)
                 {
-                    nextToken();
-                    if(token == Tok.Identifier)
+                    // Regard:
+                    //	function A.B() { }
+                    // as:
+                    //	A.B = function() { }
+                    // This is not ECMA, but a jscript feature
+
+                    e = new IdentifierExpression(linnum, name);
+                    name = null;
+
+                    while(token == Tok.Dot)
                     {
-                        e = new DotExp(linnum, e, token.ident);
                         nextToken();
-                    }
-                    else
-                    {
-                        error(ExpectedIdentifier2paramError(
-                                  ".", token.toString));
-                        break;
+                        if(token == Tok.Identifier)
+                        {
+                            e = new DotExp(linnum, e, token.ident);
+                            nextToken();
+                        }
+                        else
+                        {
+                            error(ExpectedIdentifier2paramError(
+                                      ".", token.toString));
+                            break;
+                        }
                     }
                 }
             }
@@ -253,23 +264,32 @@ private:
 
         f = new FunctionDefinition(base, linnum, 0, name, sourcename,
                                    parameters.data, topstatements);
-        f.isliteral = flag == ParseFlag.literal;
-        lastnamedfunc = f;
-
-        //writef("parseFunction() done\n");
-        if(!e)
+        static if (flag == ParseFlag.literal || flag == ParseFlag.property)
+        {
+            f.isliteral = true;
             return f;
+        }
+        else
+        {
+            f.isliteral = false;
 
-        // Construct:
-        //	A.B = function() { }
+            lastnamedfunc = f;
 
-        Expression e2 = new FunctionLiteral(linnum, f);
+            assert (f !is null);
+            if(e is null)
+                return cast(TopStatement)f;
 
-        e = new AssignExp(linnum, e, e2);
+            // Construct:
+            //	A.B = function() { }
 
-        Statement s = new ExpStatement(linnum, e);
+            auto e2 = new FunctionLiteral(linnum, f);
 
-        return s;
+            e = new AssignExp(linnum, e, e2);
+
+            auto s = new ExpStatement(linnum, e);
+
+            return cast(TopStatement)s;
+        }
     }
 
     /*****************************************
@@ -329,6 +349,7 @@ private:
         case Tok.True:
         case Tok.False:
         case Tok.Void:
+        case Tok.Lbracket:
         {
           auto exp = parseExpression(Flag.initial);
           parseOptionalSemi();
@@ -890,7 +911,6 @@ private:
         Appender!(Field[]) fields;
         uint linnum;
 
-        //writef("parseObjectLiteral()\n");
         linnum = currentline;
         check(Tok.Lbrace);
         if(token.value == Tok.Rbrace)
@@ -899,27 +919,55 @@ private:
         {
             for(;; )
             {
-                StringKey* ident;
-                switch(token.value)
+                if      (Tok.Set == token)
                 {
-                case Tok.Identifier:
-                    ident = token.ident;
-                    break;
-                case Tok.String, Tok.Number, Tok.Real:
-                    ident = StringKey.build(token.toString);
-                    break;
-                default:
-                    error(ExpectedIdentifierError);
-                    break;
+                    auto fe = parseFunctionLiteral!(ParseFlag.property);
+                    if (fe is null)
+                    {
+                        error(ExpectedIdentifierError);
+                        break;
+                    }
+                    fields.put(new Field(fe.func.name, fe, Field.Type.Setter));
+                    if (token != Tok.Comma)
+                        break;
+                    nextToken();
+                    if (token == Tok.Rbrace)
+                        break;
+
                 }
-                nextToken();
-                check(Tok.Colon);
-                fields.put(new Field(ident, parseAssignExp()));
-                if(token != Tok.Comma)
-                    break;
-                nextToken();
-                if(token == Tok.Rbrace)//allow trailing comma
-                    break;
+                else if (Tok.Get == token)
+                {
+                    auto fe = parseFunctionLiteral!(ParseFlag.property);
+                    if (fe is null)
+                    {
+                        error(ExpectedIdentifierError);
+                        break;
+                    }
+                    fields.put(new Field(fe.func.name, fe, Field.Type.Getter));
+                    if (token != Tok.Comma)
+                        break;
+                    nextToken();
+                    if (token == Tok.Rbrace)
+                        break;
+                }
+                else
+                {
+                    auto ident = propertyName(token);
+
+                    if (ident is null)
+                    {
+                        error(ExpectedIdentifierError);
+                        break;
+                    }
+                    nextToken();
+                    check(Tok.Colon);
+                    fields.put(new Field(ident, parseAssignExp()));
+                    if(token != Tok.Comma)
+                        break;
+                    nextToken();
+                    if(token == Tok.Rbrace)//allow trailing comma
+                        break;
+                }
             }
             check(Tok.Rbrace);
         }
@@ -927,13 +975,14 @@ private:
         return e;
     }
 
-    Expression parseFunctionLiteral()
+    FunctionLiteral parseFunctionLiteral(ParseFlag FLAG = ParseFlag.literal)()
     {
         FunctionDefinition f;
         uint linnum;
 
         linnum = currentline;
-        f = cast(FunctionDefinition)parseFunction(ParseFlag.literal);
+        f = parseFunction!FLAG;
+        assert (f !is null);
         return new FunctionLiteral(linnum, f);
     }
 
@@ -949,9 +998,10 @@ private:
             {
             case Tok.Dot:
                 nextToken();
-                if(token == Tok.Identifier)
+
+                if (auto ident = propertyName(token))
                 {
-                    e = new DotExp(linnum, e, token.ident);
+                    e = new DotExp(linnum, e, ident);
                 }
                 else
                 {
@@ -991,7 +1041,6 @@ private:
             case Tok.Lbracket:
             {       // array dereference
                 Expression index;
-
                 nextToken();
                 index = parseExpression();
                 check(Tok.Rbracket);

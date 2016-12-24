@@ -274,7 +274,7 @@ class DfunctionConstructor : Dconstructor
             fd.toIR(null);
             Dfunction fobj = new DdeclaredFunction(fd);
             // fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
-            fobj.scopex = cc.scopex.stack.dup;
+            fobj.scopex = cc.scopes.dup;
             ret.put(fobj);
         }
         else

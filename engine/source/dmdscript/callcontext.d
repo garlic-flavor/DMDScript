@@ -76,7 +76,8 @@ struct VariableScope
         string name;
         if (callerf !is null && callerf.name !is null)
             name = callerf.name.toString;
-        return text("{name=", name, ", scoperoot=", scoperoot, ", prevlength=", prevlength, "}");
+        return text("{name=", name, ", scoperoot=", scoperoot, ", prevlength="
+                    , prevlength, "}");
     }
 
     //====================================================================
@@ -120,7 +121,7 @@ struct CallContext
     @safe pure nothrow
     this(Dobject global)
     {
-        _scopex = new ScopeStack(global);
+        _scopex = ScopeStack(global);
     }
 
     //--------------------------------------------------------------------
@@ -129,18 +130,6 @@ struct CallContext
     inout(Dobject) global() inout
     {
         return _scopex.global;
-    }
-
-    //--------------------------------------------------------------------
-    /** Get the stack of searching fields.
-
-    scopex[0] is the outermost searching field (== global).
-    scopex[$-1] is the innermost searching field.
-    */
-    @property @safe @nogc pure nothrow
-    inout(ScopeStack) scopex() inout
-    {
-        return _scopex;
     }
 
     //--------------------------------------------------------------------
@@ -216,6 +205,34 @@ struct CallContext
     inout(Dfunction) caller() inout
     {
         return _scopex.caller;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Dobject) callerothis() inout
+    {
+        return _scopex.callerothis;
+    }
+
+    //--------------------------------------------------------------------
+    /** Get the stack of searching fields.
+
+    scopex[0] is the outermost searching field (== global).
+    scopex[$-1] is the innermost searching field.
+    */
+    @property @safe @nogc pure nothrow
+    inout(Dobject)[] scopes() inout
+    {
+        return _scopex.stack;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @safe @nogc pure nothrow
+    inout(Dobject) getNonFakeObject() inout
+    {
+        return _scopex.getNonFakeObject;
     }
 
     //--------------------------------------------------------------------
@@ -300,11 +317,6 @@ private:
     ScopeStack _scopex;     // current scope chain
     bool _interrupt;        // !=0 if cancelled due to interrupt
 
-    invariant
-    {
-        assert (_scopex !is null);
-    }
-
 
 package debug:
 
@@ -361,7 +373,7 @@ function func1()
    variable searching scope.
 */
 //
-final class ScopeStack
+struct ScopeStack
 {
     import std.array : Appender;
     import dmdscript.dobject : Dobject;
@@ -638,6 +650,25 @@ final class ScopeStack
         return result.data.join;
     }
 
+    static string_t[] searchSimilarWord(ref CallContext cc, Dobject target,
+                                        in ref char[4] key)
+    {
+        import std.string : soundexer;
+
+        Appender!(string_t[]) result;
+        foreach (one; target.OwnPropertyKeys)
+        {
+            auto name = one.toString(cc);
+            if (name.soundexer == key)
+                result.put(name);
+        }
+        if (auto p = target.GetPrototypeOf)
+            return result.data ~ searchSimilarWord(cc, p, key);
+        else
+            return result.data;
+    }
+
+
     //====================================================================
 private:
     enum GLOBAL_ROOT = 1;
@@ -669,25 +700,6 @@ private:
         assert (0 < _stack.data.length);
         assert (0 < _scopes.data.length);
     }
-
-    static string_t[] searchSimilarWord(ref CallContext cc, Dobject target,
-                                        in ref char[4] key)
-    {
-        import std.string : soundexer;
-
-        Appender!(string_t[]) result;
-        foreach (one; target.OwnPropertyKeys)
-        {
-            auto name = one.toString(cc);
-            if (name.soundexer == key)
-                result.put(name);
-        }
-        if (auto p = target.GetPrototypeOf)
-            return result.data ~ searchSimilarWord(cc, p, key);
-        else
-            return result.data;
-    }
-
 
     //==========================================================
 package debug:

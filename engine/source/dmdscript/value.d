@@ -26,25 +26,21 @@ debug import std.stdio;
 
 // !!! NOTICE !!!
 // I can't implement this porting issues bellow.
-
-// Porting issues:
-// A lot of scaling is done on arrays of Value's. Therefore, adjusting
-// it to come out to a size of 16 bytes makes the scaling an efficient
-// operation. In fact, in some cases (opcodes.c) we prescale the addressing
-// by 16 bytes at compile time instead of runtime.
-// So, Value must be looked at in any port to verify that:
-// 1) the size comes out as 16 bytes, padding as necessary
-// 2) Value::copy() copies the used data bytes, NOT the padding.
-//    It's faster to not copy the padding, and the
-//    padding can contain garbage stack pointers which can
-//    prevent memory from being garbage collected.
-
-// version(DigitalMars)
-//     version(D_InlineAsm)
-//         version = UseAsm;
+    // Porting issues:
+    // A lot of scaling is done on arrays of Value's. Therefore, adjusting
+    // it to come out to a size of 16 bytes makes the scaling an efficient
+    // operation. In fact, in some cases (opcodes.c) we prescale the addressing
+    // by 16 bytes at compile time instead of runtime.
+    // So, Value must be looked at in any port to verify that:
+    // 1) the size comes out as 16 bytes, padding as necessary
+    // 2) Value::copy() copies the used data bytes, NOT the padding.
+    //    It's faster to not copy the padding, and the
+    //    padding can contain garbage stack pointers which can
+    //    prevent memory from being garbage collected.
 
 struct Value
 {
+    // NEVER import dmdscript.dfunction : Dfunction at this.
     import dmdscript.iterator : Iterator;
     import dmdscript.primitive;
     import dmdscript.property : PropTable;
@@ -52,14 +48,14 @@ struct Value
     //--------------------------------------------------------------------
     enum Type : ubyte
     {
-        RefError  = 0x00,//triggers ReferenceError expcetion when accessed
-        Undefined = 0x01,
-        Null      = 0x02,
-        Boolean   = 0x04,
-        Number    = 0x08,
-        String    = 0x10,
-        Object    = 0x20,
-        Iter      = 0x40,
+        RefError,//triggers ReferenceError expcetion when accessed
+        Undefined,
+        Null,
+        Boolean,
+        Number,
+        String,
+        Object,
+        Iter,
     }
 
     //--------------------------------------------------------------------
@@ -254,7 +250,6 @@ struct Value
             this = *v;
     }
 
-
     //--------------------------------------------------------------------
     void toPrimitive(ref CallContext cc, ref Value v,
                      in Type PreferredType = Type.RefError)
@@ -298,9 +293,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Null:
-        case Type.Iter:
+        case Type.Undefined, Type.Null, Type.Iter:
             return false;
         case Type.Boolean:
             return _dbool;
@@ -323,8 +316,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Iter:
+        case Type.Undefined, Type.Iter:
             return double.nan;
         case Type.Null:
             return 0;
@@ -429,8 +421,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Null:
+        case Type.Undefined, Type.Null:
             return 0;
         case Type.Boolean:
             return _dbool ? 1 : 0;
@@ -473,8 +464,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Null:
+        case Type.Undefined, Type.Null:
             return 0;
         case Type.Boolean:
             return _dbool ? 1 : 0;
@@ -517,8 +507,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Null:
+        case Type.Undefined, Type.Null:
             return 0;
         case Type.Boolean:
             return cast(short)(_dbool ? 1 : 0);
@@ -559,8 +548,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Null:
+        case Type.Undefined, Type.Null:
             return 0;
         case Type.Boolean:
             return cast(ushort)(_dbool ? 1 : 0);
@@ -601,8 +589,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Null:
+        case Type.Undefined, Type.Null:
             return 0;
         case Type.Boolean:
             return cast(byte)(_dbool ? 1 : 0);
@@ -643,8 +630,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Null:
+        case Type.Undefined, Type.Null:
             return 0;
         case Type.Boolean:
             return cast(ubyte)(_dbool ? 1 : 0);
@@ -685,8 +671,7 @@ struct Value
         case Type.RefError:
             throwRefError();
             assert(0);
-        case Type.Undefined:
-        case Type.Null:
+        case Type.Undefined, Type.Null:
             return 0;
         case Type.Boolean:
             return cast(ubyte)(_dbool ? 1 : 0);
@@ -1459,13 +1444,6 @@ struct DError
 
         if (v.type == Value.Type.Object)
         {
-            // if      (auto err = cast(D0base)v.object)
-            //     this(err);
-            // else
-            // {
-            //     this(new typeerror(name, new ScriptException(name, str.toString,
-            //                                                  file, line)));
-            // }
             entity = v;
         }
         else
@@ -1481,6 +1459,16 @@ struct DError
     this(D0base err)
     {
         entity.put(err);
+    }
+
+
+    ///
+deprecated
+    this(string_t msg, string_t file = __FILE__, size_t line = __LINE__)
+    {
+        import dmdscript.protoerror : typeerror;
+        entity.put(new typeerror(new ScriptException(typeerror.Text, msg,
+                                                     file, line)));
     }
 
     ///

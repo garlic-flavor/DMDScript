@@ -295,12 +295,12 @@ DError* eval(
 
         // The this value is the same as the this value of the
         // calling context.
-        assert(cc.scopex.callerothis);
+        assert(cc.callerothis);
 
         ccs = VariableScope(pthis, fd);
 
         cc.pushEvalScope(ccs);
-        result = IR.call(cc, cc.scopex.callerothis, fd.code, ret, locals.ptr);
+        result = IR.call(cc, cc.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
             result.addTrace(null, "eval", s);

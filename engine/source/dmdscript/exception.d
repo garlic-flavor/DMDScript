@@ -168,6 +168,12 @@ class ScriptException : Exception
                 catch (Throwable){}
             }
         }
+
+        if (next !is null)
+        {
+            sink("\n--------------------\n");
+            next.toString(sink);
+        }
     }
     alias toString = super.toString;
 
@@ -255,6 +261,7 @@ private:
              import std.conv : to;
              import std.array : replace;
              import std.range : repeat, take;
+             import std.string : stripRight;
              import dmdscript.ir : Opcode;
 
              string srcline;
@@ -297,9 +304,8 @@ private:
 
              if (0 < srcline.length)
              {
-                 sink("\n>"); sink(srcline.replace("\t", Tab).to!string);
-                 if (srcline[$-1] != '\n')
-                     sink("\n");
+                 sink("\n>"); sink(srcline.replace("\t", Tab).stripRight);
+                 sink("\n");
 
                  if (0 <= charpos)
                  {
@@ -311,7 +317,6 @@ private:
                          else ++col;
                      }
 
-                     sink("\n");
                      sink(' '.repeat.take(col).to!string);
                      sink("^\n");
                  }

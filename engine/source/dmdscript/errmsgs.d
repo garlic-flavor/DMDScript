@@ -141,7 +141,7 @@ enum CannotConvertToObject3Error = err!(typeerror, string_t, string_t, string_t)
     ("%s %s.%s cannot convert to Object");
 enum CannotConvertToObject4Error = err!(typeerror, string_t)
     ("cannot convert %s to Object");
-enum CannotAssignToError = err!(typeerror, string_t)
+enum CannotAssignToError = err!(referenceerror, string_t)
     ("cannot assign to %s");
 enum CannotAssignError = err!(typeerror, string_t, string_t)
     ("cannot assign %s to %s");

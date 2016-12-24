@@ -60,6 +60,13 @@ struct IRstate
         return lvm.alloc(nlocals);
     }
 
+    ///
+    @safe @nogc pure nothrow
+    void collect(LocalVariables lv)
+    {
+        lvm.collect(lv);
+    }
+
     /****************************************
      * Release this block of n locals starting at local.
      */

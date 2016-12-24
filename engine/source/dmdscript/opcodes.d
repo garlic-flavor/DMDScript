@@ -327,6 +327,49 @@ struct IR
                     code += IRTypes[Opcode.GetScope].size;
                     break;
 
+                case Opcode.PutGetter:
+                    assert (0, "not implemented yet");
+                    // code += IRTypes[Opcode.PutGetter].size;
+                    // break;
+                case Opcode.PutGetterS:
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    o = b.toObject();
+                    if(!o)
+                    {
+                        sta = cannotConvert(cc, b);
+                        goto Lthrow;
+                    }
+                    if (!o.SetGetter(*(code + 3).id, *a,
+                                     Property.Attribute.None, cc))
+                    {
+                        sta = CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        goto Lthrow;
+                    }
+                    code += IRTypes[Opcode.PutGetterS].size;
+                    break;
+                case Opcode.PutSetter:
+                    assert (0, "not implemented yet");
+                    // code += IRTypes[Opcode.PutSetter].size;
+                    // break;
+                case Opcode.PutSetterS:
+                    a = locals + (code + 1).index;
+                    b = locals + (code + 2).index;
+                    o = b.toObject();
+                    if(!o)
+                    {
+                        sta = cannotConvert(cc, b);
+                        goto Lthrow;
+                    }
+                    if (!o.SetSetter(*(code + 3).id, *a,
+                                     Property.Attribute.None, cc))
+                    {
+                        sta = CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        goto Lthrow;
+                    }
+                    code += IRTypes[Opcode.PutSetterS].size;
+                    break;
+
                 case Opcode.AddAsS:              // a = (b.c += a)
                     c = locals + (code + 3).index;
                     s = c.toString(cc);
@@ -428,7 +471,6 @@ struct IR
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutS].size;
-                    // goto Lnext;
                     break;
 
                 case Opcode.PutScope:            // s = a
@@ -456,7 +498,7 @@ struct IR
 
                 case Opcode.PutThis:             // s = a
                     //a = cc.variable.Put((code + 2).id.value.string, GETa(code), DontDelete);
-                    o = cc.scopex.getNonFakeObject;
+                    o = cc.getNonFakeObject;
                     assert(o);
                     if(o.HasProperty(*(code + 2).id))
                         sta = o.Set(*(code+2).id,
@@ -486,7 +528,7 @@ struct IR
                     FunctionDefinition fd;
                     fd = cast(FunctionDefinition)(code + 2).ptr;
                     Dfunction fobject = new DdeclaredFunction(fd);
-                    fobject.scopex = cc.scopex.stack;
+                    fobject.scopex = cc.scopes;
                     (locals + (code + 1).index).put(fobject);
                     code += IRTypes[Opcode.Object].size;
                     break;
@@ -1364,7 +1406,7 @@ struct IR
                         code += (code + 1).offset;
                     else
                     {
-                        o = cc.scopex.getNonFakeObject;
+                        o = cc.getNonFakeObject;
                         o.Set(s, ppk.value, Property.Attribute.None, cc);
                         code += IRTypes[Opcode.NextScope].size;
                     }

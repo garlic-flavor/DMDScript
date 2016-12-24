@@ -134,7 +134,7 @@ class FunctionDefinition : TopStatement
             for(i = 0; i < topstatements.length; i++)
             {
                 ts = topstatements[i];
-                //writefln("calling semantic routine %d which is %x\n",i, cast(uint)cast(void*)ts);
+                assert (ts !is null);
                 if(ts.done < Progress.Semantic)
                 {
                     ts = ts.semantic(sc);
@@ -232,7 +232,7 @@ class FunctionDefinition : TopStatement
         {
             // Set [[Scope]] property per 13.2 step 7
             Dfunction fobject = new DdeclaredFunction(fd);
-            fobject.scopex = cc.scopex.stack;
+            fobject.scopex = cc.scopes;
 
             if(fd.name !is null && !fd.isliteral) // skip anonymous functions
             {

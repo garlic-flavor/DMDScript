@@ -517,15 +517,25 @@ final class ArrayLiteral : Expression
 
 final class Field
 {
-    private StringKey* ident;
-    private Expression exp;
+    enum Type
+    {
+        Normal,
+        Getter,
+        Setter,
+    }
 
     @safe @nogc pure nothrow
-    this(StringKey* ident, Expression exp)
+    this(StringKey* ident, Expression exp, Type type = Type.Normal)
     {
         this.ident = ident;
         this.exp = exp;
+        this.type = type;
     }
+
+private:
+    StringKey* ident;
+    Expression exp;
+    Type type;
 }
 
 /******************************** ObjectLiteral **************************/
@@ -565,11 +575,16 @@ final class ObjectLiteral : Expression
             foreach(Field f; fields)
             {
                 f.exp.toIR(irs, x[0]);
-                irs.gen!(Opcode.PutS)(linnum, x[0], ret, f.ident);
+                if      (f.type == Field.Type.Getter)
+                    irs.gen!(Opcode.PutGetterS)(linnum, x[0], ret, f.ident);
+                else if (f.type == Field.Type.Setter)
+                    irs.gen!(Opcode.PutSetterS)(linnum, x[0], ret, f.ident);
+                else
+                    irs.gen!(Opcode.PutS)(linnum, x[0], ret, f.ident);
             }
-            irs.lvm.collect(x);
+            irs.collect(x);
         }
-        irs.lvm.collect(b);
+        irs.collect(b);
     }
 
     override void toBuffer(scope void delegate(in char_t[]) sink) const
@@ -594,7 +609,7 @@ final class ObjectLiteral : Expression
 
 final class FunctionLiteral : Expression
 {
-    private FunctionDefinition func;
+    FunctionDefinition func;
 
     @safe @nogc pure nothrow
     this(uint linnum, FunctionDefinition func)
@@ -658,6 +673,8 @@ class BinExp : Expression
     @safe @nogc pure nothrow
     this(uint linnum, Tok op, Expression e1, Expression e2)
     {
+        assert (e1 !is null);
+        assert (e2 !is null);
         super(linnum, op);
         this.e1 = e1;
         this.e2 = e2;
@@ -914,7 +931,7 @@ final class DotExp : UnaExp
             e1.toIR(irs, base[0]);
             irs.gen!(Opcode.GetS)(linnum, ret, base[0], ident);
 
-            irs.lvm.collect(base);
+            irs.collect(base);
         }
         else
         {
@@ -924,7 +941,7 @@ final class DotExp : UnaExp
                 e1.toIR(irs, base);
                 irs.gen!(Opcode.GetS)(linnum, ret, base, ident);
 
-                irs.lvm.collect(base);
+                irs.collect(base);
             }
             else
                 e1.toIR(irs, 0);
@@ -939,7 +956,7 @@ final class DotExp : UnaExp
         e1.toIR(irs, base);
         property.id = ident;
         opoff = OpOffset.S;
-        irs.lvm.collect(tmp);
+        irs.collect(tmp);
     }
 
     override void toBuffer(scope void delegate(in char_t[]) sink) const
@@ -1326,11 +1343,13 @@ final class ArrayExp : BinExp
 
         tmp = irs.alloc(1);
         base = tmp[0];
-        irs.lvm.collect(tmp);
+        irs.collect(tmp);
         e1.toIR(irs, base);
+
         tmp = irs.alloc(1);
         index = tmp[0];
-        irs.lvm.collect(tmp);
+        irs.collect(tmp);
+
         e2.toIR(irs, index);
         property.index = index;
         opoff = OpOffset.None;
@@ -1610,8 +1629,8 @@ class BinAssignExp : BinExp
             assert(0);
         }
         irs.release(tmp);
-        irs.lvm.collect(b);
-        irs.lvm.collect(c);
+        irs.collect(b);
+        irs.collect(c);
     }
 }
 
