@@ -57,14 +57,14 @@ struct IR
         bool        boolean;
         Statement   target;     // used for backpatch fixups
         Dobject     object;
-        void*       ptr;
+        FunctionDefinition fd;
     }
 
     /****************************
      * This is the main interpreter loop.
      */
-    static DError* call(ref CallContext cc, Dobject othis,
-                        IR* code, out Value ret, Value* locals)
+    static DError* call(ref CallContext cc, Dobject othis, const(IR)* code,
+                        out Value ret, Value* locals)
     {
         import std.array : join;
         import std.conv : to;
@@ -77,7 +77,7 @@ struct IR
         PropertyKey* ppk;
         DError* sta;
         Iterator* iter;
-        StringKey* id;
+        const(StringKey)* id;
         string_t s;
         string_t s2;
         double n;
@@ -89,11 +89,11 @@ struct IR
         Value.Type ty;
         Dobject o;
         uint offset;
-        const IR* codestart = code;
+        const(IR*) codestart = code;
 
         //Finally blocks are sort of called, sort of jumped to
         //So we are doing "push IP in some stack" + "jump"
-        IR*[] finallyStack;      //it's a stack of backreferences for finally
+        const(IR)*[] finallyStack;// it's a stack of backreferences for finally
         double inc;
 
         @safe pure nothrow
@@ -130,7 +130,7 @@ struct IR
                         o.Set(ca.name, err.entity,
                               Property.Attribute.DontDelete, cc);
                     }
-                    cc.pushScope(o);
+                    cc.push(o);
                     code = cast(IR*)codestart + ca.offset;
                     break;
                 }
@@ -525,10 +525,8 @@ struct IR
 
                 case Opcode.Object:              // a = object
                 {
-                    FunctionDefinition fd;
-                    fd = cast(FunctionDefinition)(code + 2).ptr;
-                    Dfunction fobject = new DdeclaredFunction(fd);
-                    fobject.scopex = cc.scopes;
+                    auto fd = cast(FunctionDefinition)(code+2).fd;
+                    auto fobject = new DdeclaredFunction(fd, cc.scopes.dup);
                     (locals + (code + 1).index).put(fobject);
                     code += IRTypes[Opcode.Object].size;
                     break;
@@ -546,7 +544,7 @@ struct IR
                     break;
 
                 case Opcode.Boolean:             // a = boolean
-                    (locals + (code + 1).index).put((code + 2).boolean);
+                    (locals + (code + 1).index).putBool((code + 2).boolean);
                     code += IRTypes[Opcode.Boolean].size;
                     break;
 
@@ -1617,7 +1615,7 @@ struct IR
                     }
                     // scopex ~= o;                // push entry onto scope chain
                     // cc.scopex = scopex;
-                    cc.pushScope(o);
+                    cc.push(o);
                     code += IRTypes[Opcode.Push].size;
                     break;
 
@@ -1688,7 +1686,7 @@ struct IR
                     s = *(code + 2).id;
                     // scopex ~= ca;
                     // cc.scopex = scopex;
-                    cc.pushScope(new Catch(offset, s));
+                    cc.push(new Catch(offset, s));
                     code += IRTypes[Opcode.TryCatch].size;
                     break;
 
@@ -1696,7 +1694,7 @@ struct IR
                     SCOPECACHE_CLEAR();
                     // scopex ~= f;
                     // cc.scopex = scopex;
-                    cc.pushScope(new Finally(code + (code + 1).offset));
+                    cc.push(new Finally(code + (code + 1).offset));
                     code += IRTypes[Opcode.TryFinally].size;
                     break;
 
@@ -1741,7 +1739,7 @@ struct IR
      * Give size of opcode.
      */
 
-    static size_t size(Opcode opcode)
+    static size_t size(in Opcode opcode)
     {
         static size_t sizeOf(T)(){ return T.size; }
         return IRTypeDispatcher!sizeOf(opcode);
@@ -1794,7 +1792,7 @@ struct IR
      * Verify that it is a correct sequence of code.
      * Useful for isolating memory corruption bugs.
      */
-    debug static uint verify(IR* codestart, size_t linnum = __LINE__)
+    debug static uint verify(const(IR)* codestart, size_t linnum = __LINE__)
     {
         debug(VERIFY)
         {
@@ -1896,9 +1894,9 @@ class Finally : Dobject
         return null;
     }
 
-    IR* finallyblock;    // code for FinallyBlock
+    const(IR*) finallyblock;    // code for FinallyBlock
 
-    this(IR* finallyblock)
+    this(const(IR*) finallyblock)
     {
         super(null);
         this.finallyblock = finallyblock;

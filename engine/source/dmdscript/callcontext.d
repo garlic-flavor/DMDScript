@@ -19,87 +19,58 @@ module dmdscript.callcontext;
 
 debug import std.stdio;
 
+import dmdscript.primitive : string_t, char_t;
+import dmdscript.dobject : Dobject;
+
 //------------------------------------------------------------------------------
-/**
-This structure represents the environment about the current running function.
-*/
-struct VariableScope
+///
+struct DefinedFunctionScope
 {
-    import dmdscript.dobject : Dobject;
     import dmdscript.dfunction : Dfunction;
     import dmdscript.functiondefinition : FunctionDefinition;
 
-    Dobject variable; /// Outermost searching field composing the function.
-    Dfunction caller; /// The object who calls the function.
-    FunctionDefinition callerf; /// The definition of the function.
-    Dobject callerothis; /// The object that contains the caller.
+    Stack _stack;      ///
+    alias _stack this; ///
 
-    /// The constructor for calling CallContext.pushFunctionScope.
-    @safe @nogc pure nothrow
-    this(Dobject variable, Dfunction caller, FunctionDefinition callerf,
-         Dobject callerothis)
+    ///
+    @safe pure nothrow
+    this(Dobject[] superScopes, Dobject actobj, Dfunction caller,
+         FunctionDefinition callerf, Dobject callerothis)
     {
-        assert (variable !is null);
-        assert (caller !is null);
-        assert (callerf !is null);
         assert (callerothis !is null);
 
-        this.variable = variable;
-        this.caller = caller;
-        this.callerf = callerf;
-        this.callerothis = callerothis;
+        _stack = Stack(superScopes, actobj);
+        _caller = caller;
+        _callerf = callerf;
+        _callerothis = callerothis;
     }
 
-    /// The constructor for calling CallContext.pushEvalScope.
-    @safe @nogc pure nothrow
-    this(Dfunction caller, FunctionDefinition callerf)
+
+    @property @safe @nogc pure nothrow
     {
-        assert (caller !is null);
-        assert (callerf !is null);
-        this.caller = caller;
-        this.callerf = callerf;
+        ///
+        inout(Dfunction) caller() inout
+        {
+            return _caller;
+        }
+
+        ///
+        inout(FunctionDefinition) callerf() inout
+        {
+            return _callerf;
+        }
+
+        ///
+        inout(Dobject) callerothis() inout
+        {
+            return _callerothis;
+        }
     }
 
-    ///
-    @safe @nogc pure nothrow
-    this(FunctionDefinition callerf)
-    {
-        assert (callerf !is null);
-        this.callerf = callerf;
-    }
-
-    ///
-    @safe pure
-    string toString() const
-    {
-        import std.conv : text;
-        string name;
-        if (callerf !is null && callerf.name !is null)
-            name = callerf.name.toString;
-        return text("{name=", name, ", scoperoot=", scoperoot, ", prevlength="
-                    , prevlength, "}");
-    }
-
-    //====================================================================
 private:
-    size_t scoperoot;
-    size_t prevlength;
-
-    @safe @nogc pure nothrow
-    this(Dobject variable, Dfunction caller, FunctionDefinition callerf,
-         Dobject callerothis, size_t scoperoot, size_t prevlength)
-    {
-        assert (variable !is null);
-        assert (callerothis !is null);
-        assert (prevlength <= scoperoot);
-
-        this.variable = variable;
-        this.caller = caller;
-        this.callerf = callerf;
-        this.callerothis = callerothis;
-        this.scoperoot = scoperoot;
-        this.prevlength = prevlength;
-    }
+    Dfunction _caller;
+    FunctionDefinition _callerf;
+    Dobject _callerothis;
 }
 
 
@@ -107,8 +78,7 @@ private:
 ///
 struct CallContext
 {
-    import dmdscript.primitive : string_t;
-    import dmdscript.dobject : Dobject;
+    import std.array : Appender;
     import dmdscript.property : PropertyKey, Property;
     import dmdscript.value : Value, DError;
     import dmdscript.dfunction : Dfunction;
@@ -121,7 +91,8 @@ struct CallContext
     @safe pure nothrow
     this(Dobject global)
     {
-        _scopex = ScopeStack(global);
+        _current = new DefinedFunctionScope(null, global, null, null, global);
+        _scopex.put(_current);
     }
 
     //--------------------------------------------------------------------
@@ -129,7 +100,7 @@ struct CallContext
     @property @safe @nogc pure nothrow
     inout(Dobject) global() inout
     {
-        return _scopex.global;
+        return _current.global;
     }
 
     //--------------------------------------------------------------------
@@ -160,14 +131,14 @@ struct CallContext
     Value* get(K)(in auto ref K key, out Dobject pthis)
         if (PropertyKey.IsKey!K)
     {
-        return _scopex.get(this, key, pthis);
+        return _current.get(this, key, pthis);
     }
 
     /// ditto
     Value* get(K)(in auto ref K key)
         if (PropertyKey.IsKey!K)
     {
-        return _scopex.get(this, key);
+        return _current.get(this, key);
     }
 
     //--------------------------------------------------------------------
@@ -179,7 +150,7 @@ struct CallContext
                    Property.Attribute attr = Property.Attribute.None)
         if (PropertyKey.IsKey!K)
     {
-        return _scopex.set(this, key, value, attr);
+        return _current.set(this, key, value, attr);
     }
 
     //--------------------------------------------------------------------
@@ -188,7 +159,7 @@ struct CallContext
                        Property.Attribute attr)
         if (PropertyKey.IsKey!K)
     {
-        return _scopex.setThis(this, key, value, attr);
+        return _current.setThis(this, key, value, attr);
     }
 
     //--------------------------------------------------------------------
@@ -196,7 +167,7 @@ struct CallContext
     @property @safe @nogc pure nothrow
     inout(Dobject) variable() inout
     {
-        return _scopex.variable;
+        return _current.rootScope;
     }
 
     //--------------------------------------------------------------------
@@ -204,7 +175,7 @@ struct CallContext
     @property @safe @nogc pure nothrow
     inout(Dfunction) caller() inout
     {
-        return _scopex.caller;
+        return _current.caller;
     }
 
     //--------------------------------------------------------------------
@@ -212,7 +183,7 @@ struct CallContext
     @property @safe @nogc pure nothrow
     inout(Dobject) callerothis() inout
     {
-        return _scopex.callerothis;
+        return _current.callerothis;
     }
 
     //--------------------------------------------------------------------
@@ -224,7 +195,7 @@ struct CallContext
     @property @safe @nogc pure nothrow
     inout(Dobject)[] scopes() inout
     {
-        return _scopex.stack;
+        return _current.stack;
     }
 
     //--------------------------------------------------------------------
@@ -232,7 +203,7 @@ struct CallContext
     @safe @nogc pure nothrow
     inout(Dobject) getNonFakeObject() inout
     {
-        return _scopex.getNonFakeObject;
+        return _current.getNonFakeObject;
     }
 
     //--------------------------------------------------------------------
@@ -242,21 +213,11 @@ struct CallContext
 
     A parameter s can be on the stack, not on the heap.
     */
-    @safe pure nothrow
-    void pushFunctionScope(ref VariableScope s)
+    @trusted pure nothrow
+    void push(ref DefinedFunctionScope s)
     {
-        _scopex.pushFunctionScope(s);
-    }
-
-    //--------------------------------------------------------------------
-    /**
-    Calling this followed by calling IR.call, provides the execution that is
-    like an 'eval' calling.
-    */
-    @safe pure nothrow
-    void pushEvalScope(ref VariableScope s)
-    {
-        _scopex.pushEvalScope(s);
+        _current = &s;
+        _scopex.put(_current);
     }
 
     //--------------------------------------------------------------------
@@ -264,18 +225,25 @@ struct CallContext
     Following the IR.call, this should be called by the parameter that same with
     the one for the prior pushFunctionScope/pushEvalScope calling.
     */
-    @safe pure
-    bool popVariableScope(ref VariableScope s)
+    @trusted pure
+    bool pop(ref DefinedFunctionScope s)
     {
-        return _scopex.popVariableScope(s);
+        if (_current !is &s)
+            return false;
+
+        assert (1 < _scopex.data.length);
+
+        _scopex.shrinkTo(_scopex.data.length - 1);
+        _current = _scopex.data[$-1];
+        return true;
     }
 
     //--------------------------------------------------------------------
     /// Stack the object composing a scope block.
     @safe pure nothrow
-    void pushScope(Dobject obj)
+    void push(Dobject obj)
     {
-        _scopex.push(obj);
+        _current.push(obj);
     }
 
     //--------------------------------------------------------------------
@@ -288,36 +256,56 @@ struct CallContext
     // @safe pure
     Dobject popScope()
     {
-        return _scopex.pop;
+        return _current.pop;
     }
 
     //--------------------------------------------------------------------
     /// Add stack tracing information to the DError.
     void addTraceInfoTo(DError* err)
     {
-        _scopex.addTraceInfoTo(err);
-    }
+        assert (err !is null);
 
+        foreach_reverse(ref one; _scopex.data)
+        {
+            if (auto f = one.callerf)
+            {
+                err.addTrace(f.sourcename,
+                             f.name !is null ? f.name.toString : null,
+                             f.srctext);
+                if (0 < f.sourcename.length)
+                    break;
+            }
+        }
+    }
 
     //--------------------------------------------------------------------
     ///
     string_t[] searchSimilarWord(string_t name)
     {
-        return _scopex.searchSimilarWord(this, name);
+        return _current.searchSimilarWord(this, name);
     }
     /// ditto
     string_t[] searchSimilarWord(Dobject target, string_t name)
     {
         import std.string : soundexer;
         auto key = name.soundexer;
-        return ScopeStack.searchSimilarWord(this, target, key);
+        return .searchSimilarWord(this, target, key);
     }
 
+    //====================================================================
 private:
-    ScopeStack _scopex;     // current scope chain
+    Appender!(DefinedFunctionScope*[]) _scopex;
+    DefinedFunctionScope* _current;      // current scope chain
     bool _interrupt;        // !=0 if cancelled due to interrupt
 
+    invariant
+    {
+        assert (_current !is null);
+        assert (0 < _scopex.data.length);
+        assert (_scopex.data[$-1] is _current);
+    }
 
+    //====================================================================
 package debug:
 
     import dmdscript.program : Program;
@@ -336,11 +324,7 @@ package debug:
         _prog = p;
     }
 
-    string dump()
-    {
-        return _scopex.dump;
-    }
-
+    //====================================================================
 private debug:
     Program _prog;
 }
@@ -348,79 +332,24 @@ private debug:
 //==============================================================================
 private:
 
-/*
-function func1()
-{
-    if (true)
-    {
-        func2();
-    }
-}
-
-+------+------+------+------+---- --- -- -
-|      |      |      |      |
-|global|func1 |  if  |func2 |              ----  _stack
-|      |      |      |      |
-+------+------+------+------+---- --- -- -
-      /  ____/             /
-     /  /  _______________/
-    /  /  /
-  [1][2][4][...                            ----  _scopes.scoperoot
-
-1. _stack represents a variable's searching chain.
-2. _scopes.scoperoot indicates the point on _stack,
-   and it means that _stack[_scopes[x].scoperoot - 1] is a function's root
-   variable searching scope.
-*/
 //
-struct ScopeStack
+struct Stack
 {
     import std.array : Appender;
-    import dmdscript.dobject : Dobject;
-    import dmdscript.dfunction : Dfunction;
-    import dmdscript.property : Property, PropertyKey;
+    import dmdscript.property : PropertyKey, Property;
     import dmdscript.value : Value, DError;
-    import dmdscript.primitive : string_t;
 
     //
     @safe pure nothrow
-    this(Dobject global)
+    this(Dobject[] superScopes, Dobject root)
     {
-        assert (global !is null);
+        assert (root !is null);
 
-        _global = global;
-        _stack.put(global);
-        _variable = new VariableScope(global, null, null, global,
-                                      GLOBAL_ROOT, GLOBAL_ROOT);
-        _scopes.put(_variable);
-    }
+        _stack.reserve(superScopes.length + 1);
+        _stack.put(superScopes);
+        _stack.put(root);
 
-    //
-    @property @safe @nogc pure nothrow
-    inout(Dobject) global() inout
-    {
-        return _global;
-    }
-
-    //
-    @property @safe @nogc pure nothrow
-    inout(Dobject) variable() inout
-    {
-        return _variable.variable;
-    }
-
-    //
-    @property @safe @nogc pure nothrow
-    inout(Dfunction) caller() inout
-    {
-        return _variable.caller;
-    }
-
-    //
-    @property @safe @nogc pure nothrow
-    inout(Dobject) callerothis() inout
-    {
-        return _variable.callerothis;
+        _initialSize = _stack.data.length;
     }
 
     //
@@ -432,111 +361,62 @@ struct ScopeStack
 
     //
     @property @safe @nogc pure nothrow
-    bool isVariableRoot() const
+    inout(Dobject) global() inout
     {
-        return _stack.data.length <= _variable.scoperoot;
+        assert (0 < _stack.data.length);
+        return _stack.data[0];
     }
 
-    //--------------------------------------------------------------------
-    // Get a Dobject that is not a Catch nor a Finally.
+    //
+    @property @safe @nogc pure nothrow
+    inout(Dobject) rootScope() inout
+    {
+        assert (0 < _initialSize);
+        assert (_initialSize <= _stack.data.length);
+        return _stack.data[_initialSize - 1];
+    }
+
+    //
     @safe @nogc pure nothrow
     inout(Dobject) getNonFakeObject() inout
     {
-        auto stack = _stack.data;
-        for (size_t d = stack.length; _variable.scoperoot <= d; --d)
+        auto data = _stack.data;
+        for (auto i = data.length; _initialSize <= i; --i)
         {
-            auto o = stack[d - 1];
+            auto o = stack[i-1];
             if (o.getTypeof !is null)
                 return o;
         }
-        assert(0);
+        assert (0);
     }
 
-    //--------------------------------------------------------------------
     //
-    @trusted pure nothrow
-    void pushFunctionScope(ref VariableScope s)
+    @property @safe @nogc pure nothrow
+    bool isRoot() const
     {
-        assert (s.variable !is null);
-        assert (s.callerothis !is null);
-
-        s.prevlength = _stack.data.length;
-        _stack.put(s.variable);
-        s.scoperoot = _stack.data.length;
-
-        _scopes.put(&s);
-        _variable = &s;
-
-        assert (_variable.scoperoot <= _stack.data.length);
-        assert (_variable.prevlength < _stack.data.length);
+        return _stack.data.length <= _initialSize;
     }
 
-    //--------------------------------------------------------------------
-    //
-    @trusted pure nothrow
-    void pushEvalScope(ref VariableScope s)
-    {
-        assert (s.variable is null);
-        assert (s.callerothis is null);
-
-        s.prevlength = s.scoperoot = _stack.data.length;
-        s.variable = _variable.variable;
-        s.callerothis = _variable.callerothis;
-
-        _scopes.put(&s);
-        _variable = &s;
-
-        assert (_variable.scoperoot <= _stack.data.length);
-        assert (_variable.prevlength <= _stack.data.length);
-    }
-
-    //--------------------------------------------------------------------
-    //
-   @trusted pure
-    bool popVariableScope(ref VariableScope s)
-    {
-        assert (_variable is &s);
-
-        auto sd = _scopes.data;
-        if (sd.length <= GLOBAL_ROOT)
-            return false;
-
-        assert (GLOBAL_ROOT <= _variable.prevlength);
-
-        _stack.shrinkTo(_variable.prevlength);
-        _scopes.shrinkTo(sd.length - 1);
-        assert(0 < _scopes.data.length);
-        _variable = _scopes.data[$-1];
-        return true;
-    }
-
-    //--------------------------------------------------------------------
     //
     @safe pure nothrow
-    void push(Dobject obj)
+    void push(Dobject o)
     {
-        _stack.put(obj);
+        _stack.put(o);
     }
 
-    //--------------------------------------------------------------------
     //
     @safe pure
     Dobject pop()
     {
-        auto sd = _stack.data;
-        auto len = sd.length;
-
-        if (len <= _variable.scoperoot)
+        auto data = _stack.data;
+        if (data.length <= _initialSize)
             return null;
 
-        auto ret = sd[len - 1];
-        _stack.shrinkTo(len - 1);
-
-        assert (_variable.scoperoot <= _stack.data.length);
+        auto ret = data[$-1];
+        _stack.shrinkTo(data.length - 1);
         return ret;
     }
 
-    //--------------------------------------------------------------------
     //
     Value* get(K)(ref CallContext cc, in auto ref K key, out Dobject pthis)
         if (PropertyKey.IsKey!K)
@@ -544,13 +424,18 @@ struct ScopeStack
         Value* v;
         Dobject o;
 
+        static if (is(K : PropertyKey))
+            alias k = key;
+        else
+            auto k = PropertyKey(key);
+
         auto stack = _stack.data;
         for (size_t d = stack.length; ; --d)
         {
-            if (GLOBAL_ROOT <= d)
+            if (0 < d)
             {
                 o = stack[d - 1];
-                v = o.Get(key, cc);
+                v = o.Get(k, cc);
                 if (v !is null)
                     break;
             }
@@ -564,21 +449,24 @@ struct ScopeStack
         return v;
     }
 
-    //--------------------------------------------------------------------
     //
     Value* get(K)(ref CallContext cc, in auto ref K key)
         if (PropertyKey.IsKey!K)
     {
+        static if (is(K : PropertyKey))
+            alias k = key;
+        else
+            auto k = PropertyKey(key);
+
         auto stack = _stack.data;
-        for (size_t d = stack.length; GLOBAL_ROOT <= d; --d)
+        for (size_t d = stack.length; 0 < d; --d)
         {
-            if (auto v = stack[d-1].Get(key, cc))
+            if (auto v = stack[d-1].Get(k, cc))
                 return v;
         }
         return null;
     }
 
-    //--------------------------------------------------------------------
     //
     DError* set(K)(ref CallContext cc, in auto ref K key, ref Value value,
                    Property.Attribute attr = Property.Attribute.None)
@@ -586,139 +474,78 @@ struct ScopeStack
         import dmdscript.property : Property;
 
         auto stack = _stack.data;
+        assert (0 < stack.length);
+
+        static if (is(K : PropertyKey))
+            alias k = key;
+        else
+            auto k = PropertyKey(key);
+
         for (size_t d = stack.length; ; --d)
         {
-            if (GLOBAL_ROOT < d)
+            if (0 < d)
             {
                 auto o = stack[d - 1];
-                if (auto v = o.Get(key, cc))
+                if (auto v = o.Get(k, cc))
                 {
                     v.checkReference;
-                    return o.Set(key, value, attr, cc);
+                    return o.Set(k, value, attr, cc);
                 }
             }
             else
             {
-                return _global.Set(key, value, attr, cc);
+                return stack[0].Set(k, value, attr, cc);
             }
         }
     }
 
-    //--------------------------------------------------------------------
     //
     DError* setThis(K)(ref CallContext cc, in auto ref K key, ref Value value,
                        Property.Attribute attr)
     {
-        assert(_variable.variable !is null);
-        return _variable.variable.Set(key, value, attr, cc);
+        assert (0 < _initialSize);
+        assert (_initialSize <= _stack.data.length);
+        return _stack.data[_initialSize - 1].Set(key, value, attr, cc);
     }
 
-    //--------------------------------------------------------------------
     //
-    @safe @nogc pure nothrow
-    void addTraceInfoTo(DError* err) const
-    {
-        assert (err !is null);
-
-        foreach_reverse(ref one; _scopes.data)
-        {
-            if (auto f = one.callerf)
-            {
-                err.addTrace(f.sourcename,
-                             f.name !is null ? f.name.toString : null,
-                             f.srctext);
-                if (0 < f.sourcename.length)
-                    break;
-            }
-        }
-    }
-
-    //--------------------------------------------------------------------
     string_t[] searchSimilarWord(ref CallContext cc, string_t name)
     {
         import std.string : soundexer;
-        import std.array : Appender, join;
+        import std.array : join;
 
         Appender!(string_t[][]) result;
 
         auto key = name.soundexer;
         foreach_reverse (one; _stack.data)
         {
-            if (auto r = searchSimilarWord(cc, one, key))
+            if (auto r = .searchSimilarWord(cc, one, key))
                 result.put(r);
         }
         return result.data.join;
     }
 
-    static string_t[] searchSimilarWord(ref CallContext cc, Dobject target,
-                                        in ref char[4] key)
-    {
-        import std.string : soundexer;
-
-        Appender!(string_t[]) result;
-        foreach (one; target.OwnPropertyKeys)
-        {
-            auto name = one.toString(cc);
-            if (name.soundexer == key)
-                result.put(name);
-        }
-        if (auto p = target.GetPrototypeOf)
-            return result.data ~ searchSimilarWord(cc, p, key);
-        else
-            return result.data;
-    }
-
-
-    //====================================================================
 private:
-    enum GLOBAL_ROOT = 1;
-
-    Dobject _global;
-    VariableScope* _variable;
+    immutable size_t _initialSize;
     Appender!(Dobject[]) _stack;
-    Appender!(VariableScope*[]) _scopes;
+}
 
-    invariant
+//
+string_t[] searchSimilarWord(ref CallContext cc, Dobject target,
+                             in ref char_t[4] key)
+{
+    import std.array : Appender;
+    import std.string : soundexer;
+
+    Appender!(string_t[]) result;
+    foreach (one; target.OwnPropertyKeys)
     {
-        import std.conv : to;
-
-        assert (_global !is null);
-
-        assert (_variable !is null, "variable is null");
-        assert (GLOBAL_ROOT <= _variable.scoperoot, "_variable.scoperoot is " ~
-            _variable.scoperoot.to!string);
-        assert (_variable.variable !is null);
-        assert (_variable.scoperoot <= _stack.data.length,
-                _variable.scoperoot.to!string ~ " < " ~
-                _stack.data.length.to!string);
-        assert (_variable.prevlength <= _stack.data.length,
-            _variable.prevlength.to!string);
-
-        assert (_variable.callerothis !is null);
-        assert (_variable.prevlength <= _variable.scoperoot);
-
-        assert (0 < _stack.data.length);
-        assert (0 < _scopes.data.length);
+        auto name = one.toString(cc);
+        if (name.soundexer == key)
+            result.put(name);
     }
-
-    //==========================================================
-package debug:
-
-    //
-    @safe pure
-    string dump() const
-    {
-        import std.conv : text;
-        import std.array : Appender;
-        Appender!string buf;
-
-        buf.put(text("{ stack.length = ", _stack.data.length, "\n",
-                     "  scopes = "));
-        foreach(one; _scopes.data)
-            buf.put(text(*one));
-
-        buf.put(text("}"));
-
-        return buf.data;
-    }
+    if (auto p = target.GetPrototypeOf)
+        return result.data ~ searchSimilarWord(cc, p, key);
+    else
+        return result.data;
 }

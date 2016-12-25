@@ -131,6 +131,8 @@ private:
         // Flag if we're in the for statement header, as
         // automatic semicolon insertion is suppressed inside it.
         inForHeader     = 4,
+
+        isModule        = 8,
     }
     Flag flags;
 
@@ -145,7 +147,7 @@ private:
             switch(token.value)
             {
             case Tok.Function:
-                topstatements.put(parseFunction!(ParseFlag.statement));
+                topstatements.put(parseFunction!(FunctionFlag.statement));
                 break;
 
             case Tok.Eof:
@@ -168,14 +170,14 @@ private:
      *	1	Function literal
      */
 
-    enum ParseFlag
+    enum FunctionFlag
     {
         statement = 0,
         literal   = 1,
         property  = 2,
     }
 
-    auto parseFunction(ParseFlag flag)()
+    auto parseFunction(FunctionFlag flag)()
     {
         import std.array : Appender;
         StringKey* name;
@@ -189,7 +191,7 @@ private:
         nextToken();
         name = null;
 
-        static if (flag == ParseFlag.property)
+        static if (flag == FunctionFlag.property)
             name = propertyName(token);
         else
         {
@@ -201,7 +203,7 @@ private:
         {
             nextToken();
 
-            static if (flag == ParseFlag.statement)
+            static if (flag == FunctionFlag.statement)
             {
                 if(token == Tok.Dot)
                 {
@@ -264,7 +266,8 @@ private:
 
         f = new FunctionDefinition(base, linnum, 0, name, sourcename,
                                    parameters.data, topstatements);
-        static if (flag == ParseFlag.literal || flag == ParseFlag.property)
+        static if (flag == FunctionFlag.literal ||
+                   flag == FunctionFlag.property)
         {
             f.isliteral = true;
             return f;
@@ -764,12 +767,12 @@ private:
             nextToken();
             break;
         case Tok.True:
-            e = new BooleanExpression(linnum, 1);
+            e = new BooleanExpression(linnum, true);
             nextToken();
             break;
 
         case Tok.False:
-            e = new BooleanExpression(linnum, 0);
+            e = new BooleanExpression(linnum, false);
             nextToken();
             break;
 
@@ -921,7 +924,7 @@ private:
             {
                 if      (Tok.Set == token)
                 {
-                    auto fe = parseFunctionLiteral!(ParseFlag.property);
+                    auto fe = parseFunctionLiteral!(FunctionFlag.property);
                     if (fe is null)
                     {
                         error(ExpectedIdentifierError);
@@ -937,7 +940,7 @@ private:
                 }
                 else if (Tok.Get == token)
                 {
-                    auto fe = parseFunctionLiteral!(ParseFlag.property);
+                    auto fe = parseFunctionLiteral!(FunctionFlag.property);
                     if (fe is null)
                     {
                         error(ExpectedIdentifierError);
@@ -975,7 +978,8 @@ private:
         return e;
     }
 
-    FunctionLiteral parseFunctionLiteral(ParseFlag FLAG = ParseFlag.literal)()
+    FunctionLiteral parseFunctionLiteral(
+        FunctionFlag FLAG = FunctionFlag.literal)()
     {
         FunctionDefinition f;
         uint linnum;
@@ -1477,7 +1481,6 @@ private:
         uint linnum;
         Flag flags_save;
 
-        //writefln("Parser.parseExpression()");
         flags_save = this.flags;
         this.flags = flags;
         linnum = currentline;

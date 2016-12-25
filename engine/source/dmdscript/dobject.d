@@ -207,7 +207,7 @@ class Dobject
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // use errmsgs
                     auto v = cast(Value)name.value;
-                    throw new Exception("not a valid key ", v.toString);
+                    throw new Exception("not a valid key ", v.toString(cc));
                 }
             }
             else static if (is(K : uint) || is(K == StringKey))

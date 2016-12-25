@@ -21,7 +21,7 @@ import dmdscript.dfunction : Dconstructor;
 debug import std.stdio;
 
 /* ========================== DdeclaredFunction ================== */
-
+///
 class DdeclaredFunction : Dconstructor
 {
     import dmdscript.primitive : string_t, StringKey;
@@ -32,18 +32,23 @@ class DdeclaredFunction : Dconstructor
 
     FunctionDefinition fd;
 
-    this(FunctionDefinition fd)
+private
+    Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
+
+    this(FunctionDefinition fd, Dobject[] scopex)
     {
         import dmdscript.primitive : Key;
         import dmdscript.property : Property;
 
+        assert(Dfunction.getPrototype);
         assert (fd !is null);
 
-        string_t name = fd.name is null ? Key.Function : fd.name.entity;
+        string_t name = fd.name is null ? Key.Function : *fd.name;
         super(name, cast(uint)fd.parameters.length, Dfunction.getPrototype);
-        assert(Dfunction.getPrototype);
         assert(GetPrototypeOf);
+
         this.fd = fd;
+        this.scopex = scopex;
 
         // ECMA 3 13.2
         auto o = new Dobject(Dobject.getPrototype);        // step 9
@@ -70,7 +75,7 @@ class DdeclaredFunction : Dconstructor
         import dmdscript.ir : Opcode;
         import dmdscript.opcodes : IR;
         import dmdscript.value : vundefined;
-        import dmdscript.callcontext : VariableScope;
+        import dmdscript.callcontext : DefinedFunctionScope;
 
         Dobject actobj;         // activation object
         Darguments args;
@@ -124,10 +129,10 @@ class DdeclaredFunction : Dconstructor
         // make grannymail bug work
 
         // auto newCC = CallContext(cc, actobj, this, fd);
-        auto ccs = VariableScope(actobj, this, fd, othis);
-        cc.pushFunctionScope(ccs);
-
         fd.instantiate(cc, Property.Attribute.DontDelete);
+
+        auto dfs = DefinedFunctionScope(scopex, actobj, this, fd, othis);
+        cc.push(dfs);
 
         Value[] p1;
         Value* v;
@@ -149,7 +154,7 @@ class DdeclaredFunction : Dconstructor
                             fd.srctext);
         }
 
-        cc.popVariableScope(ccs);
+        cc.pop(dfs);
 
         delete p1;
 

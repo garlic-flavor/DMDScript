@@ -46,8 +46,6 @@ abstract class Dfunction : Dobject
         derived,
     }
 
-    Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
-
     @disable
     Dobject HomeObject;
 
@@ -272,9 +270,9 @@ class DfunctionConstructor : Dconstructor
             if(exception !is null)
                 goto Lsyntaxerror;
             fd.toIR(null);
-            Dfunction fobj = new DdeclaredFunction(fd);
+            auto fobj = new DdeclaredFunction(fd, cc.scopes.dup);
             // fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
-            fobj.scopex = cc.scopes.dup;
+            // fobj.scopex = cc.scopes.dup;
             ret.put(fobj);
         }
         else

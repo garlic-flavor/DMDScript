@@ -150,7 +150,7 @@ class Program
         import dmdscript.dobject : Dobject;
         import dmdscript.property : Property;
         import dmdscript.opcodes : IR;
-        import dmdscript.callcontext : VariableScope;
+        import dmdscript.callcontext : DefinedFunctionScope;
 
         // ECMA 10.2.1
 
@@ -159,6 +159,7 @@ class Program
         DError* result;
         Darray arguments;
         Dobject dglobal = callcontext.global;
+        assert (dglobal !is null);
 
         // Set argv and argc for execute
         arguments = new Darray();
@@ -194,11 +195,11 @@ class Program
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
 
         ret.putVundefined();
-        assert (callcontext.global !is null);
-        auto ccs = VariableScope(globalfunction);
-        callcontext.pushEvalScope(ccs);
-        result = IR.call(callcontext, callcontext.global,
-                         globalfunction.code, ret, locals.ptr);
+        auto dfs = DefinedFunctionScope(null, dglobal, null, globalfunction,
+                                        dglobal);
+        callcontext.push(dfs);
+        result = IR.call(callcontext, dglobal, globalfunction.code,
+                         ret, locals.ptr);
 
         if(result !is null)
         {
@@ -207,7 +208,7 @@ class Program
                                globalfunction.srctext);
             throw exception;
         }
-        callcontext.popVariableScope(ccs);
+        callcontext.pop(dfs);
         delete p1;
     }
 

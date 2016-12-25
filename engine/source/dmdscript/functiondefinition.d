@@ -49,12 +49,12 @@ class FunctionDefinition : TopStatement
 
     StringKey* name;             // null for anonymous function
     string sourcename;
-    StringKey*[] parameters;     // array of Identifier's
+    StringKey*[] parameters;      // array of Identifier's
     TopStatement[] topstatements; // array of TopStatement's
 
     StringKey*[] varnames;       // array of Identifier's
     private FunctionDefinition[] functiondefinitions;
-    private FunctionDefinition enclosingFunction;
+//    private FunctionDefinition enclosingFunction;
     private int nestDepth;
     int withdepth;              // max nesting of ScopeStatement's
 
@@ -106,7 +106,7 @@ class FunctionDefinition : TopStatement
 
         // Log all the FunctionDefinition's so we can rapidly
         // instantiate them at runtime
-        fd = enclosingFunction = sc.funcdef;
+        fd = /*enclosingFunction =*/ sc.funcdef;
 
         // But only push it if it is not already in the array
         for(i = 0;; i++)
@@ -231,8 +231,7 @@ class FunctionDefinition : TopStatement
         foreach(FunctionDefinition fd; functiondefinitions)
         {
             // Set [[Scope]] property per 13.2 step 7
-            Dfunction fobject = new DdeclaredFunction(fd);
-            fobject.scopex = cc.scopes;
+            auto fobject = new DdeclaredFunction(fd, cc.scopes.dup);
 
             if(fd.name !is null && !fd.isliteral) // skip anonymous functions
             {

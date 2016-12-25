@@ -225,6 +225,14 @@ struct Value
         _hash = h;
     }
 
+    //
+    @trusted @nogc pure nothrow
+    void putBool(in bool b)
+    {
+        _type = Type.Boolean;
+        _dbool = b;
+    }
+
     // ditto
     @trusted @nogc pure nothrow
     void put(ref Value v)

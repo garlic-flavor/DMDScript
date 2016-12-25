@@ -179,7 +179,7 @@ DError* eval(
     import dmdscript.property : Property;
     import dmdscript.opcodes : IR;
     import dmdscript.protoerror : syntaxerror;
-    import dmdscript.callcontext : VariableScope;
+    import dmdscript.callcontext : DefinedFunctionScope;
 
     // ECMA 15.1.2.1
     Value* v;
@@ -188,7 +188,7 @@ DError* eval(
     ScriptException exception;
     DError* result;
     Dobject callerothis;
-    VariableScope ccs;
+    Dobject[] scopes;
 
     v = arglist.length ? &arglist[0] : &undefined;
     if(v.type != Value.Type.String)
@@ -202,7 +202,15 @@ DError* eval(
     TopStatement[] topstatements;
     Parser p = new Parser("eval", s, Parser.UseStringtable.No);
     if((exception = p.parseProgram(topstatements)) !is null)
-        goto Lsyntaxerror;
+    {
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// solve this.
+    // For eval()'s, use location of caller, not the string
+    // errinfo.linnum = 0;
+        ret.putVundefined();
+        return new DError(new syntaxerror(exception));
+    }
 
     // Analyze, generate code
     fd = new FunctionDefinition(topstatements);
@@ -225,7 +233,15 @@ DError* eval(
 
 
     if(exception !is null)
-        goto Lsyntaxerror;
+    {
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// solve this.
+    // For eval()'s, use location of caller, not the string
+    // errinfo.linnum = 0;
+        ret.putVundefined();
+        return new DError(new syntaxerror(exception));
+    }
     fd.toIR(null);
 
     debug
@@ -234,7 +250,6 @@ DError* eval(
         if (cc.dumpMode & Program.DumpMode.IR)
             IR.toString(fd.code).writeln;
     }
-
 
     // Execute code
     Value[] locals;
@@ -295,35 +310,27 @@ DError* eval(
 
         // The this value is the same as the this value of the
         // calling context.
-        assert(cc.callerothis);
+        scopes = cc.scopes;
+        assert (0 < scopes.length);
+        assert (cc.callerothis);
+        auto dfs = DefinedFunctionScope(scopes[0..$-1], scopes[$-1],
+                                        pthis, fd, cc.callerothis);
 
-        ccs = VariableScope(pthis, fd);
-
-        cc.pushEvalScope(ccs);
+        cc.push(dfs);
         result = IR.call(cc, cc.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
             result.addTrace(null, "eval", s);
         }
-        cc.popVariableScope(ccs);
-
+        cc.pop(dfs);
 
         if(p1)
             delete p1;
         fd = null;
 
-
         return result;
     }
 
-Lsyntaxerror:
-
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// solve this.
-    // For eval()'s, use location of caller, not the string
-    // errinfo.linnum = 0;
-    ret.putVundefined();
-    return new DError(new syntaxerror(exception));
 }
 
 //------------------------------------------------------------------------------
