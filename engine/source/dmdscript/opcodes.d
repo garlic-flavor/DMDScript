@@ -280,9 +280,11 @@ struct IR
                 case Opcode.CheckRef: // s
                     id = (code+1).id;
                     s = *id;
-                    // if(!scope_get(cc, scopex, id))
                     if (cc.get(*id) is null)
-                        throw UndefinedVarError.toThrow(s);
+                    {
+                        sta = UndefinedVarError(s);
+                        goto Lthrow;
+                    }
                     code += IRTypes[Opcode.CheckRef].size;
                     break;
                 case Opcode.GetScope:            // a = s

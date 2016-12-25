@@ -220,7 +220,7 @@ protected:
     {
         assert(se !is null);
 
-        se.addTrace(sourcename, base, p);
+        se.addTrace(sourcename, base, token.ptr);
 
         assert(base.ptr < end);
         p = end - 1;
@@ -1200,13 +1200,26 @@ private:
         dchar value;
         uint n;
         dchar c;
+        bool withBracket = false;
 
         value = 0;
         p++;
+
+        if (*p == '{')
+        {
+            withBracket = true;
+            p++;
+        }
         for(n = 0; n < 4; n++)
         {
             c = *p;
-            if(!isHexDigit(c))
+            if      (isHexDigit(c)){}
+            else if (withBracket && c == '}')
+            {
+                p++;
+                break;
+            }
+            else
             {
                 error(BadUSequenceError);
                 value = '\0';
@@ -1554,15 +1567,15 @@ private:
     }
 }
 
+template CharsOf(Tok token)
+{
+    import std.conv : to;
+    import std.string : toLower;
+    enum CharsOf = token.to!string_t.toLower;
+}
+
 StringKey* propertyName(Token token)
 {
-    template CharsOf(Tok token)
-    {
-        import std.conv : to;
-        import std.string : toLower;
-        enum CharsOf = token.to!string_t.toLower;
-    }
-
     switch (token)
     {
     case Tok.Identifier:
@@ -1672,6 +1685,63 @@ StringKey* propertyName(Token token)
     }
 }
 
+//
+StringKey* identifierName(Token token)
+{
+    switch (token)
+    {
+    case Tok.Identifier:
+        return token.ident;
+    case Tok.String:
+        return StringKey.build(token.toString);
+
+    // Future-reserved-words are allowed
+    case Tok.Abstract:
+        return StringKey.build(CharsOf!(Tok.Abstract));
+    case Tok.Final:
+        return StringKey.build(CharsOf!(Tok.Final));
+    case Tok.Float:
+        return StringKey.build(CharsOf!(Tok.Float));
+    case Tok.Goto:
+        return StringKey.build(CharsOf!(Tok.Goto));
+    case Tok.Implements:
+        return StringKey.build(CharsOf!(Tok.Implements));
+    case Tok.Int:
+        return StringKey.build(CharsOf!(Tok.Int));
+    case Tok.Interface:
+        return StringKey.build(CharsOf!(Tok.Interface));
+    case Tok.Long:
+        return StringKey.build(CharsOf!(Tok.Long));
+    case Tok.Boolean:
+        return StringKey.build(CharsOf!(Tok.Boolean));
+    case Tok.Native:
+        return StringKey.build(CharsOf!(Tok.Native));
+    case Tok.Package:
+        return StringKey.build(CharsOf!(Tok.Package));
+    case Tok.Private:
+        return StringKey.build(CharsOf!(Tok.Private));
+    case Tok.Protected:
+        return StringKey.build(CharsOf!(Tok.Protected));
+    case Tok.Public:
+        return StringKey.build(CharsOf!(Tok.Public));
+    case Tok.Short:
+        return StringKey.build(CharsOf!(Tok.Short));
+    case Tok.Static:
+        return StringKey.build(CharsOf!(Tok.Static));
+    case Tok.Synchronized:
+        return StringKey.build(CharsOf!(Tok.Synchronized));
+    case Tok.Byte:
+        return StringKey.build(CharsOf!(Tok.Byte));
+    case Tok.Transient:
+        return StringKey.build(CharsOf!(Tok.Transient));
+    case Tok.Char:
+        return StringKey.build(CharsOf!(Tok.Char));
+    case Tok.Double:
+        return StringKey.build(CharsOf!(Tok.Double));
+    default:
+        return null;
+    }
+}
 
 /****************************************
  */

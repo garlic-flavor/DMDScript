@@ -374,12 +374,12 @@ private:
             {
                 linnum = currentline;
 
-                if(token != Tok.Identifier)
+                ident = identifierName(token);
+                if(ident is null)
                 {
                     error(ExpectedIdentifierParamError(token.toString));
                     break;
                 }
-                ident = token.ident;
                 init = null;
                 nextToken();
                 if(token == Tok.Assign)
@@ -642,6 +642,13 @@ private:
         }
         case Tok.Throw:
         {
+            auto nt = peek(&token);
+            if (linnum != currentline)
+            {
+                error(ExpectedGenericError("newline", "Expression"));
+                break;
+            }
+
             nextToken();
             auto exp = parseExpression();
             parseOptionalSemi();
