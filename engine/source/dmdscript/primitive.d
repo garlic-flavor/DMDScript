@@ -38,9 +38,6 @@ enum Text : string_t
     Infinity = "Infinity",
     negInfinity = "-Infinity",
     bobjectb = "[object]",
-    _null = "null",
-    _true = "true",
-    _false = "false",
     object = "object",
     string = "enum string",
     boolean = "boolean",
@@ -83,176 +80,198 @@ enum Text : string_t
 }
 
 //------------------------------------------------------------------------------
-enum Key : StringKey
+///
+enum Key : PropertyKey
 {
-    global = StringKey("global"),
-    toLocaleString = StringKey("toLocaleString"),
-    prototype = StringKey("prototype"),
-    constructor = StringKey("constructor"),
-    toString = StringKey("toString"),
-    toSource = StringKey("toSource"),
-    valueOf = StringKey("valueOf"),
-    message = StringKey("message"),
-    description = StringKey("description"),
-    name = StringKey("name"),
-    length = StringKey("length"),
+    global = PropertyKey("global"),
+    toLocaleString = PropertyKey("toLocaleString"),
+    prototype = PropertyKey("prototype"),
+    constructor = PropertyKey("constructor"),
+    toString = PropertyKey("toString"),
+    toSource = PropertyKey("toSource"),
+    valueOf = PropertyKey("valueOf"),
+    message = PropertyKey("message"),
+    description = PropertyKey("description"),
+    name = PropertyKey("name"),
+    length = PropertyKey("length"),
 
-    NaN = StringKey("NaN"),
-    undefined = StringKey("undefined"),
-    number = StringKey("number"),
-    Object = StringKey("Object"),
-    String = StringKey("String"),
-    Number = StringKey("Number"),
-    Boolean = StringKey("Boolean"),
-    Date = StringKey("Date"),
-    Array = StringKey("Array"),
-    RegExp = StringKey("RegExp"),
-    Error = StringKey("Error"),
-    Symbol = StringKey("Symbol"),
-    Map = StringKey("Map"),
-    Set = StringKey("Set"),
-    WeakMap = StringKey("WeakMap"),
-    WeakSet =StringKey("WeakSet"),
-    ArrayBuffer = StringKey("ArrayBuffer"),
-    DataView = StringKey("DataView"),
-    JSON = StringKey("JSON"),
-    Promise = StringKey("Promise"),
-    Reflect = StringKey("Reflect"),
-    Proxy = StringKey("Proxy"),
+    NaN = PropertyKey("NaN"),
+    undefined = PropertyKey("undefined"),
+    _null = PropertyKey("null"),
+    _true = PropertyKey("true"),
+    _false = PropertyKey("false"),
+    number = PropertyKey("number"),
+    Object = PropertyKey("Object"),
+    String = PropertyKey("String"),
+    Number = PropertyKey("Number"),
+    Boolean = PropertyKey("Boolean"),
+    Date = PropertyKey("Date"),
+    Array = PropertyKey("Array"),
+    RegExp = PropertyKey("RegExp"),
+    Error = PropertyKey("Error"),
+    Symbol = PropertyKey("Symbol"),
+    Map = PropertyKey("Map"),
+    Set = PropertyKey("Set"),
+    WeakMap = PropertyKey("WeakMap"),
+    WeakSet =PropertyKey("WeakSet"),
+    ArrayBuffer = PropertyKey("ArrayBuffer"),
+    DataView = PropertyKey("DataView"),
+    JSON = PropertyKey("JSON"),
+    Promise = PropertyKey("Promise"),
+    Reflect = PropertyKey("Reflect"),
+    Proxy = PropertyKey("Proxy"),
 
-    arguments = StringKey("arguments"),
-    callee = StringKey("callee"),
-    caller = StringKey("caller"),                  // extension
+    arguments = PropertyKey("arguments"),
+    callee = PropertyKey("callee"),
+    caller = PropertyKey("caller"),                  // extension
 
-    Function = StringKey("Function"),
-    Math = StringKey("Math"),
+    Function = PropertyKey("Function"),
+    Math = PropertyKey("Math"),
 
-    value = StringKey("value"),
+    value = PropertyKey("value"),
 
-    hasInstance = StringKey("hasInstance"),
-    Iterator = StringKey("Iterator"),
+    hasInstance = PropertyKey("hasInstance"),
+    Iterator = PropertyKey("Iterator"),
 }
 
 //------------------------------------------------------------------------------
-//
-struct StringKey
+///
+struct PropertyKey
 {
-    //
-    string_t entity;
-    alias entity this;
-
-    //
-    @safe @nogc pure nothrow
-    this(string_t str)
+    template IsKey(K)
     {
-        entity = str;
-        if (__ctfe)
-            _hash = calcHash(entity);
+        enum IsKey = is(K : PropertyKey) || is(K : string_t) || is(K : size_t);
     }
 
-    //
+    //--------------------------------------------------------------------
+    ///
+    @safe @nogc pure nothrow
+    this(K)(in auto ref K key) if (IsKey!K)
+    {
+        static if      (is(K : PropertyKey))
+        {
+            _text = key._text;
+            _hash = key._hash;
+        }
+        else static if (is(K : string_t))
+        {
+            _text = key;
+            _hash = calcHash(key);
+        }
+        else static if (is(K : size_t))
+        {
+            _text = null;
+            _hash = key;
+        }
+        else static assert (0);
+    }
+
+    ///
     @safe @nogc pure nothrow
     this(string_t str, size_t h)
     {
-        entity = str;
+        _text = str;
         _hash = h;
     }
 
-    //
-    @safe pure nothrow
-    this(in uint idx)
-    {
-        import std.conv : to;
-        entity = idx.to!string_t;
-        if (__ctfe)
-            _hash = calcHash(entity);
-    }
 
-    //
+    //--------------------------------------------------------------------
     @property @safe @nogc pure nothrow
-    size_t hash() const
     {
-        if (0 < _hash)
+        ///
+        size_t hash() const
+        {
             return _hash;
-        return calcHash(entity);
+        }
+        alias toHash = hash;
+
+        ///
+        string_t text() const
+        {
+            return _text;
+        }
+        alias text this;
     }
 
-    //
-    @property @safe @nogc pure nothrow
-    size_t hash()
-    {
-        if (0 == _hash)
-            _hash = calcHash(entity);
-        return _hash;
-    }
-
-    //
-    @property @safe @nogc pure nothrow
-    size_t calculatedHash() const
-    {
-        return _hash;
-    }
-
-    //
+    //--------------------------------------------------------------------
     @safe @nogc pure nothrow
-    bool opEquals(in ref StringKey rvalue) const
+    void put(K)(in auto ref K key) if (IsKey!K)
     {
-        return entity == rvalue.entity;
+        static if      (is(K : PropertyKey))
+        {
+            _text = key._text;
+            _hash = key._hash;
+        }
+        else static if (is(K : string_t))
+        {
+            _text = key;
+            _hash = calcHash(key);
+        }
+        else static if (is(K : size_t))
+        {
+            _text = null;
+            _hash = key;
+        }
+        else static assert (0);
     }
 
-    //
-    @safe @nogc pure nothrow
-    bool opEquals(in string_t rvalue) const
-    {
-        return entity == rvalue;
-    }
-
-    //
-    @safe @nogc pure nothrow
+    //--------------------------------------------------------------------
+    ///
+    @safe
     string_t toString() const
     {
-        return entity;
-    }
-
-    //
-    @safe @nogc pure nothrow
-    size_t toHash()
-    {
-        if (0 == _hash)
-            _hash = calcHash(entity);
-        return _hash;
-    }
-
-    //
-    @safe @nogc pure nothrow
-    size_t toHash() const
-    {
-        if (0 == _hash)
-            return calcHash(entity);
+        import std.conv : to;
+        if (_text !is null)
+            return _text;
         else
-            return _hash;
+            return _hash.to!string_t;
     }
 
-    //
-    @safe @nogc pure nothrow
-    void put(string_t str)
+    ///
+    @trusted
+    bool isArrayIndex(out size_t index) const
     {
-        entity = str;
-        _hash = calcHash(entity);
+        if (_text is null)
+        {
+            index = _hash;
+            return true;
+        }
+        else
+            return StringToIndex(_text, index);
+    }
+
+    //--------------------------------------------------------------------
+    @nogc pure nothrow
+    bool opEquals()(in auto ref PropertyKey p) const
+    {
+        if (_text !is null)
+            return 0 == stringcmp(_text, p._text);
+        else
+            return _hash == p._hash;
     }
 
 private:
     size_t _hash;
+    string_t _text;
 
-package static:
-
-    //
-    @safe pure nothrow
-    StringKey* build(string_t key)
+static public:
+    ///
+    @safe nothrow
+    const(PropertyKey)* build(string_t str)
     {
-        return new StringKey(key, calcHash(key));
+        return new PropertyKey(str);
+    }
+
+    ///
+    @safe pure nothrow
+    const(PropertyKey)* build(string_t str, size_t hash)
+    {
+        return new PropertyKey(str, hash);
     }
 }
+///
+alias Identifier = const(PropertyKey)*;
+
 
 //------------------------------------------------------------------------------
 @safe @nogc pure nothrow

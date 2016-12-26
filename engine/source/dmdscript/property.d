@@ -19,97 +19,6 @@ module dmdscript.property;
 debug import std.stdio;
 
 //==============================================================================
-/// PropertyKey must have a pre-calculated hash value.
-struct PropertyKey
-{
-    import dmdscript.value : Value;
-    import dmdscript.primitive : string_t, StringKey;
-
-    ///
-    template IsKey(K)
-    {
-        enum IsKey = is(K : PropertyKey) || is(K : StringKey) ||
-            is(T : Value) || is(K : string_t) || is(K : uint);
-    }
-
-    Value value; ///
-    alias value this;
-
-    //--------------------------------------------------------------------
-    ///
-    @safe @nogc pure nothrow
-    this(T)(in auto ref T arg) if (IsKey!T && !is(T : Value))
-    {
-        value.put(arg, calcHash(arg));
-    }
-    /// ditto
-    @safe @nogc pure nothrow
-    this(T)(in ref auto T arg, in size_t hash) if (IsKey!T)
-    {
-        value.put(arg, hash);
-    }
-    /// ditto
-    @safe
-    this(T : Value)(ref T arg)
-    {
-        value.put(arg, arg.toHash);
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @safe @nogc pure nothrow
-    void put(T)(T arg) if (Value.IsPrimitiveType!T)
-    {
-        value.put(arg, calcHash(arg));
-    }
-    /// ditto
-    @safe @nogc pure nothrow
-    void put(T)(T arg, size_t h) if (Value.IsPrimitiveType!T)
-    {
-        value.put(arg, h);
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @safe @nogc pure nothrow
-    size_t toHash() const
-    {
-        return value.hash;
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @safe
-    bool opEquals(in ref PropertyKey rvalue) const
-    {
-        return hash == rvalue.hash && value == rvalue.value;
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @safe @nogc pure nothrow
-    StringKey toStringKey() const
-    {
-        return StringKey(value.text, value.hash);
-    }
-
-    //====================================================================
-static:
-
-    //
-    alias calcHash = dmdscript.primitive.calcHash;
-
-    //
-    @safe @nogc pure nothrow
-    size_t calcHash(inout ref StringKey key)
-    {
-        return key.hash;
-    }
-}
-
-//==============================================================================
-
-//==============================================================================
 /// See_Also: Ecma-262-v7/6.1.7.1/Property Attributes
 ///                      /6.2.4
 struct Property
@@ -139,18 +48,12 @@ struct Property
         Accessor       = 0x8000, // This is an Accessor Property.
     }
 
-    ///
-    template IsValue(V)
-    {
-        enum IsValue = is(V : Value) || Value.IsPrimitiveType!V;
-    }
-
     //--------------------------------------------------------------------
     ///
     @trusted @nogc pure nothrow
-    this(T)(auto ref T v, in Attribute a) if (IsValue!T)
+    this(ref Value v, in Attribute a)
     {
-        _value.put(v);
+        _value = v;
         _attr = a & ~Attribute.Accessor & ~Attribute.DontOverride;
     }
 
@@ -308,13 +211,13 @@ struct Property
         return false;
     }
     /// ditto
-    @trusted @nogc pure nothrow
-    bool config(T)(auto ref T v, Attribute a) if (IsValue!T)
+    @trusted
+    bool config(ref Value v, Attribute a)
     {
         if      (canBeData(a))
         {
             _attr = a;
-            _value.put(v);
+            _value = v;
             return true;
         }
         else if (_attr & Attribute.Accessor)
@@ -431,9 +334,7 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    DError* set(T)(auto ref T _v, Attribute a,
-                   ref CallContext cc, Dobject othis,)
-        if (IsValue!T)
+    DError* set(ref Value v, Attribute a, ref CallContext cc, Dobject othis,)
     {
         if (!canSetValue(a))
             return null;
@@ -444,16 +345,12 @@ struct Property
             if (_Set !is null)
             {
                 Value ret;
-                static if (is(T : Value))
-                    alias v = _v;
-                else
-                    auto v = Value(_v);
                 return _Set.Call(cc, othis, ret, [v]);
             }
         }
         else
         {
-            _value.put(_v);
+            _value.put(v);
         }
         return null;
     }
@@ -604,18 +501,12 @@ public static:
 ///
 final class PropTable
 {
-    import dmdscript.value : Value, DError, vundefined;
-    import dmdscript.primitive : string_t;
+    import dmdscript.value : Value, DError;
+    import dmdscript.primitive : string_t, PropertyKey;
     import dmdscript.dobject : Dobject;
     import dmdscript.callcontext : CallContext;
     import dmdscript.dfunction : Dfunction;
     import dmdscript.RandAA : RandAA;
-
-    ///
-    template IsKeyValue(K, V)
-    {
-        enum IsKeyValue = PropertyKey.IsKey!K && Property.IsValue!V;
-    }
 
     ///
     alias Table = RandAA!(PropertyKey, Property, false);
@@ -646,14 +537,8 @@ final class PropTable
     Return null if not found.
     */
     @trusted
-    Property* getProperty(K)(in auto ref K k)
-        if (PropertyKey.IsKey!K)
+    Property* getProperty(in ref PropertyKey key)
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
-
         for (auto t = cast(PropTable)this; t !is null; t = t._previous)
         {
             if (auto p = t._table.findExistingAlt(key, key.hash))
@@ -665,7 +550,7 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     @safe
-    Property* getOwnProperty(K)(in auto ref K k) if (PropertyKey.IsKey!K)
+    Property* getOwnProperty(in ref PropertyKey k)
     {
         static if (is(K : PropertyKey))
             alias key = k;
@@ -677,8 +562,7 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    Value* get(K)(in auto ref K key, ref CallContext cc, Dobject othis)
-        if (PropertyKey.IsKey!K)
+    Value* get(in ref PropertyKey key, ref CallContext cc, Dobject othis)
     {
         if (auto p = getProperty(key))
             return p.get(cc, othis);
@@ -713,17 +597,11 @@ final class PropTable
 +/
     //--------------------------------------------------------------------
     ///
-    DError* set(K, V)(in auto ref K k, auto ref V value,
+    DError* set(in ref PropertyKey key, ref Value value,
                 in Property.Attribute attributes,
                 ref CallContext cc, Dobject othis)
-        if (IsKeyValue!(K, V))
     {
         import dmdscript.errmsgs;
-
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PrpertyKey(k);
 
         if (auto p = _table.findExistingAlt(key, key.hash))
         {
@@ -761,13 +639,8 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     @safe
-    bool config(K)(in auto ref K k, in Property.Attribute attributes)
-        if (PropertyKey.IsKey!K)
+    bool config(in ref PropertyKey key, in Property.Attribute attributes)
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
 
         if (auto p = _table.findExistingAlt(key, key.hash))
         {
@@ -780,7 +653,8 @@ final class PropTable
                 return false;
             }
 
-            auto p = Property(vundefined, attributes);
+            Value v;
+            auto p = Property(v, attributes);
             _table.insertAlt(key, p, key.hash);
         }
         return true;
@@ -788,15 +662,9 @@ final class PropTable
 
     /// ditto
     @safe
-    bool config(K, V)(in auto ref K k, auto ref V value,
-                      in Property.Attribute attributes, in bool extensible)
-        if (IsKeyValue!(K, V))
+    bool config(in ref PropertyKey key, ref Value value,
+                in Property.Attribute attributes, in bool extensible)
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
-
         if      (auto p = _table.findExistingAlt(key, key.hash))
         {
             auto na = cast(Property.Attribute)attributes;
@@ -833,15 +701,9 @@ final class PropTable
 
     /// ditto
     @safe
-    bool configGetter(K)(in auto ref K k, Dfunction getter,
-                         in Property.Attribute attributes, in bool extensible)
-        if (PropertyKey.IsKey!K)
+    bool configGetter(in ref PropertyKey key, Dfunction getter,
+                      in Property.Attribute attributes, in bool extensible)
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
-
         if      (auto p = _table.findExistingAlt(key, key.hash))
         {
             auto na = cast(Property.Attribute)attributes;
@@ -878,15 +740,9 @@ final class PropTable
 
     /// ditto
     @safe
-    bool configSetter(K)(in auto ref K k, Dfunction setter,
-                         in Property.Attribute attributes, in bool extensible)
-        if (PropertyKey.IsKey!K)
+    bool configSetter(in ref PropertyKey key, Dfunction setter,
+                      in Property.Attribute attributes, in bool extensible)
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
-
         if      (auto p = _table.findExistingAlt(key, key.hash))
         {
             auto na = cast(Property.Attribute)attributes;
@@ -924,14 +780,8 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     @trusted
-    bool canset(K)(in auto ref K k) const
-        if (PropertyKey.IsKey!K)
+    bool canset(in ref PropertyKey key) const
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
-
         auto t = cast(PropTable)this;
         do
         {
@@ -950,13 +800,8 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     @safe
-    bool del(K)(in auto ref K k)
+    bool del(in ref PropertyKey key)
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
-
         if(auto p = _table.findExistingAlt(key, key.hash))
         {
             if(!p.deletable)
@@ -991,14 +836,8 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     @safe
-    Property* opBinaryRight(string OP : "in", K)(in auto ref K k)
-        if (PropertyKey.IsKey!K)
+    Property* opBinaryRight(string OP : "in")(in ref PropertyKey key)
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
-
         return _table.findExistingAlt(key, key.hash);
     }
 
@@ -1027,15 +866,15 @@ private:
 //==============================================================================
 private:
 
-import dmdscript.primitive : StringKey, PKey = Key;
-enum Key : StringKey
+import dmdscript.primitive : PropertyKey, PKey = Key;
+enum Key : PropertyKey
 {
     value = PKey.value,
 
-    writable = StringKey("writable"),
-    get = StringKey("get"),
-    set = StringKey("set"),
-    enumerable = StringKey("enumerable"),
-    configurable = StringKey("configurable"),
+    writable = PropertyKey("writable"),
+    get = PropertyKey("get"),
+    set = PropertyKey("set"),
+    enumerable = PropertyKey("enumerable"),
+    configurable = PropertyKey("configurable"),
 }
 

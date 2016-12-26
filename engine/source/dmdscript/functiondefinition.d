@@ -47,12 +47,12 @@ class FunctionDefinition : TopStatement
         bool, "iseval", 1,           // !=0 if eval function
         int, "_padding", 5));
 
-    StringKey* name;             // null for anonymous function
+    Identifier name;             // null for anonymous function
     string sourcename;
-    StringKey*[] parameters;      // array of Identifier's
+    Identifier[] parameters;      // array of Identifier's
     TopStatement[] topstatements; // array of TopStatement's
 
-    StringKey*[] varnames;       // array of Identifier's
+    Identifier[] varnames;       // array of Identifier's
     private FunctionDefinition[] functiondefinitions;
 //    private FunctionDefinition enclosingFunction;
     private int nestDepth;
@@ -75,8 +75,9 @@ class FunctionDefinition : TopStatement
     }
 
     @safe @nogc pure nothrow
-    this(string_t srctext, uint linnum, bool isglobal, StringKey*  name,
-         string srcname, StringKey*[] parameters, TopStatement[] topstatements)
+    this(string_t srctext, uint linnum, bool isglobal,
+         Identifier  name, string srcname,
+         Identifier[] parameters, TopStatement[] topstatements)
     {
         super(linnum);
 
@@ -219,7 +220,7 @@ class FunctionDefinition : TopStatement
     {
         // Instantiate all the Var's per 10.1.3
         auto actobj = cc.variable;
-        foreach(StringKey* name; varnames)
+        foreach(name; varnames)
         {
             // If name is already declared, don't override it
             actobj.Set(name.toString, vundefined,

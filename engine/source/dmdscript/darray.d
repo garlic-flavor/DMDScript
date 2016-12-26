@@ -38,9 +38,8 @@ import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 ///
 class Darray : Dobject
 {
-    import dmdscript.primitive : StringKey;
-    import dmdscript.property : PropertyKey;
     import dmdscript.dobject : Initializer;
+    import dmdscript.primitive : PropertyKey;
 
     Value length;               // length property
     uint ulength;
@@ -58,19 +57,20 @@ class Darray : Dobject
     }
 
     override
-    DError* SetImpl(in ref StringKey name, ref Value v,
+    DError* SetImpl(in ref PropertyKey key, ref Value v,
                     in Property.Attribute attributes, ref CallContext cc)
     {
+        import dmdscript.property : PropertyKey;
+
         uint i;
         uint c;
         DError* result;
 
         // ECMA 15.4.5.1
-        auto key = PropertyKey(name);
         result = proptable.set(key, v, attributes, cc, this);
         if(!result)
         {
-            if(name == Key.length)
+            if(key == Key.length)
             {
                 i = v.toUint32(cc);
                 if(i != v.toInteger(cc))
@@ -86,8 +86,7 @@ class Darray : Dobject
                     {
                         uint j;
 
-                        j = key.toUint32(cc);
-                        if(j >= i)
+                        if(key.isArrayIndex(j) && j >= i)
                             todelete ~= j;
                     }
                     PropertyKey k;
@@ -106,12 +105,12 @@ class Darray : Dobject
             // if (name is an array index i)
 
             i = 0;
-            for(size_t j = 0; j < name.length; j++)
+            for(size_t j = 0; j < key.length; j++)
             {
                 ulong k;
 
-                c = name[j];
-                if(c == '0' && i == 0 && name.length > 1)
+                c = key[j];
+                if(c == '0' && i == 0 && key.length > 1)
                     goto Lret;
                 if(c >= '0' && c <= '9')
                 {
@@ -139,6 +138,8 @@ class Darray : Dobject
     DError* SetImpl(in uint index, ref Value value,
                     in Property.Attribute attributes, ref CallContext cc)
     {
+        import dmdscript.property : PropertyKey;
+
         if(index >= ulength)
         {
             ulength = index + 1;
@@ -150,7 +151,7 @@ class Darray : Dobject
         return null;
     }
 
-    override Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
+    override Value* GetImpl(in ref PropertyKey PropertyName, ref CallContext cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(PropertyName == Key.length)
@@ -174,7 +175,7 @@ class Darray : Dobject
         return v;
     }
 
-    override bool Delete(in StringKey PropertyName)
+    override bool Delete(in ref PropertyKey PropertyName)
     {
         // ECMA 8.6.2.5
         //writef("Darray.Delete('%ls')\n", d_string_ptr(PropertyName));
@@ -182,8 +183,7 @@ class Darray : Dobject
             return 0;           // can't delete 'length' property
         else
         {
-            auto key = PropertyKey(PropertyName);
-            return proptable.del(key);
+            return proptable.del(PropertyName);
         }
     }
 
@@ -203,7 +203,7 @@ public static:
         auto array = new Darray;
         foreach(uint i, ref one; list)
         {
-            array.CreateDataProperty(StringKey(i), one);
+            array.CreateDataProperty(PropertyKey(i), one);
         }
         return array;
     }
@@ -220,7 +220,7 @@ public static:
         auto list = new Value[len];
         for (uint i = 0; i < len; ++i)
         {
-            if (auto v = obj.Get(StringKey(i), cc))
+            if (auto v = obj.Get(PropertyKey(i), cc))
             {
                 if (0 == (v.type & elementTypes))
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -984,7 +984,7 @@ DError* sort(
     {
         uint index;
 
-        if(p.isNoneAttribute && key.isArrayIndex(cc, index))
+        if(p.isNoneAttribute && key.isArrayIndex(index))
         {
             pindices[nprops] = index;
             pvalues[nprops] = *p.get(cc, othis);

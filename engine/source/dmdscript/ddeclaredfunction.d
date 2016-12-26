@@ -24,7 +24,7 @@ debug import std.stdio;
 ///
 class DdeclaredFunction : Dconstructor
 {
-    import dmdscript.primitive : string_t, StringKey;
+    import dmdscript.primitive : string_t;
     import dmdscript.callcontext : CallContext;
     import dmdscript.dobject : Dobject;
     import dmdscript.value : DError, Value;
@@ -43,7 +43,7 @@ private
         assert(Dfunction.getPrototype);
         assert (fd !is null);
 
-        string_t name = fd.name is null ? Key.Function : *fd.name;
+        string_t name = fd.name is null ? Key.Function : fd.name.toString;
         super(name, cast(uint)fd.parameters.length, Dfunction.getPrototype);
         assert(GetPrototypeOf);
 
@@ -102,7 +102,7 @@ private
         // Instantiate the parameters
         {
             uint a = 0;
-            foreach(StringKey* p; fd.parameters)
+            foreach(p; fd.parameters)
             {
                 Value* v = (a < arglist.length) ? &arglist[a++] : &undefined;
                 actobj.Set(p.toString, *v, Property.Attribute.DontDelete, cc);

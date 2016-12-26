@@ -18,7 +18,7 @@
 
 module dmdscript.dregexp;
 
-import dmdscript.primitive : char_t, string_t, StringKey, Text, PKey = Key;
+import dmdscript.primitive : char_t, string_t, PropertyKey, Text, PKey = Key;
 import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.value;
@@ -212,18 +212,18 @@ class DregexpConstructor : Dconstructor
 
     alias GetImpl = Dobject.GetImpl;
 
-    override Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
+    override Value* GetImpl(in ref PropertyKey PropertyName, ref CallContext cc)
     {
-        auto sk = StringKey(perlAlias(PropertyName));
+        auto sk = PropertyKey(perlAlias(PropertyName.toString));
         return super.GetImpl(sk, cc);
     }
 
     alias SetImpl = super.SetImpl;
     override
-    DError* SetImpl(in ref StringKey PropertyName, ref Value value,
+    DError* SetImpl(in ref PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
-        auto sk = StringKey(perlAlias(PropertyName));
+        auto sk = PropertyKey(perlAlias(PropertyName.toString));
         return Dfunction.SetImpl(sk, value, attributes, cc);
     }
 
@@ -232,14 +232,16 @@ class DregexpConstructor : Dconstructor
         return Dfunction.CanPut(perlAlias(PropertyName));
     }
 
-    override bool HasProperty(in string_t PropertyName)
+    override bool HasProperty(in ref PropertyKey PropertyName)
     {
-        return Dfunction.HasProperty(perlAlias(PropertyName));
+        auto key = PropertyKey(perlAlias(PropertyName));
+        return Dfunction.HasProperty(key);
     }
 
-    override bool Delete(in StringKey PropertyName)
+    override bool Delete(in ref PropertyKey PropertyName)
     {
-        return Dfunction.Delete(StringKey(perlAlias(PropertyName)));
+        auto pk = PropertyKey(perlAlias(PropertyName.toString));
+        return Dfunction.Delete(pk);
     }
 
     // Translate Perl property names to script property names
@@ -990,34 +992,34 @@ package
 }
 
 private:
-enum Key : StringKey
+enum Key : PropertyKey
 {
     RegExp = PKey.RegExp,
     prototype = PKey.prototype,
     constructor = PKey.constructor,
     global = PKey.global,
 
-    input = StringKey("input"),
-    multiline = StringKey("multiline"),
-    lastIndex = StringKey("lastIndex"),
-    lastMatch = StringKey("lastMatch"),
-    lastParen = StringKey("lastParen"),
-    leftContext = StringKey("leftContext"),
-    rightContext = StringKey("rightContext"),
+    input = PropertyKey("input"),
+    multiline = PropertyKey("multiline"),
+    lastIndex = PropertyKey("lastIndex"),
+    lastMatch = PropertyKey("lastMatch"),
+    lastParen = PropertyKey("lastParen"),
+    leftContext = PropertyKey("leftContext"),
+    rightContext = PropertyKey("rightContext"),
 
-    dollar1 = StringKey("$1"),
-    dollar2 = StringKey("$2"),
-    dollar3 = StringKey("$3"),
-    dollar4 = StringKey("$4"),
-    dollar5 = StringKey("$5"),
-    dollar6 = StringKey("$6"),
-    dollar7 = StringKey("$7"),
-    dollar8 = StringKey("$8"),
-    dollar9 = StringKey("$9"),
-    index = StringKey("index"),
+    dollar1 = PropertyKey("$1"),
+    dollar2 = PropertyKey("$2"),
+    dollar3 = PropertyKey("$3"),
+    dollar4 = PropertyKey("$4"),
+    dollar5 = PropertyKey("$5"),
+    dollar6 = PropertyKey("$6"),
+    dollar7 = PropertyKey("$7"),
+    dollar8 = PropertyKey("$8"),
+    dollar9 = PropertyKey("$9"),
+    index = PropertyKey("index"),
 
-    source = StringKey("source"),
-    ignoreCase = StringKey("ignoreCase"),
-    exec = StringKey("exec"),
+    source = PropertyKey("source"),
+    ignoreCase = PropertyKey("ignoreCase"),
+    exec = PropertyKey("exec"),
 }
 

@@ -19,7 +19,7 @@ module dmdscript.dnumber;
 
 import std.math;
 
-import dmdscript.primitive : number_t, string_t, char_t, StringKey, Text,
+import dmdscript.primitive : number_t, string_t, char_t, PropertyKey, Text,
     PKey = Key;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
@@ -54,7 +54,7 @@ class Dnumber : Dobject
 //==============================================================================
 private:
 
-enum Key : StringKey
+enum Key : PropertyKey
 {
     Number = PKey.Number,
     valueOf = PKey.valueOf,
@@ -64,16 +64,16 @@ enum Key : StringKey
     toLocaleString = PKey.toLocaleString,
     NaN = PKey.NaN,
 
-    MAX_VALUE = StringKey("MAX_VALUE"),
-    MIN_VALUE = StringKey("MIN_VALUE"),
-    NEGATIVE_INFINITY = StringKey("NEGATIVE_INFINITY"),
-    POSITIVE_INFINITY = StringKey("POSITIVE_INFINITY"),
+    MAX_VALUE = PropertyKey("MAX_VALUE"),
+    MIN_VALUE = PropertyKey("MIN_VALUE"),
+    NEGATIVE_INFINITY = PropertyKey("NEGATIVE_INFINITY"),
+    POSITIVE_INFINITY = PropertyKey("POSITIVE_INFINITY"),
 
-    toFixed = StringKey("toFixed"),
-    toExponential = StringKey("toExponential"),
-    toPrecision = StringKey("toPrecision"),
+    toFixed = PropertyKey("toFixed"),
+    toExponential = PropertyKey("toExponential"),
+    toPrecision = PropertyKey("toPrecision"),
 
-    Infinity = StringKey(Text.Infinity),
+    Infinity = PropertyKey(Text.Infinity),
 }
 
 //

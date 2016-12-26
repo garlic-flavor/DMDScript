@@ -22,7 +22,7 @@ import dmdscript.dobject : Dobject;
 
 struct Iterator
 {
-    import dmdscript.property : PropertyKey;
+    import dmdscript.primitive : PropertyKey;
     import dmdscript.callcontext : CallContext;
     import dmdscript.value : Value, DError;
 
@@ -74,7 +74,7 @@ struct Iterator
                 keys = o.proptable.keys.sort().release;
                 keyindex = 0;
             }
-            dmdscript.property.PropertyKey* key = &keys[keyindex];
+            auto key = &keys[keyindex];
             p = *key in o.proptable;
             if(!p)                      // if no longer in property table
                 continue;
@@ -165,13 +165,13 @@ static:
 //==============================================================================
 private:
 
-import dmdscript.primitive : StringKey, PKey = Key;
-private enum Key : StringKey
+import dmdscript.primitive : PropertyKey, PKey = Key;
+private enum Key : PropertyKey
 {
     value = PKey.value,
 
-    done = StringKey("done"),
-    next = StringKey("next"),
+    done = PropertyKey("done"),
+    next = PropertyKey("next"),
 }
 
 //

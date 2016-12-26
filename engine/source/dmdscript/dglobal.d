@@ -17,7 +17,7 @@
 
 module dmdscript.dglobal;
 
-import dmdscript.primitive : string_t, char_t, StringKey, Key;
+import dmdscript.primitive : string_t, char_t, Key;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : Value, DError, vundefined;
@@ -73,6 +73,7 @@ class Dglobal : Dobject
         import dmdscript.derror : Derror;
         import dmdscript.protoerror;
         import dmdscript.dmath : Dmath;
+        import dmdscript.primitive : PropertyKey;
 
         CallContext cc;
 
@@ -125,17 +126,17 @@ class Dglobal : Dobject
             Property.Attribute.DontEnum);
 
         DefineOwnProperty(syntaxerror.Text, syntaxerror.getConstructor,
-            Property.Attribute.DontEnum);
+                          Property.Attribute.DontEnum);
         DefineOwnProperty(evalerror.Text, evalerror.getConstructor,
-            Property.Attribute.DontEnum);
+                          Property.Attribute.DontEnum);
         DefineOwnProperty(referenceerror.Text, referenceerror.getConstructor,
-            Property.Attribute.DontEnum);
+                          Property.Attribute.DontEnum);
         DefineOwnProperty(rangeerror.Text, rangeerror.getConstructor,
-            Property.Attribute.DontEnum);
+                          Property.Attribute.DontEnum);
         DefineOwnProperty(typeerror.Text, typeerror.getConstructor,
-            Property.Attribute.DontEnum);
+                          Property.Attribute.DontEnum);
         DefineOwnProperty(urierror.Text, urierror.getConstructor,
-            Property.Attribute.DontEnum);
+                          Property.Attribute.DontEnum);
 
 
         // Other properties

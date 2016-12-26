@@ -25,9 +25,9 @@ debug import std.stdio;
 class Symbol
 {
     import dmdscript.scopex : Scope;
-    import dmdscript.primitive : char_t, StringKey;
+    import dmdscript.primitive : char_t, Identifier;
 
-    StringKey* ident;
+    Identifier ident;
 
     @safe @nogc pure nothrow
     this() const
@@ -35,7 +35,7 @@ class Symbol
     }
 
     @safe @nogc pure nothrow
-    this(StringKey* ident)
+    this(Identifier ident)
     {
         this.ident = ident;
     }
@@ -45,7 +45,7 @@ class Symbol
         assert(0);
     }
 
-    Symbol search(StringKey* ident)
+    Symbol search(Identifier ident)
     {
         assert(0);
         //error(DTEXT("%s.%s is undefined"),toString(), ident.toString());
@@ -80,13 +80,12 @@ class Symbol
 /// Table of Symbol's
 struct SymbolTable
 {
-    import dmdscript.primitive : StringKey;
-
-    Symbol[StringKey*] members;
+    import dmdscript.primitive : Identifier;
+    Symbol[Identifier] members;
 
     // Look up Identifier. Return Symbol if found, NULL if not.
     @safe @nogc pure nothrow
-    Symbol lookup(StringKey* ident)
+    Symbol lookup(Identifier ident)
     {
         if (auto ps = ident in members)
             return *ps;
@@ -122,7 +121,7 @@ class LabelSymbol : Symbol
     LabelStatement statement;
 
     @safe @nogc pure nothrow
-    this(uint linnum, StringKey* ident, LabelStatement statement)
+    this(uint linnum, Identifier ident, LabelStatement statement)
     {
         super(ident);
         this.linnum = linnum;

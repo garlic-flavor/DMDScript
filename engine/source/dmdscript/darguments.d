@@ -28,16 +28,16 @@ import dmdscript.dobject : Dobject;
 
 class Darguments : Dobject
 {
-    import dmdscript.primitive : StringKey, string_t;
+    import dmdscript.primitive : string_t, Identifier, PropertyKey;
     import dmdscript.callcontext : CallContext;
     import dmdscript.value : Value, DError;
     import dmdscript.property : Property;
 
     Dobject actobj;             // activation object
-    StringKey*[] parameters;
+    Identifier[] parameters;
 
     this(Dobject caller, Dobject callee, Dobject actobj,
-         StringKey*[] parameters, Value[] arglist)
+         Identifier[] parameters, Value[] arglist)
 
     {
         import dmdscript.primitive : Key;
@@ -63,13 +63,14 @@ class Darguments : Dobject
     }
 
     override protected
-    Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
+    Value* GetImpl(in ref PropertyKey PropertyName, ref CallContext cc)
     {
         import dmdscript.primitive : StringToIndex;
 
         uint index;
 
-        return (StringToIndex(PropertyName, index) && index < parameters.length)
+        return (StringToIndex(PropertyName.toString, index)
+                && index < parameters.length)
             ? actobj.GetImpl(index, cc)
             : super.GetImpl(PropertyName, cc);
     }
@@ -82,14 +83,15 @@ class Darguments : Dobject
     }
 
     override
-    DError* SetImpl(in ref StringKey PropertyName, ref Value value,
+    DError* SetImpl(in ref PropertyKey PropertyName, ref Value value,
                     in Property.Attribute attributes, ref CallContext cc)
     {
         import dmdscript.primitive : StringToIndex;
 
         uint index;
 
-        if(StringToIndex(PropertyName, index) && index < parameters.length)
+        if(StringToIndex(PropertyName.toString, index)
+           && index < parameters.length)
             return actobj.SetImpl(PropertyName, value, attributes, cc);
         else
             return Dobject.SetImpl(PropertyName, value, attributes, cc);
@@ -116,24 +118,25 @@ class Darguments : Dobject
                : Dobject.CanPut(PropertyName);
     }
 
-    override bool HasProperty(in string_t PropertyName)
+    override bool HasProperty(in ref PropertyKey PropertyName)
     {
         import dmdscript.primitive : StringToIndex;
 
         uint index;
 
-        return (StringToIndex(PropertyName, index) && index < parameters.length)
+        return (PropertyName.isArrayIndex(index) && index < parameters.length)
                ? actobj.HasProperty(PropertyName)
                : Dobject.HasProperty(PropertyName);
     }
 
-    override bool Delete(in StringKey PropertyName)
+    override bool Delete(in ref PropertyKey PropertyName)
     {
         import dmdscript.primitive : StringToIndex;
 
         uint index;
 
-        return (StringToIndex(PropertyName, index) && index < parameters.length)
+        return (StringToIndex(PropertyName.toString, index)
+                && index < parameters.length)
                ? actobj.Delete(PropertyName)
                : Dobject.Delete(PropertyName);
     }

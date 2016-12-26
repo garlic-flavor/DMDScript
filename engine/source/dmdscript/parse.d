@@ -47,8 +47,9 @@ class Parser : Lexer
         out FunctionDefinition pfd, string_t params, string_t bdy)
     {
         import std.array : Appender;
+        import dmdscript.property : PropertyKey;
         Parser p;
-        Appender!(StringKey*[]) parameters;
+        Appender!(Identifier[]) parameters;
         Appender!(TopStatement[]) topstatements;
         FunctionDefinition fd = null;
 
@@ -180,8 +181,10 @@ private:
     auto parseFunction(FunctionFlag flag)()
     {
         import std.array : Appender;
-        StringKey* name;
-        Appender!(StringKey*[]) parameters;
+        import dmdscript.property : PropertyKey;
+
+        Identifier name;
+        Appender!(Identifier[]) parameters;
         TopStatement[] topstatements;
         FunctionDefinition f;
         Expression e = null;
@@ -192,7 +195,7 @@ private:
         name = null;
 
         static if (flag == FunctionFlag.property)
-            name = propertyName(token);
+            name = getPropertyName;
         else
         {
             if (token == Tok.Identifier)
@@ -300,6 +303,8 @@ private:
 
     Statement parseStatement()
     {
+        import dmdscript.property : PropertyKey;
+
         Statement s;
         Token* t;
         uint linnum;
@@ -361,7 +366,7 @@ private:
         }
         case Tok.Var:
         {
-            StringKey *ident;
+            Identifier ident;
             Expression init;
             VarDeclaration v;
             VarStatement vs;
@@ -374,7 +379,7 @@ private:
             {
                 linnum = currentline;
 
-                ident = identifierName(token);
+                ident = getIdentifierName;
                 if(ident is null)
                 {
                     error(ExpectedIdentifierParamError(token.toString));
@@ -564,7 +569,7 @@ private:
         }
         case Tok.Break:
         {
-            StringKey* ident;
+            Identifier ident;
 
             nextToken();
             if(token.sawLineTerminator && token != Tok.Semicolon)
@@ -587,7 +592,7 @@ private:
         }
         case Tok.Continue:
         {
-            StringKey* ident;
+            Identifier ident;
 
             nextToken();
             if(token.sawLineTerminator && token != Tok.Semicolon)
@@ -610,7 +615,7 @@ private:
         }
         case Tok.Goto:
         {
-            StringKey* ident;
+            Identifier ident;
 
             nextToken();
             if(token != Tok.Identifier)
@@ -658,7 +663,7 @@ private:
         case Tok.Try:
         {
             Statement bdy;
-            StringKey* catchident;
+            Identifier catchident;
             Statement catchbody;
             Statement finalbody;
 
@@ -962,7 +967,7 @@ private:
                 }
                 else
                 {
-                    auto ident = propertyName(token);
+                    auto ident = getPropertyName;
 
                     if (ident is null)
                     {
@@ -1010,7 +1015,7 @@ private:
             case Tok.Dot:
                 nextToken();
 
-                if (auto ident = propertyName(token))
+                if (auto ident = getPropertyName)
                 {
                     e = new DotExp(linnum, e, ident);
                 }

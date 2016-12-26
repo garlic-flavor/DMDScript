@@ -32,8 +32,8 @@ debug import std.stdio;
 //==============================================================================
 class Dobject
 {
-    import dmdscript.primitive : string_t, Text, StringKey;
-    import dmdscript.property : PropertyKey, Property, PropTable;
+    import dmdscript.primitive : string_t, Text, Identifier, PropertyKey;
+    import dmdscript.property : Property, PropTable;
 
     PropTable proptable;
     Value value;
@@ -114,8 +114,7 @@ class Dobject
 
         /// Ecma-262-v7/9.1.5.1
         @disable
-        Property* OrdinaryGetOwnProperty(K)(in auto ref K key)
-            if (PropertyKey.IsKey!K)
+        Property* OrdinaryGetOwnProperty(in ref PropertyKey key)
         {
             return proptable.getOwnProperty(key);
         }
@@ -131,8 +130,7 @@ class Dobject
 
         /// Ecma-262-v7/9.1.7.1
         @safe
-        bool OrdinaryHasProperty(K)(in auto ref K key)
-            if (PropertyKey.IsKey!K)
+        bool OrdinaryHasProperty(in ref PropertyKey key)
         {
             return proptable.getProperty(key) !is null;
         }
@@ -141,106 +139,39 @@ class Dobject
         Value* Get(K)(in auto ref K name, ref CallContext cc)
             if (PropertyKey.IsKey!K)
         {
-            static if      (is(K : PropertyKey))
-            {
-                if      (name.type == Value.Type.String)
-                {
-                    auto sk = name.toStringKey;
-                    return GetImpl(sk, cc);
-                }
-                else if (name.type == Value.Type.Number)
-                {
-                    auto index = cast(uint)name.number;
-                    return GetImpl(index, cc);
-                }
-                else
-                {
-                    auto v = cast(Value)name.value;
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// use errmsgs.
-                    throw new Exception("not a valid key ", v.toString(cc));
-                }
-            }
-            else static if (is(K : uint) || is(K == StringKey))
+            static if      (is(K == PropertyKey) || is(K : uint))
                 return GetImpl(name, cc);
-            else static if (is(K : StringKey))
+            else
             {
-                auto sk = cast(StringKey)name;
-                return GetImpl(sk, cc);
+                auto key = PropertyKey(name);
+                return GetImpl(key, cc);
             }
-            else static if (is(K : string_t))
-            {
-                auto sk = StringKey(name);
-                return GetImpl(sk, cc);
-            }
-            else static assert(0);
         }
 
         /// Ecma-262-v7/9.1.9.1
         DError* Set(K, V)(in auto ref K name, auto ref V value,
                           in Property.Attribute attributes, ref CallContext cc)
-            if (PropTable.IsKeyValue!(K, V))
+            if (Value.IsValue!V && PropertyKey.IsKey!K)
         {
+            static if (is(V : Value))
+                alias v = value;
+            else
+                auto v = Value(value);
+
             // ECMA 8.6.2.2
-            static if      (is(K : PropertyKey))
+            static if     (is(K == PropertyKey) || is(K : uint))
             {
-                if      (name.type == Value.Type.String)
-                {
-                    auto sk = name.toStringKey;
-                    static if (is(V : Value))
-                        alias v = value;
-                    else
-                        auto v = Value(value);
-                    return SetImpl(sk, v, attributes, cc);
-                }
-                else if (name.type == Value.Type.Number)
-                {
-                    auto index = cast(uint)name.number;
-                    static if (is(V : Value))
-                        alias v = value;
-                    else
-                        auto v = Value(value);
-                    return SetImpl(index, v, attributes, cc);
-                }
-                else
-                {
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// use errmsgs
-                    auto v = cast(Value)name.value;
-                    throw new Exception("not a valid key ", v.toString(cc));
-                }
-            }
-            else static if (is(K : uint) || is(K == StringKey))
-            {
-                static if (is(V : Value))
-                    alias v = value;
-                else
-                    auto v = Value(value);
                 return SetImpl(name, v, attributes, cc);
             }
-            else static if (is(K : StringKey))
+            else
             {
-                auto sk = cast(StringKey)name;
-                static if (is(V : Value))
-                    alias v = value;
-                else
-                    auto v = Value(value);
-                return SetImpl(sk, v, attributes, cc);
+                auto key = PropertyKey(name);
+                return SetImpl(key, v, attributes, cc);
             }
-            else static if (is(K : string_t))
-            {
-                auto sk = StringKey(name);
-                static if (is(V : Value))
-                    alias v = value;
-                else
-                    auto v = Value(value);
-                return SetImpl(sk, v, attributes, cc);
-            }
-            else static assert(0);
         }
 
         @safe
-        bool OrdinaryDelete(K)(in auto ref K key)
+        bool OrdinaryDelete(in ref PropertyKey key)
         {
             return proptable.del(key);
         }
@@ -250,7 +181,6 @@ class Dobject
         {
             return proptable.keys;
         }
-
     }
 
     //--------------------------------------------------------------------
@@ -288,24 +218,22 @@ class Dobject
 
     /// Ecma-262-v7/9.1.5
     @disable
-    Property* GetOwnProperty(in StringKey key)
+    Property* GetOwnProperty(in ref PropertyKey key)
     {
         return OrdinaryGetOwnProperty(key);
     }
 
     /// Ecma-262-v7/9.1.7
-    bool HasProperty(in string_t name)
+    bool HasProperty(in ref PropertyKey name)
     {
         return OrdinaryHasProperty(name);
     }
 
     //--------------------------------------------------------------------
-
     //
-    Value* GetImpl(in ref StringKey PropertyName, ref CallContext cc)
+    Value* GetImpl(in ref PropertyKey PropertyName, ref CallContext cc)
     {
-        auto key = PropertyKey(PropertyName);
-        return proptable.get(key, cc, this);
+        return proptable.get(PropertyName, cc, this);
     }
 
     //
@@ -315,20 +243,17 @@ class Dobject
 
         auto key = PropertyKey(index);
         v = proptable.get(key, cc, this);
-        //    if (!v)
-        //	v = &vundefined;
         return v;
     }
 
     //--------------------------------------------------------------------
 
     //
-    DError* SetImpl(in ref StringKey PropertyName, ref Value value,
+    DError* SetImpl(in ref PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        auto key = PropertyKey(PropertyName);
-        return proptable.set(key, value, attributes, cc, this);
+        return proptable.set(PropertyName, value, attributes, cc, this);
     }
 
     //
@@ -342,7 +267,7 @@ class Dobject
 
     //--------------------------------------------------------------------
     //
-    bool SetGetter(in ref StringKey PropertyName, ref Value value,
+    bool SetGetter(in ref PropertyKey PropertyName, ref Value value,
                    in Property.Attribute attribute, ref CallContext cc)
     {
         auto getter = cast(Dfunction)value.object;
@@ -351,7 +276,7 @@ class Dobject
                                       _extensible);
     }
     //
-    bool SetSetter(in ref StringKey PropertyName, ref Value value,
+    bool SetSetter(in ref PropertyKey PropertyName, ref Value value,
                    in Property.Attribute attribute, ref CallContext cc)
     {
         auto setter = cast(Dfunction)value.object;
@@ -368,7 +293,7 @@ class Dobject
      *	FALSE	property is marked with DontDelete attribute
      */
     /// Ecma-262-v7/9.1.10
-    bool Delete(in StringKey PropertyName)
+    bool Delete(in ref PropertyKey PropertyName)
     {
         // ECMA 8.6.2.5
         return OrdinaryDelete(PropertyName);
@@ -378,7 +303,8 @@ class Dobject
     bool Delete(in uint index)
     {
         // ECMA 8.6.2.5
-        return OrdinaryDelete(index);
+        auto key = PropertyKey(index);
+        return OrdinaryDelete(key);
     }
 
 
@@ -390,17 +316,26 @@ class Dobject
                               in Property.Attribute attributes)
         if (PropertyKey.IsKey!K)
     {
-        return proptable.config(PropertyName, attributes);
+        static if (is(K == PropertyKey))
+            alias key = PropertyName;
+        else
+            auto key = PropertyKey(PropertyName);
+        return proptable.config(key, attributes);
     }
 
 
     // //
     final
-    bool DefineOwnProperty(K, V)(in auto ref K PropertyName, auto ref V v,
-                              in Property.Attribute attributes)
-        if (PropTable.IsKeyValue!(K, V))
+    bool DefineOwnProperty(V)(in auto ref PropertyKey PropertyName,
+                              auto ref V v, in Property.Attribute attributes)
+        if (Value.IsValue!V)
     {
-        return proptable.config(PropertyName, v, attributes, _extensible);
+        static if (is(V == Value))
+            alias value = v;
+        else
+            auto value = Value(v);
+
+        return proptable.config(PropertyName, value, attributes, _extensible);
     }
 
     //
@@ -523,8 +458,9 @@ class Dobject
 
     //
     @disable
-    DError* CreateDataProperty(K, V)(in auto ref K name, auto ref V value)
-        if (PropTable.IsKeyValue!(K, V))
+    DError* CreateDataProperty(V)(in auto ref PropertyKey name,
+                                  auto ref V value)
+        if (Value.IsValue!V)
     {
         if (DefineOwnProperty(name, value, Property.Attribute.None))
             return null;
@@ -534,7 +470,8 @@ class Dobject
 
     //
     @disable
-    DError* CreateMethodProperty(in StringKey PropertyName, ref Value value)
+    DError* CreateMethodProperty(in ref PropertyKey PropertyName,
+                                 ref Value value)
     {
         if (DefineOwnProperty(PropertyName, value, Property.Attribute.DontEnum))
             return null;
@@ -543,7 +480,8 @@ class Dobject
     }
 
     @disable
-    void CreateDataPropertyOrThrow(in StringKey PropertyName, ref Value value)
+    void CreateDataPropertyOrThrow(in ref PropertyKey PropertyName,
+                                   ref Value value)
     {
         if (!DefineOwnProperty(PropertyName, value, Property.Attribute.None))
             throw CreateDataPropertyError.toThrow;
@@ -560,24 +498,23 @@ class Dobject
     }
 
     @disable
-    void DefinePropertyOrThrow(K)(in auto ref K PropertyName,
+    void DefinePropertyOrThrow(in ref PropertyKey PropertyName,
                                   in Property.Attribute attr)
-        if (PropertyKey.IsKey!K)
     {
         if (!DefineOwnProperty(PropertyName, attr))
             throw CreateMethodPropertyError.toThrow;
     }
 
     @disable
-    void DeletePropertyOrThrow(in StringKey PropertyName)
+    void DeletePropertyOrThrow(in PropertyKey PropertyName)
     {
         if (!Delete(PropertyName))
-            throw CantDeleteError.toThrow(PropertyName);
+            throw CantDeleteError.toThrow(PropertyName.toString);
     }
 
 
     @disable
-    bool HasOwnProperty(in StringKey PropertyName)
+    bool HasOwnProperty(in ref PropertyKey PropertyName)
     {
         return GetOwnProperty(PropertyName) !is null;
     }
@@ -675,13 +612,10 @@ class Dobject
         Appender!(Value[]) names;
         foreach(ref one; OwnPropertyKeys)
         {
-            if (one.type == Value.Type.String)
+            if (auto desc = proptable.getOwnProperty(one))
             {
-                if (auto desc = proptable.getOwnProperty(one))
-                {
-                    if (desc.enumerable)
-                        names.put(one);
-                }
+                if (desc.enumerable)
+                    names.put(Value(one));
             }
         }
         return names.data;
@@ -1151,7 +1085,7 @@ DError* toSource(
             if(any)
                 buf ~= ',';
             any = 1;
-            buf ~= key.toString(cc);
+            buf ~= key.toString;
             buf ~= ':';
             buf ~= p.get(cc, othis).toSource(cc);
         }
@@ -1170,7 +1104,7 @@ DError* hasOwnProperty(
     import dmdscript.property : PropertyKey;
 
     // ECMA v3 15.2.4.5
-    auto key = PropertyKey(arglist.length ? arglist[0] : undefined);
+    auto key = (arglist.length ? arglist[0] : undefined).toPropertyKey;
     ret.put(othis.proptable.getOwnProperty(key) !is null);
     return null;
 }
@@ -1215,7 +1149,7 @@ DError* propertyIsEnumerable(
 {
     import dmdscript.property : PropertyKey;
     // ECMA v3 15.2.4.7
-    auto key = PropertyKey(arglist.length ? arglist[0] : undefined);
+    auto key = (arglist.length ? arglist[0] : undefined).toPropertyKey;
     if (auto p = othis.proptable.getOwnProperty(key))
         ret.put(p.enumerable);
     else

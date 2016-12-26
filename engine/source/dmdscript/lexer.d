@@ -20,7 +20,7 @@
 
 module dmdscript.lexer;
 
-import dmdscript.primitive : string_t, StringKey;
+import dmdscript.primitive : string_t, Identifier;
 
 debug import std.stdio;
 
@@ -72,10 +72,12 @@ enum Tok : int
     Plusplus, Minusminus, Dot,
     Question, Andand, Oror,
 
-
     // Leaf operators
     Number, Identifier, String,
     Regexp, Real,
+
+    //--------------------------------------------------------------------
+    keywords_min,
 
     // Keywords
     Break, Case, Continue,
@@ -97,14 +99,18 @@ enum Tok : int
     Enum, Extends,
     Finally, Super,
     Throw, Try,
-    Let,
+    Let, Instanceof,
+
+    keywords_max,
+    //--------------------------------------------------------------------
+    reserved_min = keywords_max,
 
     // Java keywords reserved for unknown reasons
     Abstract, Boolean,
     Byte, Char,
     Double, Final,
     Float, Goto,
-    Implements, Instanceof,
+    Implements,
     Int, Interface,
     Long, Native,
     Package, Private,
@@ -112,6 +118,8 @@ enum Tok : int
     Short, Static,
     Synchronized,
     Transient,
+
+    reserved_max,
 }
 
 /******************************************************/
@@ -135,7 +143,7 @@ struct Token
         number_t    intvalue;
         real_t      realvalue;
         string_t     str;
-        StringKey*  ident;
+        Identifier  ident;
         TemplateLiteral* tliteral;
     };
 
@@ -185,11 +193,11 @@ struct Token
 
 class Lexer
 {
-    import dmdscript.primitive : char_t, StringKey;
+    import dmdscript.primitive : char_t, Identifier;
     import dmdscript.exception : ScriptException;
     import dmdscript.errmsgs;
 
-    enum UseStringtable { No, Yes}
+    enum UseStringtable { No, Yes }
 
 protected:
     Token token;
@@ -201,8 +209,6 @@ protected:
     @trusted pure nothrow
     this(string_t sourcename, string_t base, UseStringtable useStringtable)
     {
-        //writefln("Lexer::Lexer(base = '%s')\n",base);
-
         this.useStringtable = useStringtable;
         this.sourcename = sourcename;
         if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
@@ -212,6 +218,8 @@ protected:
         p = base.ptr;
         currentline = 1;
         freelist = null;
+        if (useStringtable)
+            idtable = new IdTable;
     }
 
     //
@@ -294,11 +302,59 @@ protected:
         p = token.ptr + 1;
     }
 
+
+    //--------------------------------------------------------------------
+    Identifier getPropertyName()
+    {
+        switch (token)
+        {
+        case Tok.Identifier:
+            return token.ident;
+        case Tok.String, Tok.Number, Tok.Real:
+            return Identifier.build(token.toString);
+
+            // Keywords are allowed
+        default:
+            if (Tok.keywords_min < token && token < Tok.reserved_max)
+            {
+                if (useStringtable)
+                    return idtable.build(token.str);
+                else
+                    return Identifier.build(token.str);
+            }
+            return null;
+        }
+    }
+
+    //--------------------------------------------------------------------
+    Identifier getIdentifierName()
+    {
+        switch (token)
+        {
+        case Tok.Identifier:
+            return token.ident;
+        case Tok.String:
+            return Identifier.build(token.toString);
+
+            // Future-reserved-words are allowed
+        default:
+            if (Tok.reserved_min < token && token < Tok.reserved_max)
+            {
+                if (useStringtable)
+                    return idtable.build(token.str);
+                else
+                    return Identifier.build(token.str);
+            }
+            return null;
+        }
+    }
+
+
 private:
     Token* freelist;
 
     UseStringtable useStringtable;        // use for Identifiers
-    StringKey[string_t] stringtable;
+    IdTable idtable;
 
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
@@ -415,7 +471,7 @@ private:
                     if(d == '\\' && p[1] == 'u')
                     {
                     Lidentifier2:
-                        id = t.ptr[0 .. p - t.ptr].idup;
+                        id = t.ptr[0 .. p - t.ptr];
                         auto ps = p;
                         p++;
                         d = unicode();
@@ -463,20 +519,14 @@ private:
             Lidentifier3:
                 t.value = isKeyword(id);
                 if(Tok.reserved < t.value)
+                {
+                    t.str = id;
                     return;
-                if(useStringtable == UseStringtable.Yes)
-                {     //Identifier* i = &stringtable[id];
-                    StringKey* i = id in stringtable;
-                    if(!i)
-                    {
-                        stringtable[id] = StringKey.init;
-                        i = id in stringtable;
-                    }
-                    i.put(id);
-                    t.ident = i;
                 }
+                if(useStringtable == UseStringtable.Yes)
+                    t.ident = idtable.build(id);
                 else
-                    t.ident = StringKey.build(id);
+                    t.ident = Identifier.build(id);
                 t.value = Tok.Identifier;
                 return;
             }
@@ -1024,7 +1074,7 @@ private:
     /**************************************
      */
     @trusted
-    string_t chompString(char_t quote)
+    string_t chompString(in char_t quote)
     {
         import std.array : Appender;
         import std.utf : encode, stride;
@@ -1567,180 +1617,34 @@ private:
     }
 }
 
-template CharsOf(Tok token)
+//------------------------------------------------------------------------------
+final class IdTable
 {
-    import std.conv : to;
-    import std.string : toLower;
-    enum CharsOf = token.to!string_t.toLower;
-}
+    import dmdscript.RandAA;
+    alias Table = RandAA!(string_t, Identifier, false);
 
-StringKey* propertyName(Token token)
-{
-    switch (token)
+    @safe pure nothrow
+    this()
     {
-    case Tok.Identifier:
-        return token.ident;
-    case Tok.String, Tok.Number, Tok.Real:
-        return StringKey.build(token.toString);
-
-    // Reserved words are allowed.
-    case Tok.Null:
-        return StringKey.build(CharsOf!(Tok.Null));
-    case Tok.True:
-        return StringKey.build(CharsOf!(Tok.True));
-    case Tok.False:
-        return StringKey.build(CharsOf!(Tok.False));
-    case Tok.In:
-        return StringKey.build(CharsOf!(Tok.In));
-    case Tok.Try:
-        return StringKey.build(CharsOf!(Tok.Try));
-    case Tok.Class:
-        return StringKey.build(CharsOf!(Tok.Class));
-    case Tok.Enum:
-        return StringKey.build(CharsOf!(Tok.Enum));
-    case Tok.Extends:
-        return StringKey.build(CharsOf!(Tok.Extends));
-    case Tok.Super:
-        return StringKey.build(CharsOf!(Tok.Super));
-    case Tok.Const:
-        return StringKey.build(CharsOf!(Tok.Const));
-    case Tok.Export:
-        return StringKey.build(CharsOf!(Tok.Export));
-    case Tok.Import:
-        return StringKey.build(CharsOf!(Tok.Import));
-    case Tok.Implements:
-        return StringKey.build(CharsOf!(Tok.Implements));
-    case Tok.Let:
-        return StringKey.build(CharsOf!(Tok.Let));
-    case Tok.Private:
-        return StringKey.build(CharsOf!(Tok.Private));
-    case Tok.Public:
-        return StringKey.build(CharsOf!(Tok.Public));
-    case Tok.Yield:
-        return StringKey.build(CharsOf!(Tok.Yield));
-    case Tok.Set:
-        return StringKey.build(CharsOf!(Tok.Set));
-    case Tok.Get:
-        return StringKey.build(CharsOf!(Tok.Get));
-    case Tok.Await:
-        return StringKey.build(CharsOf!(Tok.Await));
-    case Tok.Interface:
-        return StringKey.build(CharsOf!(Tok.Interface));
-    case Tok.Package:
-        return StringKey.build(CharsOf!(Tok.Package));
-    case Tok.Protected:
-        return StringKey.build(CharsOf!(Tok.Protected));
-    case Tok.Static:
-        return StringKey.build(CharsOf!(Tok.Static));
-    case Tok.Break:
-        return StringKey.build(CharsOf!(Tok.Break));
-    case Tok.Case:
-        return StringKey.build(CharsOf!(Tok.Case));
-    case Tok.Do:
-        return StringKey.build(CharsOf!(Tok.Do));
-    case Tok.Instanceof:
-        return StringKey.build(CharsOf!(Tok.Instanceof));
-    case Tok.Typeof:
-        return StringKey.build(CharsOf!(Tok.Typeof));
-    case Tok.Else:
-        return StringKey.build(CharsOf!(Tok.Else));
-    case Tok.New:
-        return StringKey.build(CharsOf!(Tok.New));
-    case Tok.Var:
-        return StringKey.build(CharsOf!(Tok.Var));
-    case Tok.Catch:
-        return StringKey.build(CharsOf!(Tok.Catch));
-    case Tok.Finally:
-        return StringKey.build(CharsOf!(Tok.Finally));
-    case Tok.Return:
-        return StringKey.build(CharsOf!(Tok.Return));
-    case Tok.Void:
-        return StringKey.build(CharsOf!(Tok.Void));
-    case Tok.Continue:
-        return StringKey.build(CharsOf!(Tok.Continue));
-    case Tok.For:
-        return StringKey.build(CharsOf!(Tok.For));
-    case Tok.Switch:
-        return StringKey.build(CharsOf!(Tok.Switch));
-    case Tok.While:
-        return StringKey.build(CharsOf!(Tok.While));
-    case Tok.Debugger:
-        return StringKey.build(CharsOf!(Tok.Debugger));
-    case Tok.Function:
-        return StringKey.build(CharsOf!(Tok.Function));
-    case Tok.This:
-        return StringKey.build(CharsOf!(Tok.This));
-    case Tok.With:
-        return StringKey.build(CharsOf!(Tok.With));
-    case Tok.Default:
-        return StringKey.build(CharsOf!(Tok.Default));
-    case Tok.If:
-        return StringKey.build(CharsOf!(Tok.If));
-    case Tok.Throw:
-        return StringKey.build(CharsOf!(Tok.Throw));
-    case Tok.Delete:
-        return StringKey.build(CharsOf!(Tok.Delete));
-    default:
-        return null;
+        _table = new Table;
     }
-}
 
-//
-StringKey* identifierName(Token token)
-{
-    switch (token)
+    @safe nothrow
+    Identifier build(string_t str)
     {
-    case Tok.Identifier:
-        return token.ident;
-    case Tok.String:
-        return StringKey.build(token.toString);
+        import dmdscript.primitive : calcHash;
+        auto hash = calcHash(str);
 
-    // Future-reserved-words are allowed
-    case Tok.Abstract:
-        return StringKey.build(CharsOf!(Tok.Abstract));
-    case Tok.Final:
-        return StringKey.build(CharsOf!(Tok.Final));
-    case Tok.Float:
-        return StringKey.build(CharsOf!(Tok.Float));
-    case Tok.Goto:
-        return StringKey.build(CharsOf!(Tok.Goto));
-    case Tok.Implements:
-        return StringKey.build(CharsOf!(Tok.Implements));
-    case Tok.Int:
-        return StringKey.build(CharsOf!(Tok.Int));
-    case Tok.Interface:
-        return StringKey.build(CharsOf!(Tok.Interface));
-    case Tok.Long:
-        return StringKey.build(CharsOf!(Tok.Long));
-    case Tok.Boolean:
-        return StringKey.build(CharsOf!(Tok.Boolean));
-    case Tok.Native:
-        return StringKey.build(CharsOf!(Tok.Native));
-    case Tok.Package:
-        return StringKey.build(CharsOf!(Tok.Package));
-    case Tok.Private:
-        return StringKey.build(CharsOf!(Tok.Private));
-    case Tok.Protected:
-        return StringKey.build(CharsOf!(Tok.Protected));
-    case Tok.Public:
-        return StringKey.build(CharsOf!(Tok.Public));
-    case Tok.Short:
-        return StringKey.build(CharsOf!(Tok.Short));
-    case Tok.Static:
-        return StringKey.build(CharsOf!(Tok.Static));
-    case Tok.Synchronized:
-        return StringKey.build(CharsOf!(Tok.Synchronized));
-    case Tok.Byte:
-        return StringKey.build(CharsOf!(Tok.Byte));
-    case Tok.Transient:
-        return StringKey.build(CharsOf!(Tok.Transient));
-    case Tok.Char:
-        return StringKey.build(CharsOf!(Tok.Char));
-    case Tok.Double:
-        return StringKey.build(CharsOf!(Tok.Double));
-    default:
-        return null;
+        if (auto pid = _table.findExistingAlt(str, hash))
+            return *pid;
+
+        auto id = Identifier.build(str, hash);
+        _table.insertAlt(str, id, hash);
+        return id;
     }
+
+private:
+    Table _table;
 }
 
 /****************************************

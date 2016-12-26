@@ -18,7 +18,6 @@
 
 module dmdscript.irstate;
 
-import dmdscript.primitive : StringKey;
 import dmdscript.callcontext;
 import dmdscript.statement;
 import dmdscript.opcodes;
@@ -171,6 +170,7 @@ struct IRstate
         import core.sys.posix.stdlib : alloca;
         import core.stdc.string : memmove;
         import std.bitmanip : BitArray;
+        import dmdscript.primitive : Identifier;
 
         // Determine the length of the code array
         IR* c;
@@ -274,7 +274,7 @@ struct IRstate
 
             case Opcode.GetScope:
             {
-                StringKey* cs = (c + 2).id;
+                Identifier cs = (c + 2).id;
                 IR* cimax = null;
                 for(i = lvm.max; i--; )
                 {

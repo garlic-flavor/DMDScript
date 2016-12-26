@@ -79,7 +79,8 @@ private:
 struct CallContext
 {
     import std.array : Appender;
-    import dmdscript.property : PropertyKey, Property;
+    import dmdscript.primitive : PropertyKey;
+    import dmdscript.property : Property;
     import dmdscript.value : Value, DError;
     import dmdscript.dfunction : Dfunction;
 
@@ -128,15 +129,13 @@ struct CallContext
         key   = The name of the variable.
         pthis = The field that contains the searched variable.
     */
-    Value* get(K)(in auto ref K key, out Dobject pthis)
-        if (PropertyKey.IsKey!K)
+    Value* get(in ref PropertyKey key, out Dobject pthis)
     {
         return _current.get(this, key, pthis);
     }
 
     /// ditto
-    Value* get(K)(in auto ref K key)
-        if (PropertyKey.IsKey!K)
+    Value* get(in ref PropertyKey key)
     {
         return _current.get(this, key);
     }
@@ -146,18 +145,16 @@ struct CallContext
 
     Or, define the variable in global field.
     */
-    DError* set(K)(in auto ref K key, ref Value value,
+    DError* set(in ref PropertyKey key, ref Value value,
                    Property.Attribute attr = Property.Attribute.None)
-        if (PropertyKey.IsKey!K)
     {
         return _current.set(this, key, value, attr);
     }
 
     //--------------------------------------------------------------------
     /// Define/Assign a variable in the current innermost field.
-    DError* setThis(K)(in auto ref K key, ref Value value,
+    DError* setThis(in ref PropertyKey key, ref Value value,
                        Property.Attribute attr)
-        if (PropertyKey.IsKey!K)
     {
         return _current.setThis(this, key, value, attr);
     }
@@ -336,7 +333,8 @@ private:
 struct Stack
 {
     import std.array : Appender;
-    import dmdscript.property : PropertyKey, Property;
+    import dmdscript.primitive : PropertyKey;
+    import dmdscript.property : Property;
     import dmdscript.value : Value, DError;
 
     //
@@ -418,16 +416,10 @@ struct Stack
     }
 
     //
-    Value* get(K)(ref CallContext cc, in auto ref K key, out Dobject pthis)
-        if (PropertyKey.IsKey!K)
+    Value* get(ref CallContext cc, in ref PropertyKey key, out Dobject pthis)
     {
         Value* v;
         Dobject o;
-
-        static if (is(K : PropertyKey))
-            alias k = key;
-        else
-            auto k = PropertyKey(key);
 
         auto stack = _stack.data;
         for (size_t d = stack.length; ; --d)
@@ -435,7 +427,7 @@ struct Stack
             if (0 < d)
             {
                 o = stack[d - 1];
-                v = o.Get(k, cc);
+                v = o.Get(key, cc);
                 if (v !is null)
                     break;
             }
@@ -450,25 +442,19 @@ struct Stack
     }
 
     //
-    Value* get(K)(ref CallContext cc, in auto ref K key)
-        if (PropertyKey.IsKey!K)
+    Value* get(ref CallContext cc, in ref PropertyKey key)
     {
-        static if (is(K : PropertyKey))
-            alias k = key;
-        else
-            auto k = PropertyKey(key);
-
         auto stack = _stack.data;
         for (size_t d = stack.length; 0 < d; --d)
         {
-            if (auto v = stack[d-1].Get(k, cc))
+            if (auto v = stack[d-1].Get(key, cc))
                 return v;
         }
         return null;
     }
 
     //
-    DError* set(K)(ref CallContext cc, in auto ref K key, ref Value value,
+    DError* set(ref CallContext cc, in ref PropertyKey key, ref Value value,
                    Property.Attribute attr = Property.Attribute.None)
     {
         import dmdscript.property : Property;
@@ -476,32 +462,27 @@ struct Stack
         auto stack = _stack.data;
         assert (0 < stack.length);
 
-        static if (is(K : PropertyKey))
-            alias k = key;
-        else
-            auto k = PropertyKey(key);
-
         for (size_t d = stack.length; ; --d)
         {
             if (0 < d)
             {
                 auto o = stack[d - 1];
-                if (auto v = o.Get(k, cc))
+                if (auto v = o.Get(key, cc))
                 {
                     v.checkReference;
-                    return o.Set(k, value, attr, cc);
+                    return o.Set(key, value, attr, cc);
                 }
             }
             else
             {
-                return stack[0].Set(k, value, attr, cc);
+                return stack[0].Set(key, value, attr, cc);
             }
         }
     }
 
     //
-    DError* setThis(K)(ref CallContext cc, in auto ref K key, ref Value value,
-                       Property.Attribute attr)
+    DError* setThis(ref CallContext cc, in ref PropertyKey key, ref Value value,
+                    Property.Attribute attr)
     {
         assert (0 < _initialSize);
         assert (_initialSize <= _stack.data.length);
@@ -540,7 +521,7 @@ string_t[] searchSimilarWord(ref CallContext cc, Dobject target,
     Appender!(string_t[]) result;
     foreach (one; target.OwnPropertyKeys)
     {
-        auto name = one.toString(cc);
+        auto name = one.toString;
         if (name.soundexer == key)
             result.put(name);
     }

@@ -164,10 +164,10 @@ final class RealExpression : Expression
 
 final class IdentifierExpression : Expression
 {
-    StringKey* ident;
+    Identifier ident;
 
     @safe @nogc pure nothrow
-    this(uint linnum, StringKey*  ident)
+    this(uint linnum, Identifier  ident)
     {
         super(linnum, Tok.Identifier);
         this.ident = ident;
@@ -268,7 +268,7 @@ final class NullExpression : Expression
 
     override void toBuffer(scope void delegate(in char_t[]) sink) const
     {
-        sink(Text._null);
+        sink(Key._null);
     }
 }
 
@@ -289,8 +289,9 @@ final class StringExpression : Expression
     override @safe
     void toIR(IRstate* irs, idx_t ret) const
     {
+        import dmdscript.value : Value;
         if(ret)
-            irs.gen!(Opcode.String)(linnum, ret, StringKey.build(str));
+            irs.gen!(Opcode.String)(linnum, ret, new Value(str));
     }
 
     override void toBuffer(scope void delegate(in char_t[]) sink) const
@@ -339,6 +340,7 @@ final class RegExpLiteral : Expression
     override void toIR(IRstate* irs, idx_t ret) const
     {
         import std.string : lastIndexOf;
+        import dmdscript.value : Value;
         string_t pattern;
         string_t attribute = null;
         sizediff_t e;
@@ -365,12 +367,12 @@ final class RegExpLiteral : Expression
         // Generate new Regexp(pattern [, attribute])
 
         b = irs.alloc(1);
-        auto re = StringKey.build(Key.RegExp);
+        auto re = Identifier.build(Key.RegExp);
         irs.gen!(Opcode.GetScope)(linnum, b[0], re);
         argv = irs.alloc(argc);
-        irs.gen!(Opcode.String)(linnum, argv[0], StringKey.build(pattern));
+        irs.gen!(Opcode.String)(linnum, argv[0], new Value(pattern));
         if(argv.length == 2)
-            irs.gen!(Opcode.String)(linnum, argv[1], StringKey.build(attribute));
+            irs.gen!(Opcode.String)(linnum, argv[1], new Value(attribute));
         irs.gen!(Opcode.New)(linnum, ret, b[0], argv.length, argv[0]);
 
         irs.release(argv);
@@ -443,9 +445,9 @@ final class ArrayLiteral : Expression
         LocalVariables b;
 
         b = irs.alloc(1);
-        static StringKey* ar;
+        static Identifier ar;
         if(!ar)
-            ar = StringKey.build(Key.Array);
+            ar = Identifier.build(Key.Array);
         irs.gen!(Opcode.GetScope)(linnum, b[0], ar);
         if(elements.length)
         {
@@ -483,7 +485,7 @@ final class ArrayLiteral : Expression
                 else
                     irs.gen!(Opcode.Undefined)(linnum, v[0]);
                 irs.gen!(Opcode.PutS)(linnum, v[0], ret,
-                                      StringKey.build(Text._0));
+                                      Identifier.build(Text._0));
                 irs.release(v);
             }
             irs.release(argv);
@@ -525,7 +527,7 @@ final class Field
     }
 
     @safe @nogc pure nothrow
-    this(StringKey* ident, Expression exp, Type type = Type.Normal)
+    this(Identifier ident, Expression exp, Type type = Type.Normal)
     {
         this.ident = ident;
         this.exp = exp;
@@ -533,7 +535,7 @@ final class Field
     }
 
 private:
-    StringKey* ident;
+    Identifier ident;
     Expression exp;
     Type type;
 }
@@ -566,7 +568,7 @@ final class ObjectLiteral : Expression
 
         b = irs.alloc(1);
         //irs.gen2(loc, IRstring, b, Text.Object);
-        irs.gen!(Opcode.GetScope)(linnum, b[0], StringKey.build(Key.Object));
+        irs.gen!(Opcode.GetScope)(linnum, b[0], Identifier.build(Key.Object));
         // Generate new Object()
         irs.gen!(Opcode.New)(linnum, ret, b[0], 0, 0);
         if(fields.length)
@@ -905,10 +907,10 @@ final class PostDecExp : UnaExp
 
 final class DotExp : UnaExp
 {
-    private StringKey* ident;
+    private Identifier ident;
 
     @safe @nogc pure nothrow
-    this(uint linnum, Expression e, StringKey*  ident)
+    this(uint linnum, Expression e, Identifier  ident)
     {
         super(linnum, Tok.Dot, e);
         this.ident = ident;

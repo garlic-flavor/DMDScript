@@ -357,7 +357,7 @@ private:
     heuristics do not guarantee that no new space will be allocated before
     newSize elements are added.
     */
-    @trusted
+    @trusted nothrow
     void reserve(size_t newSize)
     {
         scope typeof(this)newTable = new typeof(this)(newSize);
@@ -438,8 +438,8 @@ private:
     }
 
     //
-    @trusted
-    size_t findForInsert(in ref K key, in size_t hashFull)
+    @trusted @nogc pure nothrow
+    size_t findForInsert(in ref K key, in size_t hashFull) const
     {
         size_t pos = hashFull & mask;
         static if(useRandom)
@@ -599,10 +599,10 @@ private static:
 
     // Optimized for a few special cases to avoid the virtual function call
     // to TypeInfo.getHash().
-    @trusted
-    size_t getHash(ref K key)
+    static @trusted nothrow
+    size_t getHash(in K key)
     {
-        static if(is (K : long) && K.sizeof <= size_t.sizeof)
+        static if(is (Y : long) && Y.sizeof <= size_t.sizeof)
         {
             return cast(size_t)key;
         }

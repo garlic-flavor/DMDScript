@@ -17,9 +17,9 @@
 
 module dmdscript.value;
 
-import dmdscript.primitive : string_t, Key;
+import dmdscript.primitive : string_t, Key, PropertyKey;
 import dmdscript.dobject : Dobject;
-import dmdscript.property : PropertyKey, Property;
+import dmdscript.property : Property;
 import dmdscript.errmsgs;
 import dmdscript.callcontext : CallContext;
 debug import std.stdio;
@@ -49,33 +49,34 @@ struct Value
     enum Type : ubyte
     {
         RefError,//triggers ReferenceError expcetion when accessed
+
         Undefined,
         Null,
         Boolean,
         Number,
         String,
         Object,
+
         Iter,
     }
 
     //--------------------------------------------------------------------
-    template IsPrimitiveType(T)
+    template IsValue(T)
     {
-        enum IsPrimitiveType = is(T == bool) || is(T : double) ||
-            is(T : string_t) || is(T : Dobject) || is(T == Iterator*);
+        enum IsValue = is(T == bool) || is(T == const(bool)) ||
+            is(T : Type) || is(T : PropertyKey) || is(T : double) ||
+            is(T : string_t) || is(T : Dobject) || is(T == Iterator*) ||
+            is(T : Value);
     }
 
     //--------------------------------------------------------------------
-    this(T)(T arg) if (IsPrimitiveType!T || is(T == Type))
+    this(T)(auto ref T arg) if (IsValue!T)
     {
-        static if (is(T == Type))
-            _type = arg;
-        else
-            put(arg);
+        put(arg);
     }
 
     //--------------------------------------------------------------------
-    this(T)(T arg, size_t h) if (IsPrimitiveType!T)
+    this(T)(auto ref T arg, size_t h) if (IsValue!T)
     {
         put(arg, h);
     }
@@ -160,12 +161,30 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted @nogc pure nothrow
-    void put(T)(T t) if (IsPrimitiveType!T)
+    void put(T)(auto ref T t) if (IsValue!T)
     {
-        static if      (is(T == bool))
+        static if      (is(T == bool) || is(T == const(bool)))
         {
             _type = Type.Boolean;
             _dbool = t;
+        }
+        else static if (is(T : Type))
+        {
+            _type = t;
+        }
+        else static if (is(T : PropertyKey))
+        {
+            if (t.text !is null)
+            {
+                _type = Type.String;
+                _text = t.text;
+                _hash = t.hash;
+            }
+            else
+            {
+                _type = Type.Number;
+                _number = t.hash;
+            }
         }
         else static if (is(T : double))
         {
@@ -180,26 +199,49 @@ struct Value
         }
         else static if (is(T : Dobject))
         {
+            assert (t !is null);
             _type = Type.Object;
             _object = t;
         }
         else static if (is(T == Iterator*))
         {
+            assert (t !is null);
             _type = Type.Iter;
             _iter = t;
+        }
+        else static if (is(T : Value))
+        {
+            this = t;
         }
         else static assert(0);
     }
 
     // ditto
     @trusted @nogc pure nothrow
-    void put(T)(T t, size_t h) if (IsPrimitiveType!T)
+    void put(T)(auto ref T t, size_t h) if (IsPrimitiveType!T)
     {
-        assert(PropertyKey.calcHash(t) == h);
-        static if      (is(T == bool))
+        assert(calcHash(t) == h);
+        static if      (is(T == bool) || is(T == const(bool)))
         {
             _type = Type.Boolean;
             _dbool = t;
+        }
+        else static if (is(T : Type))
+        {
+            _type = t;
+        }
+        else static if (is(T : PropertyKey))
+        {
+            if (t.text !is null)
+            {
+                _type = Type.String;
+                _text = t.text;
+            }
+            else
+            {
+                _type = Type.Number;
+                _number = t.hash;
+            }
         }
         else static if (is(T : double))
         {
@@ -213,38 +255,21 @@ struct Value
         }
         else static if (is(T : Dobject))
         {
+            assert (t !is null);
             _type = Type.Object;
             _object = t;
         }
         else static if (is(T == Iterator*))
         {
+            assert (t !is null);
             _type = Type.Iter;
             _iter = t;
         }
+        else static if (is(T : Value))
+        {
+            this = t;
+        }
         else static assert(0);
-        _hash = h;
-    }
-
-    //
-    @trusted @nogc pure nothrow
-    void putBool(in bool b)
-    {
-        _type = Type.Boolean;
-        _dbool = b;
-    }
-
-    // ditto
-    @trusted @nogc pure nothrow
-    void put(ref Value v)
-    {
-        this = v;
-    }
-
-    // ditto
-    @trusted @nogc pure nothrow
-    void put(ref Value v, size_t h)
-    {
-        this = v;
         _hash = h;
     }
 
@@ -308,7 +333,7 @@ struct Value
         case Type.Number:
             return !(_number == 0.0 || isNaN(_number));
         case Type.String:
-            return _text.length ? true : false;
+            return 0 < _text.length;
         case Type.Object:
             return true;
         }
@@ -707,6 +732,35 @@ struct Value
     }
 
     //--------------------------------------------------------------------
+    PropertyKey toPropertyKey() const
+    {
+        final switch(_type)
+        {
+        case Type.RefError:
+            throwRefError();
+            assert(0);
+        case Type.Undefined:
+            return Key.undefined;
+        case Type.Null:
+            return Key._null;
+        case Type.Boolean:
+            return _dbool ? Key._true : Key._false;
+        case Type.Number:
+            return PropertyKey(cast(size_t)_number);
+        case Type.String:
+            if (0 < _hash)
+                return PropertyKey(_text, _hash);
+            else
+                return PropertyKey(_text);
+        case Type.Object:
+            return Key.Object;
+        case Type.Iter:
+            assert(0);
+        }
+        assert(0);
+    }
+
+    //--------------------------------------------------------------------
     string_t toString(ref CallContext cc)
     {
         final switch(_type)
@@ -717,9 +771,9 @@ struct Value
         case Type.Undefined:
             return Key.undefined;
         case Type.Null:
-            return Text._null;
+            return Key._null;
         case Type.Boolean:
-            return _dbool ? Text._true : Text._false;
+            return _dbool ? Key._true : Key._false;
         case Type.Number:
             return NumberToString(_number);
         case Type.String:
@@ -727,16 +781,11 @@ struct Value
         case Type.Object:
         {
             Value val;
-            Value* v = &val;
-            // void* a;
-
-            //writef("Vobject.toString()\n");
-            toPrimitive(cc, *v, Type.String);
-            //assert(!a);
-            if(v.isPrimitive)
-                return v.toString(cc);
+            toPrimitive(cc, val, Type.String);
+            if(val.isPrimitive)
+                return val.toString(cc);
             else
-                return v.toObject.classname;
+                return val.toObject.classname;
         }
         case Type.Iter:
             assert(0);
@@ -788,7 +837,8 @@ struct Value
         {
             Value* v;
 
-            v = Get(Key.toSource, cc);
+            auto pk = PropertyKey(Key.toSource);
+            v = Get(pk, cc);
             if(!v)
                 v = &undefined;
             if(v.isPrimitive())
@@ -943,21 +993,18 @@ struct Value
     @trusted
     string_t getTypeof()
     {
-        string_t s;
-
         final switch(_type)
         {
         case Type.RefError:
-        case Type.Undefined:   s = Key.undefined;   break;
-        case Type.Null:        s = Text.object;      break;
-        case Type.Boolean:     s = Text.boolean;     break;
-        case Type.Number:      s = Key.number;      break;
-        case Type.String:      s = Text.string;      break;
-        case Type.Object:      s = _object.getTypeof; break;
+        case Type.Undefined:   return Key.undefined;
+        case Type.Null:        return Text.object;
+        case Type.Boolean:     return Text.boolean;
+        case Type.Number:      return Key.number;
+        case Type.String:      return Text.string;
+        case Type.Object:      return _object.getTypeof;
         case Type.Iter:
             assert(0);
         }
-        return s;
     }
 
     //--------------------------------------------------------------------
@@ -1014,22 +1061,23 @@ struct Value
         return _type != Type.Object;
     }
 
-    @trusted
-    bool isArrayIndex(ref CallContext cc, out uint index)
-    {
-        switch(_type)
-        {
-        case Type.Number:
-            index = toUint32(cc);
-            return true;
-        case Type.String:
-            return StringToIndex(_text, index);
-        default:
-            index = 0;
-            return false;
-        }
-        assert(0);
-    }
+// deprecated
+//     @trusted
+//     bool isArrayIndex(ref CallContext cc, out uint index)
+//     {
+//         switch(_type)
+//         {
+//         case Type.Number:
+//             index = toUint32(cc);
+//             return true;
+//         case Type.String:
+//             return StringToIndex(_text, index);
+//         default:
+//             index = 0;
+//             return false;
+//         }
+//         assert(0);
+//     }
 
     @disable
     bool isArray()
@@ -1144,8 +1192,6 @@ struct Value
     {
         import dmdscript.primitive : calcHash;
 
-        size_t h;
-
         final switch(_type)
         {
         case Type.RefError:
@@ -1153,37 +1199,31 @@ struct Value
             assert(0);
         case Type.Undefined:
         case Type.Null:
-            h = 0;
-            break;
+            return 0;
         case Type.Boolean:
-            h = _dbool ? 1 : 0;
-            break;
+            return _dbool ? 1 : 0;
         case Type.Number:
-            h = calcHash(_number);
-            break;
+            return calcHash(_number);
         case Type.String:
             // Since strings are immutable, if we've already
             // computed the hash, use previous value
-            if(!_hash)
+            if(0 == _hash)
                 _hash = calcHash(_text);
-            h = _hash;
-            break;
+            return _hash;
         case Type.Object:
             /* Uses the address of the object as the hash.
              * Since the object never moves, it will work
              * as its hash.
              * BUG: shouldn't do this.
              */
-            h = cast(uint)cast(void*)_object;
-            break;
+            return cast(uint)cast(void*)_object;
         case Type.Iter:
             assert(0);
         }
-        return h;
     }
 
     //--------------------------------------------------------------------
-    Value* Get(in string_t PropertyName, ref CallContext cc)
+    Value* Get(in ref PropertyKey PropertyName, ref CallContext cc)
     {
         import std.conv : to;
 
@@ -1193,7 +1233,8 @@ struct Value
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetFromPrimitiveError
-                .toThrow(PropertyName, _type.to!string_t, toString(cc));
+                .toThrow(PropertyName.toString, _type.to!string_t,
+                         toString(cc));
             //return &vundefined;
         }
     }
@@ -1216,7 +1257,7 @@ struct Value
 
     //--------------------------------------------------------------------
     DError* Set(K, V)(in auto ref K name, auto ref V value, ref CallContext cc)
-        if (PropTable.IsKeyValue!(K, V))
+        if (IsValue!V && PropertyKey.IsKey!K)
 
     {
         import std.conv : to;
@@ -1227,11 +1268,10 @@ struct Value
         }
         else
         {
-            static if      (is(K == PropertyKey))
+            static if      (is(K : PropertyKey))
             {
-                auto pk = cast(PropertyKey)name;
                 return CannotPutToPrimitiveError(
-                    pk.toString, value.toString, getType);
+                    name.toString, value.toString(cc), getTypeof);
             }
             else static if (is(K : uint))
             {
@@ -1270,7 +1310,7 @@ struct Value
             else
             {
                 auto pk = PropertyKey(PropertyName);
-                throw NotCallableError.toThrow(pk.toString(cc));
+                throw NotCallableError.toThrow(pk.toString);
             }
         }
         else
@@ -1490,7 +1530,8 @@ deprecated
         {
             auto msg = entity.toString(cc);
             string_t name = typeerror.Text;
-            if (auto constructor = entity.Get(Key.constructor, cc))
+            auto pk = PropertyKey(Key.constructor);
+            if (auto constructor = entity.Get(pk, cc))
                 name = constructor.object.classname;
             return new ScriptException(name, msg);
         }

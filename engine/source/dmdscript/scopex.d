@@ -145,7 +145,7 @@ struct Scope
     // }
 
     @safe pure nothrow
-    LabelSymbol searchLabel(StringKey* ident)
+    LabelSymbol searchLabel(Identifier ident)
     {
         SymbolTable* st;
         LabelSymbol ls;

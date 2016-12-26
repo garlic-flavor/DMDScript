@@ -53,7 +53,6 @@ class Program
     {
         import dmdscript.statement : TopStatement;
         import dmdscript.parse : Parser;
-        import dmdscript.primitive : StringKey;
         import dmdscript.scopex : Scope;
 
         TopStatement[] topstatements;

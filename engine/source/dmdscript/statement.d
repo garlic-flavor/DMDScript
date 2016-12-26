@@ -277,11 +277,11 @@ class ExpStatement : Statement
 final class VarDeclaration
 {
     uint linnum;
-    StringKey* name;
+    const(PropertyKey)* name;
     Expression init;
 
     @safe @nogc pure nothrow
-    this(uint linnum, StringKey* name, Expression init)
+    this(uint linnum, const(PropertyKey)* name, Expression init)
     {
         this.linnum = linnum;
         this.init = init;
@@ -341,7 +341,7 @@ final class VarStatement : Statement
                 if(vd.init)
                 {
                     vd.init.toIR(irs, ret[0]);
-                    property.id = StringKey.build(vd.name.toString);
+                    property.id = PropertyKey.build(vd.name.toString);
                     irs.gen!(Opcode.PutThis)(linnum, ret[0], property.id);
                 }
             }
@@ -438,7 +438,7 @@ final class BlockStatement : Statement
 final class LabelStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(uint linnum, StringKey* ident, Statement statement)
+    this(uint linnum, const(PropertyKey)* ident, Statement statement)
     {
         super(linnum);
         this.ident = ident;
@@ -517,7 +517,7 @@ final class LabelStatement : Statement
     }
 
 private:
-    StringKey* ident;
+    const(PropertyKey)* ident;
     Statement statement;
     size_t gotoIP;
     size_t breakIP;
@@ -1273,7 +1273,7 @@ final class ForInStatement : Statement
             assert(vs.vardecls.length == 1);
             vd = vs.vardecls[0];
 
-            property.id = StringKey.build(vd.name.toString);
+            property.id = PropertyKey.build(vd.name.toString);
             opoff = OpOffset.Scope;
             base = ~0u;
         }
@@ -1429,7 +1429,7 @@ private:
 final class ContinueStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(uint linnum, StringKey* ident)
+    this(uint linnum, const(PropertyKey)* ident)
     {
         super(linnum);
         this.ident = ident;
@@ -1485,7 +1485,7 @@ final class ContinueStatement : Statement
         return target.getContinue;
     }
 private:
-    StringKey* ident;
+    const(PropertyKey)* ident;
     Statement target;
 }
 
@@ -1494,7 +1494,7 @@ private:
 final class BreakStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(uint linnum, StringKey* ident)
+    this(uint linnum, const(PropertyKey)* ident)
     {
         super(linnum);
         this.ident = ident;
@@ -1531,7 +1531,8 @@ final class BreakStatement : Statement
                 //Scope* s;
                 //for(s = sc; s && s != ls.statement.whichScope; s = s.enclosing){ }
                 if(ls.statement.whichScope == *sc)
-                    error(sc, CantBreakInternalError(*ls.ident));
+                    error(sc, CantBreakInternalError(
+                              ls.ident.toString));
                 target = ls.statement;
             }
         }
@@ -1562,7 +1563,7 @@ final class BreakStatement : Statement
     }
 
 private:
-    StringKey* ident;
+    const(PropertyKey)* ident;
     Statement target;
 }
 
@@ -1571,7 +1572,7 @@ private:
 final class GotoStatement : Statement
 {
     @safe @nogc pure nothrow
-    this(uint linnum, StringKey * ident)
+    this(uint linnum, const(PropertyKey)* ident)
     {
         super(linnum);
         this.ident = ident;
@@ -1624,7 +1625,7 @@ final class GotoStatement : Statement
     }
 
 private:
-    StringKey* ident;
+    const(PropertyKey)* ident;
     LabelSymbol label;
 }
 
@@ -1797,7 +1798,8 @@ private:
 final class TryStatement : ScopeStatement
 {
     @safe @nogc pure nothrow
-    this(uint linnum, Statement bdy, StringKey* catchident, Statement catchbdy,
+    this(uint linnum, Statement bdy, const(PropertyKey)* catchident,
+         Statement catchbdy,
          Statement finalbdy)
     {
         super(linnum);
@@ -1848,7 +1850,7 @@ final class TryStatement : ScopeStatement
             {
                 c = irs.getIP;
                 irs.gen!(Opcode.TryCatch)(
-                    linnum, 0, StringKey.build(catchident.toString));
+                    linnum, 0, PropertyKey.build(catchident.toString));
                 bdy.toIR(irs);
                 irs.gen!(Opcode.Pop)(linnum);           // remove catch clause
                 irs.gen!(Opcode.Pop)(linnum);           // call finalbdy
@@ -1886,7 +1888,7 @@ final class TryStatement : ScopeStatement
         {
             c = irs.getIP;
             irs.gen!(Opcode.TryCatch)(
-                linnum, 0, StringKey.build(catchident.toString));
+                linnum, 0, PropertyKey.build(catchident.toString));
             bdy.toIR(irs);
             irs.gen!(Opcode.Pop)(linnum);
             e = irs.getIP;
@@ -1927,7 +1929,7 @@ final class TryStatement : ScopeStatement
 
 private:
     Statement bdy;
-    StringKey* catchident;
+    const(PropertyKey)* catchident;
     Statement catchbdy;
     Statement finalbdy;
 }

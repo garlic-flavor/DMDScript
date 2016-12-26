@@ -81,7 +81,7 @@ public static:
     void install(alias M, T)(
         T o, Property.Attribute prop = Property.Attribute.DontEnum)
     {
-        import dmdscript.primitive : StringKey;
+        import dmdscript.primitive : PropertyKey;
         import dmdscript.dfunction : Dconstructor;
 
         foreach(one; __traits(allMembers, M))
@@ -97,9 +97,9 @@ public static:
                            is(T : Dconstructor))
                 {
                     static if (0 < desc.realName.length)
-                        enum name = StringKey(desc.realName);
+                        enum name = PropertyKey(desc.realName);
                     else
-                        enum name = StringKey(one);
+                        enum name = PropertyKey(one);
 
                     o.DefineOwnProperty(
                         name,
@@ -146,19 +146,15 @@ void installConstants(ARGS...)(
     static if      (0 == ARGS.length){}
     else
     {
-        import dmdscript.primitive : StringKey;
+        import dmdscript.primitive : PropertyKey;
         import dmdscript.value : Value;
 
         static assert (1 < ARGS.length, "bad arguments");
         static assert (is(typeof(ARGS[0]) : string), "bad key");
 
-        enum key = StringKey(ARGS[0]);
+        enum key = PropertyKey(ARGS[0]);
 
-        static if      (is(typeof(ARGS[1]) : Value))
-            auto value = ARGS[1];
-        else static if (Value.IsPrimitiveType!(typeof(ARGS[1])))
-            auto value = Value(ARGS[1]);
-        else static assert (0, "bad value");
+        auto value = Value(ARGS[1]);
 
         o.DefineOwnProperty(key, value, prop);
 

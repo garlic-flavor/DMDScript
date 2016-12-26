@@ -32,8 +32,9 @@ class D0(alias TEXT_D1) : D0base
 {
     import dmdscript.dfunction : Dfunction;
     import dmdscript.dobject : Initializer;
+    import dmdscript.primitive : PropertyKey;
 
-    enum Text = TEXT_D1;
+    enum Text = PropertyKey(TEXT_D1);
 
     this(string_t m)
     {
