@@ -8,7 +8,7 @@ An implementation of the ECMA 262 (Javascript) programming language
 
 # !!!THIS BRANCH IS UNDER CONSTRUCTION!!!
 **IN SPITE OF THE RIGHT SCRIPTS, THE INTERPRETER MAY CRASH!**
-**I CANNOT DO ANY TESTS NOW!**
+**THE CURRENT VERSION HAS AT LEAST IMPLEMENTATION FOR PASSING TEST262!**
 
 
 ### main goals
@@ -39,7 +39,7 @@ An implementation of the ECMA 262 (Javascript) programming language
       + [x] Add manual stack tracing.
       + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(629/23509)
+* [ ] Run test262.(648/23509)
       + [x] language/comments/*
       + [x] language/line-terminators/*
       + [x] language/source-text/*
@@ -54,6 +54,7 @@ An implementation of the ECMA 262 (Javascript) programming language
       + [x] language/types/number/* (see below.)
       + [x] language/types/string/*
       + [x] language/types/undefined/*
+      + [x] language/types/object/*
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 

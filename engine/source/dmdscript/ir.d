@@ -327,7 +327,7 @@ align(size_t.sizeof):
         static if (isGet!CODE)
             return text(ir, " [", acc, "] = ", opName);
         else
-            return text(ir, opName, " = [", acc, "]");
+            return text(ir, " ", opName, " = [", acc, "]");
     }
 }
 

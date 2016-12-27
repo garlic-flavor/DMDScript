@@ -233,8 +233,10 @@ enum ReferenceError = err!(referenceerror, string_t)
     ("%s");
 
 version (TEST262)
-enum HTMLEndCommentError = syntaxerr!()
-    ("--> comment does not allowed.");
+{
+    enum HTMLEndCommentError = syntaxerr!()
+        ("--> comment does not allowed.");
+}
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // needs more proper implementation.
@@ -246,6 +248,9 @@ enum NotCallableError = err!(typeerror, string_t)
 enum CantDeleteError = err!(typeerror, string_t)
     ("fail to delete %s.");
 
+
+enum PreventExtensionsFailureError = err!(typeerror, string_t)
+    ("[%s].PreventExtensions() failed.");
 
 //==============================================================================
 private:

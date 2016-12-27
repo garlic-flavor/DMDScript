@@ -285,28 +285,42 @@ struct IR
                     // code += IRTypes[Opcode.PutGetter].size;
                     // break;
                 case Opcode.PutGetterS:
+                {
                     a = locals + (code + 1).index;
+                    auto f = cast(Dfunction)a.toObject;
+                    if (f is null)
+                    {
+                        sta = cannotConvert(cc, a);
+                        goto Lthrow;
+                    }
                     b = locals + (code + 2).index;
-                    o = b.toObject();
-                    if(!o)
+                    o = b.toObject;
+                    if(o is null)
                     {
                         sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
-                    if (!o.SetGetter(*(code + 3).id, *a,
-                                     Property.Attribute.None, cc))
+                    if (!o.SetGetter(*(code+3).id, f, Property.Attribute.None))
                     {
                         sta = CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PutGetterS].size;
                     break;
+                }
                 case Opcode.PutSetter:
                     assert (0, "not implemented yet");
                     // code += IRTypes[Opcode.PutSetter].size;
                     // break;
                 case Opcode.PutSetterS:
+                {
                     a = locals + (code + 1).index;
+                    auto f = cast(Dfunction)a.toObject;
+                    if (f is null)
+                    {
+                        sta = cannotConvert(cc, a);
+                        goto Lthrow;
+                    }
                     b = locals + (code + 2).index;
                     o = b.toObject();
                     if(!o)
@@ -314,15 +328,14 @@ struct IR
                         sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
-                    if (!o.SetSetter(*(code + 3).id, *a,
-                                     Property.Attribute.None, cc))
+                    if (!o.SetSetter(*(code+3).id, f, Property.Attribute.None))
                     {
                         sta = CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PutSetterS].size;
                     break;
-
+                }
                 case Opcode.AddAsS:              // a = (b.c += a)
                     c = locals + (code + 3).index;
                     pk = c.toPropertyKey;

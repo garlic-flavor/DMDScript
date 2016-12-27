@@ -39,7 +39,7 @@ class Dobject
     Value value;
 
     //
-    mixin Initializer!DobjectConstructor _Initializer;
+    mixin Initializer!DobjectConstructor;
 
     //
     @safe pure nothrow
@@ -51,20 +51,13 @@ class Dobject
         value.put(this);
     }
 
-    //
-    // See_Also: Ecma-262-v7/9.1
-    //
-
     //--------------------------------------------------------------------
     //
-    @property @safe @nogc pure nothrow
-    final string_t classname() const
+    final @property @safe @nogc pure nothrow
+    string_t classname() const
     {
         return _classname;
     }
-
-    //--------------------------------------------------------------------
-    // may virtual
 
     /// Ecma-262-v7/9.1.1
     @property @safe @nogc pure nothrow
@@ -97,7 +90,6 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.3
-    @disable
     @property @safe @nogc pure nothrow
     bool IsExtensible() const
     {
@@ -105,7 +97,6 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.4
-    @disable
     @property @safe @nogc pure nothrow
     bool preventExtensions()
     {
@@ -114,8 +105,7 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.5
-    @disable
-    Property* GetOwnProperty(in ref PropertyKey key)
+    Property* GetOwnProperty(in PropertyKey key)
     {
         return proptable.getOwnProperty(key);
     }
@@ -140,24 +130,23 @@ class Dobject
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
-        return proptable.set(PropertyName, value, attributes, cc, this);
+        return proptable.set(PropertyName, value, attributes, cc, this,
+                             _extensible);
     }
 
     //--------------------------------------------------------------------
     //
-    bool SetGetter(in ref PropertyKey PropertyName, ref Value value,
-                   in Property.Attribute attribute, ref CallContext cc)
+    bool SetGetter(in PropertyKey PropertyName, Dfunction getter,
+                   in Property.Attribute attribute)
     {
-        auto getter = cast(Dfunction)value.object;
         assert (getter !is null);
         return proptable.configGetter(PropertyName, getter, attribute,
                                       _extensible);
     }
     //
-    bool SetSetter(in ref PropertyKey PropertyName, ref Value value,
-                   in Property.Attribute attribute, ref CallContext cc)
+    bool SetSetter(in PropertyKey PropertyName, Dfunction setter,
+                   in Property.Attribute attribute)
     {
-        auto setter = cast(Dfunction)value.object;
         assert (setter !is null);
         return proptable.configSetter(PropertyName, setter, attribute,
                                       _extensible);
@@ -557,8 +546,8 @@ public static:
                                        Property.Attribute.DontDelete |
                                        Property.Attribute.ReadOnly);
 
-        DnativeFunctionDescriptor.install!(mixin(M))(_constructor);
-        DnativeFunctionDescriptor.install!(mixin(M))(_class_prototype);
+        DnativeFunctionDescriptor.install!(Dconstructor, M)(_constructor);
+        DnativeFunctionDescriptor.install!(Dobject, M)(_class_prototype);
     }
 
 private static:
@@ -594,7 +583,7 @@ void dobject_init()
     import dmdscript.dweakmap : DweakMap;
     import dmdscript.dweakset : DweakSet;
 
-    if(Dobject._Initializer._class_prototype !is null)
+    if(Dobject._class_prototype !is null)
         return;                 // already initialized for this thread
 
     void init(Types...)()
@@ -646,6 +635,11 @@ void dobject_init()
         import dmdscript.primitive : PropertyKey;
         CallContext cc;
         assert(Dstring.getConstructor.Get(PropertyKey("fromCharCode"), cc));
+
+        auto prop = Dobject.getPrototype
+            .GetOwnProperty(PropertyKey("__proto__"));
+        assert (prop !is null);
+        assert (prop.isAccessor);
     }
 }
 
@@ -722,7 +716,21 @@ DError* getPrototypeOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    assert(0);
+    if (0 == arglist.length)
+    {
+        ret.putVundefined;
+        return null;
+    }
+
+    auto o = arglist[0].toObject;
+    if (o is null)
+    {
+        ret.putVundefined;
+        return null;
+    }
+
+    ret.put(o.GetPrototypeOf);
+    return null;
 }
 
 //
@@ -776,7 +784,25 @@ DError* preventExtensions(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    assert(0);
+    if (0 == arglist.length)
+    {
+        ret.putVundefined;
+        return null;
+    }
+
+    auto v = &arglist[0];
+    if (!v.isObject)
+    {
+        ret.put(*v);
+        return null;
+    }
+
+    auto o = v.object;
+    if (!o.preventExtensions)
+        return PreventExtensionsFailureError(v.toString(cc));
+
+    ret.put(o);
+    return null;
 }
 
 //
@@ -1015,3 +1041,19 @@ DError* propertyIsEnumerable(
     return null;
 }
 
+//------------------------------------------------------------------------------
+@DFD(0, DFD.Type.Getter, "__proto__")
+DError* proto_Get(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+@DFD(0, DFD.Type.Setter, "__proto__")
+DError* proto_Set(
+    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}

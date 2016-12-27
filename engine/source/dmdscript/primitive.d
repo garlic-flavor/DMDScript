@@ -463,6 +463,7 @@ double StringNumericLiteral(string_t str, out size_t endidx, int parsefloat)
 }
 
 //------------------------------------------------------------------------------
+@trusted
 string_t NumberToString(in double n)
 {
     import std.format : sformat;

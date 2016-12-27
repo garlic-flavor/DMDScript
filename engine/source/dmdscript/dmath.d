@@ -473,7 +473,7 @@ class Dmath : Dobject
                    Property.Attribute.DontDelete |
                    Property.Attribute.SilentReadOnly);
 
-        DFD.install!(mixin(__MODULE__))(this, attributes);
+        DFD.install(this, attributes);
     }
 
 static:

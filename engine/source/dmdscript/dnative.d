@@ -65,54 +65,77 @@ class DnativeFunction : Dfunction
 ///
 struct DnativeFunctionDescriptor
 {
+    import dmdscript.property : Property;
+
     enum Type
     {
-        Prototype,
-        Static,
+        Prototype = 0x00,
+        Static    = 0x01,
+        Getter    = 0x02,
+        Setter    = 0x04,
     }
 
     uint length;  /// is a number of arguments.
     Type type = Type.Prototype; ///
     string realName; ///
+    Property.Attribute attr; ///
 
 public static:
-    import dmdscript.property : Property;
+
+    void install(T, string M = __MODULE__)
+        (T o, Property.Attribute prop = Property.Attribute.DontEnum)
+    {
+        mixin("import " ~ M ~ ";");
+        install!(mixin(M), T)(o, prop);
+    }
+
+private static:
+
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.value : Value, DError;
+
     ///
     void install(alias M, T)(
         T o, Property.Attribute prop = Property.Attribute.DontEnum)
     {
         import dmdscript.primitive : PropertyKey;
         import dmdscript.dfunction : Dconstructor;
+        Dfunction f;
         Value val;
-        foreach(one; __traits(allMembers, M))
+        foreach(one; __traits(derivedMembers, M))
         {
-            static if (is(typeof(__traits(getMember, M, one))))
-                enum desc = select!(__traits(getMember, M, one));
+            static if      (is(typeof(__traits(getMember, M, one))))
+                alias desc = select!(__traits(getMember, M, one));
             else
-                enum desc = false;
+                alias desc = void;
 
-            static if (is(typeof(desc) == DnativeFunctionDescriptor))
+            static if      (is(typeof(desc) == DnativeFunctionDescriptor))
             {
-                static if ((desc.type == Type.Static) ==
+                static if ((desc.type & Type.Static) ==
                            is(T : Dconstructor))
                 {
                     static if (0 < desc.realName.length)
                         enum name = PropertyKey(desc.realName);
                     else
                         enum name = PropertyKey(one);
-                    val.put(new DnativeFunction(
-                            &__traits(getMember, M, one),
-                            one, desc.length, Dfunction.getPrototype));
-                    o.DefineOwnProperty(name, val, prop);
+                    f = new DnativeFunction(
+                        &__traits(getMember, M, one),
+                        one, desc.length, Dfunction.getPrototype);
+
+                    static if      (desc.type & Type.Getter)
+                        o.SetGetter(name, f, prop | desc.attr);
+                    else static if (desc.type & Type.Setter)
+                        o.SetSetter(name, f, prop | desc.attr);
+                    else
+                    {
+                        val.put(f);
+                        o.DefineOwnProperty(name, val, prop | desc.attr);
+                    }
                 }
             }
         }
 
     }
-
-private static:
-    import dmdscript.callcontext : CallContext;
-    import dmdscript.value : Value, DError;
 
     //
     template select(alias F)
@@ -126,7 +149,7 @@ private static:
             else
                 enum _impl = _impl!(T[1..$]);
         }
-        static if (is(typeof(&F) == PCall))
+        static if      (is(typeof(&F) == PCall))
             enum select = _impl!(__traits(getAttributes, F));
         else
             enum select = false;

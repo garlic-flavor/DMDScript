@@ -775,6 +775,33 @@ struct Value
     }
 
     //--------------------------------------------------------------------
+    @trusted
+    string_t toString() const
+    {
+        final switch(_type)
+        {
+        case Type.RefError:
+            return "RefError!";
+        case Type.Undefined:
+            return Key.undefined;
+        case Type.Null:
+            return Key._null;
+        case Type.Boolean:
+            return _dbool ? Key._true : Key._false;
+        case Type.Number:
+            return NumberToString(_number);
+        case Type.String:
+            return _text;
+        case Type.Object:
+            return Key.Object;
+        case Type.Iter:
+            assert(0);
+        }
+        assert(0);
+    }
+
+
+    //--------------------------------------------------------------------
     string_t toString(ref CallContext cc)
     {
         final switch(_type)

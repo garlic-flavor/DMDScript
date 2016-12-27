@@ -611,12 +611,21 @@ final class PropTable
     ///
     DError* set(in ref PropertyKey key, ref Value value,
                 in Property.Attribute attributes,
-                ref CallContext cc, Dobject othis)
+                ref CallContext cc, Dobject othis, in bool extensible)
     {
         import dmdscript.errmsgs;
 
         if (auto p = _table.findExistingAlt(key, key.hash))
         {
+            if (!extensible)
+            {
+                auto v = p.get(cc, othis);
+                if (*v != value)
+                    return CannotPutError;
+                else
+                    return null;
+            }
+
             auto na = cast(Property.Attribute)attributes;
             if (!p.canSetValue(na))
             {
@@ -641,7 +650,7 @@ final class PropTable
 
             return p.set(value, attributes, cc, othis);
         }
-        else
+        else if (extensible)
         {
             if (!_canExtend(key))
             {
@@ -651,6 +660,10 @@ final class PropTable
             auto p = Property(value, attributes);
             _table.insertAlt(key, p, key.hash);
             return null;
+        }
+        else
+        {
+            return CannotPutError;
         }
     }
 

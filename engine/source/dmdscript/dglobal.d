@@ -111,7 +111,7 @@ class Dglobal : Dobject
             assert(v.toNumber(cc) is double.infinity);
         }
 
-        DFD.install!(mixin(__MODULE__))(this, Property.Attribute.DontEnum);
+        DFD.install(this, Property.Attribute.DontEnum);
 
         // Now handled by AssertExp()
         // Put(Text.assert, Dglobal_assert(), DontEnum);

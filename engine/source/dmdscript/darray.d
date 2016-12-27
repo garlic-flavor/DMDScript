@@ -71,7 +71,7 @@ class Darray : Dobject
             }
 
             auto pk = PropertyKey(index);
-            proptable.set(pk, v, attributes, cc, this);
+            proptable.set(pk, v, attributes, cc, this, IsExtensible);
             return null;
         }
         else
@@ -81,7 +81,7 @@ class Darray : Dobject
             DError* result;
 
             // ECMA 15.4.5.1
-            result = proptable.set(key, v, attributes, cc, this);
+            result = proptable.set(key, v, attributes, cc, this, IsExtensible);
             if(!result)
             {
                 if(key == Key.length)
@@ -113,7 +113,8 @@ class Darray : Dobject
                     ulength = i;
                     length.number = i;
                     proptable.set(key, v, attributes |
-                                  Property.Attribute.DontEnum, cc, this);
+                                  Property.Attribute.DontEnum, cc, this,
+                                  IsExtensible);
                 }
 
                 // if (name is an array index i)
