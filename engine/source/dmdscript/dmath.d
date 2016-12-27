@@ -468,7 +468,10 @@ class Dmath : Dobject
             "LOG10E", std.math.LOG10E,
             "PI", std.math.PI,
             "SQRT1_2", std.math.SQRT1_2,
-            "SQRT2", std.math.SQRT2)(this);
+            "SQRT2", std.math.SQRT2)
+            (this, Property.Attribute.DontEnum |
+                   Property.Attribute.DontDelete |
+                   Property.Attribute.SilentReadOnly);
 
         DFD.install!(mixin(__MODULE__))(this, attributes);
     }

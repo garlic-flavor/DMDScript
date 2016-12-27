@@ -469,8 +469,10 @@ struct Stack
                 auto o = stack[d - 1];
                 if (auto v = o.Get(key, cc))
                 {
-                    v.checkReference;
-                    return o.Set(key, value, attr, cc);
+                    if (auto err = v.checkReference)
+                        return err;
+                    else
+                        return o.Set(key, value, attr, cc);
                 }
             }
             else

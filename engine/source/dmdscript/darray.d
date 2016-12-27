@@ -57,101 +57,99 @@ class Darray : Dobject
     }
 
     override
-    DError* SetImpl(in ref PropertyKey key, ref Value v,
-                    in Property.Attribute attributes, ref CallContext cc)
+    DError* Set(in PropertyKey key, ref Value v,
+                in Property.Attribute attributes, ref CallContext cc)
     {
         import dmdscript.property : PropertyKey;
-
-        uint i;
-        uint c;
-        DError* result;
-
-        // ECMA 15.4.5.1
-        result = proptable.set(key, v, attributes, cc, this);
-        if(!result)
+        size_t index;
+        if (key.isArrayIndex(index))
         {
-            if(key == Key.length)
+            if(index >= ulength)
             {
-                i = v.toUint32(cc);
-                if(i != v.toInteger(cc))
-                {
-                    return LengthIntError;
-                }
-                if(i < ulength)
-                {
-                    // delete all properties with keys >= i
-                    uint[] todelete;
-
-                    foreach(PropertyKey key, ref Property p; proptable)
-                    {
-                        uint j;
-
-                        if(key.isArrayIndex(j) && j >= i)
-                            todelete ~= j;
-                    }
-                    PropertyKey k;
-                    foreach(uint j; todelete)
-                    {
-                        k.put(j);
-                        proptable.del(k);
-                    }
-                }
-                ulength = i;
-                length.number = i;
-                proptable.set(key, v, attributes | Property.Attribute.DontEnum,
-                              cc, this);
-            }
-
-            // if (name is an array index i)
-
-            i = 0;
-            for(size_t j = 0; j < key.length; j++)
-            {
-                ulong k;
-
-                c = key[j];
-                if(c == '0' && i == 0 && key.length > 1)
-                    goto Lret;
-                if(c >= '0' && c <= '9')
-                {
-                    k = i * cast(ulong)10 + c - '0';
-                    i = cast(uint)k;
-                    if(i != k)
-                        goto Lret;              // overflow
-                }
-                else
-                    goto Lret;
-            }
-            if(i >= ulength)
-            {
-                if(i == 0xFFFFFFFF)
-                    goto Lret;
-                ulength = i + 1;
+                ulength = index + 1;
                 length.number = ulength;
             }
+
+            auto pk = PropertyKey(index);
+            proptable.set(pk, v, attributes, cc, this);
+            return null;
         }
-        Lret:
-        return null;
-    }
-
-    override
-    DError* SetImpl(in uint index, ref Value value,
-                    in Property.Attribute attributes, ref CallContext cc)
-    {
-        import dmdscript.property : PropertyKey;
-
-        if(index >= ulength)
+        else
         {
-            ulength = index + 1;
-            length.number = ulength;
-        }
+            uint i;
+            uint c;
+            DError* result;
 
-        auto key = PropertyKey(index);
-        proptable.set(key, value, attributes, cc, this);
-        return null;
+            // ECMA 15.4.5.1
+            result = proptable.set(key, v, attributes, cc, this);
+            if(!result)
+            {
+                if(key == Key.length)
+                {
+                    i = v.toUint32(cc);
+                    if(i != v.toInteger(cc))
+                    {
+                        return LengthIntError;
+                    }
+                    if(i < ulength)
+                    {
+                        // delete all properties with keys >= i
+                        uint[] todelete;
+
+                        foreach(PropertyKey key, ref Property p; proptable)
+                        {
+                            uint j;
+
+                            if(key.isArrayIndex(j) && j >= i)
+                                todelete ~= j;
+                        }
+                        PropertyKey k;
+                        foreach(uint j; todelete)
+                        {
+                            k.put(j);
+                            proptable.del(k);
+                        }
+                    }
+                    ulength = i;
+                    length.number = i;
+                    proptable.set(key, v, attributes |
+                                  Property.Attribute.DontEnum, cc, this);
+                }
+
+                // if (name is an array index i)
+
+                i = 0;
+                for(size_t j = 0; j < key.length; j++)
+                {
+                    ulong k;
+
+                    c = key[j];
+                    if(c == '0' && i == 0 && key.length > 1)
+                        goto Lret;
+                    if(c >= '0' && c <= '9')
+                    {
+                        k = i * cast(ulong)10 + c - '0';
+                        i = cast(uint)k;
+                        if(i != k)
+                            goto Lret;              // overflow
+                    }
+                    else
+                        goto Lret;
+                }
+                if(i >= ulength)
+                {
+                    if(i == 0xFFFFFFFF)
+                        goto Lret;
+                    ulength = i + 1;
+                    length.number = ulength;
+                }
+            }
+        Lret:
+            return null;
+        }
     }
 
-    override Value* GetImpl(in ref PropertyKey PropertyName, ref CallContext cc)
+    override Value* Get(in PropertyKey PropertyName, ref CallContext cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(PropertyName == Key.length)
@@ -161,21 +159,11 @@ class Darray : Dobject
         }
         else
         {
-            return Dobject.GetImpl(PropertyName, cc);
+            return Dobject.Get(PropertyName, cc);
         }
     }
 
-    override Value* GetImpl(in uint index, ref CallContext cc)
-    {
-        Value* v;
-
-        //writef("Darray.Get(%p, %d)\n", &proptable, index);
-        auto key = PropertyKey(index);
-        v = proptable.get(key, cc, this);
-        return v;
-    }
-
-    override bool Delete(in ref PropertyKey PropertyName)
+    override bool Delete(in PropertyKey PropertyName)
     {
         // ECMA 8.6.2.5
         //writef("Darray.Delete('%ls')\n", d_string_ptr(PropertyName));
@@ -186,14 +174,6 @@ class Darray : Dobject
             return proptable.del(PropertyName);
         }
     }
-
-    override bool Delete(in uint index)
-    {
-        // ECMA 8.6.2.5
-        auto key = PropertyKey(index);
-        return proptable.del(key);
-    }
-
 
 public static:
 
@@ -278,6 +258,7 @@ class DarrayConstructor : Dconstructor
     override DError* Construct(ref CallContext cc, out Value ret,
                                Value[] arglist)
     {
+        import dmdscript.primitive : PropertyKey;
         // ECMA 15.4.2
         Darray a;
 
@@ -321,7 +302,7 @@ class DarrayConstructor : Dconstructor
             {
                 a.ulength = 1;
                 a.length.number = 1;
-                a.Set(cast(uint)0, *v, Property.Attribute.None, cc);
+                a.Set(PropertyKey(0), *v, Property.Attribute.None, cc);
             }
         }
         else
@@ -338,7 +319,7 @@ class DarrayConstructor : Dconstructor
             a.length.number = arglist.length;
             for(uint k = 0; k < arglist.length; k++)
             {
-                a.Set(k, arglist[k], Property.Attribute.None, cc);
+                a.Set(PropertyKey(k), arglist[k], Property.Attribute.None, cc);
             }
         }
         ret = a.value;
@@ -365,7 +346,7 @@ DError* toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : string_t;
+    import dmdscript.primitive : string_t, PropertyKey;
     import dmdscript.program : Program;
     import dmdscript.locale : Locale;
 
@@ -399,7 +380,7 @@ DError* toLocaleString(
     {
         if(k)
             r ~= separator;
-        v = othis.Get(k, cc);
+        v = othis.Get(PropertyKey(k), cc);
         if(v && !v.isUndefinedOrNull())
         {
             Dobject ot;
@@ -432,6 +413,7 @@ DError* concat(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : PropertyKey;
     // ECMA v3 15.4.4.4
     Darray A;
     Darray E;
@@ -452,15 +434,15 @@ DError* concat(
             len = E.ulength;
             for(k = 0; k != len; k++)
             {
-                v = E.Get(k, cc);
+                v = E.Get(PropertyKey(k), cc);
                 if(v)
-                    A.Set(n, *v, Property.Attribute.None, cc);
+                    A.Set(PropertyKey(n), *v, Property.Attribute.None, cc);
                 n++;
             }
         }
         else
         {
-            A.Set(n, *v, Property.Attribute.None, cc);
+            A.Set(PropertyKey(n), *v, Property.Attribute.None, cc);
             n++;
         }
         if(a == arglist.length)
@@ -468,7 +450,8 @@ DError* concat(
         v = &arglist[a];
     }
 
-    A.Set(Key.length, n, Property.Attribute.DontEnum, cc);
+    auto vl = Value(n);
+    A.Set(Key.length, vl, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -487,7 +470,7 @@ DError* join(
 void array_join(ref CallContext cc, Dobject othis, out Value ret,
                 Value[] arglist)
 {
-    import dmdscript.primitive : string_t, Text;
+    import dmdscript.primitive : string_t, Text, PropertyKey;
 
     // ECMA 15.4.4.3
     string_t separator;
@@ -508,7 +491,7 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
     {
         if(k)
             r ~= separator;
-        v = othis.Get(k, cc);
+        v = othis.Get(PropertyKey(k), cc);
         if(v && !v.isUndefinedOrNull())
             r ~= v.toString(cc);
     }
@@ -522,7 +505,7 @@ DError* toSource(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : string_t;
+    import dmdscript.primitive : string_t, PropertyKey;
 
     string_t separator;
     string_t r;
@@ -539,7 +522,7 @@ DError* toSource(
     {
         if(k)
             r ~= separator;
-        v = othis.Get(k, cc);
+        v = othis.Get(PropertyKey(k), cc);
         if(v && !v.isUndefinedOrNull())
             r ~= v.toSource(cc);
     }
@@ -556,8 +539,10 @@ DError* pop(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : PropertyKey;
     // ECMA v3 15.4.4.6
     Value* v;
+    Value val;
     uint u;
 
     // If othis is a Darray, then we can optimize this significantly
@@ -567,17 +552,19 @@ DError* pop(
     u = v.toUint32(cc);
     if(u == 0)
     {
-        othis.Set(Key.length, 0.0, Property.Attribute.DontEnum, cc);
+        val.put(0.0);
+        othis.Set(Key.length, val, Property.Attribute.DontEnum, cc);
         ret.putVundefined();
     }
     else
     {
-        v = othis.Get(u - 1, cc);
+        v = othis.Get(PropertyKey(u - 1), cc);
         if(!v)
             v = &undefined;
         ret = *v;
-        othis.Delete(u - 1);
-        othis.Set(Key.length, u - 1, Property.Attribute.DontEnum, cc);
+        val.put(u - 1);
+        othis.Delete(PropertyKey(u - 1));
+        othis.Set(Key.length, val, Property.Attribute.DontEnum, cc);
     }
     return null;
 }
@@ -588,8 +575,11 @@ DError* push(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : PropertyKey;
+
     // ECMA v3 15.4.4.7
     Value* v;
+    Value val;
     uint u;
     uint a;
 
@@ -600,9 +590,11 @@ DError* push(
     u = v.toUint32(cc);
     for(a = 0; a < arglist.length; a++)
     {
-        othis.Set(u + a, arglist[a], Property.Attribute.None, cc);
+        val.put(arglist[a]);
+        othis.Set(PropertyKey(u + a), val, Property.Attribute.None, cc);
     }
-    othis.Set(Key.length, u + a,  Property.Attribute.DontEnum, cc);
+    val.put(u + a);
+    othis.Set(Key.length, val,  Property.Attribute.DontEnum, cc);
     ret.put(u + a);
     return null;
 }
@@ -613,6 +605,8 @@ DError* reverse(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : PropertyKey;
+
     // ECMA 15.4.4.4
     uint a;
     uint b;
@@ -630,19 +624,19 @@ DError* reverse(
     {
         b = len - a - 1;
         //writef("a = %d, b = %d\n", a, b);
-        va = othis.Get(a, cc);
+        va = othis.Get(PropertyKey(a), cc);
         if(va)
             tmp = *va;
-        vb = othis.Get(b, cc);
+        vb = othis.Get(PropertyKey(b), cc);
         if(vb)
-            othis.Set(a, *vb, Property.Attribute.None, cc);
+            othis.Set(PropertyKey(a), *vb, Property.Attribute.None, cc);
         else
-            othis.Delete(a);
+            othis.Delete(PropertyKey(a));
 
         if(va)
-            othis.Set(b, tmp, Property.Attribute.None, cc);
+            othis.Set(PropertyKey(b), tmp, Property.Attribute.None, cc);
         else
-            othis.Delete(b);
+            othis.Delete(PropertyKey(b));
     }
     ret = othis.value;
     return null;
@@ -654,6 +648,7 @@ DError* shift(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : PropertyKey;
     // ECMA v3 15.4.4.9
     Value* v;
     Value* result;
@@ -669,27 +664,28 @@ DError* shift(
 
     if(len)
     {
-        result = othis.Get(0u, cc);
+        result = othis.Get(PropertyKey(0u), cc);
         ret = result ? *result : vundefined;
         for(k = 1; k != len; k++)
         {
-            v = othis.Get(k, cc);
+            v = othis.Get(PropertyKey(k), cc);
             if(v)
             {
-                othis.Set(k - 1, *v, Property.Attribute.None, cc);
+                othis.Set(PropertyKey(k - 1), *v, Property.Attribute.None, cc);
             }
             else
             {
-                othis.Delete(k - 1);
+                othis.Delete(PropertyKey(k - 1));
             }
         }
-        othis.Delete(len - 1);
+        othis.Delete(PropertyKey(len - 1));
         len--;
     }
     else
         ret = vundefined;
 
-    othis.Set(Key.length, len, Property.Attribute.DontEnum, cc);
+    auto vlen = Value(len);
+    othis.Set(Key.length, vlen, Property.Attribute.DontEnum, cc);
     return null;
 }
 
@@ -700,6 +696,7 @@ DError* slice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : PropertyKey;
     // ECMA v3 15.4.4.10
     uint len;
     uint n;
@@ -832,15 +829,16 @@ else
     A = new Darray();
     for(n = 0; k < r8; k++)
     {
-        v = othis.Get(k, cc);
+        v = othis.Get(PropertyKey(k), cc);
         if(v)
         {
-            A.Set(n, *v, Property.Attribute.None, cc);
+            A.Set(PropertyKey(n), *v, Property.Attribute.None, cc);
         }
         n++;
     }
 
-    A.Set(Key.length, n, Property.Attribute.DontEnum, cc);
+    auto vn = Value(n);
+    A.Set(Key.length, vn, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -1014,11 +1012,11 @@ DError* sort(
     {
         uint index;
 
-        othis.Set(u, pvalues[u], Property.Attribute.None, cc);
+        othis.Set(PropertyKey(u), pvalues[u], Property.Attribute.None, cc);
         index = pindices[u];
         if(index >= nprops)
         {
-            othis.Delete(index);
+            othis.Delete(PropertyKey(index));
         }
     }
 
@@ -1035,6 +1033,8 @@ DError* splice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : PropertyKey;
+
     // ECMA v3 15.4.4.12
     uint len;
     uint k;
@@ -1138,12 +1138,13 @@ else
     //writef("Darray.splice(startidx = %d, delcnt = %d)\n", startidx, delcnt);
     for(k = 0; k != delcnt; k++)
     {
-        v = othis.Get(startidx + k, cc);
+        v = othis.Get(PropertyKey(startidx + k), cc);
         if(v)
-            A.Set(k, *v, Property.Attribute.None, cc);
+            A.Set(PropertyKey(k), *v, Property.Attribute.None, cc);
     }
 
-    A.Set(Key.length, delcnt, Property.Attribute.DontEnum, cc);
+    auto delv = Value(delcnt);
+    A.Set(Key.length, delv, Property.Attribute.DontEnum, cc);
     inscnt = (arglist.length > 2) ? cast(uint)arglist.length - 2 : 0;
     if(inscnt != delcnt)
     {
@@ -1151,25 +1152,27 @@ else
         {
             for(k = startidx; k != (len - delcnt); k++)
             {
-                v = othis.Get(k + delcnt, cc);
+                v = othis.Get(PropertyKey(k + delcnt), cc);
                 if(v)
-                    othis.Set(k + inscnt, *v, Property.Attribute.None, cc);
+                    othis.Set(PropertyKey(k + inscnt), *v,
+                              Property.Attribute.None, cc);
                 else
-                    othis.Delete(k + inscnt);
+                    othis.Delete(PropertyKey(k + inscnt));
             }
 
             for(k = len; k != (len - delcnt + inscnt); k--)
-                othis.Delete(k - 1);
+                othis.Delete(PropertyKey(k - 1));
         }
         else
         {
             for(k = len - delcnt; k != startidx; k--)
             {
-                v = othis.Get(k + delcnt - 1, cc);
+                v = othis.Get(PropertyKey(k + delcnt - 1), cc);
                 if(v)
-                    othis.Set(k + inscnt - 1, *v, Property.Attribute.None, cc);
+                    othis.Set(PropertyKey(k + inscnt - 1), *v,
+                              Property.Attribute.None, cc);
                 else
-                    othis.Delete(k + inscnt - 1);
+                    othis.Delete(PropertyKey(k + inscnt - 1));
             }
         }
     }
@@ -1177,12 +1180,12 @@ else
     for(a = 2; a < arglist.length; a++)
     {
         v = &arglist[a];
-        othis.Set(k, *v, Property.Attribute.None, cc);
+        othis.Set(PropertyKey(k), *v, Property.Attribute.None, cc);
         k++;
     }
 
-    othis.Set(Key.length, len - delcnt + inscnt,
-              Property.Attribute.DontEnum, cc);
+    auto lv = Value(len - delcnt + inscnt);
+    othis.Set(Key.length, lv, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -1193,32 +1196,34 @@ DError* unshift(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import dmdscript.primitive : PropertyKey;
     // ECMA v3 15.4.4.13
     Value* v;
     uint len;
     uint k;
+    Value val;
 
-    v = othis.Get(Key.length, cc);
+    v = othis.Get(PropertyKey(Key.length), cc);
     if(!v)
         v = &undefined;
     len = v.toUint32(cc);
 
     for(k = len; k>0; k--)
     {
-        v = othis.Get(k - 1, cc);
+        v = othis.Get(PropertyKey(k - 1), cc);
         if(v)
-            othis.Set(cast(uint)(k + arglist.length - 1), *v,
+            othis.Set(PropertyKey(cast(uint)(k + arglist.length - 1)), *v,
                       Property.Attribute.None, cc);
         else
-            othis.Delete(cast(uint)(k + arglist.length - 1));
+            othis.Delete(PropertyKey(cast(uint)(k + arglist.length - 1)));
     }
 
     for(k = 0; k < arglist.length; k++)
     {
-        othis.Set(k, arglist[k], Property.Attribute.None, cc);
+        othis.Set(PropertyKey(k), arglist[k], Property.Attribute.None, cc);
     }
-    othis.Set(Key.length, len + arglist.length,
-              Property.Attribute.DontEnum, cc);
+    val.put(len + arglist.length);
+    othis.Set(Key.length, val, Property.Attribute.DontEnum, cc);
     ret.put(len + arglist.length);
     return null;
 }

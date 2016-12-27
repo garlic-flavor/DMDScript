@@ -196,16 +196,8 @@ struct IR
                         goto Lthrow;
                     }
                     c = locals + (code + 3).index;
-                    if(c.type == Value.Type.Number &&
-                       (i32 = cast(int)c.number) == c.number &&
-                       i32 >= 0)
-                    {
-                        v = o.Get(cast(uint)i32, cc);
-                    }
-                    else
-                    {
-                        v = o.Get(c.toPropertyKey, cc);
-                    }
+                    v = o.Get(c.toPropertyKey, cc);
+
                     if(!v)
                         v = &undefined;
                     *a = *v;
@@ -218,20 +210,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    if(c.type == Value.Type.Number &&
-                       (i32 = cast(int)c.number) == c.number &&
-                       i32 >= 0)
-                    {
-                        if(b.type == Value.Type.Object)
-                            sta = b.object.Set(cast(uint)i32, *a,
-                                               Property.Attribute.None, cc);
-                        else
-                            sta = b.Set(cast(uint)i32, *a, cc);
-                    }
-                    else
-                    {
-                        sta = b.Set(c.toPropertyKey, *a, cc);
-                    }
+                    sta = b.Set(c.toPropertyKey, *a, cc);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.Put].size;
@@ -410,7 +389,7 @@ struct IR
                         {
                             a.put(a.toNumber(cc) + v.toNumber(cc));
                         }
-                        // *v = *a;//full copy // needed ?
+                        *v = *a; //full copy
                     }
 
                     static assert(IRTypes[Opcode.AddAsS].size
@@ -438,7 +417,9 @@ struct IR
 
                 case Opcode.PutScope:            // s = a
                     a = locals + (code + 1).index;
-                    a.checkReference();
+                    sta = a.checkReference;
+                    if (sta !is null)
+                        goto Lthrow;
                     cc.set(*(code + 2).id, *a);
                     code += IRTypes[Opcode.PutScope].size;
                     break;
@@ -1378,7 +1359,8 @@ struct IR
                     else
                     {
                         o = cc.getNonFakeObject;
-                        o.Set(*id, Value(*ppk), Property.Attribute.None, cc);
+                        auto val = Value(*ppk);
+                        o.Set(*id, val, Property.Attribute.None, cc);
                         code += IRTypes[Opcode.NextScope].size;
                     }
                     break;
@@ -1618,14 +1600,18 @@ struct IR
 
                 case Opcode.RetExp:
                     a = locals + (code + 1).index;
-                    a.checkReference();
+                    sta = a.checkReference;
+                    if (sta !is null)
+                        goto Lthrow;
                     ret = *a;
 
                     return null;
 
                 case Opcode.ImpRet:
                     a = locals + (code + 1).index;
-                    a.checkReference;
+                    sta = a.checkReference;
+                    if (sta !is null)
+                        goto Lthrow;
                     ret = *a;
 
                     code += IRTypes[Opcode.ImpRet].size;
@@ -1808,9 +1794,8 @@ class Catch : Dobject
     import dmdscript.callcontext : CallContext;
     import dmdscript.value : Value;
 
-    alias GetImpl = Dobject.GetImpl;
     // This is so scope_get() will skip over these objects
-    override Value* GetImpl(in ref PropertyKey, ref CallContext) const
+    override Value* Get(in PropertyKey, ref CallContext) const
     {
         return null;
     }
@@ -1841,8 +1826,7 @@ class Finally : Dobject
     import dmdscript.value : Value;
     import dmdscript.opcodes : IR;
 
-    alias GetImpl = Dobject.GetImpl;
-    override Value* GetImpl(in ref PropertyKey, ref CallContext) const
+    override Value* Get(in PropertyKey, ref CallContext) const
     {
         return null;
     }

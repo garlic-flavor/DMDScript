@@ -83,7 +83,7 @@ public static:
     {
         import dmdscript.primitive : PropertyKey;
         import dmdscript.dfunction : Dconstructor;
-
+        Value val;
         foreach(one; __traits(allMembers, M))
         {
             static if (is(typeof(__traits(getMember, M, one))))
@@ -100,13 +100,10 @@ public static:
                         enum name = PropertyKey(desc.realName);
                     else
                         enum name = PropertyKey(one);
-
-                    o.DefineOwnProperty(
-                        name,
-                        new DnativeFunction(
+                    val.put(new DnativeFunction(
                             &__traits(getMember, M, one),
-                            one, desc.length, Dfunction.getPrototype),
-                        prop);
+                            one, desc.length, Dfunction.getPrototype));
+                    o.DefineOwnProperty(name, val, prop);
                 }
             }
         }
@@ -142,6 +139,7 @@ void installConstants(ARGS...)(
     Dobject o, Property.Attribute prop = Property.Attribute.DontEnum |
                                          Property.Attribute.DontDelete |
                                          Property.Attribute.ReadOnly)
+
 {
     static if      (0 == ARGS.length){}
     else

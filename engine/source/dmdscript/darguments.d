@@ -48,63 +48,53 @@ class Darguments : Dobject
         this.parameters = parameters;
 
         CallContext cc;
+        Value v;
         if(caller)
-            Set(Key.caller, caller, Property.Attribute.DontEnum, cc);
+        {
+            v.put(caller);
+            Set(Key.caller, v, Property.Attribute.DontEnum, cc);
+        }
         else
-            Set(Key.caller, Value.Type.Null, Property.Attribute.DontEnum, cc);
+        {
+            v.put(Value.Type.Null);
+            Set(Key.caller, v, Property.Attribute.DontEnum, cc);
+        }
 
-        Set(Key.callee, callee, Property.Attribute.DontEnum, cc);
-        Set(Key.length, arglist.length, Property.Attribute.DontEnum, cc);
+        v.put(callee);
+        Set(Key.callee, v, Property.Attribute.DontEnum, cc);
+        v.put(arglist.length);
+        Set(Key.length, v, Property.Attribute.DontEnum, cc);
 
         for(uint a = 0; a < arglist.length; a++)
         {
-            Set(a, arglist[a], Property.Attribute.DontEnum, cc);
+            v.put(arglist[a]);
+            Set(PropertyKey(a), v, Property.Attribute.DontEnum, cc);
         }
     }
 
     override protected
-    Value* GetImpl(in ref PropertyKey PropertyName, ref CallContext cc)
+    Value* Get(in PropertyKey PropertyName, ref CallContext cc)
     {
         import dmdscript.primitive : StringToIndex;
 
         uint index;
-
-        return (StringToIndex(PropertyName.toString, index)
-                && index < parameters.length)
-            ? actobj.GetImpl(index, cc)
-            : super.GetImpl(PropertyName, cc);
-    }
-
-    override Value* GetImpl(in uint index, ref CallContext cc)
-    {
-        return (index < parameters.length)
-            ? actobj.GetImpl(index, cc)
-            : super.GetImpl(index, cc);
+        return (PropertyName.isArrayIndex(index) && index < parameters.length)
+            ? actobj.Get(PropertyKey(index), cc)
+            : super.Get(PropertyName, cc);
     }
 
     override
-    DError* SetImpl(in ref PropertyKey PropertyName, ref Value value,
-                    in Property.Attribute attributes, ref CallContext cc)
-    {
-        import dmdscript.primitive : StringToIndex;
-
-        uint index;
-
-        if(StringToIndex(PropertyName.toString, index)
-           && index < parameters.length)
-            return actobj.SetImpl(PropertyName, value, attributes, cc);
-        else
-            return Dobject.SetImpl(PropertyName, value, attributes, cc);
-    }
-
-    override
-    DError* SetImpl(in uint index, ref Value value,
+    DError* Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
-        if(index < parameters.length)
-            return actobj.SetImpl(index, value, attributes, cc);
+        import dmdscript.primitive : StringToIndex;
+
+        uint index;
+
+        if(PropertyName.isArrayIndex(index) && index < parameters.length)
+            return actobj.Set(PropertyKey(index), value, attributes, cc);
         else
-            return Dobject.SetImpl(index, value, attributes, cc);
+            return Dobject.Set(PropertyName, value, attributes, cc);
     }
 
     override int CanPut(in string_t PropertyName)
@@ -114,31 +104,30 @@ class Darguments : Dobject
         uint index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
-               ? actobj.CanPut(PropertyName)
-               : Dobject.CanPut(PropertyName);
+            ? actobj.CanPut(PropertyKey(index))
+            : Dobject.CanPut(PropertyName);
     }
 
-    override bool HasProperty(in ref PropertyKey PropertyName)
+    override bool HasProperty(in PropertyKey PropertyName)
     {
         import dmdscript.primitive : StringToIndex;
 
         uint index;
 
         return (PropertyName.isArrayIndex(index) && index < parameters.length)
-               ? actobj.HasProperty(PropertyName)
-               : Dobject.HasProperty(PropertyName);
+            ? actobj.HasProperty(PropertyKey(index))
+            : Dobject.HasProperty(PropertyName);
     }
 
-    override bool Delete(in ref PropertyKey PropertyName)
+    override bool Delete(in PropertyKey PropertyName)
     {
         import dmdscript.primitive : StringToIndex;
 
         uint index;
 
-        return (StringToIndex(PropertyName.toString, index)
-                && index < parameters.length)
-               ? actobj.Delete(PropertyName)
-               : Dobject.Delete(PropertyName);
+        return (PropertyName.isArrayIndex(index) && index < parameters.length)
+            ? actobj.Delete(PropertyKey(index))
+            : Dobject.Delete(PropertyName);
     }
 }
 

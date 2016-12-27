@@ -232,6 +232,10 @@ enum NoDefaultValueError = err!typeerror
 enum ReferenceError = err!(referenceerror, string_t)
     ("%s");
 
+version (TEST262)
+enum HTMLEndCommentError = syntaxerr!()
+    ("--> comment does not allowed.");
+
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // needs more proper implementation.
 enum CannotPutError = err!(typeerror)("Cannot put error");

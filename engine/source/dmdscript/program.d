@@ -52,14 +52,14 @@ class Program
                  FunctionDefinition* pfd)
     {
         import dmdscript.statement : TopStatement;
+        import dmdscript.lexer : Mode;
         import dmdscript.parse : Parser;
         import dmdscript.scopex : Scope;
 
         TopStatement[] topstatements;
         string_t msg;
 
-        Parser p = new Parser(progIdentifier, srctext,
-                              Parser.UseStringtable.Yes);
+        auto p = new Parser!(Mode.UseStringtable)(progIdentifier, srctext);
 
         if(auto exception = p.parseProgram(topstatements))
         {
@@ -143,7 +143,7 @@ class Program
     */
     void execute(string_t[] args)
     {
-        import dmdscript.primitive : Key;
+        import dmdscript.primitive : Key, PropertyKey;
         import dmdscript.value : Value, DError;
         import dmdscript.darray : Darray;
         import dmdscript.dobject : Dobject;
@@ -162,13 +162,16 @@ class Program
 
         // Set argv and argc for execute
         arguments = new Darray();
-        dglobal.Set(Key.arguments, arguments,
+        auto val = Value(arguments);
+        dglobal.Set(Key.arguments, val,
                     Property.Attribute.DontDelete |
                     Property.Attribute.DontEnum, callcontext);
         arguments.length.put(args.length);
         for(int i = 0; i < args.length; i++)
         {
-            arguments.Set(i, args[i], Property.Attribute.DontEnum, callcontext);
+            val.put(args[i]);
+            arguments.Set(PropertyKey(i), val,
+                          Property.Attribute.DontEnum, callcontext);
         }
 
         Value[] p1;

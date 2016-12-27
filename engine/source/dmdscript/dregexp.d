@@ -209,22 +209,18 @@ class DregexpConstructor : Dconstructor
         return Construct(cc, ret, arglist);
     }
 
-
-    alias GetImpl = Dobject.GetImpl;
-
-    override Value* GetImpl(in ref PropertyKey PropertyName, ref CallContext cc)
+    override Value* Get(in PropertyKey PropertyName, ref CallContext cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
-        return super.GetImpl(sk, cc);
+        return super.Get(sk, cc);
     }
 
-    alias SetImpl = super.SetImpl;
     override
-    DError* SetImpl(in ref PropertyKey PropertyName, ref Value value,
+    DError* Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
-        return Dfunction.SetImpl(sk, value, attributes, cc);
+        return Dfunction.Set(sk, value, attributes, cc);
     }
 
     override int CanPut(in string_t PropertyName)
@@ -232,13 +228,13 @@ class DregexpConstructor : Dconstructor
         return Dfunction.CanPut(perlAlias(PropertyName));
     }
 
-    override bool HasProperty(in ref PropertyKey PropertyName)
+    override bool HasProperty(in PropertyKey PropertyName)
     {
         auto key = PropertyKey(perlAlias(PropertyName));
         return Dfunction.HasProperty(key);
     }
 
-    override bool Delete(in ref PropertyKey PropertyName)
+    override bool Delete(in PropertyKey PropertyName)
     {
         auto pk = PropertyKey(perlAlias(PropertyName.toString));
         return Dfunction.Delete(pk);
@@ -445,7 +441,8 @@ class Dregexp : Dobject
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Key.lastIndex, 0.0,
+        vb.put(0.0);
+        Set(Key.lastIndex, vb,
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
 
@@ -497,7 +494,8 @@ class Dregexp : Dobject
             Property.Attribute.ReadOnly |
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
-        Set(Key.lastIndex, 0.0,
+        vb.put(0.0);
+        Set(Key.lastIndex, vb,
             Property.Attribute.DontDelete |
             Property.Attribute.DontEnum, cc);
 
@@ -620,12 +618,14 @@ static:
                 {
                     Darray a = new Darray();
 
-                    a.Set(Key.input, r.input, Property.Attribute.None, cc);
-                    a.Set(Key.index, r.index, Property.Attribute.None, cc);
-                    a.Set(Key.lastIndex, r.lastIndex,
-                          Property.Attribute.None, cc);
+                    auto val = Value(r.input);
+                    a.Set(Key.input, val, Property.Attribute.None, cc);
+                    val.put(r.index);
+                    a.Set(Key.index, val, Property.Attribute.None, cc);
+                    val.put(r.lastIndex);
+                    a.Set(Key.lastIndex, val, Property.Attribute.None, cc);
 
-                    a.Set(cast(uint)0, *dc.lastMatch,
+                    a.Set(PropertyKey(0), *dc.lastMatch,
                           Property.Attribute.None, cc);
 
                     // [1]..[nparens]
@@ -634,22 +634,29 @@ static:
                     for(i = 1; i <= nmatches; i++)
                     {
                         if(i > r.nmatches)
-                            a.Set(i, Text.Empty, Property.Attribute.None, cc);
-
+                        {
+                            val.put(Text.Empty);
+                            a.Set(PropertyKey(i), val,
+                                  Property.Attribute.None, cc);
+                        }
                         // Reuse values already put into dc.dollar[]
                         else if(r.nmatches <= 9)
-                            a.Set(i, *dc.dollar[i],
+                            a.Set(PropertyKey(i), *dc.dollar[i],
                                   Property.Attribute.None, cc);
                         else if(i > r.nmatches - 9)
-                            a.Set(i, *dc.dollar[i - (r.nmatches - 9)],
+                            a.Set(PropertyKey(i),
+                                  *dc.dollar[i - (r.nmatches - 9)],
                                   Property.Attribute.None, cc);
                         else if(r.captures(i) is null)
                         {
-                            a.Set(i, vundefined, Property.Attribute.None, cc);
+                            val.putVundefined;
+                            a.Set(PropertyKey(i), val,
+                                  Property.Attribute.None, cc);
                         }
                         else
                         {
-                            a.Set(i, r.captures(i),
+                            val.put(r.captures(i));
+                            a.Set(PropertyKey(i), val,
                                   Property.Attribute.None, cc);
                         }
                     }

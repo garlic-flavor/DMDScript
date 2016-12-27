@@ -46,6 +46,9 @@ struct Property
         DontConfig     = 0x0400, //
 
         Accessor       = 0x8000, // This is an Accessor Property.
+
+        Silent         = 0x0800,
+        SilentReadOnly = ReadOnly | Silent,
     }
 
     //--------------------------------------------------------------------
@@ -208,7 +211,7 @@ struct Property
                 return true;
             }
         }
-        return false;
+        return 0 != (_attr & Attribute.Silent);
     }
     /// ditto
     @trusted
@@ -221,9 +224,9 @@ struct Property
             return true;
         }
         else if (_attr & Attribute.Accessor)
-            return false;
+            return 0 != (_attr & Attribute.Silent);
         else
-            return _value == v;
+            return _value == v || (0 != (_attr & Attribute.Silent));
     }
 
 /*
@@ -312,7 +315,8 @@ struct Property
                 _attr != (a | Attribute.Accessor & ~Attribute.ReadOnly))
                 return false;
 
-            a = a | Attribute.Accessor & ~Attribute.ReadOnly;
+            a = a | Attribute.Accessor & ~Attribute.ReadOnly
+                & ~Attribute.Silent;
         }
         else
         {
@@ -327,7 +331,8 @@ struct Property
                           ~Attribute.ReadOnly))
                 return false;
 
-            a = a & ~Attribute.Accessor & ~Attribute.DontOverride;
+            a = a & ~Attribute.Accessor & ~Attribute.DontOverride
+                & ~Attribute.Silent;
         }
         return true;
     }
@@ -435,6 +440,13 @@ struct Property
     bool IsGenericDescriptor() const
     {
         return !IsAccessorDescriptor && !IsDataDescriptor;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    bool IsSilence() const
+    {
+        return 0 != (_attr & Attribute.Silent);
     }
 
     //--------------------------------------------------------------------
@@ -612,13 +624,19 @@ final class PropTable
                 if (p.isKeyWord)
                     return null;
 */
-                return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                if (p.IsSilence)
+                    return null;
+                else
+                    return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
             if (!_canExtend(key))
             {
                 p.preventExtensions;
-                return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                if (p.IsSilence)
+                    return null;
+                else
+                    return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
             return p.set(value, attributes, cc, othis);

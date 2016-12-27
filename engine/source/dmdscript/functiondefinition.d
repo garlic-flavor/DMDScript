@@ -220,10 +220,11 @@ class FunctionDefinition : TopStatement
     {
         // Instantiate all the Var's per 10.1.3
         auto actobj = cc.variable;
+        auto val = vundefined;
         foreach(name; varnames)
         {
             // If name is already declared, don't override it
-            actobj.Set(name.toString, vundefined,
+            actobj.Set(PropertyKey(name.toString), val,
                        Property.Attribute.Instantiate |
                        Property.Attribute.DontOverride | attributes, cc);
         }
@@ -233,10 +234,10 @@ class FunctionDefinition : TopStatement
         {
             // Set [[Scope]] property per 13.2 step 7
             auto fobject = new DdeclaredFunction(fd, cc.scopes.dup);
-
+            val.put(fobject);
             if(fd.name !is null && !fd.isliteral) // skip anonymous functions
             {
-                actobj.Set(fd.name.toString, fobject,
+                actobj.Set(*fd.name, val,
                            Property.Attribute.Instantiate | attributes, cc);
             }
         }

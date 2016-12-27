@@ -129,10 +129,11 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    void checkReference() const
+    DError* checkReference() const
     {
         if(_type == Type.RefError)
-            throwRefError();
+            return UndefinedVarError(_text);
+        return null;
     }
 
     //--------------------------------------------------------------------
@@ -746,12 +747,25 @@ struct Value
         case Type.Boolean:
             return _dbool ? Key._true : Key._false;
         case Type.Number:
-            return PropertyKey(cast(size_t)_number);
+        {
+            if (0 <= _number)
+            {
+                auto i32 = cast(size_t)_number;
+                if (_number == cast(double)i32)
+                    return PropertyKey(i32);
+            }
+            return PropertyKey(NumberToString(_number));
+        }
         case Type.String:
-            if (0 < _hash)
+        {
+            size_t i32;
+            if      (StringToIndex(_text, i32))
+                return PropertyKey(i32);
+            else if (0 < _hash)
                 return PropertyKey(_text, _hash);
             else
                 return PropertyKey(_text);
+        }
         case Type.Object:
             return Key.Object;
         case Type.Iter:
@@ -1223,7 +1237,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    Value* Get(in ref PropertyKey PropertyName, ref CallContext cc)
+    Value* Get(in PropertyKey PropertyName, ref CallContext cc)
     {
         import std.conv : to;
 
@@ -1235,22 +1249,6 @@ struct Value
             throw CannotGetFromPrimitiveError
                 .toThrow(PropertyName.toString, _type.to!string_t,
                          toString(cc));
-            //return &vundefined;
-        }
-    }
-
-    // ditto
-    Value* Get(in uint index, ref CallContext cc)
-    {
-        import std.conv : to;
-
-        if(_type == Type.Object)
-            return _object.Get(index, cc);
-        else
-        {
-            // Should we generate the error, or just return undefined?
-            throw CannotGetIndexFromPrimitiveError
-                .toThrow(index, _type.to!string_t, toString(cc));
             //return &vundefined;
         }
     }

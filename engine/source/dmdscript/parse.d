@@ -18,25 +18,27 @@
 
 module dmdscript.parse;
 
-import dmdscript.primitive;
-import dmdscript.callcontext;
-import dmdscript.lexer;
-import dmdscript.functiondefinition;
-import dmdscript.expression;
-import dmdscript.statement;
-import dmdscript.ir;
-import dmdscript.errmsgs;
-import dmdscript.exception;
+import dmdscript.lexer : Lexer, Mode;
 debug import std.stdio;
 
-class Parser : Lexer
+class Parser(Mode MODE) : Lexer!MODE
 {
+    import dmdscript.functiondefinition : FunctionDefinition;
+    import dmdscript.primitive : string_t, Identifier;
+    import dmdscript.exception : ScriptException;
+    import dmdscript.lexer : IdTable, Tok;
+    import dmdscript.statement : TopStatement, Statement;
+    import dmdscript.expression;
+    import dmdscript.errmsgs;
+    import dmdscript.ir : Opcode;
+    import dmdscript.statement;
+
     FunctionDefinition lastnamedfunc;
 
-    this(string_t sourcename, string_t base, UseStringtable useStringtable)
+    this(string_t sourcename, string_t base, IdTable baseTable = null)
     {
         //writefln("Parser.this(base = '%s')", base);
-        super(sourcename, base, useStringtable);
+        super(sourcename, base, baseTable);
         nextToken();            // start up the scanner
     }
 
@@ -48,12 +50,12 @@ class Parser : Lexer
     {
         import std.array : Appender;
         import dmdscript.property : PropertyKey;
-        Parser p;
+
         Appender!(Identifier[]) parameters;
         Appender!(TopStatement[]) topstatements;
         FunctionDefinition fd = null;
 
-        p = new Parser("anonymous", params, UseStringtable.No);
+        auto p = new Parser!(Mode.None)("anonymous", params);
 
         // Parse FormalParameterList
         while(p.token != Tok.Eof)
@@ -79,7 +81,7 @@ class Parser : Lexer
             goto Lreturn;
 
         // Parse StatementList
-        p = new Parser("anonymous", bdy, UseStringtable.No);
+        p = new Parser!(Mode.None)("anonymous", bdy);
         for(;; )
         {
             if(p.token == Tok.Eof)
@@ -304,6 +306,7 @@ private:
     Statement parseStatement()
     {
         import dmdscript.property : PropertyKey;
+        import dmdscript.lexer : Token;
 
         Statement s;
         Token* t;
@@ -740,6 +743,7 @@ private:
 
     int check(Tok value)
     {
+        import dmdscript.lexer : Token;
         if(token != value)
         {
             error(ExpectedGenericError(token.toString, Token.toString(value)));
@@ -882,6 +886,7 @@ private:
     Expression parseArrayLiteral()
     {
         import std.array : Appender;
+
         Expression e;
         Appender!(Expression[]) elements;
         uint linnum;
@@ -922,6 +927,7 @@ private:
     Expression parseObjectLiteral()
     {
         import std.array : Appender;
+
         Expression e;
         Appender!(Field[]) fields;
         uint linnum;

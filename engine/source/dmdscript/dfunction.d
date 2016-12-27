@@ -155,11 +155,14 @@ protected:
         super(prototype, Key.Function);
         this.name = name;
 
-        DefineOwnProperty(Key.length, length,
+        Value val;
+        val.put(length);
+        DefineOwnProperty(Key.length, val,
                           Property.Attribute.DontDelete |
                           Property.Attribute.DontEnum |
                           Property.Attribute.ReadOnly);
-        DefineOwnProperty(Key.name, name,
+        val.put(name);
+        DefineOwnProperty(Key.name, val,
                           Property.Attribute.DontDelete |
                           Property.Attribute.DontEnum |
                           Property.Attribute.ReadOnly);
@@ -231,6 +234,7 @@ class DfunctionConstructor : Dconstructor
     {
         import dmdscript.functiondefinition : FunctionDefinition;
         import dmdscript.exception : ScriptException;
+        import dmdscript.lexer : Mode;
         import dmdscript.parse : Parser;
         import dmdscript.scopex : Scope;
         import dmdscript.ddeclaredfunction : DdeclaredFunction;
@@ -257,7 +261,8 @@ class DfunctionConstructor : Dconstructor
             }
         }
 
-        if((exception = Parser.parseFunctionDefinition(fd, P, bdy)) !is null)
+        if((exception =
+            Parser!(Mode.None).parseFunctionDefinition(fd, P, bdy)) !is null)
             goto Lsyntaxerror;
 
         if(fd)
@@ -330,7 +335,7 @@ DError* apply(
     // ECMA v3 15.3.4.3
 
     import core.sys.posix.stdlib : alloca;
-    import dmdscript.primitive : Key;
+    import dmdscript.primitive : Key, PropertyKey;
     import dmdscript.darray : Darray;
     import dmdscript.darguments : Darguments;
     import dmdscript.value : vundefined;
@@ -402,7 +407,7 @@ DError* apply(
 
         for(i = 0; i < len; i++)
         {
-            x = a.Get(i, cc);
+            x = a.Get(PropertyKey(i), cc);
             alist[i] = *x;
         }
 

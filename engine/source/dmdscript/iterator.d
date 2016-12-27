@@ -61,8 +61,6 @@ struct Iterator
 
         Property* p;
 
-        //writef("Iterator::done() p = %p\n", p);
-
         for(;; keyindex++)
         {
             while(keyindex == keys.length)
@@ -151,7 +149,8 @@ static:
     {
         auto obj = new Dobject;
         obj.CreateDataProperty(Key.value, value);
-        obj.CreateDataProperty(Key.done, done);
+        auto val = Value(done);
+        obj.CreateDataProperty(Key.done, val);
         return obj;
     }
 

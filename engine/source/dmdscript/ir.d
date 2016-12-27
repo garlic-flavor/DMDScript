@@ -314,8 +314,10 @@ align(size_t.sizeof):
     debug string toString()
     {
         import dmdscript.opcodes : IR;
-        static if      (is(T : Identifier) || is(T : Value*))
+        static if      (is(T : Identifier))
             auto opName = text("\"", *operand, "\"");
+        else static if (is(T : Value*))
+            auto opName = text("\"", operand.text, "\"");
         else static if (is(T : FunctionDefinition))
             auto opName = text("function\n{\n", IR.toString(operand.code),
                                "}");

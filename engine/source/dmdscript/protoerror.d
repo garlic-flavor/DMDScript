@@ -65,14 +65,17 @@ package static:
 
         _Initializer.initFuncs(TEXT_D1, &newD0);
 
-        _class_prototype.DefineOwnProperty(Key.name, TEXT_D1,
+        Value val;
+        val.put(TEXT_D1);
+        _class_prototype.DefineOwnProperty(Key.name, val,
                                            Property.Attribute.None);
-        auto s = TEXT_D1 ~ ".prototype.message";
-        _class_prototype.DefineOwnProperty(Key.message, s,
+        val.put(TEXT_D1 ~ ".prototype.message");
+        _class_prototype.DefineOwnProperty(Key.message, val,
                                            Property.Attribute.None);
-        _class_prototype.DefineOwnProperty(Key.description, s,
+        _class_prototype.DefineOwnProperty(Key.description, val,
                                            Property.Attribute.None);
-        _class_prototype.DefineOwnProperty(Key.number, 0,
+        val.put(0);
+        _class_prototype.DefineOwnProperty(Key.number, val,
                                            Property.Attribute.None);
     }
 
@@ -107,9 +110,11 @@ class D0base : Dobject
 
         super(prototype, typename);
 
-        DefineOwnProperty(Key.message, m, Property.Attribute.None);
-        DefineOwnProperty(Key.description, m, Property.Attribute.None);
-        DefineOwnProperty(Key.number, cast(double)0, Property.Attribute.None);
+        auto val = Value(m);
+        DefineOwnProperty(Key.message, val, Property.Attribute.None);
+        DefineOwnProperty(Key.description, val, Property.Attribute.None);
+        val.put(0);
+        DefineOwnProperty(Key.number, val, Property.Attribute.None);
         exception = new ScriptException(typename, m);
     }
 
@@ -121,9 +126,11 @@ class D0base : Dobject
         assert(exception !is null);
         this.exception = exception;
 
-        DefineOwnProperty(Key.message, exception.msg, Property.Attribute.None);
-        DefineOwnProperty(Key.description, exception.toString,
-                          Property.Attribute.None);
+        Value val;
+        val.put(exception.msg);
+        DefineOwnProperty(Key.message, val, Property.Attribute.None);
+        val.put(exception.toString);
+        DefineOwnProperty(Key.description, val, Property.Attribute.None);
         // DefineOwnProperty(Key.number, cast(double)exception.code,
         //                   Property.Attribute.None);
     }
@@ -137,9 +144,11 @@ class D0base : Dobject
         assert(exception !is null);
         this.exception = exception;
 
-        DefineOwnProperty(Key.message, exception.msg, Property.Attribute.None);
-        DefineOwnProperty(Key.description, exception.toString,
-                          Property.Attribute.None);
+        Value val;
+        val.put(exception.msg);
+        DefineOwnProperty(Key.message, val, Property.Attribute.None);
+        val.put(exception.toString);
+        DefineOwnProperty(Key.description, val, Property.Attribute.None);
         // DefineOwnProperty(Key.number, cast(double)exception.code,
         //                   Property.Attribute.None);
     }

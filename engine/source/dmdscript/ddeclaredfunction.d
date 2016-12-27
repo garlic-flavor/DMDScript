@@ -53,9 +53,11 @@ private
         // ECMA 3 13.2
         auto o = new Dobject(Dobject.getPrototype);        // step 9
         CallContext cc;
-        Set(Key.prototype, o, Property.Attribute.DontEnum, cc);  // step 11
+        auto val = Value(o);
+        Set(Key.prototype, val, Property.Attribute.DontEnum, cc);  // step 11
         // step 10
-        o.Set(Key.constructor, this, Property.Attribute.DontEnum, cc);
+        val.put(this);
+        o.Set(Key.constructor, val, Property.Attribute.DontEnum, cc);
 
     }
 
@@ -105,15 +107,15 @@ private
             foreach(p; fd.parameters)
             {
                 Value* v = (a < arglist.length) ? &arglist[a++] : &undefined;
-                actobj.Set(p.toString, *v, Property.Attribute.DontDelete, cc);
+                actobj.Set(*p, *v, Property.Attribute.DontDelete, cc);
             }
         }
 
         // Generate the Arguments Object
         // ECMA v3 10.1.8
         args = new Darguments(cc.caller, this, actobj, fd.parameters, arglist);
-
-        actobj.Set(Key.arguments, args, Property.Attribute.DontDelete, cc);
+        vtmp.put(args);
+        actobj.Set(Key.arguments, vtmp, Property.Attribute.DontDelete, cc);
 
         // The following is not specified by ECMA, but seems to be supported
         // by jscript. The url www.grannymail.com has the following code
@@ -125,7 +127,7 @@ private
         //		  this[i+1] = arguments[i]
         //	    }
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
-        Set(Key.arguments, args, Property.Attribute.DontDelete, cc);
+        Set(Key.arguments, vtmp, Property.Attribute.DontDelete, cc);
         // make grannymail bug work
 
         // auto newCC = CallContext(cc, actobj, this, fd);
@@ -161,7 +163,8 @@ private
         // Remove the arguments object
         //Value* v;
         //v=Get(TEXT_arguments);
-        Set(Key.arguments, vundefined, Property.Attribute.None, cc);
+        vtmp.putVundefined;
+        Set(Key.arguments, vtmp, Property.Attribute.None, cc);
 
         return result;
     }

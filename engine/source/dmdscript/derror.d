@@ -31,33 +31,36 @@ class Derror : Dobject
     import dmdscript.dobject : Initializer;
     import dmdscript.property : Property;
 
-    this(ref CallContext cc, Value * m, Value * v2)
+    this(ref CallContext cc, Value* m, Value* v2)
     {
         super(getPrototype, Key.Error);
 
         immutable(char)[] msg;
         msg = m.toString(cc);
-        Set(Key.message, msg, Property.Attribute.None, cc);
-        Set(Key.description, msg, Property.Attribute.None, cc);
+        auto val = Value(msg);
+        Set(Key.message, val, Property.Attribute.None, cc);
+        Set(Key.description, val, Property.Attribute.None, cc);
         if(m.isString())
         {
         }
-        else if(m.isNumber())
+        else if(m.isNumber)
         {
             double n = m.toNumber(cc);
             n = cast(double)(/*FACILITY |*/ cast(int)n);
-            Set(Key.number, n, Property.Attribute.None, cc);
+            val.put(n);
+            Set(Key.number, val, Property.Attribute.None, cc);
         }
-        if(v2.isString())
+        if(v2.isString)
         {
-            Set(Key.description, v2.toString(cc), Property.Attribute.None, cc);
-            Set(Key.message, v2.toString(cc), Property.Attribute.None, cc);
+            Set(Key.description, *v2, Property.Attribute.None, cc);
+            Set(Key.message, *v2, Property.Attribute.None, cc);
         }
-        else if(v2.isNumber())
+        else if(v2.isNumber)
         {
             double n = v2.toNumber(cc);
             n = cast(double)(/*FACILITY |*/ cast(int)n);
-            Set(Key.number, n, Property.Attribute.None, cc);
+            val.put(n);
+            Set(Key.number, val, Property.Attribute.None, cc);
         }
     }
 
@@ -76,13 +79,17 @@ public static:
 
         _Initializer.initPrototype;
 
-        _class_prototype.DefineOwnProperty(Key.name, Key.Error,
+        Value val;
+        val.put(Key.Error);
+        _class_prototype.DefineOwnProperty(Key.name, val,
                                            Property.Attribute.None);
-        _class_prototype.DefineOwnProperty(Key.message, Text.Empty,
+        val.put(Text.Empty);
+        _class_prototype.DefineOwnProperty(Key.message, val,
                                            Property.Attribute.None);
-        _class_prototype.DefineOwnProperty(Key.description, Text.Empty,
+        _class_prototype.DefineOwnProperty(Key.description, val,
                                            Property.Attribute.None);
-        _class_prototype.DefineOwnProperty(Key.number, cast(double)0,
+        val.put(0);
+        _class_prototype.DefineOwnProperty(Key.number, val,
                                            Property.Attribute.None);
     }
 }

@@ -56,131 +56,11 @@ class Dobject
     //
 
     //--------------------------------------------------------------------
-    // non-virtual Oridinary methods.
-    final
+    //
+    @property @safe @nogc pure nothrow
+    final string_t classname() const
     {
-        //
-        @property @safe @nogc pure nothrow
-        string_t classname() const
-        {
-            return _classname;
-        }
-
-        /// Ecma-262-v7/9.1.1.1
-        @property @safe @nogc pure nothrow
-        Dobject OrdinaryGetPrototypeOf()
-        {
-            return _prototype;
-        }
-
-        /// Ecma-262-v7/9.1.2.1
-        @property @safe @nogc pure nothrow
-        bool OrdinarySetPrototypeOf(Dobject p)
-        {
-            if (!_extensible)
-                return false;
-
-            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // How can I implement this?
-            //i. If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
-
-            for (auto pp = p; pp !is null; pp = pp.OrdinaryGetPrototypeOf)
-            {
-                if (pp is this)
-                    return false;
-            }
-            _prototype = p;
-            if (p !is null)
-                proptable.previous(p.proptable);
-            return true;
-        }
-
-        /// Ecma-262-v7/9.1.3.1
-        @disable
-        @property @safe @nogc pure nothrow
-        bool OrdinaryIsExtensible() const
-        {
-            return _extensible;
-        }
-
-        /// Ecma-262-v7/9.1.4.1
-        @disable
-        @property @safe @nogc pure nothrow
-        bool OrdinaryPreventExtensions()
-        {
-            _extensible = false;
-            return true;
-        }
-
-        /// Ecma-262-v7/9.1.5.1
-        @disable
-        Property* OrdinaryGetOwnProperty(in ref PropertyKey key)
-        {
-            return proptable.getOwnProperty(key);
-        }
-
-        // should i implement this?
-        // /// Ecma-262-v7/9.1.6.1
-        // bool OrdinaryDefineOwnProperty(K, V)(
-        //     in auto ref K key, auto ref V value, in Property.Attribute attr)
-        //     if (PropTable.IsKeyValue!(K, V))
-        // {
-        //     return proptable.config(key, value, attr, _extensible);
-        // }
-
-        /// Ecma-262-v7/9.1.7.1
-        @safe
-        bool OrdinaryHasProperty(in ref PropertyKey key)
-        {
-            return proptable.getProperty(key) !is null;
-        }
-
-        /// Ecma-262-v7/9.1.8.1
-        Value* Get(K)(in auto ref K name, ref CallContext cc)
-            if (PropertyKey.IsKey!K)
-        {
-            static if      (is(K == PropertyKey) || is(K : uint))
-                return GetImpl(name, cc);
-            else
-            {
-                auto key = PropertyKey(name);
-                return GetImpl(key, cc);
-            }
-        }
-
-        /// Ecma-262-v7/9.1.9.1
-        DError* Set(K, V)(in auto ref K name, auto ref V value,
-                          in Property.Attribute attributes, ref CallContext cc)
-            if (Value.IsValue!V && PropertyKey.IsKey!K)
-        {
-            static if (is(V : Value))
-                alias v = value;
-            else
-                auto v = Value(value);
-
-            // ECMA 8.6.2.2
-            static if     (is(K == PropertyKey) || is(K : uint))
-            {
-                return SetImpl(name, v, attributes, cc);
-            }
-            else
-            {
-                auto key = PropertyKey(name);
-                return SetImpl(key, v, attributes, cc);
-            }
-        }
-
-        @safe
-        bool OrdinaryDelete(in ref PropertyKey key)
-        {
-            return proptable.del(key);
-        }
-
-        @safe pure nothrow
-        PropertyKey[] OrdinaryOwnPropertyKeys()
-        {
-            return proptable.keys;
-        }
+        return _classname;
     }
 
     //--------------------------------------------------------------------
@@ -190,14 +70,30 @@ class Dobject
     @property @safe @nogc pure nothrow
     Dobject GetPrototypeOf()
     {
-        return OrdinaryGetPrototypeOf;
+        return _prototype;
     }
 
     /// Ecma-262-v7/9.1.2
     @property @safe @nogc pure nothrow
     bool SetPrototypeOf(Dobject p)
     {
-        return OrdinarySetPrototypeOf(p);
+        if (!_extensible)
+            return false;
+
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // How can I implement this?
+        //i. If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
+
+        for (auto pp = p; pp !is null;
+             pp = pp.Dobject.GetPrototypeOf)
+        {
+            if (pp is this)
+                return false;
+        }
+        _prototype = p;
+        if (p !is null)
+            proptable.previous(p.proptable);
+        return true;
     }
 
     /// Ecma-262-v7/9.1.3
@@ -205,7 +101,7 @@ class Dobject
     @property @safe @nogc pure nothrow
     bool IsExtensible() const
     {
-        return OrdinaryIsExtensible;
+        return _extensible;
     }
 
     /// Ecma-262-v7/9.1.4
@@ -213,56 +109,38 @@ class Dobject
     @property @safe @nogc pure nothrow
     bool preventExtensions()
     {
-        return OrdinaryPreventExtensions;
+        _extensible = false;
+        return true;
     }
 
     /// Ecma-262-v7/9.1.5
     @disable
     Property* GetOwnProperty(in ref PropertyKey key)
     {
-        return OrdinaryGetOwnProperty(key);
+        return proptable.getOwnProperty(key);
     }
 
     /// Ecma-262-v7/9.1.7
-    bool HasProperty(in ref PropertyKey name)
+    bool HasProperty(in PropertyKey name)
     {
-        return OrdinaryHasProperty(name);
+        return proptable.getProperty(name) !is null;
     }
 
     //--------------------------------------------------------------------
     //
-    Value* GetImpl(in ref PropertyKey PropertyName, ref CallContext cc)
+    Value* Get(in PropertyKey PropertyName, ref CallContext cc)
     {
         return proptable.get(PropertyName, cc, this);
     }
 
-    //
-    Value* GetImpl(in uint index, ref CallContext cc)
-    {
-        Value* v;
-
-        auto key = PropertyKey(index);
-        v = proptable.get(key, cc, this);
-        return v;
-    }
-
     //--------------------------------------------------------------------
 
     //
-    DError* SetImpl(in ref PropertyKey PropertyName, ref Value value,
+    DError* Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, ref CallContext cc)
     {
         // ECMA 8.6.2.2
         return proptable.set(PropertyName, value, attributes, cc, this);
-    }
-
-    //
-    DError* SetImpl(in uint index, ref Value value,
-                    in Property.Attribute attributes, ref CallContext cc)
-    {
-        // ECMA 8.6.2.2
-        auto key = PropertyKey(index);
-        return proptable.set(key, value, attributes, cc, this);
     }
 
     //--------------------------------------------------------------------
@@ -293,56 +171,34 @@ class Dobject
      *	FALSE	property is marked with DontDelete attribute
      */
     /// Ecma-262-v7/9.1.10
-    bool Delete(in ref PropertyKey PropertyName)
+    bool Delete(in PropertyKey PropertyName)
     {
         // ECMA 8.6.2.5
-        return OrdinaryDelete(PropertyName);
+        return proptable.del(PropertyName);
     }
-
-    /// ditto
-    bool Delete(in uint index)
-    {
-        // ECMA 8.6.2.5
-        auto key = PropertyKey(index);
-        return OrdinaryDelete(key);
-    }
-
 
     //--------------------------------------------------------------------
     //
     @disable
-    final
-    bool DefineOwnProperty(K)(in auto ref K PropertyName,
-                              in Property.Attribute attributes)
-        if (PropertyKey.IsKey!K)
+    bool DefineOwnProperty(in PropertyKey PropertyName,
+                           in Property.Attribute attributes)
     {
-        static if (is(K == PropertyKey))
-            alias key = PropertyName;
-        else
-            auto key = PropertyKey(PropertyName);
-        return proptable.config(key, attributes);
+        return proptable.config(PropertyName, attributes);
     }
 
 
-    // //
-    final
-    bool DefineOwnProperty(V)(in auto ref PropertyKey PropertyName,
-                              auto ref V v, in Property.Attribute attributes)
-        if (Value.IsValue!V)
+    //
+    bool DefineOwnProperty(in PropertyKey PropertyName,
+                           ref Value v, in Property.Attribute attributes)
     {
-        static if (is(V == Value))
-            alias value = v;
-        else
-            auto value = Value(v);
-
-        return proptable.config(PropertyName, value, attributes, _extensible);
+        return proptable.config(PropertyName, v, attributes, _extensible);
     }
 
     //
     @safe pure nothrow
     PropertyKey[] OwnPropertyKeys()
     {
-        return OrdinaryOwnPropertyKeys;
+        return proptable.keys;
     }
 
     DError* Call(ref CallContext cc, Dobject othis, out Value ret,
@@ -458,9 +314,7 @@ class Dobject
 
     //
     @disable
-    DError* CreateDataProperty(V)(in auto ref PropertyKey name,
-                                  auto ref V value)
-        if (Value.IsValue!V)
+    DError* CreateDataProperty(in PropertyKey name, ref Value value)
     {
         if (DefineOwnProperty(name, value, Property.Attribute.None))
             return null;
@@ -693,9 +547,12 @@ public static:
         assert (_constructor is null);
 
         _constructor = new Constructor(args);
-        _class_prototype.DefineOwnProperty(Key.constructor, _constructor,
+        Value val;
+        val.put(_constructor);
+        _class_prototype.DefineOwnProperty(Key.constructor, val,
                                           Property.Attribute.DontEnum);
-        _constructor.DefineOwnProperty(Key.prototype, _class_prototype,
+        val.put(_class_prototype);
+        _constructor.DefineOwnProperty(Key.prototype, val,
                                        Property.Attribute.DontEnum |
                                        Property.Attribute.DontDelete |
                                        Property.Attribute.ReadOnly);
@@ -786,8 +643,9 @@ void dobject_init()
 
     debug
     {
+        import dmdscript.primitive : PropertyKey;
         CallContext cc;
-        assert(Dstring.getConstructor.Get("fromCharCode", cc));
+        assert(Dstring.getConstructor.Get(PropertyKey("fromCharCode"), cc));
     }
 }
 

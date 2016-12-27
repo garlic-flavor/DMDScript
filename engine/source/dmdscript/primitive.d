@@ -39,7 +39,7 @@ enum Text : string_t
     negInfinity = "-Infinity",
     bobjectb = "[object]",
     object = "object",
-    string = "enum string",
+    string = "string",
     boolean = "boolean",
     _this = "this",
     dash = "-",
@@ -191,6 +191,11 @@ struct PropertyKey
             return _text;
         }
         alias text this;
+
+        bool hasString() const
+        {
+            return _text !is null;
+        }
     }
 
     //--------------------------------------------------------------------

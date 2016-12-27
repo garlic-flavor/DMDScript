@@ -40,6 +40,9 @@ debug import std.stdio;
         ?	&&	||
  */
 
+package:
+
+//------------------------------------------------------------------------------
 enum Tok : int
 {
     reserved,
@@ -122,8 +125,8 @@ enum Tok : int
     reserved_max,
 }
 
-/******************************************************/
-
+//------------------------------------------------------------------------------
+///
 struct Token
 {
     import dmdscript.primitive : char_t, number_t, real_t;
@@ -147,10 +150,10 @@ struct Token
         TemplateLiteral* tliteral;
     };
 
-    // static tstring[Tok.max+1] tochars;
-    // alias tochars = ._tochars;
-
-    string_t toString()
+    //--------------------------------------------------------------------
+    ///
+    @trusted
+    string_t toString() const
     {
         import std.conv : to;
 
@@ -189,38 +192,25 @@ struct Token
     alias toString = .tochars;
 }
 
-/*******************************************************************/
+//------------------------------------------------------------------------------
+///
+enum Mode : ubyte
+{
+    None           = 0x00,
+    UseStringtable = 0x01,
+    Module         = 0x02,
+}
 
-class Lexer
+//------------------------------------------------------------------------------
+///
+class Lexer(Mode MODE)
 {
     import dmdscript.primitive : char_t, Identifier;
     import dmdscript.exception : ScriptException;
     import dmdscript.errmsgs;
 
-    enum UseStringtable { No, Yes }
-
-protected:
     Token token;
-    uint currentline;
     ScriptException exception;            // syntax error information
-    const string_t base;             // pointer to start of buffer
-    const string_t sourcename;       // for error message strings
-
-    @trusted pure nothrow
-    this(string_t sourcename, string_t base, UseStringtable useStringtable)
-    {
-        this.useStringtable = useStringtable;
-        this.sourcename = sourcename;
-        if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
-            base ~= cast(char_t)0x1A;
-        this.base = base;
-        this.end = base.ptr + base.length;
-        p = base.ptr;
-        currentline = 1;
-        freelist = null;
-        if (useStringtable)
-            idtable = new IdTable;
-    }
 
     //
     pure
@@ -258,6 +248,35 @@ protected:
         return token.value;
     }
 
+    //====================================================================
+protected:
+    uint currentline;
+    const string_t base;             // pointer to start of buffer
+    const string_t sourcename;       // for error message strings
+    static if (MODE & Mode.UseStringtable)
+        IdTable idtable;         // use for Identifiers
+
+    @trusted pure nothrow
+    this(string_t sourcename, string_t base, IdTable baseTable = null)
+    {
+        this.sourcename = sourcename;
+        if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
+            base ~= cast(char_t)0x1A;
+        this.base = base;
+        this.end = base.ptr + base.length;
+        p = base.ptr;
+        currentline = 1;
+        freelist = null;
+
+        static if (MODE & Mode.UseStringtable)
+        {
+            if (baseTable !is null)
+                idtable = baseTable;
+            else
+                idtable = new IdTable;
+        }
+    }
+
     //
     Token* peek(Token* ct)
     {
@@ -290,18 +309,18 @@ protected:
         token.sawLineTerminator = null;
     }
 
-    /**********************************
-     * Horrible kludge to support disambiguating TOKregexp from TOKdivide.
-     * The idea is, if we are looking for a TOKdivide, and find instead
-     * a TOKregexp, we back up and rescan.
-     */
+    //--------------------------------------------------------------------
+    /*
+    Horrible kludge to support disambiguating TOKregexp from TOKdivide.
+    The idea is, if we are looking for a TOKdivide, and find instead
+    a TOKregexp, we back up and rescan.
+    */
     void rescan()
     {
         token.next = null;      // no lookahead
         // should put on freelist
         p = token.ptr + 1;
     }
-
 
     //--------------------------------------------------------------------
     Identifier getPropertyName()
@@ -317,7 +336,7 @@ protected:
         default:
             if (Tok.keywords_min < token && token < Tok.reserved_max)
             {
-                if (useStringtable)
+                static if (MODE & Mode.UseStringtable)
                     return idtable.build(token.str);
                 else
                     return Identifier.build(token.str);
@@ -340,7 +359,7 @@ protected:
         default:
             if (Tok.reserved_min < token && token < Tok.reserved_max)
             {
-                if (useStringtable)
+                static if (MODE & Mode.UseStringtable)
                     return idtable.build(token.str);
                 else
                     return Identifier.build(token.str);
@@ -349,17 +368,13 @@ protected:
         }
     }
 
-
+    //====================================================================
 private:
     Token* freelist;
-
-    UseStringtable useStringtable;        // use for Identifiers
-    IdTable idtable;
-
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
 
-
+    //
     @safe pure nothrow
     Token* allocToken()
     {
@@ -375,6 +390,7 @@ private:
         return new Token();
     }
 
+    //
     @trusted pure
     dchar get(immutable(char_t)* p)
     {
@@ -384,6 +400,7 @@ private:
         return decode(base, idx);
     }
 
+    //
     @trusted pure
     immutable(char_t)* inc(immutable(char_t)* p)
     {
@@ -393,9 +410,9 @@ private:
         return base.ptr + idx + stride(base, idx);
     }
 
-    /****************************
-     * Turn next token in buffer into a token.
-     */
+    /*
+    Turn next token in buffer into a token.
+    */
     void scan(Token* t)
     {
         import std.ascii : isDigit, isPrintable;
@@ -523,7 +540,7 @@ private:
                     t.str = id;
                     return;
                 }
-                if(useStringtable == UseStringtable.Yes)
+                static if (MODE & Mode.UseStringtable)
                     t.ident = idtable.build(id);
                 else
                     t.ident = Identifier.build(id);
@@ -705,8 +722,7 @@ private:
                     {
                         version (TEST262)
                         {
-                            import dmdscript.protoerror : syntaxerror;
-                            error(new ScriptException(syntaxerror.Text, "a HTMLCloseComment is Detected."));
+                            error(HTMLEndCommentError);
                         }
                         else
                         {
@@ -1142,7 +1158,7 @@ private:
      * Scan regular expression. Return null with buffer
      * pointer intact if it is not a regexp.
      */
-//    @trusted pure nothrow
+    @trusted pure nothrow
     string_t regexp()
     {
         import std.ascii : isAlphaNum;
@@ -1244,6 +1260,7 @@ private:
 
     /***************************************
      */
+    @trusted pure
     dchar unicode()
     {
         import std.ascii : isDigit, isHexDigit, isLower;
@@ -1291,6 +1308,7 @@ private:
     /********************************************
      * Read a number.
      */
+    @trusted
     Tok number(Token *t)
     {
         import std.ascii : isDigit, isHexDigit;
@@ -1647,11 +1665,14 @@ private:
     Table _table;
 }
 
+//==============================================================================
+private:
+
 /****************************************
  */
 // This function seems that only be called at error handling,
 // and for debugging.
-private @safe pure
+@safe pure
 string_t tochars(Tok tok)
 {
     import std.conv : to;

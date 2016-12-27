@@ -35,6 +35,7 @@ class Dstring : Dobject
 {
     import dmdscript.dobject : Initializer;
     import dmdscript.property : Property;
+    import dmdscript.primitive : PropertyKey;
 
     this(string_t s)
     {
@@ -46,14 +47,16 @@ class Dstring : Dobject
 
         version (TEST262)
         {
-            Set(Key.length, /*toUCSindex(s, s.length)*/s.length16,
+            auto val = Value(s.length16);
+            Set(PropertyKey(Key.length), val,
                 Property.Attribute.DontEnum |
                 Property.Attribute.DontDelete |
                 Property.Attribute.ReadOnly, cc);
         }
         else
         {
-            Set(Key.length, toUCSindex(s, s.length),
+            auto val = Value(toUCSindex(s, s.length));
+            Set(Key.length, val,
                 Property.Attribute.DontEnum |
                 Property.Attribute.DontDelete |
                 Property.Attribute.ReadOnly, cc);
@@ -69,7 +72,8 @@ class Dstring : Dobject
         super(prototype, Key.String);
 
         CallContext cc;
-        Set(Key.length, 0,
+        auto val = Value(0);
+        Set(Key.length, val,
             Property.Attribute.DontEnum |
             Property.Attribute.DontDelete |
             Property.Attribute.ReadOnly, cc);
@@ -78,18 +82,22 @@ class Dstring : Dobject
 
     mixin Initializer!DstringConstructor;
 
-
-    alias GetImpl = Dobject.GetImpl;
-    override Value* GetImpl(in uint index, ref CallContext cc)
+    override Value* Get(in PropertyKey key, ref CallContext cc)
     {
-        version(TEST262)
+        size_t index;
+        if (key.isArrayIndex(index) && index < value.text.length)
         {
-            import std.exception : assumeUnique;
-            char_t[] buf;
-            badencode(buf, value.text.charCodeAt16(index));
-            return new Value(buf.assumeUnique);
+            version(TEST262)
+            {
+                import std.exception : assumeUnique;
+                char_t[] buf;
+                badencode(buf, value.text.charCodeAt16(index));
+                return new Value(buf.assumeUnique);
+            }
+            else static assert (0);
         }
-        else static assert (0);
+        else
+            return super.Get(key, cc);
     }
 }
 
@@ -619,6 +627,7 @@ DError* match(
     import dmdscript.dregexp : Dregexp, EXEC_STRING, EXEC_ARRAY;
     import dmdscript.darray : Darray;
     import dmdscript.property : Property;
+    import dmdscript.primitive : PropertyKey;
 
     // ECMA v3 15.5.4.10
     Dregexp r;
@@ -658,7 +667,9 @@ DError* match(
             if(i == lasti)              // if no source was consumed
                 i++;                    // consume a character
 
-            a.Set(n, ret, Property.Attribute.None, cc);           // a[n] = ret;
+            // a[n] = ret;
+            a.Set(PropertyKey(n), ret, Property.Attribute.None, cc);
+
         }
         ret.put(a);
     }
@@ -902,7 +913,7 @@ DError* split(
     Value[] arglist)
 {
     import core.stdc.string : memcmp;
-    import dmdscript.primitive : char_t;
+    import dmdscript.primitive : char_t, PropertyKey;
     import dmdscript.dregexp : Dregexp, RegExp;
     import dmdscript.darray : Darray;
     import dmdscript.property : Property;
@@ -922,6 +933,7 @@ DError* split(
     string_t S;
     Darray A;
     int str;
+    Value val;
 
     //writefln("Dstring_prototype_split()");
     switch(arglist.length)
@@ -985,7 +997,8 @@ DError* split(
                         if(e != p)
                         {
                             T = S[p .. q];
-                            A.Set(cast(uint)A.length.number, T,
+                            val.put(T);
+                            A.Set(PropertyKey(cast(uint)A.length.number), val,
                                   Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
@@ -1004,7 +1017,8 @@ DError* split(
                         {
                             T = S[p .. q];
                             //writefln("S = '%s', T = '%s', p = %d, q = %d, e = %d\n", S, T, p, q, e);
-                            A.Set(cast(uint)A.length.number, T,
+                            val.put(T);
+                            A.Set(PropertyKey(cast(size_t)A.length.number), val,
                                   Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
@@ -1019,8 +1033,9 @@ DError* split(
                                     T = S[so .. eo];
                                 else
                                     T = null;
-                                A.Set(cast(uint)A.length.number, T,
-                                      Property.Attribute.None, cc);
+                                val.put(T);
+                                A.Set(PropertyKey(cast(size_t)A.length.number),
+                                      val, Property.Attribute.None, cc);
                                 if(A.length.number == lim)
                                     goto Lret;
                             }
@@ -1030,7 +1045,9 @@ DError* split(
                 }
             }
             T = S[p .. S.length];
-            A.Set(cast(uint)A.length.number, T, Property.Attribute.None, cc);
+            val.put(T);
+            A.Set(PropertyKey(cast(uint)A.length.number), val,
+                  Property.Attribute.None, cc);
             goto Lret;
         }
         if(str)                 // string
@@ -1045,7 +1062,8 @@ DError* split(
         }
     }
 
-    A.Set(0u, S, Property.Attribute.None, cc);
+    val.put(S);
+    A.Set(PropertyKey(0u), val, Property.Attribute.None, cc);
     Lret:
     ret.put(A);
     return null;

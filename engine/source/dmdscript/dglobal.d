@@ -87,15 +87,26 @@ class Dglobal : Dobject
 
         // Value properties
 
-
-        installConstants!(
-            "NaN", double.nan,
-            "Infinity", double.infinity,
-            "undefined", vundefined)(this);
+        version (TEST262)
+        {
+            installConstants!(
+                "NaN", double.nan,
+                "Infinity", double.infinity,
+                "undefined", vundefined)(this,
+                                         Property.Attribute.DontEnum |
+                                         Property.Attribute.DontDelete);
+        }
+        else
+        {
+            installConstants!(
+                "NaN", double.nan,
+                "Infinity", double.infinity,
+                "undefined", vundefined)(this);
+        }
 
         debug
         {
-            auto v = Get("Infinity", cc);
+            auto v = Get(PropertyKey("Infinity"), cc);
             assert(!v.isUndefined);
             assert(v.toNumber(cc) is double.infinity);
         }
@@ -106,58 +117,63 @@ class Dglobal : Dobject
         // Put(Text.assert, Dglobal_assert(), DontEnum);
 
         // Constructor properties
-        DefineOwnProperty(Key.Object, Dobject.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Function, Dfunction.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Array, Darray.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.String, Dstring.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Boolean, Dboolean.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Number, Dnumber.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Date, Ddate.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.RegExp, Dregexp.getConstructor,
-            Property.Attribute.DontEnum);
-        DefineOwnProperty(Key.Error, Derror.getConstructor,
-            Property.Attribute.DontEnum);
+        Value val;
+        val.put(Dobject.getConstructor);
+        DefineOwnProperty(Key.Object, val, Property.Attribute.DontEnum);
+        val.put(Dfunction.getConstructor);
+        DefineOwnProperty(Key.Function, val, Property.Attribute.DontEnum);
+        val.put(Darray.getConstructor);
+        DefineOwnProperty(Key.Array, val, Property.Attribute.DontEnum);
+        val.put(Dstring.getConstructor);
+        DefineOwnProperty(Key.String, val, Property.Attribute.DontEnum);
+        val.put(Dboolean.getConstructor);
+        DefineOwnProperty(Key.Boolean, val, Property.Attribute.DontEnum);
+        val.put(Dnumber.getConstructor);
+        DefineOwnProperty(Key.Number, val, Property.Attribute.DontEnum);
+        val.put(Ddate.getConstructor);
+        DefineOwnProperty(Key.Date, val, Property.Attribute.DontEnum);
+        val.put(Dregexp.getConstructor);
+        DefineOwnProperty(Key.RegExp, val, Property.Attribute.DontEnum);
+        val.put(Derror.getConstructor);
+        DefineOwnProperty(Key.Error, val, Property.Attribute.DontEnum);
 
-        DefineOwnProperty(syntaxerror.Text, syntaxerror.getConstructor,
+        val.put(syntaxerror.getConstructor);
+        DefineOwnProperty(syntaxerror.Text, val, Property.Attribute.DontEnum);
+        val.put(evalerror.getConstructor);
+        DefineOwnProperty(evalerror.Text, val, Property.Attribute.DontEnum);
+        val.put(referenceerror.getConstructor);
+        DefineOwnProperty(referenceerror.Text, val,
                           Property.Attribute.DontEnum);
-        DefineOwnProperty(evalerror.Text, evalerror.getConstructor,
-                          Property.Attribute.DontEnum);
-        DefineOwnProperty(referenceerror.Text, referenceerror.getConstructor,
-                          Property.Attribute.DontEnum);
-        DefineOwnProperty(rangeerror.Text, rangeerror.getConstructor,
-                          Property.Attribute.DontEnum);
-        DefineOwnProperty(typeerror.Text, typeerror.getConstructor,
-                          Property.Attribute.DontEnum);
-        DefineOwnProperty(urierror.Text, urierror.getConstructor,
-                          Property.Attribute.DontEnum);
+        val.put(rangeerror.getConstructor);
+        DefineOwnProperty(rangeerror.Text, val, Property.Attribute.DontEnum);
+        val.put(typeerror.getConstructor);
+        DefineOwnProperty(typeerror.Text, val, Property.Attribute.DontEnum);
+        val.put(urierror.getConstructor);
+        DefineOwnProperty(urierror.Text, val, Property.Attribute.DontEnum);
 
 
         // Other properties
         assert(Dmath.object);
-        DefineOwnProperty(Key.Math, Dmath.object, Property.Attribute.DontEnum);
+        val.put(Dmath.object);
+        DefineOwnProperty(Key.Math, val, Property.Attribute.DontEnum);
 
         // Build an "arguments" property out of argv[],
         // and add it to the global object.
         Darray arguments;
 
         arguments = new Darray();
-        DefineOwnProperty(Key.arguments, arguments,
-                          Property.Attribute.DontDelete);
+        val.put(arguments);
+        DefineOwnProperty(Key.arguments, val, Property.Attribute.DontDelete);
         arguments.length.put(argv.length);
         for(int i = 0; i < argv.length; i++)
         {
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Where is this definition?
-            arguments.Set(i, argv[i].idup, Property.Attribute.DontEnum, cc);
+            val.put(argv[i].idup);
+            arguments.Set(PropertyKey(i), val, Property.Attribute.DontEnum, cc);
         }
-        arguments.DefineOwnProperty(Key.callee, Value.Type.Null,
+        val.put(Value.Type.Null);
+        arguments.DefineOwnProperty(Key.callee, val,
                                     Property.Attribute.DontEnum);
     }
 }
@@ -177,6 +193,7 @@ DError* eval(
     import dmdscript.statement : TopStatement;
     import dmdscript.parse : Parser;
     import dmdscript.scopex : Scope;
+    import dmdscript.lexer : Mode;
     import dmdscript.property : Property;
     import dmdscript.opcodes : IR;
     import dmdscript.protoerror : syntaxerror;
@@ -201,7 +218,7 @@ DError* eval(
 
     // Parse program
     TopStatement[] topstatements;
-    Parser p = new Parser("eval", s, Parser.UseStringtable.No);
+    auto p = new Parser!(Mode.None)("eval", s);
     if((exception = p.parseProgram(topstatements)) !is null)
     {
 
