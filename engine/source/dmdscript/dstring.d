@@ -43,23 +43,21 @@ class Dstring : Dobject
 
         super(getPrototype, Key.String);
 
-        CallContext cc;
-
         version (TEST262)
         {
             auto val = Value(s.length16);
-            Set(PropertyKey(Key.length), val,
-                Property.Attribute.DontEnum |
-                Property.Attribute.DontDelete |
-                Property.Attribute.ReadOnly, cc);
+            DefineOwnProperty(PropertyKey(Key.length), val,
+                              Property.Attribute.DontEnum |
+                              Property.Attribute.DontDelete |
+                              Property.Attribute.ReadOnly);
         }
         else
         {
             auto val = Value(toUCSindex(s, s.length));
-            Set(Key.length, val,
-                Property.Attribute.DontEnum |
-                Property.Attribute.DontDelete |
-                Property.Attribute.ReadOnly, cc);
+            DefineOwnProperty(Key.length, val,
+                              Property.Attribute.DontEnum |
+                              Property.Attribute.DontDelete |
+                              Property.Attribute.ReadOnly);
         }
 
         value.put(s);
@@ -71,12 +69,11 @@ class Dstring : Dobject
 
         super(prototype, Key.String);
 
-        CallContext cc;
         auto val = Value(0);
-        Set(Key.length, val,
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete |
-            Property.Attribute.ReadOnly, cc);
+        DefineOwnProperty(Key.length, val,
+                          Property.Attribute.DontEnum |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.ReadOnly);
         value.put(Text.Empty);
     }
 

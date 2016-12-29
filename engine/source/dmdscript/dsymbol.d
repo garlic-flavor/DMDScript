@@ -34,7 +34,13 @@ class Dsymbol : Dobject
     this(string_t desc)
     {
         super(Dsymbol.getPrototype, Key.Symbol);
-        value.put(desc);
+        value.putVsymbol(desc);
+    }
+
+    this(string_t desc, size_t hash)
+    {
+        super(Dsymbol.getPrototype, Key.Symbol);
+        value.putVsymbol(desc, hash);
     }
 
     mixin Initializer!DsymbolConstructor;
@@ -76,7 +82,9 @@ class DsymbolConstructor : Dconstructor
     override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
-        assert (0);
+        ret.putVsymbol(0 < arglist.length ? arglist[0].toString(cc) :
+                                            Key.undefined.idup);
+        return null;
     }
 }
 

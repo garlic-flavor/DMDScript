@@ -927,10 +927,12 @@ private:
     Expression parseObjectLiteral()
     {
         import std.array : Appender;
+        import dmdscript.lexer : Token;
 
         Expression e;
         Appender!(Field[]) fields;
         uint linnum;
+        Token* nt;
 
         linnum = currentline;
         check(Tok.Lbrace);
@@ -940,7 +942,26 @@ private:
         {
             for(;; )
             {
-                if      (Tok.Set == token)
+                nt = peek(&token);
+                if      (Tok.Colon == nt.value)
+                {
+                    auto ident = getPropertyName;
+
+                    if (ident is null)
+                    {
+                        error(ExpectedIdentifierError);
+                        break;
+                    }
+                    nextToken();
+                    check(Tok.Colon);
+                    fields.put(new Field(ident, parseAssignExp()));
+                    if(token != Tok.Comma)
+                        break;
+                    nextToken();
+                    if(token == Tok.Rbrace)//allow trailing comma
+                        break;
+                }
+                else if (Tok.Set == token)
                 {
                     auto fe = parseFunctionLiteral!(FunctionFlag.property);
                     if (fe is null)
@@ -969,24 +990,6 @@ private:
                         break;
                     nextToken();
                     if (token == Tok.Rbrace)
-                        break;
-                }
-                else
-                {
-                    auto ident = getPropertyName;
-
-                    if (ident is null)
-                    {
-                        error(ExpectedIdentifierError);
-                        break;
-                    }
-                    nextToken();
-                    check(Tok.Colon);
-                    fields.put(new Field(ident, parseAssignExp()));
-                    if(token != Tok.Comma)
-                        break;
-                    nextToken();
-                    if(token == Tok.Rbrace)//allow trailing comma
                         break;
                 }
             }

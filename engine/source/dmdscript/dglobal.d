@@ -73,6 +73,8 @@ class Dglobal : Dobject
         import dmdscript.derror : Derror;
         import dmdscript.protoerror;
         import dmdscript.dmath : Dmath;
+        import dmdscript.dsymbol : Dsymbol;
+        import dmdscript.dproxy : Dproxy;
         import dmdscript.primitive : PropertyKey;
 
         CallContext cc;
@@ -136,6 +138,12 @@ class Dglobal : Dobject
         DefineOwnProperty(Key.RegExp, val, Property.Attribute.DontEnum);
         val.put(Derror.getConstructor);
         DefineOwnProperty(Key.Error, val, Property.Attribute.DontEnum);
+
+        val.put(Dsymbol.getConstructor);
+        DefineOwnProperty(Key.Symbol, val, Property.Attribute.DontEnum);
+        val.put(Dproxy.getConstructor);
+        DefineOwnProperty(Key.Proxy, val, Property.Attribute.DontEnum);
+
 
         val.put(syntaxerror.getConstructor);
         DefineOwnProperty(syntaxerror.Text, val, Property.Attribute.DontEnum);

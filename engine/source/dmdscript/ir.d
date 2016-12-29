@@ -321,6 +321,8 @@ align(size_t.sizeof):
         else static if (is(T : FunctionDefinition))
             auto opName = text("function\n{\n", IR.toString(operand.code),
                                "}");
+        else static if (is(T : double))
+            auto opName = text(operand);
         else
             auto opName = text("[", operand, "]");
 

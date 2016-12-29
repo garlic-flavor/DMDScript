@@ -58,6 +58,7 @@ struct Value
         Object,
 
         Iter,
+        Symbol,
     }
 
     //--------------------------------------------------------------------
@@ -108,7 +109,7 @@ struct Value
 
         string_t text() const
         {
-            assert (_type == Type.String);
+            assert (_type == Type.String || _type == Type.Symbol);
             return _text;
         }
 
@@ -159,6 +160,45 @@ struct Value
         _type = Type.Number;
         _number = (n == d_time_nan) ? double.nan : n;
     }
+
+    //--------------------------------------------------------------------
+    @trusted pure nothrow
+    void putVsymbol(string_t s)
+    {
+        /*
+        This seems strange. The reaseon of this is,
+        1. '_hash = s.ptr' means that, _hash is an isolated value.
+        2. 's.ptr != calcHash(s)' means that, The symbol never collide with any
+           ordinary strings on a hash table.
+        */
+
+        _type = Type.Symbol;
+
+        _text = makeSymbol(s);
+        _hash = cast(size_t)s.ptr;
+    }
+
+    @trusted @nogc pure nothrow
+    void putVsymbol(string_t s, size_t hash)
+    {
+        assert (hash == cast(size_t)s.ptr);
+        assert (hash != calcHash(s));
+
+        _type = Type.Symbol;
+        _text = s;
+        _hash = hash;
+    }
+
+    //
+    @trusted pure nothrow
+    static string makeSymbol(string_t s)
+    {
+        if (calcHash(s) == cast(size_t)s.ptr)
+            return s.idup;
+        else
+            return s;
+    }
+
 
     //--------------------------------------------------------------------
     @trusted @nogc pure nothrow
@@ -335,6 +375,8 @@ struct Value
             return !(_number == 0.0 || isNaN(_number));
         case Type.String:
             return 0 < _text.length;
+        case Type.Symbol:
+            return true;
         case Type.Object:
             return true;
         }
@@ -358,7 +400,7 @@ struct Value
             return _dbool ? 1 : 0;
         case Type.Number:
             return _number;
-        case Type.String:
+        case Type.String, Type.Symbol:
         {
             double n;
             size_t len;
@@ -424,7 +466,7 @@ struct Value
         case Type.Boolean:
             return _dbool ? 1 : 0;
 
-        case Type.Number, Type.String, Type.Object, Type.Iter:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
         {
             double number;
 
@@ -460,7 +502,7 @@ struct Value
         case Type.Boolean:
             return _dbool ? 1 : 0;
 
-        case Type.Number, Type.String, Type.Object, Type.Iter:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
         {
             int int32;
             double number;
@@ -503,7 +545,7 @@ struct Value
         case Type.Boolean:
             return _dbool ? 1 : 0;
 
-        case Type.Number, Type.String, Type.Object, Type.Iter:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
         {
             uint uint32;
             double number;
@@ -546,7 +588,7 @@ struct Value
         case Type.Boolean:
             return cast(short)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
         {
             short int16;
             double number;
@@ -587,7 +629,7 @@ struct Value
         case Type.Boolean:
             return cast(ushort)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
         {
             ushort uint16;
             double number;
@@ -628,7 +670,7 @@ struct Value
         case Type.Boolean:
             return cast(byte)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
         {
             byte int8;
             double number;
@@ -669,7 +711,7 @@ struct Value
         case Type.Boolean:
             return cast(ubyte)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
         {
             ubyte uint8;
             double number;
@@ -710,7 +752,7 @@ struct Value
         case Type.Boolean:
             return cast(ubyte)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
         {
             ubyte uint8;
             double number;
@@ -766,6 +808,8 @@ struct Value
             else
                 return PropertyKey(_text);
         }
+        case Type.Symbol:
+            return PropertyKey(_text, _hash);
         case Type.Object:
             return Key.Object;
         case Type.Iter:
@@ -790,7 +834,7 @@ struct Value
             return _dbool ? Key._true : Key._false;
         case Type.Number:
             return NumberToString(_number);
-        case Type.String:
+        case Type.String, Type.Symbol:
             return _text;
         case Type.Object:
             return Key.Object;
@@ -817,7 +861,7 @@ struct Value
             return _dbool ? Key._true : Key._false;
         case Type.Number:
             return NumberToString(_number);
-        case Type.String:
+        case Type.String, Type.Symbol:
             return _text;
         case Type.Object:
         {
@@ -874,6 +918,8 @@ struct Value
             s = "\"" ~ _text ~ "\"";
             return s;
         }
+        case Type.Symbol:
+            return _text;
         case Type.Object:
         {
             Value* v;
@@ -916,6 +962,7 @@ struct Value
         import dmdscript.dstring : Dstring;
         import dmdscript.dnumber : Dnumber;
         import dmdscript.dboolean : Dboolean;
+        import dmdscript.dsymbol : Dsymbol;
 
         final switch(_type)
         {
@@ -934,20 +981,14 @@ struct Value
             return new Dnumber(_number);
         case Type.String:
             return new Dstring(_text);
+        case Type.Symbol:
+            return new Dsymbol(_text, _hash);
         case Type.Object:
             return _object;
         case Type.Iter:
             assert(0);
         }
         assert(0);
-    }
-
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // implement this.
-    @disable
-    string_t toPropertyKey(ref CallContext cc)
-    {
-        return toString(cc);
     }
 
     //--------------------------------------------------------------------
@@ -1020,6 +1061,11 @@ struct Value
                 return stringcmp(_text, NumberToString(v._number));
             }
             break;
+        case Type.Symbol:
+            if (v._type == Type.Symbol)
+                return (_hash == v._hash) ? 0 : -1;
+            else
+                return -1;
         case Type.Object:
             if(v._object == _object)
                 return 0;
@@ -1043,6 +1089,7 @@ struct Value
         case Type.Number:      return Key.number;
         case Type.String:      return Text.string;
         case Type.Object:      return _object.getTypeof;
+        case Type.Symbol:      return Key.Symbol;
         case Type.Iter:
             assert(0);
         }
@@ -1219,6 +1266,8 @@ struct Value
             return 0 == stringcmp(_text, r._text);
         case Type.Boolean:
             return _dbool == r._dbool;
+        case Type.Symbol:
+            return _hash == r._hash;
         case Type.Object:
             return _object is r._object;
 
@@ -1250,6 +1299,8 @@ struct Value
             // computed the hash, use previous value
             if(0 == _hash)
                 _hash = calcHash(_text);
+            return _hash;
+        case Type.Symbol:
             return _hash;
         case Type.Object:
             /* Uses the address of the object as the hash.

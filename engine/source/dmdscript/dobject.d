@@ -42,10 +42,13 @@ class Dobject
     mixin Initializer!DobjectConstructor;
 
     //
-    @safe pure nothrow
-    this(Dobject prototype = getPrototype, string_t cn = Key.Object)
+    this(Dobject prototype = getPrototype, string_t cn = Key.Object,
+        PropTable pt = null)
     {
-        proptable = new PropTable;
+        if (pt is null)
+            proptable = new PropTable;
+        else
+            proptable = pt;
         SetPrototypeOf(prototype);
         _classname = cn;
         value.put(this);
@@ -60,14 +63,12 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.1
-    @property @safe @nogc pure nothrow
     Dobject GetPrototypeOf()
     {
         return _prototype;
     }
 
     /// Ecma-262-v7/9.1.2
-    @property @safe @nogc pure nothrow
     bool SetPrototypeOf(Dobject p)
     {
         if (!_extensible)
@@ -77,8 +78,7 @@ class Dobject
         // How can I implement this?
         //i. If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
 
-        for (auto pp = p; pp !is null;
-             pp = pp.Dobject.GetPrototypeOf)
+        for (auto pp = p; pp !is null; pp = pp.GetPrototypeOf)
         {
             if (pp is this)
                 return false;
@@ -90,14 +90,12 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.3
-    @property @safe @nogc pure nothrow
     bool IsExtensible() const
     {
         return _extensible;
     }
 
     /// Ecma-262-v7/9.1.4
-    @property @safe @nogc pure nothrow
     bool preventExtensions()
     {
         _extensible = false;
@@ -168,19 +166,25 @@ class Dobject
 
     //--------------------------------------------------------------------
     //
-    @disable
     bool DefineOwnProperty(in PropertyKey PropertyName,
                            in Property.Attribute attributes)
     {
-        return proptable.config(PropertyName, attributes);
+        return proptable.config(PropertyName, attributes, _extensible);
     }
 
-
-    //
+    /// ditto
     bool DefineOwnProperty(in PropertyKey PropertyName,
                            ref Value v, in Property.Attribute attributes)
     {
         return proptable.config(PropertyName, v, attributes, _extensible);
+    }
+
+    /// ditto
+    bool DefineOwnProperty(in PropertyKey PropertyName, Dobject attr,
+                           ref CallContext cc)
+    {
+        auto prop = Property(attr, cc);
+        return proptable.config(PropertyName, prop, _extensible);
     }
 
     //
@@ -519,10 +523,10 @@ public static:
     void initPrototype()
     {
         assert (_class_prototype is null);
-        static if (is (typeof(this) == Dobject))
+        static if (is(typeof(this) == Dobject))
             _class_prototype = new Dobject(null);
         else
-            _class_prototype = new Dobject;
+            _class_prototype = new Dobject(Dobject.getPrototype);
     }
 
     ///
@@ -580,6 +584,7 @@ void dobject_init()
     import dmdscript.dproxy : Dproxy;
     import dmdscript.dreflect : Dreflect;
     import dmdscript.dset : Dset;
+    import dmdscript.dsymbol : Dsymbol;
     import dmdscript.dweakmap : DweakMap;
     import dmdscript.dweakset : DweakSet;
 
@@ -617,6 +622,7 @@ void dobject_init()
         Dproxy,
         Dreflect,
         Dset,
+        Dsymbol,
         DweakMap,
         DweakSet,
         syntaxerror,
@@ -680,7 +686,51 @@ DError* defineProperty(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    assert(0);
+    import dmdscript.primitive : PropertyKey;
+    import dmdscript.property : Property;
+
+    DError* sta;
+    Dobject target;
+    PropertyKey key;
+
+    if      (arglist.length < 2)
+        goto failure;
+    else if (!arglist[0].isObject)
+    {
+        sta = CannotConvertToObject2Error(
+            arglist[0].getTypeof, arglist[0].toString(cc));
+        goto failure;
+    }
+
+    target = arglist[0].object;
+    key = arglist[1].toPropertyKey;
+
+    if (arglist.length < 3)
+    {
+        if (!target.DefineOwnProperty(key, Property.Attribute.None))
+        {
+            sta = CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            goto failure;
+        }
+    }
+    else
+    {
+        if (!target.DefineOwnProperty(key, arglist[2].toObject, cc))
+        {
+            sta = CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            goto failure;
+        }
+    }
+
+succeeded:
+    assert (sta is null);
+    assert (target !is null);
+    ret.put(target);
+    return null;
+
+failure:
+    ret.putVundefined;
+    return sta;
 }
 
 //
@@ -820,7 +870,28 @@ DError* setPrototypeOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    assert(0);
+    Dobject target, proto;
+    DError* sta;
+
+    if (arglist.length < 1)
+        goto failure;
+
+    target = arglist[0].toObject;
+    if (1 < arglist.length)
+        proto = arglist[1].toObject;
+
+    if (!target.SetPrototypeOf(proto))
+    {
+        sta = CannotPutError;
+        goto failure;
+    }
+
+    ret.put(target);
+    return null;
+
+failure:
+    ret.putVundefined;
+    return sta;
 }
 
 //------------------------------------------------------------------------------

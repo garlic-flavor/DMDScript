@@ -16,6 +16,8 @@
  */
 module dmdscript.property;
 
+import dmdscript.errmsgs;
+
 debug import std.stdio;
 
 //==============================================================================
@@ -70,46 +72,21 @@ struct Property
             ~Attribute.ReadOnly;
     }
 
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // implement this.
     // See_Also: Ecma-262-v7/6.2.4.5
-    @disable
-    this(ref CallContext cc, Dobject obj)
+    this(Dobject obj, ref CallContext cc)
     {
-        import dmdscript.errmsgs;
         bool valueOrWritable = false;
 
         assert(obj);
-        if (auto v = obj.Get(Key.enumerable, cc))
-        {
-            if (!v.toBoolean)
-                _attr |= Attribute.DontEnum;
-        }
-        else
-            _attr |= Attribute.DontEnum;
 
-        if (auto v = obj.Get(Key.configurable, cc))
-        {
-            if (!v.toBoolean)
-                _attr |= Attribute.DontConfig;
-        }
-        else
-            _attr |= Attribute.DontConfig;
-
+        _attr = getAttribute(cc, obj);
         if (auto v = obj.Get(Key.value, cc))
         {
             _value = *v;
             valueOrWritable = true;
         }
-
-        if (auto v = obj.Get(Key.writable, cc))
-        {
-            if (!v.toBoolean)
-                _attr |= Attribute.ReadOnly;
-            valueOrWritable = true;
-        }
         else
-            _attr |= Attribute.ReadOnly;
+            valueOrWritable = 0 == (_attr & Attribute.ReadOnly);
 
         if (auto v = obj.Get(Key.get, cc))
         {
@@ -130,6 +107,13 @@ struct Property
             if (_Set is null)
                 throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
         }
+    }
+
+    // See_Also: Ecma-262-v7/6.2.4.5
+    this(ref Value v, Dobject obj, ref CallContext cc)
+    {
+        _attr = getAttribute(cc, obj);
+        _value = v;
     }
 
     /*
@@ -229,6 +213,21 @@ struct Property
             return _value == v || (0 != (_attr & Attribute.Silent));
     }
 
+    ///
+    @safe @nogc pure nothrow
+    bool config (ref Property p)
+    {
+        auto na = p._attr;
+        if      (p.isAccessor ? canBeAccessor(na) : canBeData(na))
+        {
+            this = p;
+            return true;
+        }
+        else if (_attr & Attribute.Silent)
+            return true;
+        else
+            return this == p;
+    }
 /*
     /// ditto
     bool configGetter(Dfunction getter, Attribute a)
@@ -311,10 +310,6 @@ struct Property
             if (a & Attribute.DontOverride)
                 return false;
 
-            if ((_attr & Attribute.DontConfig) &&
-                _attr != (a | Attribute.Accessor & ~Attribute.ReadOnly))
-                return false;
-
             a = a | Attribute.Accessor & ~Attribute.ReadOnly
                 & ~Attribute.Silent;
         }
@@ -324,11 +319,6 @@ struct Property
                 return false;
 
             if (_attr & Attribute.ReadOnly)
-                return false;
-
-            if ((_attr & Attribute.DontConfig) &&
-                _attr != (a & ~Attribute.DontOverride & ~Attribute.Accessor &
-                          ~Attribute.ReadOnly))
                 return false;
 
             a = a & ~Attribute.Accessor & ~Attribute.DontOverride
@@ -342,7 +332,7 @@ struct Property
     DError* set(ref Value v, Attribute a, ref CallContext cc, Dobject othis,)
     {
         if (!canSetValue(a))
-            return null;
+            return CannotPutError;
 
         _attr = a;
         if (_attr & Attribute.Accessor)
@@ -507,6 +497,42 @@ public static:
         assert(desc);
         return desc;
     }
+
+private static:
+
+    Attribute getAttribute(ref CallContext cc, Dobject obj)
+    {
+        bool valueOrWritable = false;
+        assert(obj !is null);
+
+        Attribute attr;
+        if (auto v = obj.Get(Key.enumerable, cc))
+        {
+            if (!v.toBoolean)
+                attr |= Attribute.DontEnum;
+        }
+        else
+            attr |= Attribute.DontEnum;
+
+        if (auto v = obj.Get(Key.configurable, cc))
+        {
+            if (!v.toBoolean)
+                attr |= Attribute.DontConfig;
+        }
+        else
+            attr |= Attribute.DontConfig;
+
+        if (auto v = obj.Get(Key.writable, cc))
+        {
+            if (!v.toBoolean)
+                attr |= Attribute.ReadOnly;
+        }
+        else
+            attr |= Attribute.ReadOnly;
+
+        return attr;
+    }
+
 }
 
 //==============================================================================
@@ -522,6 +548,27 @@ final class PropTable
 
     ///
     alias Table = RandAA!(PropertyKey, Property, false);
+
+    static struct SpecialSymbols
+    {
+    static:
+        PropertyKey opAssign;
+
+        static this()
+        {
+            Value v;
+
+            v.putVsymbol(Key.opAssign);
+            opAssign = v.toPropertyKey;
+        }
+
+    static private:
+        enum Key
+        {
+            opAssign = "opAssign",
+        }
+    }
+
 
     //--------------------------------------------------------------------
     ///
@@ -564,12 +611,7 @@ final class PropTable
     @safe
     Property* getOwnProperty(in ref PropertyKey k)
     {
-        static if (is(K : PropertyKey))
-            alias key = k;
-        else
-            auto key = PropertyKey(k);
-
-        return _table.findExistingAlt(key, key.hash);
+        return _table.findExistingAlt(k, k.hash);
     }
 
     //--------------------------------------------------------------------
@@ -581,67 +623,24 @@ final class PropTable
         return null;
     }
 
-/+
-    /*******************************
-     * Determine if property exists for this object.
-     * The enumerable flag means the DontEnum attribute cannot be set.
-     */
-    deprecated
-    @safe
-    bool hasownproperty(ref Value key, in int enumerable)
-    {
-        if (auto p = key in _table)
-            return !enumerable || p.enumerable;
-        return false;
-    }
-
-    deprecated
-    @safe
-    Property* hasproperty(in ref Value key, in size_t hash)
-    {
-        for (auto t = this; t !is null; t = t._previous)
-        {
-            if (auto p = t._table.findExistingAlt(key, hash))
-                return p;
-        }
-        return null;
-    }
-+/
     //--------------------------------------------------------------------
     ///
     DError* set(in ref PropertyKey key, ref Value value,
                 in Property.Attribute attributes,
                 ref CallContext cc, Dobject othis, in bool extensible)
     {
-        import dmdscript.errmsgs;
-
-        if (auto p = _table.findExistingAlt(key, key.hash))
+        if      (auto p = _table.findExistingAlt(key, key.hash))
         {
-            if (!extensible)
-            {
-                auto v = p.get(cc, othis);
-                if (*v != value)
-                    return CannotPutError;
-                else
-                    return null;
-            }
-
             auto na = cast(Property.Attribute)attributes;
             if (!p.canSetValue(na))
             {
-/* not used?
-                if (p.isKeyWord)
-                    return null;
-*/
                 if (p.IsSilence)
                     return null;
                 else
                     return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
-
             if (!_canExtend(key))
             {
-                p.preventExtensions;
                 if (p.IsSilence)
                     return null;
                 else
@@ -650,13 +649,20 @@ final class PropTable
 
             return p.set(value, attributes, cc, othis);
         }
+        else if (auto p = getProperty(SpecialSymbols.opAssign))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canSetValue(na))
+            {
+                if (p.IsSilence)
+                    return null;
+                else
+                    return CannotPutError; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            }
+            return p.set(value, attributes, cc, othis);
+        }
         else if (extensible)
         {
-            if (!_canExtend(key))
-            {
-                return CannotPutError;
-            }
-
             auto p = Property(value, attributes);
             _table.insertAlt(key, p, key.hash);
             return null;
@@ -670,14 +676,33 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     @safe
-    bool config(in ref PropertyKey key, in Property.Attribute attributes)
+    bool config(in ref PropertyKey key, ref Property prop, in bool extensible)
+    {
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            return p.config(prop);
+        }
+        else if (extensible)
+        {
+            _table.insertAlt(key, prop, key.hash);
+            return true;
+        }
+        else
+            return false;
+    }
+
+
+    ///
+    @safe
+    bool config(in ref PropertyKey key, in Property.Attribute attributes,
+                in bool extensible)
     {
 
-        if (auto p = _table.findExistingAlt(key, key.hash))
+        if      (auto p = _table.findExistingAlt(key, key.hash))
         {
             return p.config(attributes);
         }
-        else
+        else if (extensible)
         {
             if (!_canExtend(key))
             {
@@ -688,6 +713,8 @@ final class PropTable
             auto p = Property(v, attributes);
             _table.insertAlt(key, p, key.hash);
         }
+        else
+            return false;
         return true;
     }
 

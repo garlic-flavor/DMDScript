@@ -17,50 +17,50 @@
 
 module dmdscript.dproxy;
 
+import dmdscript.primitive : PKey = Key, PropertyKey;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.value : DError, Value;
 import dmdscript.callcontext : CallContext;
+import dmdscript.errmsgs;
+import dmdscript.property : Property, PropTable;
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // NOT IMPLEMENTED YET.
 class Dproxy : Dobject
 {
-    import dmdscript.dfunction : Dfunction;
     import dmdscript.dobject : Initializer;
+    import dmdscript.dfunction : Dfunction;
 
-    this()
+    this(ref CallContext cc, Dobject prototype, Dobject prop)
     {
-        super(null);
-    }
-
-    this(Dobject prototype)
-    {
-        import dmdscript.primitive : Key;
         super(prototype, Key.Proxy);
+
+        if (auto ret = prop.Get(Key.set, cc))
+        {
+            if (auto func = cast(Dfunction)ret.toObject)
+            {
+                SetSetter(PropTable.SpecialSymbols.opAssign, func,
+                          Property.Attribute.DontEnum);
+            }
+        }
+
     }
 
     mixin Initializer!DproxyConstructor;
-private:
 
-    Dfunction _getPrototypeOf;
-    Dfunction _setPrototypeOf;
-    Dfunction _isExtensible;
-    Dfunction _preventExtensions;
-    Dfunction _getOwnPropertyDescriptor;
-    Dfunction _has;
-    Dfunction _get;
-    Dfunction _set;
-    Dfunction _deleteProperty;
-    Dfunction _DefineProperty;
-    Dfunction _ownkeys;
-    Dfunction _apply;
-    Dfunction _construct;
 }
 
 //==============================================================================
 private:
+
+enum Key : PropertyKey
+{
+    Proxy = PKey.Symbol,
+
+    set = PropertyKey("set"),
+}
 
 //
 @DFD(2, DFD.Type.Static)
@@ -82,6 +82,19 @@ class DproxyConstructor : Dconstructor
     override DError* Construct(ref CallContext cc, out Value ret,
                                Value[] arglist)
     {
-        assert (0);
+        Dobject proto, attr;
+
+        if (0 < arglist.length)
+            proto = arglist[0].toObject;
+        else
+            proto = new Dobject(null);
+
+        if (1 < arglist.length)
+            attr = arglist[1].toObject;
+        else
+            attr = new Dobject(null);
+
+        ret.put(new Dproxy(cc, proto, attr));
+        return null;
     }
 }

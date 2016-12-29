@@ -52,12 +52,12 @@ private
 
         // ECMA 3 13.2
         auto o = new Dobject(Dobject.getPrototype);        // step 9
-        CallContext cc;
         auto val = Value(o);
-        Set(Key.prototype, val, Property.Attribute.DontEnum, cc);  // step 11
+        // step 11
+        DefineOwnProperty(Key.prototype, val, Property.Attribute.DontEnum);
         // step 10
         val.put(this);
-        o.Set(Key.constructor, val, Property.Attribute.DontEnum, cc);
+        o.DefineOwnProperty(Key.constructor, val, Property.Attribute.DontEnum);
 
     }
 
