@@ -144,6 +144,13 @@ struct PropertyKey
     }
 
     //--------------------------------------------------------------------
+    static @safe @nogc pure nothrow
+    PropertyKey symbol(string_t key)
+    {
+        return PropertyKey(key, ~calcHash(key));
+    }
+
+    //--------------------------------------------------------------------
     ///
     @safe @nogc pure nothrow
     this(K)(in auto ref K key) if (IsKey!K)

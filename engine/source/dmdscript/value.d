@@ -165,40 +165,19 @@ struct Value
     @trusted pure nothrow
     void putVsymbol(string_t s)
     {
-        /*
-        This seems strange. The reaseon of this is,
-        1. '_hash = s.ptr' means that, _hash is an isolated value.
-        2. 's.ptr != calcHash(s)' means that, The symbol never collide with any
-           ordinary strings on a hash table.
-        */
-
         _type = Type.Symbol;
-
-        _text = makeSymbol(s);
-        _hash = cast(size_t)s.ptr;
+        _text = s;
     }
 
     @trusted @nogc pure nothrow
     void putVsymbol(string_t s, size_t hash)
     {
-        assert (hash == cast(size_t)s.ptr);
         assert (hash != calcHash(s));
 
         _type = Type.Symbol;
         _text = s;
         _hash = hash;
     }
-
-    //
-    @trusted pure nothrow
-    static string makeSymbol(string_t s)
-    {
-        if (calcHash(s) == cast(size_t)s.ptr)
-            return s.idup;
-        else
-            return s;
-    }
-
 
     //--------------------------------------------------------------------
     @trusted @nogc pure nothrow
@@ -775,7 +754,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    PropertyKey toPropertyKey() const
+    PropertyKey toPropertyKey()
     {
         final switch(_type)
         {
@@ -806,10 +785,19 @@ struct Value
             else if (0 < _hash)
                 return PropertyKey(_text, _hash);
             else
-                return PropertyKey(_text);
+            {
+                _hash = calcHash(_text);
+                return PropertyKey(_text, _hash);
+            }
         }
         case Type.Symbol:
-            return PropertyKey(_text, _hash);
+            if (0 < _hash)
+                return PropertyKey(_text, _hash);
+            else
+            {
+                _hash = ~calcHash(_text);
+                return PropertyKey(_text, _hash);
+            }
         case Type.Object:
             return Key.Object;
         case Type.Iter:

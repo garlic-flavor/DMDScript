@@ -228,38 +228,6 @@ struct Property
         else
             return this == p;
     }
-/*
-    /// ditto
-    bool configGetter(Dfunction getter, Attribute a)
-    {
-        if      (canBeAccessor(a))
-        {
-            _attr = a;
-            _Get = getter;
-            return true;
-        }
-        else if (_attr & Attribute.Accessor)
-            return _Get is getter;
-        else
-            return false;
-
-    }
-    /// ditto
-    bool configSetter(Dfunction setter, Attribute a)
-    {
-        if      (canBeAccessor(a))
-        {
-            _attr = a;
-            _Set = setter;
-            return true;
-        }
-        else if (_attr & Attribute.Accessor)
-            return _Set is setter;
-        else
-            return false;
-
-    }
-*/
 
     /// ditto
     @trusted @nogc pure nothrow
@@ -552,21 +520,7 @@ final class PropTable
     static struct SpecialSymbols
     {
     static:
-        PropertyKey opAssign;
-
-        static this()
-        {
-            Value v;
-
-            v.putVsymbol(Key.opAssign);
-            opAssign = v.toPropertyKey;
-        }
-
-    static private:
-        enum Key
-        {
-            opAssign = "opAssign",
-        }
+        PropertyKey opAssign = PropertyKey.symbol("opAssign");
     }
 
 
