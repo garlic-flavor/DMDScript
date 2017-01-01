@@ -62,22 +62,22 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    template IsValue(T)
+    template canHave(T)
     {
-        enum IsValue = is(T == bool) || is(T == const(bool)) ||
+        enum canHave = is(T == bool) || is(T == const(bool)) ||
             is(T : Type) || is(T : PropertyKey) || is(T : double) ||
             is(T : string_t) || is(T : Dobject) || is(T == Iterator*) ||
             is(T : Value);
     }
 
     //--------------------------------------------------------------------
-    this(T)(auto ref T arg) if (IsValue!T)
+    this(T)(auto ref T arg) if (canHave!T)
     {
         put(arg);
     }
 
     //--------------------------------------------------------------------
-    this(T)(auto ref T arg, size_t h) if (IsValue!T)
+    this(T)(auto ref T arg, size_t h) if (canHave!T)
     {
         put(arg, h);
     }
@@ -165,23 +165,15 @@ struct Value
     @trusted pure nothrow
     void putVsymbol(string_t s)
     {
+        auto pk = PropertyKey.symbol(s);
         _type = Type.Symbol;
-        _text = s;
-    }
-
-    @trusted @nogc pure nothrow
-    void putVsymbol(string_t s, size_t hash)
-    {
-        assert (hash != calcHash(s));
-
-        _type = Type.Symbol;
-        _text = s;
-        _hash = hash;
+        _text = pk.text;
+        _hash = pk.hash;
     }
 
     //--------------------------------------------------------------------
     @trusted @nogc pure nothrow
-    void put(T)(auto ref T t) if (IsValue!T)
+    void put(T)(auto ref T t) if (canHave!T)
     {
         static if      (is(T == bool) || is(T == const(bool)))
         {
@@ -970,7 +962,7 @@ struct Value
         case Type.String:
             return new Dstring(_text);
         case Type.Symbol:
-            return new Dsymbol(_text, _hash);
+            return new Dsymbol(this);
         case Type.Object:
             return _object;
         case Type.Iter:
@@ -1321,7 +1313,7 @@ struct Value
 
     //--------------------------------------------------------------------
     DError* Set(K, V)(in auto ref K name, auto ref V value, ref CallContext cc)
-        if (IsValue!V && PropertyKey.IsKey!K)
+        if (canHave!V && PropertyKey.IsKey!K)
 
     {
         import std.conv : to;

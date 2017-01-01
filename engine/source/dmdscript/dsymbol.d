@@ -37,10 +37,10 @@ class Dsymbol : Dobject
         value.putVsymbol(desc);
     }
 
-    this(string_t desc, size_t hash)
+    this(ref Value desc)
     {
         super(Dsymbol.getPrototype, Key.Symbol);
-        value.putVsymbol(desc, hash);
+        value = desc;
     }
 
     mixin Initializer!DsymbolConstructor;

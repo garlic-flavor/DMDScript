@@ -144,10 +144,13 @@ struct PropertyKey
     }
 
     //--------------------------------------------------------------------
-    static @safe @nogc pure nothrow
+    static @safe pure nothrow
     PropertyKey symbol(string_t key)
     {
-        return PropertyKey(key, ~calcHash(key));
+        auto hash = calcHash(key);
+        if (hash == cast(size_t)key.ptr)
+            key = key.idup;
+        return PropertyKey(key, cast(size_t)key.ptr);
     }
 
     //--------------------------------------------------------------------

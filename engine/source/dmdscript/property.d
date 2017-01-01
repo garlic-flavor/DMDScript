@@ -21,6 +21,386 @@ import dmdscript.errmsgs;
 debug import std.stdio;
 
 //==============================================================================
+///
+final class PropTable
+{
+    import dmdscript.value : Value, DError;
+    import dmdscript.primitive : string_t, PropertyKey;
+    import dmdscript.dobject : Dobject;
+    import dmdscript.callcontext : CallContext;
+    import dmdscript.dfunction : Dfunction;
+    import dmdscript.RandAA : RandAA;
+
+    ///
+    alias Table = RandAA!(PropertyKey, Property, false);
+
+    static struct SpecialSymbols
+    {
+    static:
+        PropertyKey opAssign;
+
+        static this()
+        {
+            opAssign = PropertyKey.symbol("opAssign");
+        }
+    }
+
+
+    //--------------------------------------------------------------------
+    ///
+    @safe pure nothrow
+    this()
+    {
+        _table = new Table;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    int opApply(scope int delegate(ref Property) dg)
+    {
+        return _table.opApply(dg);
+    }
+    /// ditto
+    int opApply(scope int delegate(ref PropertyKey, ref Property) dg)
+    {
+        return _table.opApply(dg);
+    }
+
+    //--------------------------------------------------------------------
+    /**
+    Look up name and get its corresponding Property.
+    Return null if not found.
+    */
+    @trusted
+    Property* getProperty(in ref PropertyKey key)
+    {
+        for (auto t = cast(PropTable)this; t !is null; t = t._previous)
+        {
+            if (auto p = t._table.findExistingAlt(key, key.hash))
+                return cast(typeof(return))p;
+        }
+        return null;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @safe
+    Property* getOwnProperty(in ref PropertyKey k)
+    {
+        return _table.findExistingAlt(k, k.hash);
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    Value* get(in ref PropertyKey key, ref CallContext cc, Dobject othis)
+    {
+        if (auto p = getProperty(key))
+            return p.get(cc, othis);
+        return null;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    DError* set(in ref PropertyKey key, ref Value value,
+                in Property.Attribute attributes,
+                ref CallContext cc, Dobject othis, in bool extensible)
+    {
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canSetValue(na))
+            {
+                if (p.IsSilence)
+                    return null;
+                else
+                    return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            }
+            if (!_canExtend(key))
+            {
+                if (p.IsSilence)
+                    return null;
+                else
+                    return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            }
+
+            return p.set(value, attributes, cc, othis);
+        }
+        else if (auto p = getProperty(SpecialSymbols.opAssign))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canSetValue(na))
+            {
+                if (p.IsSilence)
+                    return null;
+                else
+                    return CannotPutError; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            }
+            return p.set(value, attributes, cc, othis);
+        }
+        else if (extensible)
+        {
+            auto p = Property(value, attributes);
+            _table.insertAlt(key, p, key.hash);
+            return null;
+        }
+        else
+        {
+            return CannotPutError;
+        }
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @safe
+    bool config(in ref PropertyKey key, ref Property prop, in bool extensible)
+    {
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            return p.config(prop);
+        }
+        else if (extensible)
+        {
+            _table.insertAlt(key, prop, key.hash);
+            return true;
+        }
+        else
+            return false;
+    }
+
+
+    ///
+    @safe
+    bool config(in ref PropertyKey key, in Property.Attribute attributes,
+                in bool extensible)
+    {
+
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            return p.config(attributes);
+        }
+        else if (extensible)
+        {
+            if (!_canExtend(key))
+            {
+                return false;
+            }
+
+            Value v;
+            auto p = Property(v, attributes);
+            _table.insertAlt(key, p, key.hash);
+        }
+        else
+            return false;
+        return true;
+    }
+
+    /// ditto
+    @safe
+    bool config(in ref PropertyKey key, ref Value value,
+                in Property.Attribute attributes, in bool extensible)
+    {
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canBeData(na))
+            {
+                return false;
+            }
+
+            if (!_canExtend(key))
+            {
+                p.preventExtensions;
+                return false;
+            }
+
+            *p = Property(value, na);
+
+            return true;
+        }
+        else if (extensible)
+        {
+            if (!_canExtend(key))
+            {
+                return false;
+            }
+
+            auto p = Property(value, attributes);
+            _table.insertAlt(key, p, key.hash);
+
+            return true;
+        }
+        else
+            return false;
+    }
+
+    /// ditto
+    @safe
+    bool configGetter(in ref PropertyKey key, Dfunction getter,
+                      in Property.Attribute attributes, in bool extensible)
+    {
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canBeAccessor(na))
+            {
+                return false;
+            }
+
+            if (!_canExtend(key))
+            {
+                p.preventExtensions;
+                return false;
+            }
+
+            p.configGetterForce(getter, na);
+
+            return true;
+        }
+        else if (extensible)
+        {
+            if (!_canExtend(key))
+            {
+                return false;
+            }
+
+            auto p = Property(getter, null, attributes);
+            _table.insertAlt(key, p, key.hash);
+
+            return true;
+        }
+        else
+            return false;
+    }
+
+    /// ditto
+    @safe
+    bool configSetter(in ref PropertyKey key, Dfunction setter,
+                      in Property.Attribute attributes, in bool extensible)
+    {
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canBeAccessor(na))
+            {
+                return false;
+            }
+
+            if (!_canExtend(key))
+            {
+                p.preventExtensions;
+                return false;
+            }
+
+            p.configSetterForce(setter, na);
+
+            return true;
+        }
+        else if (extensible)
+        {
+            if (!_canExtend(key))
+            {
+                return false;
+            }
+
+            auto p = Property(null, setter, attributes);
+            _table.insertAlt(key, p, key.hash);
+
+            return true;
+        }
+        else
+            return false;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @trusted
+    bool canset(in ref PropertyKey key) const
+    {
+        auto t = cast(PropTable)this;
+        do
+        {
+            if (auto p = t._table.findExistingAlt(key, key.hash))
+            {
+                if (p.isAccessor)
+                    return p.configurable;
+                else
+                    return p.writable;
+            }
+            t = t._previous;
+        } while(t !is null);
+        return true;                    // success
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @safe
+    bool del(in ref PropertyKey key)
+    {
+        if(auto p = _table.findExistingAlt(key, key.hash))
+        {
+            if(!p.deletable)
+                return false;
+            _table.remove(key, key.hash);
+        }
+        return true;                    // not found
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @property @safe pure nothrow
+    PropertyKey[] keys()
+    {
+        return _table.keys;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    size_t length() const
+    {
+        return _table.length;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    void previous(PropTable p)
+    {
+        _previous = p;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @safe
+    Property* opBinaryRight(string OP : "in")(in ref PropertyKey key)
+    {
+        return _table.findExistingAlt(key, key.hash);
+    }
+
+    //====================================================================
+private:
+    Table _table;
+    PropTable _previous;
+
+    @trusted
+    bool _canExtend(in ref PropertyKey key) const
+    {
+        for (auto t = cast(PropTable)_previous; t !is null; t = t._previous)
+        {
+            if (auto p = t._table.findExistingAlt(key, key.hash))
+            {
+                if (p.isAccessor)
+                    return p.configurable;
+                else
+                    return p.writable;
+            }
+        }
+        return true;
+    }
+}
+
+//==============================================================================
+package:
+
+//------------------------------------------------------------------------------
 /// See_Also: Ecma-262-v7/6.1.7.1/Property Attributes
 ///                      /6.2.4
 struct Property
@@ -503,377 +883,6 @@ private static:
 
 }
 
-//==============================================================================
-///
-final class PropTable
-{
-    import dmdscript.value : Value, DError;
-    import dmdscript.primitive : string_t, PropertyKey;
-    import dmdscript.dobject : Dobject;
-    import dmdscript.callcontext : CallContext;
-    import dmdscript.dfunction : Dfunction;
-    import dmdscript.RandAA : RandAA;
-
-    ///
-    alias Table = RandAA!(PropertyKey, Property, false);
-
-    static struct SpecialSymbols
-    {
-    static:
-        PropertyKey opAssign = PropertyKey.symbol("opAssign");
-    }
-
-
-    //--------------------------------------------------------------------
-    ///
-    @safe pure nothrow
-    this()
-    {
-        _table = new Table;
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    int opApply(scope int delegate(ref Property) dg)
-    {
-        return _table.opApply(dg);
-    }
-    /// ditto
-    int opApply(scope int delegate(ref PropertyKey, ref Property) dg)
-    {
-        return _table.opApply(dg);
-    }
-
-    //--------------------------------------------------------------------
-    /**
-    Look up name and get its corresponding Property.
-    Return null if not found.
-    */
-    @trusted
-    Property* getProperty(in ref PropertyKey key)
-    {
-        for (auto t = cast(PropTable)this; t !is null; t = t._previous)
-        {
-            if (auto p = t._table.findExistingAlt(key, key.hash))
-                return cast(typeof(return))p;
-        }
-        return null;
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @safe
-    Property* getOwnProperty(in ref PropertyKey k)
-    {
-        return _table.findExistingAlt(k, k.hash);
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    Value* get(in ref PropertyKey key, ref CallContext cc, Dobject othis)
-    {
-        if (auto p = getProperty(key))
-            return p.get(cc, othis);
-        return null;
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    DError* set(in ref PropertyKey key, ref Value value,
-                in Property.Attribute attributes,
-                ref CallContext cc, Dobject othis, in bool extensible)
-    {
-        if      (auto p = _table.findExistingAlt(key, key.hash))
-        {
-            auto na = cast(Property.Attribute)attributes;
-            if (!p.canSetValue(na))
-            {
-                if (p.IsSilence)
-                    return null;
-                else
-                    return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            }
-            if (!_canExtend(key))
-            {
-                if (p.IsSilence)
-                    return null;
-                else
-                    return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            }
-
-            return p.set(value, attributes, cc, othis);
-        }
-        else if (auto p = getProperty(SpecialSymbols.opAssign))
-        {
-            auto na = cast(Property.Attribute)attributes;
-            if (!p.canSetValue(na))
-            {
-                if (p.IsSilence)
-                    return null;
-                else
-                    return CannotPutError; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            }
-            return p.set(value, attributes, cc, othis);
-        }
-        else if (extensible)
-        {
-            auto p = Property(value, attributes);
-            _table.insertAlt(key, p, key.hash);
-            return null;
-        }
-        else
-        {
-            return CannotPutError;
-        }
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @safe
-    bool config(in ref PropertyKey key, ref Property prop, in bool extensible)
-    {
-        if      (auto p = _table.findExistingAlt(key, key.hash))
-        {
-            return p.config(prop);
-        }
-        else if (extensible)
-        {
-            _table.insertAlt(key, prop, key.hash);
-            return true;
-        }
-        else
-            return false;
-    }
-
-
-    ///
-    @safe
-    bool config(in ref PropertyKey key, in Property.Attribute attributes,
-                in bool extensible)
-    {
-
-        if      (auto p = _table.findExistingAlt(key, key.hash))
-        {
-            return p.config(attributes);
-        }
-        else if (extensible)
-        {
-            if (!_canExtend(key))
-            {
-                return false;
-            }
-
-            Value v;
-            auto p = Property(v, attributes);
-            _table.insertAlt(key, p, key.hash);
-        }
-        else
-            return false;
-        return true;
-    }
-
-    /// ditto
-    @safe
-    bool config(in ref PropertyKey key, ref Value value,
-                in Property.Attribute attributes, in bool extensible)
-    {
-        if      (auto p = _table.findExistingAlt(key, key.hash))
-        {
-            auto na = cast(Property.Attribute)attributes;
-            if (!p.canBeData(na))
-            {
-                return false;
-            }
-
-            if (!_canExtend(key))
-            {
-                p.preventExtensions;
-                return false;
-            }
-
-            *p = Property(value, na);
-
-            return true;
-        }
-        else if (extensible)
-        {
-            if (!_canExtend(key))
-            {
-                return false;
-            }
-
-            auto p = Property(value, attributes);
-            _table.insertAlt(key, p, key.hash);
-
-            return true;
-        }
-        else
-            return false;
-    }
-
-    /// ditto
-    @safe
-    bool configGetter(in ref PropertyKey key, Dfunction getter,
-                      in Property.Attribute attributes, in bool extensible)
-    {
-        if      (auto p = _table.findExistingAlt(key, key.hash))
-        {
-            auto na = cast(Property.Attribute)attributes;
-            if (!p.canBeAccessor(na))
-            {
-                return false;
-            }
-
-            if (!_canExtend(key))
-            {
-                p.preventExtensions;
-                return false;
-            }
-
-            p.configGetterForce(getter, na);
-
-            return true;
-        }
-        else if (extensible)
-        {
-            if (!_canExtend(key))
-            {
-                return false;
-            }
-
-            auto p = Property(getter, null, attributes);
-            _table.insertAlt(key, p, key.hash);
-
-            return true;
-        }
-        else
-            return false;
-    }
-
-    /// ditto
-    @safe
-    bool configSetter(in ref PropertyKey key, Dfunction setter,
-                      in Property.Attribute attributes, in bool extensible)
-    {
-        if      (auto p = _table.findExistingAlt(key, key.hash))
-        {
-            auto na = cast(Property.Attribute)attributes;
-            if (!p.canBeAccessor(na))
-            {
-                return false;
-            }
-
-            if (!_canExtend(key))
-            {
-                p.preventExtensions;
-                return false;
-            }
-
-            p.configSetterForce(setter, na);
-
-            return true;
-        }
-        else if (extensible)
-        {
-            if (!_canExtend(key))
-            {
-                return false;
-            }
-
-            auto p = Property(null, setter, attributes);
-            _table.insertAlt(key, p, key.hash);
-
-            return true;
-        }
-        else
-            return false;
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @trusted
-    bool canset(in ref PropertyKey key) const
-    {
-        auto t = cast(PropTable)this;
-        do
-        {
-            if (auto p = t._table.findExistingAlt(key, key.hash))
-            {
-                if (p.isAccessor)
-                    return p.configurable;
-                else
-                    return p.writable;
-            }
-            t = t._previous;
-        } while(t !is null);
-        return true;                    // success
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @safe
-    bool del(in ref PropertyKey key)
-    {
-        if(auto p = _table.findExistingAlt(key, key.hash))
-        {
-            if(!p.deletable)
-                return false;
-            _table.remove(key, key.hash);
-        }
-        return true;                    // not found
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @property @safe pure nothrow
-    PropertyKey[] keys()
-    {
-        return _table.keys;
-    }
-
-    ///
-    @property @safe @nogc pure nothrow
-    size_t length() const
-    {
-        return _table.length;
-    }
-
-    ///
-    @property @safe @nogc pure nothrow
-    void previous(PropTable p)
-    {
-        _previous = p;
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @safe
-    Property* opBinaryRight(string OP : "in")(in ref PropertyKey key)
-    {
-        return _table.findExistingAlt(key, key.hash);
-    }
-
-    //====================================================================
-private:
-    Table _table;
-    PropTable _previous;
-
-    @trusted
-    bool _canExtend(in ref PropertyKey key) const
-    {
-        for (auto t = cast(PropTable)_previous; t !is null; t = t._previous)
-        {
-            if (auto p = t._table.findExistingAlt(key, key.hash))
-            {
-                if (p.isAccessor)
-                    return p.configurable;
-                else
-                    return p.writable;
-            }
-        }
-        return true;
-    }
-}
 
 //==============================================================================
 private:

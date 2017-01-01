@@ -20,7 +20,7 @@
 
 module dmdscript.lexer;
 
-import dmdscript.primitive : string_t, Identifier;
+import dmdscript.primitive : char_t, string_t, Identifier;
 
 debug import std.stdio;
 
@@ -43,6 +43,7 @@ debug import std.stdio;
 package:
 
 //------------------------------------------------------------------------------
+///
 enum Tok : int
 {
     reserved,
@@ -256,6 +257,7 @@ protected:
     static if (MODE & Mode.UseStringtable)
         IdTable idtable;         // use for Identifiers
 
+    //--------------------------------------------------------------------
     @trusted pure nothrow
     this(string_t sourcename, string_t base, IdTable baseTable = null)
     {
@@ -277,6 +279,7 @@ protected:
         }
     }
 
+    //--------------------------------------------------------------------
     //
     Token* peek(Token* ct)
     {
@@ -294,6 +297,7 @@ protected:
         return t;
     }
 
+    //--------------------------------------------------------------------
     //
     void insertSemicolon(immutable(char_t)* loc)
     {
@@ -323,6 +327,7 @@ protected:
     }
 
     //--------------------------------------------------------------------
+    //
     Identifier getPropertyName()
     {
         switch (token)
@@ -346,6 +351,7 @@ protected:
     }
 
     //--------------------------------------------------------------------
+    //
     Identifier getIdentifierName()
     {
         switch (token)
@@ -1311,7 +1317,7 @@ private:
     @trusted
     Tok number(Token *t)
     {
-        import std.ascii : isDigit, isHexDigit;
+        import std.ascii : isDigit, isHexDigit, isOctalDigit;
         import std.string : toStringz;
         import core.sys.posix.stdlib : strtod;
         import dmdscript.primitive : number_t;
@@ -1367,7 +1373,7 @@ private:
                         {
                             if('0' <= w && w <= '9')
                                 w -= '0';
-                            else if('a' <= w && w <= 'f')
+                             else if('a' <= w && w <= 'f')
                                 w -= ('a' - 10);
                             else if('A' <= w && w <= 'F')
                                 w -= ('A' - 10);
@@ -1393,6 +1399,26 @@ private:
                 while(isHexDigit(*p));
                 start += 2;
                 base = 16;
+                goto Lnumber;
+
+            case 'b', 'B':
+                if (p - start != 2 || !isBinDigit(*p))
+                    goto Lerr;
+                do
+                    p++;
+                while(isBinDigit(*p));
+                start += 2;
+                base = 2;
+                goto Lnumber;
+
+            case 'o', 'O':
+                if (p - start != 2 || !isOctalDigit(*p))
+                    goto Lerr;
+                do
+                    p++;
+                while(isOctalDigit(*p));
+                start += 2;
+                base = 8;
                 goto Lnumber;
 
             case '.':
@@ -1668,8 +1694,7 @@ private:
 //==============================================================================
 private:
 
-/****************************************
- */
+//
 // This function seems that only be called at error handling,
 // and for debugging.
 @safe pure
@@ -1732,3 +1757,9 @@ string_t tochars(Tok tok)
     assert(0);
 }
 
+//
+@safe @nogc pure nothrow
+bool isBinDigit(char_t c)
+{
+    return c == '0' || c == '1';
+}
