@@ -63,26 +63,24 @@ class FunctionDefinition : TopStatement
     IR* code;
     uint nlocals;
 
-    string_t srctext;
+    string srctext;
 
     @safe @nogc pure nothrow
     this(TopStatement[] topstatements)
     {
         super(0);
-        st = StatementType.FunctionDefinition;
         this.isglobal = 1;
         this.topstatements = topstatements;
     }
 
     @safe @nogc pure nothrow
-    this(string_t srctext, uint linnum, bool isglobal,
+    this(string srctext, uint linnum, bool isglobal,
          Identifier  name, string srcname,
          Identifier[] parameters, TopStatement[] topstatements)
     {
         super(linnum);
 
         //writef("FunctionDefinition('%ls')\n", name ? name.string : L"");
-        st = StatementType.FunctionDefinition;
         this.srctext = srctext;
         this.isglobal = isglobal;
         this.name = name;
@@ -185,12 +183,10 @@ class FunctionDefinition : TopStatement
             for(i = 0; i < topstatements.length; i++)
             {
                 TopStatement ts;
-                FunctionDefinition fd;
 
                 ts = topstatements[i];
-                if(ts.st == StatementType.FunctionDefinition)
+                if (auto fd = cast(FunctionDefinition)ts)
                 {
-                    fd = cast(FunctionDefinition)ts;
                     if(fd.code)
                         continue;
                 }
@@ -244,7 +240,7 @@ class FunctionDefinition : TopStatement
     }
 
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         if(!isglobal)
         {

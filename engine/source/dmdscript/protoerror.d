@@ -23,6 +23,7 @@ import dmdscript.dfunction : Dconstructor;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.value : DError, Value;
+import dmdscript.exception : ScriptException;
 
 debug import std.stdio;
 
@@ -36,9 +37,9 @@ class D0(alias TEXT_D1) : D0base
 
     enum Text = PropertyKey(TEXT_D1);
 
-    this(string_t m)
+    this(string m)
     {
-        super(TEXT_D1, getPrototype, m);
+        super(Text.text, getPrototype, m);
     }
 
 
@@ -48,7 +49,7 @@ class D0(alias TEXT_D1) : D0base
         assert (getPrototype !is null);
     }
 
-    this(string_t name, ScriptException exception)
+    this(string name, ScriptException exception)
     {
         super(name, getPrototype, exception);
         assert (getPrototype !is null);
@@ -63,10 +64,10 @@ package static:
     {
         import dmdscript.property : Property;
 
-        _Initializer.initFuncs(TEXT_D1, &newD0);
+        _Initializer.initFuncs(Text.text, &newD0);
 
         Value val;
-        val.put(TEXT_D1);
+        val.put(Text);
         _class_prototype.DefineOwnProperty(Key.name, val,
                                            Property.Attribute.None);
         val.put(TEXT_D1 ~ ".prototype.message");
@@ -81,7 +82,7 @@ package static:
 
 private static:
 
-    Dobject newD0(string_t s)
+    Dobject newD0(string s)
     {
         return new D0(s);
     }
@@ -94,17 +95,39 @@ alias rangeerror = D0!"RangeError";
 alias typeerror = D0!"TypeError";
 alias urierror = D0!"URIError";
 
+D0base newD0(ScriptException e)
+{
+    switch (e.type)
+    {
+    case syntaxerror.Text:
+        return new syntaxerror(e);
+    case evalerror.Text:
+        return new evalerror(e);
+    case referenceerror.Text:
+        return new referenceerror(e);
+    case rangeerror.Text:
+        return new rangeerror(e);
+    case typeerror.Text:
+        return new typeerror(e);
+    case urierror.Text:
+        return new urierror(e);
+    default:
+        return null;
+    }
+    assert (0);
+}
+
 //==============================================================================
 package:
 
 class D0base : Dobject
 {
-    import dmdscript.primitive : string_t, Key;
+    import dmdscript.primitive : Key;
     import dmdscript.exception : ScriptException;
 
     ScriptException exception;
 
-    protected this(string_t typename, Dobject prototype, string_t m)
+    protected this(string typename, Dobject prototype, string m)
     {
         import dmdscript.property : Property;
 
@@ -135,7 +158,7 @@ class D0base : Dobject
         //                   Property.Attribute.None);
     }
 
-    protected this(string_t typename, Dobject prototype,
+    protected this(string typename, Dobject prototype,
                    ScriptException exception)
     {
         import dmdscript.property : Property;
@@ -165,11 +188,10 @@ class D0_constructor : Dconstructor
     import dmdscript.callcontext : CallContext;
     import dmdscript.value : DError, Value;
     import dmdscript.dglobal : undefined;
-    import dmdscript.primitive : string_t;
 
-    Dobject function(string_t) newD0;
+    Dobject function(string) newD0;
 
-    this(string_t text_d1, Dobject function(string_t) newD0)
+    this(string text_d1, Dobject function(string) newD0)
     {
         super(text_d1, 1, Dfunction.getPrototype);
         this.newD0 = newD0;
@@ -181,7 +203,7 @@ class D0_constructor : Dconstructor
         // ECMA 15.11.7.2
         Value* m;
         Dobject o;
-        string_t s;
+        string s;
 
         m = (arglist.length) ? &arglist[0] : &undefined;
         // ECMA doesn't say what we do if m is undefined

@@ -28,7 +28,7 @@ import dmdscript.dobject : Dobject;
 
 class Darguments : Dobject
 {
-    import dmdscript.primitive : string_t, Identifier, PropertyKey;
+    import dmdscript.primitive : Identifier, PropertyKey;
     import dmdscript.callcontext : CallContext;
     import dmdscript.value : Value, DError;
     import dmdscript.property : Property;
@@ -97,7 +97,7 @@ class Darguments : Dobject
             return Dobject.Set(PropertyName, value, attributes, cc);
     }
 
-    override int CanPut(in string_t PropertyName)
+    override int CanPut(in string PropertyName)
     {
         import dmdscript.primitive : StringToIndex;
 

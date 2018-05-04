@@ -17,7 +17,7 @@
 
 module dmdscript.dglobal;
 
-import dmdscript.primitive : string_t, char_t, Key;
+import dmdscript.primitive : Key;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : Value, DError, vundefined;
@@ -60,7 +60,7 @@ string banner()
 ///
 class Dglobal : Dobject
 {
-    this(char_t[][] argv)
+    this(char[][] argv)
     {
         import dmdscript.dfunction : Dfunction;
         import dmdscript.property : Property;
@@ -209,7 +209,7 @@ DError* eval(
 
     // ECMA 15.1.2.1
     Value* v;
-    string_t s;
+    string s;
     FunctionDefinition fd;
     ScriptException exception;
     DError* result;
@@ -351,7 +351,10 @@ DError* eval(
         cc.pop(dfs);
 
         if(p1)
-            delete p1;
+        {
+            p1.destroy;
+            p1 = null;
+        }
         fd = null;
 
         return result;
@@ -376,7 +379,7 @@ DError* parseInt(
     int sign = 1;
     double number;
     size_t i;
-    string_t str;
+    string str;
 
     str = arg0string(cc, arglist);
 
@@ -446,7 +449,7 @@ DError* parseInt(
     for(z = s; i; z++, i--)
     {
         int n;
-        char_t c;
+        char c;
 
         c = *z;
         if('0' <= c && c <= '9')
@@ -499,7 +502,7 @@ DError* parseFloat(
     double n;
     size_t endidx;
 
-    string_t str = arg0string(cc, arglist);
+    string str = arg0string(cc, arglist);
     n = StringNumericLiteral(str, endidx, 1);
 
     ret.put(n);
@@ -514,7 +517,7 @@ int ISURIALNUM(dchar c)
            (c >= '0' && c <= '9');
 }
 
-char_t[16 + 1] TOHEX = "0123456789ABCDEF";
+char[16 + 1] TOHEX = "0123456789ABCDEF";
 
 @DFD(1)
 DError* escape(
@@ -525,7 +528,7 @@ DError* escape(
     import std.string : indexOf;
 
     // ECMA 15.1.2.4
-    string_t s;
+    string s;
     uint escapes;
     uint unicodes;
     size_t slen;
@@ -573,7 +576,7 @@ DError* escape(
             }
             else
             {
-                r[0] = cast(char_t)c;
+                r[0] = cast(char)c;
                 r++;
             }
         }
@@ -594,14 +597,16 @@ DError* unescape(
     import std.utf : encode;
 
     // ECMA 15.1.2.5
-    string_t s;
-    Unqual!(ForeachType!string_t)[] R; // char[] type is assumed.
+    string s;
+    char[] R; // char[] type is assumed.
+    char[4] tmp;
+    size_t len;
 
     s = arg0string(cc, arglist);
     //writefln("Dglobal.unescape(s = '%s')", s);
     for(size_t k = 0; k < s.length; k++)
     {
-        char_t c = s[k];
+        char c = s[k];
 
         if(c == '%')
         {
@@ -616,7 +621,8 @@ DError* unescape(
 
                     if(i == 6)
                     {
-                        encode(R, cast(dchar)u);
+                        len = encode(tmp, cast(dchar)u);
+                        R ~= tmp[0..len];
                         k += 5;
                         goto L1;
                     }
@@ -643,7 +649,8 @@ DError* unescape(
 
                     if(i == 3)
                     {
-                        encode(R, cast(dchar)u);
+                        len = encode(tmp, cast(dchar)u);
+                        R ~= tmp[0..len];
                         k += 2;
                         goto L1;
                     }
@@ -716,7 +723,7 @@ DError* isFinite(
 }
 
 //------------------------------------------------------------------------------
-DError* URI_error(string_t s)
+DError* URI_error(string s)
 {
     import dmdscript.protoerror : urierror;
 
@@ -732,7 +739,7 @@ DError* decodeURI(
 {
     import std.uri : decode, URIException;
     // ECMA v3 15.1.3.1
-    string_t s;
+    string s;
 
     s = arg0string(cc, arglist);
     try
@@ -755,8 +762,9 @@ DError* decodeURIComponent(
     Value[] arglist)
 {
     import std.uri : decodeComponent, URIException;
+    import dmdscript.primitive;
     // ECMA v3 15.1.3.2
-    string_t s;
+    string s;
 
     s = arg0string(cc, arglist);
     try
@@ -781,7 +789,7 @@ DError* encodeURI(
     import std.uri : encode, URIException;
 
     // ECMA v3 15.1.3.3
-    string_t s;
+    string s;
 
     s = arg0string(cc, arglist);
     try
@@ -805,7 +813,7 @@ DError* encodeURIComponent(
 {
     import std.uri : encodeComponent, URIException;
     // ECMA v3 15.1.3.4
-    string_t s;
+    string s;
 
     s = arg0string(cc, arglist);
     try
@@ -851,7 +859,7 @@ void dglobal_print(
             }
             else
             {
-                string_t s = arglist[i].toString(cc);
+                string s = arglist[i].toString(cc);
 
                 writef("%s", s);
             }
@@ -900,7 +908,9 @@ DError* readln(
 
     // Our own extension
     dchar c;
-    Unqual!(ForeachType!string_t)[] s;
+    char[] s;
+    char[4] tmp;
+    size_t len;
 
     for(;; )
     {
@@ -934,7 +944,8 @@ DError* readln(
         }
         if(c == '\n')
             break;
-        encode(s, c);
+        len = encode(tmp, c);
+        s ~= tmp[0..len];
     }
     ret.put(s.assumeUnique);
     return null;
@@ -954,7 +965,7 @@ DError* getenv(
     ret.putVundefined();
     if(arglist.length)
     {
-        string_t s = arglist[0].toString(cc);
+        string s = arglist[0].toString(cc);
         char* p = getenv(toStringz(s));
         if(p)
             ret.put(p[0 .. strlen(p)].idup);
@@ -1010,7 +1021,7 @@ DError* ScriptEngineMinorVersion(
 //------------------------------------------------------------------------------
 
 //
-string_t arg0string(ref CallContext cc, Value[] arglist)
+string arg0string(ref CallContext cc, Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &undefined;
     return v.toString(cc);
@@ -1018,4 +1029,4 @@ string_t arg0string(ref CallContext cc, Value[] arglist)
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // I want to remove this.
-auto undefined = vundefined;
+public auto undefined = vundefined;

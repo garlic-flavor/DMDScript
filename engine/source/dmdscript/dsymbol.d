@@ -28,10 +28,10 @@ import dmdscript.value : DError, Value;
 ///
 class Dsymbol : Dobject
 {
-    import dmdscript.primitive : string_t, Key;
+    import dmdscript.primitive : Key;
     import dmdscript.dobject : Initializer;
 
-    this(string_t desc)
+    this(string desc)
     {
         super(Dsymbol.getPrototype, Key.Symbol);
         value.putVsymbol(desc);

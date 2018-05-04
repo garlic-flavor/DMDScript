@@ -5,5 +5,5 @@
     "authors": ["Walter Bright", "Dmitry Olshansky"],
     "targetType": "library",
     "license": "BSL-1.0",
-    "versions": ["TEST262"],
+    "versions": ["TEST262", "ALLOW_BAD_MANNER"],
 }

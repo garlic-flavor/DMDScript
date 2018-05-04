@@ -28,7 +28,7 @@ import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 ///
 abstract class Dfunction : Dobject
 {
-    import dmdscript.primitive : string_t, Text, Key;
+    import dmdscript.primitive : Text, Key;
     import dmdscript.dobject : Initializer;
 
     @disable
@@ -54,7 +54,7 @@ abstract class Dfunction : Dobject
                  Value[] arglist);
 
     //
-    override string_t getTypeof() const
+    override string getTypeof() const
     {     // ECMA 11.4.3
         return Text._function;
     }
@@ -87,7 +87,7 @@ abstract class Dfunction : Dobject
         w = Get(Key.prototype, cc);
         if(w.isPrimitive())
         {
-            return MustBeObjectError(w.type.to!string_t);
+            return MustBeObjectError(w.type.to!string);
         }
         o = w.toObject();
         for(;; )
@@ -133,7 +133,7 @@ abstract class Dfunction : Dobject
 
 
 protected:
-    string_t name;
+    string name;
 
     //
     this(uint length)
@@ -148,7 +148,7 @@ protected:
     }
 
     //
-    this(string_t name, uint length, Dobject prototype)
+    this(string name, uint length, Dobject prototype)
     {
         import dmdscript.property : Property;
 
@@ -211,7 +211,7 @@ protected:
     }
 
     //
-    this(string_t name, uint length, Dobject prototype)
+    this(string name, uint length, Dobject prototype)
     {
         super(name, length, prototype);
     }
@@ -241,8 +241,8 @@ class DfunctionConstructor : Dconstructor
         import dmdscript.protoerror;
 
         // ECMA 15.3.2.1
-        string_t bdy;
-        string_t P;
+        string bdy;
+        string P;
         FunctionDefinition fd;
         ScriptException exception;
 
@@ -413,7 +413,7 @@ DError* apply(
 
         v = othis.Call(cc, o, ret, alist);
 
-        delete p1;
+        p1.destroy; p1 = null;
     }
     return v;
 }

@@ -19,7 +19,6 @@ module dmdscript.callcontext;
 
 debug import std.stdio;
 
-import dmdscript.primitive : string_t, char_t;
 import dmdscript.dobject : Dobject;
 
 //------------------------------------------------------------------------------
@@ -67,6 +66,7 @@ struct DefinedFunctionScope
         }
     }
 
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 private:
     Dfunction _caller;
     FunctionDefinition _callerf;
@@ -277,19 +277,19 @@ struct CallContext
 
     //--------------------------------------------------------------------
     ///
-    string_t[] searchSimilarWord(string_t name)
+    string[] searchSimilarWord(string name)
     {
         return _current.searchSimilarWord(this, name);
     }
     /// ditto
-    string_t[] searchSimilarWord(Dobject target, string_t name)
+    string[] searchSimilarWord(Dobject target, string name)
     {
         import std.string : soundexer;
         auto key = name.soundexer;
         return .searchSimilarWord(this, target, key);
     }
 
-    //====================================================================
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 private:
     Appender!(DefinedFunctionScope*[]) _scopex;
     DefinedFunctionScope* _current;      // current scope chain
@@ -302,7 +302,7 @@ private:
         assert (_scopex.data[$-1] is _current);
     }
 
-    //====================================================================
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 package debug:
 
     import dmdscript.program : Program;
@@ -321,14 +321,15 @@ package debug:
         _prog = p;
     }
 
-    //====================================================================
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 private debug:
     Program _prog;
 }
 
-//==============================================================================
+//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 private:
 
+//..............................................................................
 //
 struct Stack
 {
@@ -337,6 +338,7 @@ struct Stack
     import dmdscript.property : Property;
     import dmdscript.value : Value, DError;
 
+    //--------------------------------------------------------------------
     //
     @safe pure nothrow
     this(Dobject[] superScopes, Dobject root)
@@ -350,6 +352,7 @@ struct Stack
         _initialSize = _stack.data.length;
     }
 
+    //--------------------------------------------------------------------
     //
     @property @safe @nogc pure nothrow
     inout(Dobject)[] stack() inout
@@ -357,6 +360,7 @@ struct Stack
         return _stack.data;
     }
 
+    //--------------------------------------------------------------------
     //
     @property @safe @nogc pure nothrow
     inout(Dobject) global() inout
@@ -365,6 +369,7 @@ struct Stack
         return _stack.data[0];
     }
 
+    //--------------------------------------------------------------------
     //
     @property @safe @nogc pure nothrow
     inout(Dobject) rootScope() inout
@@ -374,6 +379,7 @@ struct Stack
         return _stack.data[_initialSize - 1];
     }
 
+    //--------------------------------------------------------------------
     //
     @safe @nogc pure nothrow
     inout(Dobject) getNonFakeObject() inout
@@ -388,6 +394,7 @@ struct Stack
         assert (0);
     }
 
+    //--------------------------------------------------------------------
     //
     @property @safe @nogc pure nothrow
     bool isRoot() const
@@ -395,6 +402,7 @@ struct Stack
         return _stack.data.length <= _initialSize;
     }
 
+    //--------------------------------------------------------------------
     //
     @safe pure nothrow
     void push(Dobject o)
@@ -402,6 +410,7 @@ struct Stack
         _stack.put(o);
     }
 
+    //--------------------------------------------------------------------
     //
     @safe pure
     Dobject pop()
@@ -415,6 +424,7 @@ struct Stack
         return ret;
     }
 
+    //--------------------------------------------------------------------
     //
     Value* get(ref CallContext cc, in ref PropertyKey key, out Dobject pthis)
     {
@@ -441,6 +451,7 @@ struct Stack
         return v;
     }
 
+    //--------------------------------------------------------------------
     //
     Value* get(ref CallContext cc, in ref PropertyKey key)
     {
@@ -453,6 +464,7 @@ struct Stack
         return null;
     }
 
+    //--------------------------------------------------------------------
     //
     DError* set(ref CallContext cc, in ref PropertyKey key, ref Value value,
                    Property.Attribute attr = Property.Attribute.None)
@@ -482,6 +494,7 @@ struct Stack
         }
     }
 
+    //--------------------------------------------------------------------
     //
     DError* setThis(ref CallContext cc, in ref PropertyKey key, ref Value value,
                     Property.Attribute attr)
@@ -491,13 +504,23 @@ struct Stack
         return _stack.data[_initialSize - 1].Set(key, value, attr, cc);
     }
 
+    //--------------------------------------------------------------------
     //
-    string_t[] searchSimilarWord(ref CallContext cc, string_t name)
+    DError* setThisLocal(ref CallContext cc, in ref PropertyKey key,
+                         ref Value value, Property.Attribute attr)
+    {
+        assert (0 < _stack.data.length);
+        return _stack.data[$-1].Set(key, value, attr, cc);
+    }
+
+    //--------------------------------------------------------------------
+    //
+    string[] searchSimilarWord(ref CallContext cc, string name)
     {
         import std.string : soundexer;
         import std.array : join;
 
-        Appender!(string_t[][]) result;
+        Appender!(string[][]) result;
 
         auto key = name.soundexer;
         foreach_reverse (one; _stack.data)
@@ -508,24 +531,25 @@ struct Stack
         return result.data.join;
     }
 
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 private:
     immutable size_t _initialSize;
     Appender!(Dobject[]) _stack;
 }
 
+//..............................................................................
 //
-string_t[] searchSimilarWord(ref CallContext cc, Dobject target,
-                             in ref char_t[4] key)
+string[] searchSimilarWord(ref CallContext cc, Dobject target,
+                             in ref char[4] key)
 {
     import std.array : Appender;
     import std.string : soundexer;
 
-    Appender!(string_t[]) result;
+    Appender!(string[]) result;
     foreach (one; target.OwnPropertyKeys)
     {
         auto name = one.toString;
-        if (name.soundexer == key)
-            result.put(name);
+        if (name.soundexer == key) result.put(name);
     }
     if (auto p = target.GetPrototypeOf)
         return result.data ~ searchSimilarWord(cc, p, key);

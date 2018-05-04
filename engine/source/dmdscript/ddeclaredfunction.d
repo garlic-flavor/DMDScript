@@ -24,7 +24,6 @@ debug import std.stdio;
 ///
 class DdeclaredFunction : Dconstructor
 {
-    import dmdscript.primitive : string_t;
     import dmdscript.callcontext : CallContext;
     import dmdscript.dobject : Dobject;
     import dmdscript.value : DError, Value;
@@ -43,7 +42,7 @@ private
         assert(Dfunction.getPrototype);
         assert (fd !is null);
 
-        string_t name = fd.name is null ? Key.Function : fd.name.toString;
+        string name = fd.name is null ? Key.Function : fd.name.toString;
         super(name, cast(uint)fd.parameters.length, Dfunction.getPrototype);
         assert(GetPrototypeOf);
 
@@ -73,7 +72,8 @@ private
         import dmdscript.primitive : Key;
         import dmdscript.dglobal : undefined;
         import dmdscript.darguments : Darguments;
-        import dmdscript.property : Property, PropertyKey;
+        import dmdscript.property : Property;
+        import dmdscript.primitive : PropertyKey;
         import dmdscript.ir : Opcode;
         import dmdscript.opcodes : IR;
         import dmdscript.value : vundefined;
@@ -131,7 +131,8 @@ private
         // make grannymail bug work
 
         // auto newCC = CallContext(cc, actobj, this, fd);
-        fd.instantiate(cc, Property.Attribute.DontDelete);
+        fd.instantiate(cc, Property.Attribute.DontDelete |
+                       Property.Attribute.DontConfig);
 
         auto dfs = DefinedFunctionScope(scopex, actobj, this, fd, othis);
         cc.push(dfs);
@@ -151,14 +152,16 @@ private
         result = IR.call(cc, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace(fd.sourcename, fd.name !is null ?
-                            "function " ~ fd.name.toString : "anonymous",
+            result.addTrace(fd.sourcename,
+                            fd.name !is null ?
+                            "function " ~ fd.name.toString
+                            : "anonymous",
                             fd.srctext);
         }
 
         cc.pop(dfs);
 
-        delete p1;
+        p1.destroy; p1 = null;
 
         // Remove the arguments object
         //Value* v;
@@ -195,10 +198,10 @@ private
         return result;
     }
 
-    override string_t toString()
+    override string toString()
     {
         import std.array : Appender;
-        Appender!string_t buf;
+        Appender!string buf;
 
         fd.toBuffer(b=>buf.put(b));
         return buf.data;

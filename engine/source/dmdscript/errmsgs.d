@@ -4,7 +4,6 @@
 module dmdscript.errmsgs;
 
 import dmdscript.protoerror;
-import dmdscript.primitive : char_t, string_t;
 
 // deprecated // not used
 // {
@@ -23,9 +22,9 @@ import dmdscript.primitive : char_t, string_t;
 // enum ComObjectError =
 //     err!typeerror("Dcomobject: %s.%s fails with COM error %x");
 // }
-enum BadSwitchError = syntaxerr!(string_t)
+enum BadSwitchError = syntaxerr!(string)
     ("unrecognized switch '%s'");
-enum UndefinedLabelError = syntaxerr!(string_t, string_t)
+enum UndefinedLabelError = syntaxerr!(string, string)
     ("undefined label '%s' in function '%s'");
 enum BadCCommentError = syntaxerr!()
     ("unterminated /* */ comment");
@@ -39,7 +38,7 @@ enum BadHexSequenceError = syntaxerr!()
     ("escape hex sequence requires 2 hex digits");
 enum UndefinedEscSequenceError = syntaxerr!(uint)
     ("undefined escape sequence \\%c");
-enum StringNoEndQuoteError = syntaxerr!(char_t)
+enum StringNoEndQuoteError = syntaxerr!(char)
     ("string is missing an end quote %s");
 enum UnterminatedStringError = syntaxerr!()
     ("end of file before end of string");
@@ -47,17 +46,17 @@ enum BadUSequenceError = syntaxerr!()
     ("\\u sequence must be followed by 4 hex characters");
 enum UnrecognizedNLiteralError = syntaxerr!()
     ("unrecognized numeric literal");
-enum FplExpectedIdentifierError = syntaxerr!(string_t)
+enum FplExpectedIdentifierError = syntaxerr!(string)
     ("Identifier expected in FormalParameterList, not %s");
-enum FplExpectedCommaError = syntaxerr!(string_t)
+enum FplExpectedCommaError = syntaxerr!(string)
     ("comma expected in FormalParameterList, not %s");
 enum ExpectedIdentifierError = syntaxerr!()
     ("identifier expected");
-enum ExpectedGenericError = syntaxerr!(string_t, string_t)
+enum ExpectedGenericError = syntaxerr!(string, string)
     ("found '%s' when expecting '%s'");
-enum ExpectedIdentifierParamError = syntaxerr!(string_t)
+enum ExpectedIdentifierParamError = syntaxerr!(string)
     ("identifier expected instead of '%s'");
-enum ExpectedIdentifier2paramError = syntaxerr!(string_t, string_t)
+enum ExpectedIdentifier2paramError = syntaxerr!(string, string)
     ("identifier expected following '%s', not '%s'");
 // deprecated // not used
 // {
@@ -66,15 +65,15 @@ enum ExpectedIdentifier2paramError = syntaxerr!(string_t, string_t)
 // }
 enum TooManyInVarsError = syntaxerr!(size_t)
     ("only one variable can be declared for 'in', not %d");
-enum InExpectedError = syntaxerr!(string_t)
+enum InExpectedError = syntaxerr!(string)
     ("';' or 'in' expected, not '%s'");
-enum GotoLabelExpectedError = syntaxerr!(string_t)
+enum GotoLabelExpectedError = syntaxerr!(string)
     ("label expected after goto, not '%s'");
 enum TryCatchExpectedError = syntaxerr!()
     ("catch or finally expected following try");
-enum StatementExpectedError = syntaxerr!(string_t)
+enum StatementExpectedError = syntaxerr!(string)
     ("found '%s' instead of statement");
-enum ExpectedExpressionError = syntaxerr!(string_t)
+enum ExpectedExpressionError = syntaxerr!(string)
     ("expression expected, not '%s'");
 // deprecated // not used
 // {
@@ -83,9 +82,9 @@ enum ExpectedExpressionError = syntaxerr!(string_t)
 // enum LabelAlreadyDefinedError =
 //     err!typeerror("label '%s' is already defined");
 // }
-enum SwitchRedundantCaseError = syntaxerr!(string_t)
+enum SwitchRedundantCaseError = syntaxerr!(string)
     ("redundant case %s");
-enum MisplacedSwitchCaseError = syntaxerr!(string_t)
+enum MisplacedSwitchCaseError = syntaxerr!(string)
     ("case %s: is not in a switch statement");
 enum SwitchRedundantDefaultError = syntaxerr!()
     ("redundant default in switch statement");
@@ -97,7 +96,7 @@ enum MisplacedBreakError = syntaxerr!()
     ("can only break from within loop or switch");
 enum MisplacedContinueError = syntaxerr!()
     ("continue is not in a loop");
-enum UndefinedStatementLabelError = syntaxerr!(string_t)
+enum UndefinedStatementLabelError = syntaxerr!(string)
     ("Statement label '%s' is undefined");
 // deprecated // not used
 // {
@@ -113,59 +112,61 @@ enum NoThrowExpressionError = syntaxerr!()
 // enum UndefinedObjectSymbolError =
 //     err!typeerror("%s.%s is undefined");
 // }
-enum FunctionWantsNumberError = err!(typeerror, string_t, string_t)
+enum FunctionWantsNumberError = err!(typeerror, string, string)
     ("Number.prototype.%s() expects a Number not a %s");
-enum FunctionWantsStringError = err!(typeerror, string_t, string_t)
+enum FunctionWantsStringError = err!(typeerror, string, string)
     ("String.prototype.%s() expects a String not a %s");
-enum FunctionWantsDateError = err!(typeerror, string_t, string_t)
+enum FunctionWantsDateError = err!(typeerror, string, string)
     ("Date.prototype.%s() expects a Date not a %s");
-enum UndefinedNoCall2Error = err!(typeerror, string_t, string_t)
+enum UndefinedNoCall2Error = err!(typeerror, string, string)
     ("%s %s is undefined and has no Call method");
-enum UndefinedNoCall3Error = err!(typeerror, string_t, string_t, string_t)
+enum UndefinedNoCall3Error = err!(typeerror, string, string, string)
     ("%s %s.%s is undefined and has no Call method");
-enum FunctionWantsBoolError = err!(typeerror, string_t, string_t)
+enum FunctionWantsBoolError = err!(typeerror, string, string)
     ("Boolean.prototype.%s() expects a Boolean not a %s");
 enum ArrayLenOutOfBoundsError = err!(rangeerror, double)
     ("arg to Array(len) must be 0 .. 2**32-1, not %.16g");
-enum ValueOutOfRangeError = err!(rangeerror, string_t, string_t)
+enum ValueOutOfRangeError = err!(rangeerror, string, string)
     ("Number.prototype.%s() %s out of range");
-enum TypeError = err!(typeerror, string_t)
+enum TypeError = err!(typeerror, string)
     ("TypeError in %s");
-enum RegexpCompileError = err!syntaxerror
-    ("Error compiling regular expression");
-enum NotTransferrableError = err!(typeerror, string_t)
+enum RegexpCompileError = err!(syntaxerror, string)
+    ("Error compiling regular expression : %s");
+enum NotTransferrableError = err!(typeerror, string)
     ("%s not transferrable");
-enum CannotConvertToObject2Error = err!(typeerror, string_t, string_t)
+enum CannotConvertToObject2Error = err!(typeerror, string, string)
     ("%s %s cannot convert to Object");
-enum CannotConvertToObject3Error = err!(typeerror, string_t, string_t, string_t)
+enum CannotConvertToObject3Error = err!(typeerror, string, string, string)
     ("%s %s.%s cannot convert to Object");
-enum CannotConvertToObject4Error = err!(typeerror, string_t)
+enum CannotConvertToObject4Error = err!(typeerror, string)
     ("cannot convert %s to Object");
-enum CannotAssignToError = err!(referenceerror, string_t)
+enum CannotAssignToError = err!(referenceerror, string)
     ("cannot assign to %s");
-enum CannotAssignError = err!(typeerror, string_t, string_t)
+enum CannotAssignToOnCheckLvalueError = err!(syntaxerror, string)
+    ("cannot assign to %s");
+enum CannotAssignError = err!(typeerror, string, string)
     ("cannot assign %s to %s");
-enum CannotAssignTo2Error = err!(typeerror, string_t, string_t)
+enum CannotAssignTo2Error = err!(typeerror, string, string)
     ("cannot assign to %s.%s");
 enum FunctionNotLvalueError = err!typeerror
     ("cannot assign to function");
-enum RhsMustBeObjectError = err!(typeerror, string_t, string_t)
+enum RhsMustBeObjectError = err!(typeerror, string, string)
     ("RHS of %s must be an Object, not a %s");
-enum CannotPutToPrimitiveError = err!(typeerror, string_t, string_t, string_t)
+enum CannotPutToPrimitiveError = err!(typeerror, string, string, string)
     ("can't Put('%s', %s) to a primitive %s");
 enum CannotPutIndexToPrimitiveError =
-    err!(typeerror, uint, string_t, string_t)
+    err!(typeerror, uint, string, string)
     ("can't Put(%u, %s) to a primitive %s");
 enum ObjectCannotBePrimitiveError = err!typeerror
     ("object cannot be converted to a primitive type");
-enum CannotGetFromPrimitiveError = err!(typeerror, string_t, string_t, string_t)
+enum CannotGetFromPrimitiveError = err!(typeerror, string, string, string)
     ("can't Get(%s) from primitive %s(%s)");
 enum CannotGetIndexFromPrimitiveError =
-    err!(typeerror, size_t, string_t, string_t)
+    err!(typeerror, size_t, string, string)
     ("can't Get(%d) from primitive %s(%s)");
-enum PrimitiveNoConstructError = err!(typeerror, string_t)
+enum PrimitiveNoConstructError = err!(typeerror, string)
     ("primitive %s has no Construct method");
-enum PrimitiveNoCallError = err!(typeerror, string_t)
+enum PrimitiveNoCallError = err!(typeerror, string)
     ("primitive %s has no Call method");
 enum ForInMustBeObjectError = err!typeerror
     ("for-in must be on an object, not a primitive");
@@ -181,11 +182,11 @@ enum AssertError = err!(typeerror, size_t)
 // }
 enum NoDefaultPutError = err!typeerror
     ("no Default Put for object");
-enum SNoConstructError = err!(typeerror, string_t)
+enum SNoConstructError = err!(typeerror, string)
     ("%s does not have a [[Construct]] property");
-enum SNoCallError = err!(typeerror, string_t)
+enum SNoCallError = err!(typeerror, string)
     ("%s does not have a [[Call]] property");
-enum SNoInstanceError = err!(typeerror, string_t)
+enum SNoInstanceError = err!(typeerror, string)
     ("%s does not have a [[HasInstance]] property");
 enum LengthIntError = err!rangeerror
     ("length property must be an integer");
@@ -195,7 +196,7 @@ enum TsNotTransferrableError = err!typeerror
     ("Function.prototype.toString() not transferrable");
 enum ArrayArgsError = err!typeerror
     ("Function.prototype.apply(): argArray must be array or arguments object");
-enum MustBeObjectError = err!(typeerror, string_t)
+enum MustBeObjectError = err!(typeerror, string)
     (".prototype must be an Object, not a %s");
 // deprecated // not used
 // {
@@ -214,11 +215,11 @@ enum MustBeObjectError = err!(typeerror, string_t)
 // enum NotCollectionError =
 //     err!typeerror("argument not a collection");
 // }
-enum NotValidUTFError = err!(typeerror, string_t, string_t, uint)
+enum NotValidUTFError = err!(typeerror, string, string, uint)
     ("%s.%s expects a valid UTF codepoint not \\u%x");
-enum UndefinedVarError = err!(referenceerror, string_t)
+enum UndefinedVarError = err!(referenceerror, string)
     ("Variable '%s' is not defined");
-enum CantBreakInternalError = syntaxerr!(string_t)
+enum CantBreakInternalError = syntaxerr!(string)
     ("Can't break to internal loop label %s");
 // deprecated // not used
 // {
@@ -229,7 +230,7 @@ enum CantBreakInternalError = syntaxerr!(string_t)
 enum NoDefaultValueError = err!typeerror
     ("No [[DefaultValue]]");
 
-enum ReferenceError = err!(referenceerror, string_t)
+enum ReferenceError = err!(referenceerror, string)
     ("%s");
 
 version (TEST262)
@@ -243,13 +244,13 @@ version (TEST262)
 enum CannotPutError = err!(typeerror)("Cannot put error");
 enum CreateDataPropertyError = err!(typeerror)("Cannot create a property");
 enum CreateMethodPropertyError = err!(typeerror)("Cannot create a method property");
-enum NotCallableError = err!(typeerror, string_t)
+enum NotCallableError = err!(typeerror, string)
     ("%s is not callable");
-enum CantDeleteError = err!(typeerror, string_t)
+enum CantDeleteError = err!(typeerror, string)
     ("fail to delete %s.");
 
 
-enum PreventExtensionsFailureError = err!(typeerror, string_t)
+enum PreventExtensionsFailureError = err!(typeerror, string)
     ("[%s].PreventExtensions() failed.");
 
 //==============================================================================
@@ -263,11 +264,11 @@ struct err(alias Proto, ARGS...)
     import dmdscript.opcodes : IR;
     import dmdscript.exception : ScriptException;
 
-    string_t fmt; //
+    string fmt; //
 
     //
     @safe @nogc pure nothrow
-    this(string_t fmt)
+    this(string fmt)
     {
         this.fmt = fmt;
     }
@@ -294,7 +295,7 @@ struct err(alias Proto, ARGS...)
 
     //
     @safe
-    ScriptException toThrow(ARGS args, string_t sourcename, string_t source,
+    ScriptException toThrow(ARGS args, string sourcename, string source,
                             uint linnum, string f = __FILE__,
                             size_t l = __LINE__) const
     {
@@ -309,11 +310,11 @@ struct syntaxerr(ARGS...)
 {
     import dmdscript.exception : ScriptException;
 
-    string_t fmt; //
+    string fmt; //
 
     //
     @safe @nogc pure nothrow
-    this(string_t fmt) { this.fmt = fmt; }
+    this(string fmt) { this.fmt = fmt; }
 
     //
     @safe

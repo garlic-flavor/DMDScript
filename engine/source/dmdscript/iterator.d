@@ -65,7 +65,7 @@ struct Iterator
         {
             while(keyindex == keys.length)
             {
-                delete keys;
+                keys.destroy; keys = null;
                 o = getPrototype(o);
                 if(!o)
                     return null;

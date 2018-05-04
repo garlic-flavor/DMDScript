@@ -214,7 +214,7 @@ class SrcFile
     string[] includes;
 
     Program program;
-    char_t[] buffer;
+    char[] buffer;
 
     this(string srcfilename, string[] includes)
     {
@@ -254,7 +254,7 @@ class SrcFile
         // Prefix the includes[] files
 
         int sz = cast(int)len;
-        buffer = new char_t[sz];
+        buffer = new char[sz];
 
         foreach (string filename; includes)
         {

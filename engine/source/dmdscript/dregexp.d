@@ -18,7 +18,7 @@
 
 module dmdscript.dregexp;
 
-import dmdscript.primitive : char_t, string_t, PropertyKey, Text, PKey = Key;
+import dmdscript.primitive : PropertyKey, Text, PKey = Key;
 import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.value;
@@ -29,8 +29,8 @@ import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.dglobal : undefined;
+debug import std.stdio;
 
-//alias script.tchar tchar;
 
 // Values for Dregexp.exec.rettype
 enum { EXEC_STRING, EXEC_ARRAY, EXEC_BOOLEAN, EXEC_INDEX };
@@ -97,28 +97,28 @@ class DregexpConstructor : Dconstructor
         DefineOwnProperty(Key.index, vnm1,
             Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
         DefineOwnProperty(Key.lastIndex, vnm1,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+            Property.Attribute.ReadOnly | Property.Attribute.DontDelete |
+            Property.Attribute.DontConfig);
 
-        CallContext cc;
-        input = Get(Key.input, cc);
-        multiline = Get(Key.multiline, cc);
-        lastMatch = Get(Key.lastMatch, cc);
-        lastParen = Get(Key.lastParen, cc);
-        leftContext = Get(Key.leftContext, cc);
-        rightContext = Get(Key.rightContext, cc);
+        input = proptable.getOwnData(Key.input);
+        multiline = proptable.getOwnData(Key.multiline);
+        lastMatch = proptable.getOwnData(Key.lastMatch);
+        lastParen = proptable.getOwnData(Key.lastParen);
+        leftContext = proptable.getOwnData(Key.leftContext);
+        rightContext = proptable.getOwnData(Key.rightContext);
         dollar[0] = lastMatch;
-        dollar[1] = Get(Key.dollar1, cc);
-        dollar[2] = Get(Key.dollar2, cc);
-        dollar[3] = Get(Key.dollar3, cc);
-        dollar[4] = Get(Key.dollar4, cc);
-        dollar[5] = Get(Key.dollar5, cc);
-        dollar[6] = Get(Key.dollar6, cc);
-        dollar[7] = Get(Key.dollar7, cc);
-        dollar[8] = Get(Key.dollar8, cc);
-        dollar[9] = Get(Key.dollar9, cc);
+        dollar[1] = proptable.getOwnData(Key.dollar1);
+        dollar[2] = proptable.getOwnData(Key.dollar2);
+        dollar[3] = proptable.getOwnData(Key.dollar3);
+        dollar[4] = proptable.getOwnData(Key.dollar4);
+        dollar[5] = proptable.getOwnData(Key.dollar5);
+        dollar[6] = proptable.getOwnData(Key.dollar6);
+        dollar[7] = proptable.getOwnData(Key.dollar7);
+        dollar[8] = proptable.getOwnData(Key.dollar8);
+        dollar[9] = proptable.getOwnData(Key.dollar9);
 
-        index = Get(Key.index, cc);
-        lastIndex = Get(Key.lastIndex, cc);
+        index = proptable.getOwnData(Key.index);
+        lastIndex = proptable.getOwnData(Key.lastIndex);
 
         // Should lastMatch be an alias for dollar[nparens],
         // or should it be a separate property?
@@ -130,12 +130,13 @@ class DregexpConstructor : Dconstructor
     override DError* Construct(ref CallContext cc, out Value ret,
                                Value[] arglist)
     {
+        import dmdscript.primitive : Text;
         // ECMA 262 v3 15.10.4.1
 
         Value* pattern;
         Value* flags;
-        string_t P;
-        string_t F;
+        string P;
+        string F;
         Dregexp r;
         Dregexp R;
 
@@ -158,7 +159,7 @@ class DregexpConstructor : Dconstructor
         R = Dregexp.isRegExp(pattern);
         if(R)
         {
-            if(flags.isUndefined())
+            if(flags.isUndefined)
             {
                 P = R.re.pattern;
                 F = R.re.flags;
@@ -170,13 +171,13 @@ class DregexpConstructor : Dconstructor
         }
         else
         {
-            P = pattern.isUndefined() ? "" : pattern.toString(cc);
-            F = flags.isUndefined() ? "" : flags.toString(cc);
+            P = pattern.isUndefined ? Text.Empty : pattern.toString(cc);
+            F = flags.isUndefined ? Text.Empty : flags.toString(cc);
         }
         r = new Dregexp(P, F);
-        if(r.re.errors)
+        if(r.re.errors !is null)
         {
-            return RegexpCompileError;
+            return RegexpCompileError(r.re.errors.toString);
         }
         else
         {
@@ -223,7 +224,7 @@ class DregexpConstructor : Dconstructor
         return Dfunction.Set(sk, value, attributes, cc);
     }
 
-    override int CanPut(in string_t PropertyName)
+    override int CanPut(in string PropertyName)
     {
         return Dfunction.CanPut(perlAlias(PropertyName));
     }
@@ -241,13 +242,13 @@ class DregexpConstructor : Dconstructor
     }
 
     // Translate Perl property names to script property names
-    static string_t perlAlias(string_t s)
+    static string perlAlias(string s)
     {
         import std.algorithm : countUntil;
-        string_t t;
+        string t;
 
-        static immutable char_t[] from = "_*&+`'";
-        static enum string_t[] to =
+        static immutable char[] from = "_*&+`'";
+        static enum string[] to =
         [
             Key.input,
             Key.multiline,
@@ -280,7 +281,7 @@ DError* toString(
     // othis must be a RegExp
     if (auto r = cast(Dregexp)othis)
     {
-        string_t s;
+        string s;
 
         s = "/";
         s ~= r.re.pattern;
@@ -323,13 +324,15 @@ DError* compile(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
+    import std.regex : RegexException;
+
     // RegExp.prototype.compile(pattern, attributes)
 
     // othis must be a RegExp
     if (auto dr = cast(Dregexp)othis)
     {
-        string_t pattern;
-        string_t attributes;
+        string pattern;
+        string attributes;
         RegExp r;
 
         switch(arglist.length)
@@ -353,7 +356,7 @@ DError* compile(
         catch(RegexException e)
         {
             // Affect source, global and ignoreCase properties
-            dr.source.put(r.pattern);
+            dr.source.put(cast(string)r.pattern);
             dr.global.put(r.global);
             dr.ignoreCase.put(r.ignoreCase);
         }
@@ -371,37 +374,9 @@ DError* compile(
     return null;
 }
 
-/* ===================== Dregexp_prototype ==================== */
-/*
-class DregexpPrototype : Dregexp
-{
-    this()
-    {
-        super(Dobject.getPrototype, Key.Object);
-        auto attributes =
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum;
-        Dobject f = Dfunction.getPrototype;
 
-        DefineOwnProperty(Key.constructor, Dregexp.getConstructor, attributes);
-
-        static enum NativeFunctionData[] nfd =
-        [
-            { Key.toString, &Dregexp_prototype_toString, 0 },
-            { Key.compile, &Dregexp_prototype_compile, 2 },
-            { Key.exec, &Dregexp_prototype_exec, 1 },
-            { Key.test, &Dregexp_prototype_test, 1 },
-        ];
-
-        DnativeFunction.initialize(this, nfd, attributes);
-    }
-}
-//*/
-
-/* ===================== Dregexp ==================== */
-
-
+//------------------------------------------------------------------------------
+///
 class Dregexp : Dobject
 {
     import dmdscript.dobject : Initializer;
@@ -414,7 +389,7 @@ class Dregexp : Dobject
 
     RegExp re;
 
-    this(string_t pattern, string_t attributes)
+    this(string pattern, string attributes)
     {
         super(getPrototype, Key.RegExp);
 
@@ -424,36 +399,36 @@ class Dregexp : Dobject
         Value vb;
         vb.put(false);
 
-        CallContext cc;
-        Set(Key.source, v,
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
-        Set(Key.global, vb,
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
-        Set(Key.ignoreCase, vb,
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
-        Set(Key.multiline, vb,
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
+        DefineOwnProperty(Key.source, v,
+                          Property.Attribute.ReadOnly |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.global, vb,
+                          Property.Attribute.ReadOnly |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.ignoreCase, vb,
+                          Property.Attribute.ReadOnly |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.multiline, vb,
+                          Property.Attribute.ReadOnly |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum);
         vb.put(0.0);
-        Set(Key.lastIndex, vb,
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
+        DefineOwnProperty(Key.lastIndex, vb,
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum |
+                          Property.Attribute.DontConfig);
 
-        source = Get(Key.source, cc);
-        global = Get(Key.global, cc);
-        ignoreCase = Get(Key.ignoreCase, cc);
-        multiline = Get(Key.multiline, cc);
-        lastIndex = Get(Key.lastIndex, cc);
+        source = proptable.getOwnData(Key.source);
+        global = proptable.getOwnData(Key.global);
+        ignoreCase = proptable.getOwnData(Key.ignoreCase);
+        multiline = proptable.getOwnData(Key.multiline);
+        lastIndex = proptable.getOwnData(Key.lastIndex);
 
         re = new RegExp(pattern, attributes);
-        if(re.errors == 0)
+        if(re.errors is null)
         {
             source.put(pattern);
             //writef("source = '%s'\n", source.x.string.toDchars());
@@ -467,7 +442,7 @@ class Dregexp : Dobject
         }
     }
 
-    this(Dobject prototype, string_t cname = Key.RegExp)
+    this(Dobject prototype, string cname = Key.RegExp)
     {
         super(prototype, cname);
 
@@ -477,33 +452,33 @@ class Dregexp : Dobject
         Value vb;
         vb.put(false);
 
-        CallContext cc;
-        Set(Key.source, v,
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
-        Set(Key.global, vb,
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
-        Set(Key.ignoreCase, vb,
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
-        Set(Key.multiline, vb,
-            Property.Attribute.ReadOnly |
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
+        DefineOwnProperty(Key.source, v,
+                          Property.Attribute.ReadOnly |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.global, vb,
+                          Property.Attribute.ReadOnly |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.ignoreCase, vb,
+                          Property.Attribute.ReadOnly |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum);
+        DefineOwnProperty(Key.multiline, vb,
+                          Property.Attribute.ReadOnly |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum);
         vb.put(0.0);
-        Set(Key.lastIndex, vb,
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, cc);
+        DefineOwnProperty(Key.lastIndex, vb,
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.DontEnum |
+                          Property.Attribute.DontConfig);
 
-        source = Get(Key.source, cc);
-        global = Get(Key.global, cc);
-        ignoreCase = Get(Key.ignoreCase, cc);
-        multiline = Get(Key.multiline, cc);
-        lastIndex = Get(Key.lastIndex, cc);
+        source = proptable.getOwnData(Key.source);
+        global = proptable.getOwnData(Key.global);
+        ignoreCase = proptable.getOwnData(Key.ignoreCase);
+        multiline = proptable.getOwnData(Key.multiline);
+        lastIndex = proptable.getOwnData(Key.lastIndex);
 
         re = new RegExp(null, null);
     }
@@ -529,12 +504,10 @@ static:
 
     DError* exec(Dobject othis, out Value ret, Value[] arglist, int rettype)
     {
-        //writef("Dregexp.exec(arglist.length = %d, rettype = %d)\n", arglist.length, rettype);
-
         // othis must be a RegExp
         if (auto dr = cast(Dregexp)othis)
         {
-            string_t s;
+            string s;
             RegExp r;
             DregexpConstructor dc;
             uint i;
@@ -623,7 +596,8 @@ static:
                     val.put(r.index);
                     a.Set(Key.index, val, Property.Attribute.None, cc);
                     val.put(r.lastIndex);
-                    a.Set(Key.lastIndex, val, Property.Attribute.None, cc);
+                    a.Set(Key.lastIndex, val, Property.Attribute.DontConfig,
+                          cc);
 
                     a.Set(PropertyKey(0), *dc.lastMatch,
                           Property.Attribute.None, cc);
@@ -720,54 +694,25 @@ static:
     }
 
     mixin Initializer!DregexpConstructor;
-/*
-    Dfunction getConstructor()
-    {
-        return _constructor;
-    }
-
-    Dobject getPrototype()
-    {
-        return _prototype;
-    }
-
-    void initialize()
-    {
-        _constructor = new DregexpConstructor();
-        _prototype = new DregexpPrototype();
-
-        version(none)
-        {
-            writef("Dregexp_constructor = %x\n", _constructor);
-            uint *p;
-            p = cast(uint *)_constructor;
-            writef("p = %x\n", p);
-            if(p)
-                writef("*p = %x, %x, %x, %x\n", p[0], p[1], p[2], p[3]);
-        }
-
-        _constructor.DefineOwnProperty(Key.prototype, _prototype,
-                            Property.Attribute.DontEnum |
-                            Property.Attribute.DontDelete |
-                            Property.Attribute.ReadOnly);
-    }
-private:
-    Dfunction _constructor;
-    Dobject _prototype;
-//*/
 }
 
 
 
 package
 {
-    import std.regex;
-
     class RegExp
     {
+        import std.regex : Regex, RegexMatch;
+        import std.bitmanip : bitfields;
         string pattern, flags;
-        bool global, ignoreCase, multiline;
-        int errors;
+        mixin (bitfields!(
+                   bool, "global", 1,
+                   bool, "ignoreCase", 1,
+                   bool, "multiline", 1,
+                   bool, "unicode", 1,
+                   bool, "sticky", 1,
+                   uint, "_padding", 3));
+        Throwable errors;
 
         this(string pattern, string attributes)
         {
@@ -776,7 +721,8 @@ package
 
         void compile(string pattern, string attributes)
         {
-            import std.string : replace;
+            import std.conv : to;
+            import std.array : join;
 
             this.pattern = pattern;
             flags = attributes;
@@ -793,20 +739,26 @@ package
                 case 'm':
                     multiline = true;
                     break;
+                case 'u':
+                    unicode = true;
+                    break;
+                case 'y':
+                    sticky = true;
+                    break;
                 default:
                 }
             }
 
-            if (global)
-                attributes = attributes.replace("g", "");
+            // pattern = pattern.convertToStdRegexPattern(ignoreCase, unicode);
+            attributes = [ignoreCase ? "i" : "", multiline  ? "m" : ""].join;
 
             try
             {
                 r = regex(pattern, attributes);
             }
-            catch(Throwable)
+            catch(Throwable t)
             {
-                errors = 1;
+                errors = t;
             }
             m.destroy;
             src = null;
@@ -814,10 +766,10 @@ package
 
         bool test(string str, size_t startIndex)
         {
+            import std.regex : match;
             src = str;
-
             assert(r !is typeof(r).init);
-            m = str[startIndex..$].match(r);
+            m = src[startIndex..$].match(r);
             assert(m !is typeof(m).init);
 
             return !m.empty;
@@ -827,14 +779,14 @@ package
         size_t index()
         {
             assert(m !is typeof(m).init && !m.empty && src !is null);
-            return cast(size_t)(m.hit.ptr - src.ptr);
+            return cast(size_t)(m.hit.ptr - (cast(string)src).ptr);
         }
 
         @property
         size_t lastIndex()
         {
             assert(m !is typeof(m).init && !m.empty && src !is null);
-            return cast(size_t)(m.post.ptr - src.ptr);
+            return cast(size_t)(m.post.ptr - (cast(string)src).ptr);
         }
 
         @property
@@ -854,7 +806,7 @@ package
         string leftContext()
         {
             assert(m !is typeof(m).init && !m.empty && src !is null);
-            return src[0..(m.hit.ptr - src.ptr)];
+            return src[0..(m.hit.ptr - (cast(string)src).ptr)];
         }
 
         @property
@@ -876,7 +828,7 @@ package
         {
             assert(m !is typeof(m).init && !m.empty && src !is null);
             if (i < m.front.length)
-                return m.front[i].ptr - src.ptr;
+                return m.front[i].ptr - (cast(string)src).ptr;
             else
                 return -1;
         }
@@ -885,7 +837,8 @@ package
         {
             assert(m !is typeof(m).init && !m.empty && src !is null);
             if (i < m.front.length)
-                return m.front[i].ptr - src.ptr + m.front[i].length;
+                return m.front[i].ptr - (cast(string)src).ptr
+                    + m.front[i].length;
             else
                 return -1;
         }
@@ -994,10 +947,11 @@ package
     private:
         Regex!char r;
         RegexMatch!string m;
-        string_t src;
+        string src;
     }
 }
 
+//==============================================================================
 private:
 enum Key : PropertyKey
 {
@@ -1030,3 +984,257 @@ enum Key : PropertyKey
     exec = PropertyKey("exec"),
 }
 
+//------------------------------------------------------------------------------
+auto regex(const(char)[] pattern, const(char)[] flags = "")
+{
+    import std.functional : memoize;
+    enum cacheSize = 8; //TODO: invent nice interface to control regex caching
+    return memoize!(regexImpl, cacheSize)(pattern, flags);
+}
+
+//------------------------------------------------------------------------------
+public auto regexImpl(const(char)[] pattern, const(char)[] flags="")
+{
+    import std.regex.internal.parser : CodeGen;
+
+    auto parser = Parser!CodeGen(pattern, flags);
+    auto r = parser.program;
+    return r;
+}
+
+//------------------------------------------------------------------------------
+struct Parser(Generator)
+{
+    import std.regex.internal.parser : TBaseParser = Parser;
+
+    alias BaseParser = TBaseParser!(const(char)[], Generator);
+    BaseParser p;
+    alias p this;
+
+    enum RegexOption: uint
+    {
+        global = 0x1,
+        casefold = 0x2,
+        freeform = 0x4,
+        nonunicode = 0x8,
+        multiline = 0x10,
+        singleline = 0x20
+    }
+
+    //--------------------------------------------------------------------
+    @trusted
+    this(const(char)[] pattern, const(char)[] flags)
+    {
+        p.pat = p.origin = pattern;
+        parseFlags(flags);
+        p.front = ' ';
+        p._popFront;
+        p.g.start(cast(uint)p.pat.length);
+        try
+        {
+            p.parseRegex();
+        }
+        catch (Exception e)
+        {
+            p.error(e.msg);
+        }
+        p.g.endPattern(1);
+    }
+
+    //--------------------------------------------------------------------
+    @trusted
+    void parseFlags(const(char)[] flags)
+    {
+        import std.conv : text;
+        import std.meta : AliasSeq;
+        import std.regex.internal.ir : RegexException;
+
+        alias RegexOptionNames = AliasSeq!('g', 'i', 'x', 'U', 'm', 's');
+
+        foreach (ch; flags)//flags are ASCII anyway
+        {
+        L_FlagSwitch:
+            switch (ch)
+            {
+                foreach (i, op; __traits(allMembers, RegexOption))
+                {
+                    case RegexOptionNames[i]:
+                            if (re_flags & mixin("RegexOption."~op))
+                                throw new RegexException(text("redundant flag specified: ",ch));
+                            re_flags |= mixin("RegexOption."~op);
+                            break L_FlagSwitch;
+                }
+                default:
+                    throw new RegexException(text("unknown regex flag '",ch,"'"));
+            }
+        }
+    }
+
+    //--------------------------------------------------------------------
+    //parse and store IR for regex pattern
+    @trusted void parseRegex()
+    {
+        import std.ascii : isAlpha, isDigit;
+        import std.exception : enforce;
+        import std.regex.internal.ir : IR;
+        uint fix;//fixup pointer
+
+        while (!p.empty)
+        {
+            switch (p.front)
+            {
+            case '(':
+                p.popFront;
+                if (p.front == '?')
+                {
+                    p.popFront;
+                    switch (p.front)
+                    {
+                    case '#':
+                        for (;;)
+                        {
+                            p.popFront;
+                            if (p.empty)
+                                p.error("Unexpected end of pattern");
+                            if (p.front == ')')
+                            {
+                                p.popFront;
+                                break;
+                            }
+                        }
+                        break;
+                    case ':':
+                        p.g.genLogicGroup();
+                        p.popFront;
+                        break;
+                    case '=':
+                        p.g.genLookaround(IR.LookaheadStart);
+                        p.popFront;
+                        break;
+                    case '!':
+                        p.g.genLookaround(IR.NeglookaheadStart);
+                        p.popFront;
+                        break;
+                    case 'P':
+                        p.popFront;
+                        if (p.front != '<')
+                            p.error("Expected '<' in named group");
+                        string name;
+                        p.popFront;
+                        if (p.empty || !(isAlpha(p.front) || p.front == '_'))
+                            error("Expected alpha starting a named group");
+                        do
+                        {
+                            name ~= p.front;
+                            p.popFront;
+                        }
+                        while (!p.empty &&
+                               (isAlpha(p.front) ||
+                                p.front == '_' || isDigit(p.front)));
+
+                        if (p.front != '>')
+                            p.error("Expected '>' closing named group");
+                        p.popFront;
+                        p.g.genNamedGroup(name);
+                        break;
+                    case '<':
+                        p.popFront;
+                        if (p.front == '=')
+                            p.g.genLookaround(IR.LookbehindStart);
+                        else if (p.front == '!')
+                            p.g.genLookaround(IR.NeglookbehindStart);
+                        else
+                            p.error("'!' or '=' expected after '<'");
+                        p.popFront;
+                        break;
+                    default:
+                        uint enableFlags, disableFlags;
+                        bool enable = true;
+                        do
+                        {
+                            switch (p.front)
+                            {
+                            case 's':
+                                if (enable)
+                                    enableFlags |= RegexOption.singleline;
+                                else
+                                    disableFlags |= RegexOption.singleline;
+                                break;
+                            case 'x':
+                                if (enable)
+                                    enableFlags |= RegexOption.freeform;
+                                else
+                                    disableFlags |= RegexOption.freeform;
+                                break;
+                            case 'i':
+                                if (enable)
+                                    enableFlags |= RegexOption.casefold;
+                                else
+                                    disableFlags |= RegexOption.casefold;
+                                break;
+                            case 'm':
+                                if (enable)
+                                    enableFlags |= RegexOption.multiline;
+                                else
+                                    disableFlags |= RegexOption.multiline;
+                                break;
+                            case '-':
+                                if (!enable)
+                                    p.error(" unexpected second '-' in flags");
+                                enable = false;
+                                break;
+                            default:
+                                p.error(" 's', 'x', 'i', 'm' or '-' expected after '(?' ");
+                            }
+                            p.popFront;
+                        }while (p.front != ')');
+                        p.popFront;
+                        p.re_flags |= enableFlags;
+                        p.re_flags &= ~disableFlags;
+                    }
+                }
+                else
+                {
+                    p.g.genGroup();
+                }
+                break;
+            case ')':
+                enforce(p.g.nesting, "Unmatched ')'");
+                p.popFront;
+                auto pair = p.g.onClose();
+                if (pair[0])
+                    p.parseQuantifier(pair[1]);
+                break;
+            case '|':
+                p.popFront;
+                p.g.fixAlternation();
+                break;
+            default://no groups or whatever
+                immutable start = p.g.length;
+                parseAtom();
+                p.parseQuantifier(start);
+            }
+        }
+
+        if (p.g.fixupLength != 1)
+        {
+            fix = p.g.popFixup();
+            p.g.finishAlternation(fix);
+            enforce(p.g.fixupLength == 1, "no matching ')'");
+        }
+    }
+
+    //parse and store IR for atom
+    void parseAtom()
+    {
+        if (p.empty)
+            return;
+
+        if (p.front == '\\')
+        {
+            p.parseEscape;
+        }
+        else
+            p.parseAtom;
+    }
+}

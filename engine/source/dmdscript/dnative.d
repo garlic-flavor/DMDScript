@@ -35,19 +35,18 @@ alias PCall = DError* function(
 ///
 class DnativeFunction : Dfunction
 {
-    import dmdscript.primitive : string_t;
     import dmdscript.property : Property;
 
     PCall pcall;
 
-    this(PCall func, string_t name, uint length)
+    this(PCall func, string name, uint length)
     {
         super(length);
         this.name = name;
         pcall = func;
     }
 
-    this(PCall func, string_t name, uint length, Dobject o)
+    this(PCall func, string name, uint length, Dobject o)
     {
         super(length, o);
         this.name = name;

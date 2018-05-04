@@ -18,7 +18,7 @@
 
 module dmdscript.dstring;
 
-import dmdscript.primitive : Key, string_t, char_t;
+import dmdscript.primitive : Key;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : Value, DError;
@@ -37,28 +37,16 @@ class Dstring : Dobject
     import dmdscript.property : Property;
     import dmdscript.primitive : PropertyKey;
 
-    this(string_t s)
+    this(string s)
     {
         import std.utf : toUCSindex;
-
         super(getPrototype, Key.String);
 
-        version (TEST262)
-        {
-            auto val = Value(s.length16);
-            DefineOwnProperty(PropertyKey(Key.length), val,
-                              Property.Attribute.DontEnum |
-                              Property.Attribute.DontDelete |
-                              Property.Attribute.ReadOnly);
-        }
-        else
-        {
-            auto val = Value(toUCSindex(s, s.length));
-            DefineOwnProperty(Key.length, val,
-                              Property.Attribute.DontEnum |
-                              Property.Attribute.DontDelete |
-                              Property.Attribute.ReadOnly);
-        }
+        auto val = Value(toUCSindex(s, s.length));
+        DefineOwnProperty(Key.length, val,
+                          Property.Attribute.DontEnum |
+                          Property.Attribute.DontDelete |
+                          Property.Attribute.ReadOnly);
 
         value.put(s);
     }
@@ -81,17 +69,17 @@ class Dstring : Dobject
 
     override Value* Get(in PropertyKey key, ref CallContext cc)
     {
+
         size_t index;
         if (key.isArrayIndex(index) && index < value.text.length)
         {
-            version(TEST262)
+            return new Value(_stringAt(value.text, index));
+/*            version(TEST262)
             {
-                import std.exception : assumeUnique;
-                char_t[] buf;
-                badencode(buf, value.text.charCodeAt16(index));
-                return new Value(buf.assumeUnique);
+                size_t i = 0;
+                return new Value(CESU8.toCcharAt(value.text, index, i));
             }
-            else static assert (0);
+            else static*/ assert (0);
         }
         else
             return super.Get(key, cc);
@@ -101,100 +89,52 @@ class Dstring : Dobject
 //==============================================================================
 private:
 
-version (TEST262)
+
+//------------------------------------------------------------------------------
+@safe pure
+double _charCodeAt(in char[] src, in size_t index)
 {
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// SO DIRTY IMPLEMENTATION!
-    @safe pure
-    size_t stride16(in char_t[] src, ref size_t needle)
-    {
-        import std.utf : stride;
-        static if      (is(char_t == char))
-        {
-            auto len = stride(src, needle);
-            needle += len;
-            return len < 4 ? 1 : 2;
-        }
-        else static if (is(char_t == wchar))
-        {
-            auto len = stride(src, needle);
-            needle += len;
-            return len;
-        }
-        else static if (is(char_t == dchar))
-        {
-            import std.uni : isSurrogate;
-            auto len = src[needle].isSurrogate ? 2 : 1;
-            needle++;
-            return len;
-        }
-        else static assert (0);
-    }
-    //
-    @safe pure
-    size_t length16(in char[] src)
-    {
-        size_t len = 0;
-        for(size_t l = 0; l < src.length;)
-        {
-            len += stride16(src, l);
-        }
-        return len;
-    }
-    //
-    @safe pure
-    bool isSurrogate(in char_t[] src, size_t needle)
-    {
-        import std.utf : stride;
-        return 4 <= stride(src, needle);
-    }
+    import std.utf : decode, stride;
 
-    //
-    @safe pure
-    dchar charCodeAt16(in char_t[] buf, size_t pos)
+    size_t i, cc;
+    for (i = 0, cc = 0; i < src.length && cc <= index;)
     {
-        import std.utf : stride, decode, encode;
-        dchar result = 0;
-
-        for (size_t i = 0, p = 0, l = 0; i < buf.length && p <= pos; i += l)
+        if (cc == index)
         {
-            l = stride(buf, i);
-            if      (l < 4)
-            {
-                if (p == pos)
-                {
-                    result = decode(buf, i);
-                    break;
-                }
-                else
-                    ++p;
-            }
-            else if (l == 4) // surrogate pair.
-            {
-                auto d = decode(buf, i);
-                wchar[2] wbuf;
-                encode(wbuf, d);
-                if      (p == pos)
-                    result = wbuf[0];
-                else if (p + 1 == pos)
-                    result = wbuf[1];
-                else
-                    p += 2;
-            }
-            else assert (0);
+            return decode(src, i);
         }
-        return result;
-    }
-
-    @safe pure
-    void badencode(ref char_t[] buf, dchar d)
-    {
-        import std.utf : encode, isValidDchar;
-        if (!isValidDchar(d))
-            buf ~= ' ';
         else
-            encode(buf, d);
+        {
+            i += stride(src, i);
+            ++cc;
+        }
     }
+
+    return double.nan;
+}
+
+//------------------------------------------------------------------------------
+@safe pure
+inout(char)[] _stringAt(inout char[] src, in size_t index)
+{
+    import std.utf : decode, stride;
+
+    size_t i, cc, len;
+    for (i = 0, cc = 0; i < src.length && cc <= index;)
+    {
+        if (cc == index)
+        {
+            len = stride(src, i);
+            return src[i..i+len];
+        }
+        else
+        {
+            i += stride(src, i);
+            ++cc;
+        }
+    }
+
+    return null;
 }
 
 //------------------------------------------------------------------------------
@@ -203,11 +143,13 @@ DError* fromCharCode(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import std.exception : assumeUnique;
+    import std.array : Appender;
     import std.utf : encode, isValidDchar;
 
     // ECMA 15.5.3.2
-    char_t[] s = null;
+    Appender!string s;
+    char[4] buf;
+    size_t l;
 
     for(size_t i = 0; i < arglist.length; i++)
     {
@@ -216,23 +158,17 @@ DError* fromCharCode(
 
         v = &arglist[i];
         u = v.toUint16(cc);
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // BAD IMPLEMENTATION!!!
-        version (TEST262)
+
+        if(!isValidDchar(u))
         {
-            badencode(s, u);
+            ret.putVundefined();
+            return NotValidUTFError("String", "fromCharCode()", u);
         }
-        else
-        {
-            if(!isValidDchar(u))
-            {
-                ret.putVundefined();
-                return NotValidUTFError("String", "fromCharCode()", u);
-            }
-            encode(s, u);
-        }
+
+        l = encode(buf, u);
+        s.put(buf[0..l]);
     }
-    ret.put(s.assumeUnique);
+    ret.put(s.data);
     return null;
 }
 
@@ -273,7 +209,7 @@ class DstringConstructor : Dconstructor
         import dmdscript.primitive : Text;
 
         // ECMA 15.5.2
-        string_t s;
+        string s;
         Dobject o;
 
         s = (arglist.length) ? arglist[0].toString(cc) : Text.Empty;
@@ -288,7 +224,7 @@ class DstringConstructor : Dconstructor
         import dmdscript.primitive : Text;
 
         // ECMA 15.5.1
-        string_t s;
+        string s;
 
         s = (arglist.length) ? arglist[0].toString(cc) : Text.Empty;
         ret.put(s);
@@ -344,15 +280,15 @@ DError* charAt(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import std.utf : stride;
     import dmdscript.primitive : Text;
+    import std.utf : stride;
     // ECMA 15.5.4.4
 
     Value* v;
     int pos;            // ECMA says pos should be a d_number,
                         // but int should behave the same
-    string_t s;
-    string_t result;
+    string s;
+    string result;
 
     v = &othis.value;
     s = v.toString(cc);
@@ -396,7 +332,7 @@ DError* charCodeAt(
     Value* v;
     size_t pos;            // ECMA says pos should be a d_number,
                            // but int should behave the same
-    string_t s;
+    string s;
     uint len;
     double result;
 
@@ -405,33 +341,7 @@ DError* charCodeAt(
     v = arglist.length ? &arglist[0] : &undefined;
     pos = cast(int)v.toInteger(cc);
 
-    result = double.nan;
-
-    version (TEST262)
-    {
-        result = charCodeAt16(s, pos);
-    }
-    else
-    {
-        if(pos >= 0)
-        {
-            size_t idx;
-
-            while(1)
-            {
-                assert(idx <= s.length);
-                if(idx == s.length)
-                    break;
-                if(pos == 0)
-                {
-                    result = decode(s, idx);
-                    break;
-                }
-                idx += stride(s, idx);
-                pos--;
-            }
-        }
-    }
+    result = _charCodeAt(s, pos);
 
     ret.put(result);
     return null;
@@ -444,7 +354,7 @@ DError* concat(
     Value[] arglist)
 {
     // ECMA v3 15.5.4.6
-    string_t s;
+    string s;
 
     //writefln("Dstring.prototype.concat()");
 
@@ -462,8 +372,8 @@ DError* indexOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import std.utf : toUCSindex, toUTFindex;
-    import std.string : indexOf;
+    import std.utf : stride, toUTFindex;
+    import std.algorithm : countUntil;
 
     // ECMA 15.5.4.6
     // String.prototype.indexOf(searchString, position)
@@ -472,16 +382,16 @@ DError* indexOf(
     Value* v2;
     ptrdiff_t pos;            // ECMA says pos should be a d_number,
                         // but I can't find a reason.
-    string_t s;
+    string s;
     size_t sUCSdim;
 
-    string_t searchString;
+    string searchString;
     ptrdiff_t k;
 
     Value xx;
     xx.put(othis);
     s = xx.toString(cc);
-    sUCSdim = toUCSindex(s, s.length);
+    sUCSdim = s.stride;
 
     v1 = arglist.length ? &arglist[0] : &undefined;
     v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
@@ -499,9 +409,9 @@ DError* indexOf(
     else
     {
         pos = toUTFindex(s, pos);
-        k = indexOf(s[pos .. $], searchString);
+        k = countUntil(s[pos .. $], searchString);
         if(k != -1)
-            k = toUCSindex(s, pos + k);
+            k = stride(s[0 ..pos + k]);
     }
 
     ret.put(k);
@@ -514,9 +424,11 @@ DError* lastIndexOf(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import std.utf : toUCSindex, toUTFindex;
     import std.string : lastIndexOf;
     import std.math : isNaN;
+    import std.algorithm : countUntil;
+    import std.range : retro;
+    import std.utf : stride, toUTFindex;
 
     // ECMA v3 15.5.4.8
     // String.prototype.lastIndexOf(searchString, position)
@@ -524,9 +436,9 @@ DError* lastIndexOf(
     Value* v1;
     ptrdiff_t pos;            // ECMA says pos should be a d_number,
                         // but I can't find a reason.
-    string_t s;
+    string s;
     size_t sUCSdim;
-    string_t searchString;
+    string searchString;
     ptrdiff_t k;
 
     version(all)
@@ -547,7 +459,7 @@ DError* lastIndexOf(
         // the 'builtin' version
         s = othis.value.toString();
     }
-    sUCSdim = toUCSindex(s, s.length);
+    sUCSdim = stride(s);
 
     v1 = arglist.length ? &arglist[0] : &undefined;
     searchString = v1.toString(cc);
@@ -579,10 +491,13 @@ DError* lastIndexOf(
         pos += searchString.length;
         if(pos > s.length)
             pos = s.length;
-        k = lastIndexOf(s[0 .. pos], searchString);
+        // k = lastIndexOf(s[0 .. pos], searchString);
+        k = s[0 .. pos].retro.countUntil(searchString.retro);
+        if (k != -1)
+            k = pos - searchString.length;
         //writefln("s = '%s', pos = %s, searchString = '%s', k = %d", s, pos, searchString, k);
         if(k != -1)
-            k = toUCSindex(s, k);
+            k = stride(s[0 .. k]);
     }
     ret.put(k);
     return null;
@@ -595,8 +510,8 @@ DError* localeCompare(
     Value[] arglist)
 {
     // ECMA v3 15.5.4.9
-    string_t s1;
-    string_t s2;
+    string s1;
+    string s2;
     double n;
     Value* v;
 
@@ -609,7 +524,7 @@ DError* localeCompare(
 }
 
 @safe @nogc pure nothrow
-int localeCompare(ref CallContext cc, string_t s1, string_t s2)
+int localeCompare(ref CallContext cc, string s1, string s2)
 {   // no locale support here
     import std.string : cmp;
     return cmp(s1, s2);
@@ -684,26 +599,27 @@ DError* replace(
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
-    import std.string : indexOf;
+    import std.algorithm : countUntil;
+    import std.utf : toUTF16;
     import dmdscript.dfunction : Dfunction;
     import dmdscript.dregexp : Dregexp, RegExp, EXEC_STRING;
 
     // ECMA v3 15.5.4.11
     // String.prototype.replace(searchValue, replaceValue)
 
-    string_t str;
-    string_t searchString;
-    string_t newstring;
+    string str;
+    string searchString;
+    string newstring;
     Value* searchValue;
     Value* replaceValue;
     Dregexp r;
     RegExp re;
-    string_t replacement;
-    string_t result;
+    string replacement;
+    string result;
     int m;
     int i;
     int lasti;
-    string_t[1] pmatch;
+    string[1] pmatch;
     Dfunction f;
     Value* v;
 
@@ -776,7 +692,7 @@ DError* replace(
     else
     {
         searchString = searchValue.toString(cc);
-        ptrdiff_t match = indexOf(str, searchString);
+        ptrdiff_t match = countUntil(str, searchString);
         if(match >= 0)
         {
             pmatch[0] = str[match .. match + searchString.length];
@@ -843,18 +759,19 @@ DError* slice(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import std.utf : toUTFindex, toUCSindex;
+    import std.utf : stride, toUTFindex;
+
     // ECMA v3 15.5.4.13
     ptrdiff_t start;
     ptrdiff_t end;
     ptrdiff_t sUCSdim;
-    string_t s;
-    string_t r;
+    string s;
+    string r;
     Value* v;
 
     v = &othis.value;
     s = v.toString(cc);
-    sUCSdim = toUCSindex(s, s.length);
+    sUCSdim = stride(s);
     switch(arglist.length)
     {
     case 0:
@@ -910,7 +827,7 @@ DError* split(
     Value[] arglist)
 {
     import core.stdc.string : memcmp;
-    import dmdscript.primitive : char_t, PropertyKey;
+    import dmdscript.primitive : PropertyKey;
     import dmdscript.dregexp : Dregexp, RegExp;
     import dmdscript.darray : Darray;
     import dmdscript.property : Property;
@@ -925,9 +842,9 @@ DError* split(
     Value* limit = &undefined;
     Dregexp R;
     RegExp re;
-    string_t rs;
-    string_t T;
-    string_t S;
+    string rs;
+    string T;
+    string S;
     Darray A;
     int str;
     Value val;
@@ -988,7 +905,7 @@ DError* split(
             {
                 if(str)                 // string
                 {
-                    if(q + rs.length <= S.length && !memcmp(S.ptr + q, rs.ptr, rs.length * char_t.sizeof))
+                    if(q + rs.length <= S.length && !memcmp(S.ptr + q, rs.ptr, rs.length * char.sizeof))
                     {
                         e = q + rs.length;
                         if(e != p)
@@ -1067,13 +984,13 @@ DError* split(
 }
 
 //------------------------------------------------------------------------------
-DError* dstring_substring(string_t s, size_t sUCSdim, double start,
+DError* dstring_substring(string s, size_t sUCSdim, double start,
                           double end, out Value ret)
 {
     import std.math : isNaN;
     import std.utf : toUTFindex;
 
-    string_t sb;
+    string sb;
     int sb_len;
 
     if(isNaN(start))
@@ -1113,17 +1030,17 @@ DError* substr(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import std.utf : toUCSindex;
     import std.math : isNaN;
+    import std.utf : stride;
 
     // Javascript: TDG pg. 689
     // String.prototype.substr(start, length)
     double start;
     double length;
-    string_t s;
+    string s;
 
     s = othis.value.toString(cc);
-    size_t sUCSdim = toUCSindex(s, s.length);
+    size_t sUCSdim = stride(s);
     start = 0;
     length = 0;
     if(arglist.length >= 1)
@@ -1150,18 +1067,18 @@ DError* substring(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import std.utf : toUCSindex;
+    import std.utf : stride;
 
     // ECMA 15.5.4.9
     // String.prototype.substring(start)
     // String.prototype.substring(start, end)
     double start;
     double end;
-    string_t s;
+    string s;
 
     //writefln("String.prototype.substring()");
     s = othis.value.toString(cc);
-    size_t sUCSdim = toUCSindex(s, s.length);
+    size_t sUCSdim = stride(s);
     start = 0;
     end = sUCSdim;
     if(arglist.length >= 1)
@@ -1188,7 +1105,7 @@ DError* tocase(ref CallContext cc, Dobject othis, out Value ret, CASE caseflag)
 {
     import std.string : toLower, toUpper;
 
-    string_t s;
+    string s;
 
     s = othis.value.toString(cc);
     switch(caseflag)
@@ -1263,19 +1180,19 @@ DError* toLocaleUpperCase(
 
 //------------------------------------------------------------------------------
 DError* dstring_anchor(
-    ref CallContext cc, Dobject othis, out Value ret, string_t tag,
-    string_t name, Value[] arglist)
+    ref CallContext cc, Dobject othis, out Value ret, string tag,
+    string name, Value[] arglist)
 {
     // For example:
     //	"foo".anchor("bar")
     // produces:
     //	<tag name="bar">foo</tag>
 
-    string_t foo = othis.value.toString(cc);
+    string foo = othis.value.toString(cc);
     Value* va = arglist.length ? &arglist[0] : &undefined;
-    string_t bar = va.toString(cc);
+    string bar = va.toString(cc);
 
-    string_t s;
+    string s;
 
     s = "<"     ~
         tag     ~
@@ -1342,10 +1259,10 @@ DError* link(
 Produce <tag>othis</tag>
 */
 DError* dstring_bracket(ref CallContext cc, Dobject othis, out Value ret,
-                        string_t tag)
+                        string tag)
 {
-    string_t foo = othis.value.toString(cc);
-    string_t s;
+    string foo = othis.value.toString(cc);
+    string s;
 
     s = "<"     ~
         tag     ~

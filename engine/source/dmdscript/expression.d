@@ -66,7 +66,7 @@ class Expression
     void checkLvalue(Scope* sc)
     {
         import std.format : format;
-        string_t sourcename;
+        string sourcename;
 
         assert(sc !is null);
         if(sc.funcdef)
@@ -79,11 +79,14 @@ class Expression
 
         if (sc.exception is null)
         {
-            sc.exception = CannotAssignToError.toThrow(
+            sc.exception = CannotAssignToOnCheckLvalueError.toThrow(
                 toString, sourcename, sc.getSource, linnum);
         }
         assert(sc.exception !is null);
-        debug throw sc.exception;
+
+/*        version (TEST262) {}
+          else*/
+            debug throw sc.exception;
     }
 
     // Do we match for purposes of optimization?
@@ -117,16 +120,16 @@ class Expression
     }
 
     final override
-    string_t toString()
+    string toString()
     {
         import std.array : Appender;
 
-        Appender!string_t buf;
+        Appender!string buf;
         toBuffer(b=>buf.put(b));
         return buf.data;
     }
 
-    void toBuffer(scope void delegate(in char_t[]) sink) const
+    void toBuffer(scope void delegate(in char[]) sink) const
     {
         assert(0);
     }
@@ -153,7 +156,7 @@ final class RealExpression : Expression
     }
 
     override @trusted
-    void toBuffer(scope void delegate(in char_t[]) sink) const
+    void toBuffer(scope void delegate(in char[]) sink) const
     {
         import std.conv : to;
         sink(value.to!string);
@@ -216,7 +219,7 @@ final class IdentifierExpression : Expression
         base = ~0u;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     { sink(ident.toString); }
 }
 
@@ -243,7 +246,7 @@ final class ThisExpression : Expression
             irs.gen!(Opcode.This)(linnum, ret);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink(Text._this);
     }
@@ -266,7 +269,7 @@ final class NullExpression : Expression
             irs.gen!(Opcode.Null)(linnum, ret);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink(Key._null);
     }
@@ -276,10 +279,10 @@ final class NullExpression : Expression
 
 final class StringExpression : Expression
 {
-    private string_t str;
+    private string str;
 
     @safe @nogc pure nothrow
-    this(uint linnum, string_t str)
+    this(uint linnum, string str)
     {
         //writefln("StringExpression('%s')", string);
         super(linnum, Tok.String);
@@ -294,7 +297,7 @@ final class StringExpression : Expression
             irs.gen!(Opcode.String)(linnum, ret, new Value(str));
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         import std.format : format;
         import std.ascii : isPrintable;
@@ -313,7 +316,7 @@ final class StringExpression : Expression
                 if(c & ~0xFF)
                     sink(format("\\u%04x", c));
                 else if(isPrintable(c))
-                    sink([cast(char_t)c]);
+                    sink([cast(char)c]);
                 else
                     sink(format("\\x%02x", c));
                 break;
@@ -327,23 +330,36 @@ final class StringExpression : Expression
 
 final class RegExpLiteral : Expression
 {
-    private string_t str;
+    private string str;
+    private string pattern;
+    private string attribute;
+
+    // deprecated
+    // @safe @nogc pure nothrow
+    // this(uint linnum, string str)
+    // {
+    //     //writefln("RegExpLiteral('%s')", string);
+    //     super(linnum, Tok.Regexp);
+    //     this.str = str;
+    // }
 
     @safe @nogc pure nothrow
-    this(uint linnum, string_t str)
+    this(uint linnum, RegexLiteral* regLiteral)
     {
-        //writefln("RegExpLiteral('%s')", string);
         super(linnum, Tok.Regexp);
-        this.str = str;
+        str = regLiteral.source;
+        pattern = regLiteral.pattern;
+        attribute = regLiteral.flags;
     }
+
 
     override void toIR(IRstate* irs, idx_t ret) const
     {
         import std.string : lastIndexOf;
         import dmdscript.value : Value;
-        string_t pattern;
-        string_t attribute = null;
-        sizediff_t e;
+        // string pattern;
+        // string attribute = null;
+        // sizediff_t e;
 
         size_t argc;
         LocalVariables argv;
@@ -353,16 +369,17 @@ final class RegExpLiteral : Expression
         //	/pattern/attribute
 
         // Parse out pattern and attribute strings
-        assert(str[0] == '/');
-        e = lastIndexOf(str, '/');
-        assert(e != -1);
-        pattern = str[1 .. e];
-        argc = 1;
-        if(e + 1 < str.length)
-        {
-            attribute = str[e + 1 .. $];
-            argc++;
-        }
+        // assert(str[0] == '/');
+        // e = lastIndexOf(str, '/');
+        // assert(e != -1);
+        // pattern = str[1 .. e];
+        // argc = 1;
+        // if(e + 1 < str.length)
+        // {
+        //     attribute = str[e + 1 .. $];
+        //     argc++;
+        // }
+        argc = 0 < attribute.length ? 2 : 1;
 
         // Generate new Regexp(pattern [, attribute])
 
@@ -379,7 +396,7 @@ final class RegExpLiteral : Expression
         irs.release(b);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink(str);
     }
@@ -410,7 +427,7 @@ final class BooleanExpression : Expression
             irs.gen!(Opcode.Boolean)(linnum, ret, boolean);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink(boolean ? "true" : "false");
     }
@@ -498,7 +515,7 @@ final class ArrayLiteral : Expression
         irs.release(b);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         uint i;
 
@@ -589,7 +606,7 @@ final class ObjectLiteral : Expression
         irs.collect(b);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         uint i;
 
@@ -632,7 +649,7 @@ final class FunctionLiteral : Expression
         irs.gen!(Opcode.Object)(linnum, ret, func);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         func.toBuffer(sink);
     }
@@ -657,7 +674,7 @@ class UnaExp : Expression
         return this;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink(Token.toString(op));
         sink(" ");
@@ -715,7 +732,7 @@ class BinExp : Expression
         }
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink("(");
         sink(typeid(e1).toString);
@@ -780,7 +797,7 @@ final class PreExp : UnaExp
         }
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         e1.toBuffer(sink);
         sink(Token.toString(op));
@@ -838,7 +855,7 @@ final class PostIncExp : UnaExp
         }
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         e1.toBuffer(sink);
         sink(Token.toString(op));
@@ -896,7 +913,7 @@ final class PostDecExp : UnaExp
         }
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         e1.toBuffer(sink);
         sink(Token.toString(op));
@@ -961,7 +978,7 @@ final class DotExp : UnaExp
         irs.collect(tmp);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         e1.toBuffer(sink);
         sink(".");
@@ -1056,7 +1073,7 @@ final class CallExp : UnaExp
         irs.release(argv);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         e1.toBuffer(sink);
         sink("(");
@@ -1102,7 +1119,7 @@ final class AssertExp : UnaExp
         irs.release(tmp);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink("assert(");
         e1.toBuffer(sink);
@@ -1158,7 +1175,7 @@ final class NewExp : UnaExp
         irs.release(b);
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink(Token.toString(op));
         sink(" ");
@@ -1357,7 +1374,7 @@ final class ArrayExp : BinExp
         opoff = OpOffset.None;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         e1.toBuffer(sink);
         sink("[");

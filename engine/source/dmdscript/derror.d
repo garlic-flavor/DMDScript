@@ -35,7 +35,7 @@ class Derror : Dobject
     {
         super(getPrototype, Key.Error);
 
-        immutable(char)[] msg;
+        string msg;
         msg = m.toString(cc);
         auto val = Value(msg);
         Set(Key.message, val, Property.Attribute.None, cc);
@@ -165,7 +165,7 @@ DError* toString(
     v = othis.Get(Key.message, cc);
     if(!v)
         v = &undefined;
-    ret.put(othis.Get(Key.name, cc).toString(cc)~": "~v.toString(cc));
+    ret.put(othis.Get(Key.name, cc).toString(cc) ~ ": " ~ v.toString(cc));
     return null;
 }
 

@@ -20,7 +20,6 @@ debug import std.stdio;
 
 class Program
 {
-    import dmdscript.primitive : string_t, char_t;
     import dmdscript.callcontext : CallContext;
     import dmdscript.functiondefinition : FunctionDefinition;
 
@@ -48,7 +47,7 @@ class Program
     1. with text representing group of topstatements (pfd == null)
     2. with text representing a function name & body (pfd != null)
     */
-    void compile(string_t progIdentifier, string_t srctext,
+    void compile(string progIdentifier, string srctext,
                  FunctionDefinition* pfd)
     {
         import dmdscript.statement : TopStatement;
@@ -57,7 +56,7 @@ class Program
         import dmdscript.scopex : Scope;
 
         TopStatement[] topstatements;
-        string_t msg;
+        string msg;
 
         auto p = new Parser!(Mode.UseStringtable)(progIdentifier, srctext);
 
@@ -141,7 +140,7 @@ class Program
     Execute program.
     Throw ScriptException on error.
     */
-    void execute(string_t[] args)
+    void execute(string[] args)
     {
         import dmdscript.primitive : Key, PropertyKey;
         import dmdscript.value : Value, DError;
@@ -193,7 +192,9 @@ class Program
 
         // Instantiate global variables as properties of global
         // object with 0 attributes
-        globalfunction.instantiate(callcontext, Property.Attribute.DontDelete);
+        globalfunction.instantiate(callcontext,
+                                   Property.Attribute.DontDelete |
+                                   Property.Attribute.DontConfig);
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
 
         ret.putVundefined();
@@ -211,12 +212,12 @@ class Program
             throw exception;
         }
         callcontext.pop(dfs);
-        delete p1;
+        p1.destroy; p1 = null;
     }
 
     //--------------------------------------------------------------------
     ///
-    void toBuffer(scope void delegate(in char_t[]) sink)
+    void toBuffer(scope void delegate(in char[]) sink)
     {
         if(globalfunction)
             globalfunction.toBuffer(sink);

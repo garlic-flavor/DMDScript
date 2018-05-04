@@ -29,7 +29,7 @@ struct Scope
 {
     Scope*             enclosing;    // enclosing Scope
 
-    string_t           src;          // source text
+    string            src;          // source text
     Program            program;      // Root module
     // deprecated ScopeSymbol*       scopesym;     // current symbol
     FunctionDefinition funcdef;      // what function we're in
@@ -180,7 +180,7 @@ struct Scope
     }
 
     @property @safe @nogc pure nothrow
-    string_t getSource()
+    string getSource()
     {
         for(auto sc = &this; sc !is null; sc = sc.enclosing)
         {

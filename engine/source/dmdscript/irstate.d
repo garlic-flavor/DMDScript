@@ -348,7 +348,7 @@ struct IRstate
             }
         }
 
-        delete p1;
+        p1.destroy; p1 = null;
 
         //return;
         // Remove all IRnop's

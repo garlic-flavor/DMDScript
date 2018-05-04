@@ -19,8 +19,7 @@ module dmdscript.dnumber;
 
 import std.math;
 
-import dmdscript.primitive : number_t, string_t, char_t, PropertyKey, Text,
-    PKey = Key;
+import dmdscript.primitive : number_t, PropertyKey, Text, PKey = Key;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dconstructor;
@@ -218,7 +217,7 @@ DError* toString(
     Value[] arglist)
 {
     // ECMA v3 15.7.4.2
-    string_t s;
+    string s;
 
     // othis must be a Number
     if (auto dn = cast(Dnumber)othis)
@@ -354,7 +353,7 @@ DError* toFixed(
     Value* v;
     double x;
     double fractionDigits;
-    string_t result;
+    string result;
     int dup;
 
     if(arglist.length)
@@ -396,7 +395,7 @@ DError* toFixed(
         else
         {
             number_t n;
-            char_t[32 + 1] buffer;
+            char[32 + 1] buffer;
             double tenf;
             int f;
 
@@ -425,10 +424,10 @@ DError* toFixed(
                 k = m.length;
                 if(k <= f)
                 {
-                    char_t* s;
+                    char* s;
                     ptrdiff_t nzeros;
 
-                    s = cast(char_t*)alloca((f + 1) * char_t.sizeof);
+                    s = cast(char*)alloca((f + 1) * char.sizeof);
                     assert(s);
                     nzeros = f + 1 - k;
                     s[0 .. nzeros] = '0';
@@ -439,7 +438,7 @@ DError* toFixed(
                 }
 
                 // res = "-" + m[0 .. k-f] + "." + m[k-f .. k];
-                char[] res = new char_t[sign + k + 1];
+                char[] res = new char[sign + k + 1];
                 if(sign)
                     res[0] = '-';
                 i = k - f;
@@ -479,7 +478,7 @@ DError* toExponential(
     Value* v;
     double x;
     double fractionDigits;
-    string_t result;
+    string result;
 
     if(arglist.length)
     {
@@ -512,9 +511,9 @@ DError* toExponential(
             int f;
             number_t n;
             int e;
-            char_t[] m;
+            char[] m;
             int i;
-            char_t[32 + 1] buffer;
+            char[32 + 1] buffer;
 
             if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
             {
@@ -526,9 +525,9 @@ DError* toExponential(
             f = cast(int)fractionDigits;
             if(x == 0)
             {
-                char_t* s;
+                char* s;
 
-                s = cast(char_t*)alloca((f + 1) * char_t.sizeof);
+                s = cast(char*)alloca((f + 1) * char.sizeof);
                 assert(s);
                 m = s[0 .. f + 1];
                 m[0 .. f + 1] = '0';
@@ -581,10 +580,10 @@ DError* toExponential(
             }
             if(f)
             {
-                char_t* s;
+                char* s;
 
                 // m = m[0] + "." + m[1 .. f+1];
-                s = cast(char_t*)alloca((f + 2) * char_t.sizeof);
+                s = cast(char*)alloca((f + 2) * char.sizeof);
                 assert(s);
                 s[0] = m[0];
                 s[1] = '.';
@@ -593,7 +592,7 @@ DError* toExponential(
             }
 
             // result = sign + m + "e" + c + e;
-            string_t c = (e >= 0) ? "+" : "";
+            string c = (e >= 0) ? "+" : "";
 
             result = format("%s%se%s%d", sign ? "-" : "", m, c, e);
         }
@@ -619,7 +618,7 @@ DError* toPrecision(
     Value* v;
     double x;
     double precision;
-    string_t result;
+    string result;
 
     v = &othis.value;
     x = v.toNumber(cc);
@@ -643,9 +642,9 @@ DError* toPrecision(
             int e;
             int p;
             int i;
-            char_t[] m;
+            char[] m;
             number_t n;
-            char_t[32 + 1] buffer;
+            char[32 + 1] buffer;
 
             sign = 0;
             if(x < 0)
@@ -684,9 +683,9 @@ DError* toPrecision(
                 if(e < -6 || e >= p)
                 {
                     // result = sign + m[0] + "." + m[1 .. p] + "e" + c + e;
-                    string_t c = (e >= 0) ? "+" : "";
-                    result = format("%s%s.%se%s%d",
-                                               (sign ? "-" : ""), m[0], m[1 .. $], c, e);
+                    string c = (e >= 0) ? "+" : "";
+                    result = format("%s%s.%se%s%d", (sign ? "-" : ""),
+                                    m[0], m[1 .. $], c, e);
                     goto Ldone;
                 }
             }
@@ -694,8 +693,8 @@ DError* toPrecision(
             {
                 // Step 12
                 // m = array[p] of '0'
-                char_t* s;
-                s = cast(char_t*)alloca(p * char_t.sizeof);
+                char* s;
+                s = cast(char*)alloca(p * char.sizeof);
                 assert(s);
                 m = s[0 .. p];
                 m[] = '0';
@@ -704,13 +703,13 @@ DError* toPrecision(
             }
             if(e != p - 1)
             {
-                char_t* s;
+                char* s;
 
                 if(e >= 0)
                 {
                     // m = m[0 .. e+1] + "." + m[e+1 .. p];
 
-                    s = cast(char_t*)alloca((p + 1) * char_t.sizeof);
+                    s = cast(char*)alloca((p + 1) * char.sizeof);
                     assert(s);
                     i = e + 1;
                     s[0 .. i] = m[0 .. i];
@@ -723,7 +722,7 @@ DError* toPrecision(
                     // m = "0." + (-(e+1) occurrences of the character '0') + m;
                     int imax = 2 + - (e + 1);
 
-                    s = cast(char_t*)alloca((imax + p) * char_t.sizeof);
+                    s = cast(char*)alloca((imax + p) * char.sizeof);
                     assert(s);
                     s[0] = '0';
                     s[1] = '.';

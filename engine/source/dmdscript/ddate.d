@@ -19,8 +19,7 @@ module dmdscript.ddate;
 
 debug import std.stdio;
 
-import dmdscript.primitive : d_time, string_t, d_time_nan, PropertyKey,
-    PKey = Key;
+import dmdscript.primitive : d_time, d_time_nan, PropertyKey, PKey = Key;
 import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.value;
@@ -42,14 +41,14 @@ enum TIMEFORMAT
     UTCString,
 }
 
-d_time parseDateString(ref CallContext cc, string_t s)
+d_time parseDateString(ref CallContext cc, string s)
 {
     return s.parse;
 }
 
-string_t dateToString(ref CallContext cc, d_time t, TIMEFORMAT tf)
+string dateToString(ref CallContext cc, d_time t, TIMEFORMAT tf)
 {
-    string_t p;
+    string p;
 
     if(t == d_time_nan)
         p = "Invalid Date";
@@ -107,7 +106,7 @@ DError* parse(
     Value[] arglist)
 {
     // ECMA 15.9.4.2
-    string_t s;
+    string s;
     d_time n;
 
     if(arglist.length == 0)
@@ -230,7 +229,7 @@ class DdateConstructor : Dconstructor
         d_time day;
         d_time time = 0;
         //generate NaN check boilerplate code
-        static string_t breakOnNan(string_t var)
+        static string breakOnNan(string var)
         {
             return "if(" ~ var ~ " == d_time_nan){
 			n = d_time_nan;
@@ -297,9 +296,10 @@ class DdateConstructor : Dconstructor
     override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
+
         // ECMA 15.9.2
         // return string as if (new Date()).toString()
-        immutable(char)[] s;
+        string s;
         d_time t;
 
         version(DATETOSTRING)
@@ -321,7 +321,7 @@ class DdateConstructor : Dconstructor
 
 /* ===================== Ddate.prototype functions =============== */
 
-DError* checkdate(out Value ret, string_t name, Dobject othis)
+DError* checkdate(out Value ret, string name, Dobject othis)
 {
     ret.putVundefined();
     return FunctionWantsDateError(name, othis.classname);
@@ -356,7 +356,7 @@ DError* toString(
 {
     // ECMA 15.9.5.2
     d_time n;
-    immutable(char)[] s;
+    string s;
 
     //writefln("Ddate_prototype_toString()");
     if ((cast(Ddate)othis) is null)
@@ -382,7 +382,7 @@ DError* toDateString(
 {
     // ECMA 15.9.5.3
     d_time n;
-    immutable(char)[] s;
+    string s;
 
     if ((cast(Ddate)othis) is null)
         return checkdate(ret, Key.toDateString, othis);
@@ -407,7 +407,7 @@ DError* toTimeString(
 {
     // ECMA 15.9.5.4
     d_time n;
-    immutable(char)[] s;
+    string s;
 
     if ((cast(Ddate)othis) is null)
         return checkdate(ret, Key.toTimeString, othis);
@@ -1464,7 +1464,7 @@ DError* toLocaleString(
     Value[] arglist)
 {
     // ECMA 15.9.5.39
-    immutable(char)[] s;
+    string s;
     d_time t;
 
     if ((cast(Ddate)othis) is null)
@@ -1483,7 +1483,7 @@ DError* toLocaleDateString(
     Value[] arglist)
 {
     // ECMA 15.9.5.6
-    immutable(char)[] s;
+    string s;
     d_time t;
 
     if ((cast(Ddate)othis) is null)
@@ -1502,7 +1502,7 @@ DError* toLocaleTimeString(
     Value[] arglist)
 {
     // ECMA 15.9.5.7
-    immutable(char)[] s;
+    string s;
     d_time t;
 
     if ((cast(Ddate)othis) is null)
@@ -1520,7 +1520,7 @@ DError* toUTCString(
     Value[] arglist)
 {
     // ECMA 15.9.5.40
-    immutable(char)[] s;
+    string s;
     d_time t;
 
     if ((cast(Ddate)othis) is null)
@@ -1740,7 +1740,8 @@ private
 {
     import std.datetime;
 
-    enum d_time_origin = SysTime(DateTime(1970, 1, 1), std.datetime.UTC());
+    static const auto d_time_origin =
+        SysTime(DateTime(1970, 1, 1), std.datetime.UTC());
     d_time toDtime(in ref SysTime t)
     {
         return (t.toUTC - d_time_origin).total!"msecs";

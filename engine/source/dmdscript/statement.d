@@ -33,14 +33,6 @@ import dmdscript.opcodes;
 
 debug import std.stdio;
 
-enum StatementType
-{
-    TopStatement,
-    FunctionDefinition,
-    ExpStatement,
-    VarStatement,
-}
-
 enum Progress
 {
     Parsed,
@@ -59,14 +51,11 @@ class TopStatement
     Progress done;      // 0: parsed
                         // 1: semantic
                         // 2: toIR
-    StatementType st;
-
     @safe @nogc pure nothrow
     this(uint linnum)
     {
         this.linnum = linnum;
         this.done = Progress.Parsed;
-        this.st = StatementType.TopStatement;
     }
 
     invariant()
@@ -89,7 +78,7 @@ class TopStatement
         assert(0, "TopStatement.toIR(" ~ toString ~ ")");
     }
 
-    void toBuffer(scope void delegate(in char_t[]) sink) const
+    void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink("TopStatement.toBuffer()\n");
     }
@@ -102,7 +91,7 @@ class TopStatement
 
         if (sc.exception is null)
         {
-            string_t sourcename;
+            string sourcename;
             if (sc.funcdef !is null)
             {
                 if      (sc.funcdef.isAnonymous)
@@ -119,16 +108,16 @@ class TopStatement
     }
 
 debug static:
-    string_t dump(TopStatement[] s)
+    string dump(TopStatement[] s)
     {
         import std.array : Appender;
         import std.conv : to;
-        Appender!string_t buf;
+        Appender!string buf;
         foreach(one; s)
         {
-            buf.put(one.linnum.to!string_t);
+            buf.put(one.linnum.to!string);
             buf.put(":");
-            buf.put(typeid(one).to!string_t);
+            buf.put(typeid(one).to!string);
             buf.put(":");
             one.toBuffer(b=>buf.put(b));
         }
@@ -187,7 +176,7 @@ class Statement : TopStatement
     ScopeStatement getScope()
     { return null; }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     { sink("Statement.toBuffer()\n"); }
 }
 
@@ -214,7 +203,7 @@ final class EmptyStatement : Statement
     {
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     { sink(";\n"); }
 }
 
@@ -229,7 +218,6 @@ class ExpStatement : Statement
     {
         //writef("ExpStatement.ExpStatement(this = %x, exp = %x)\n", this, exp);
         super(linnum);
-        st = StatementType.ExpStatement;
         this.exp = exp;
     }
 
@@ -260,7 +248,7 @@ class ExpStatement : Statement
         }
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         if(exp)
         {
@@ -291,7 +279,7 @@ final class VarDeclaration
 
 /******************************** VarStatement ***************************/
 
-final class VarStatement : Statement
+class VarStatement : Statement
 {
     VarDeclaration[] vardecls;
 
@@ -299,7 +287,6 @@ final class VarStatement : Statement
     this(uint linnum)
     {
         super(linnum);
-        st = StatementType.VarStatement;
     }
 
     override Statement semantic(Scope* sc)
@@ -351,13 +338,146 @@ final class VarStatement : Statement
         }
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         uint i;
 
         if(vardecls.length)
         {
             sink("var ");
+
+            for(i = 0; i < vardecls.length; i++)
+            {
+                auto vd = vardecls[i];
+                sink(vd.name.toString);
+                if(vd.init)
+                {
+                    sink(" = ");
+                    vd.init.toBuffer(sink);
+                }
+            }
+            sink(";\n");
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+///
+final class LetStatement : VarStatement
+{
+    @safe @nogc pure nothrow
+    this(uint linnum)
+    {
+        super(linnum);
+    }
+
+    override Statement semantic(Scope* sc)
+    {
+        return this;
+    }
+
+    override void toIR(IRstate* irs)
+    {
+        if(vardecls.length)
+        {
+            auto marksave = irs.mark();
+            auto ret = irs.alloc(1);
+
+            for(size_t i = 0; i < vardecls.length; i++)
+            {
+                auto vd = vardecls[i];
+
+                // This works like assignment statements:
+                //	name = init;
+                IR property;
+
+                if(vd.init)
+                {
+                    vd.init.toIR(irs, ret[0]);
+                    property.id = PropertyKey.build(vd.name.toString);
+                    irs.gen!(Opcode.PutThisLocal)(linnum, ret[0], property.id);
+                }
+            }
+            irs.release(ret);
+            irs.release(marksave);
+            vardecls[] = null;          // help gc
+        }
+    }
+
+    override void toBuffer(scope void delegate(in char[]) sink) const
+    {
+        uint i;
+
+        if(vardecls.length)
+        {
+            sink("let ");
+
+            for(i = 0; i < vardecls.length; i++)
+            {
+                auto vd = vardecls[i];
+                sink(vd.name.toString);
+                if(vd.init)
+                {
+                    sink(" = ");
+                    vd.init.toBuffer(sink);
+                }
+            }
+            sink(";\n");
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+///
+final class ConstStatement : VarStatement
+{
+    @safe @nogc pure nothrow
+    this(uint linnum)
+    {
+        super(linnum);
+    }
+
+    override Statement semantic(Scope* sc)
+    {
+        return this;
+    }
+
+    override void toIR(IRstate* irs)
+    {
+        if(vardecls.length)
+        {
+            auto marksave = irs.mark();
+            auto ret = irs.alloc(1);
+
+            for(size_t i = 0; i < vardecls.length; i++)
+            {
+                auto vd = vardecls[i];
+
+                // This works like assignment statements:
+                //	name = init;
+                IR property;
+
+                if(vd.init)
+                {
+                    vd.init.toIR(irs, ret[0]);
+                    property.id = PropertyKey.build(vd.name.toString);
+                    irs.gen!(Opcode.PutThisLocalConst)(linnum, ret[0],
+                                                       property.id);
+                }
+            }
+            irs.release(ret);
+            irs.release(marksave);
+            vardecls[] = null;          // help gc
+        }
+    }
+
+    override void toBuffer(scope void delegate(in char[]) sink) const
+    {
+        uint i;
+
+        if(vardecls.length)
+        {
+            sink("const ");
 
             for(i = 0; i < vardecls.length; i++)
             {
@@ -424,7 +544,7 @@ final class BlockStatement : Statement
         statements = null;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink("{\n");
         foreach(s; statements)
@@ -506,7 +626,7 @@ final class LabelStatement : Statement
         return scopeContext;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink(ident.toString);
         sink(": ");
@@ -903,7 +1023,7 @@ final class DoStatement : Statement
         return scopeContext;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink("while(");
         condition.toBuffer(sink);
@@ -1202,14 +1322,11 @@ final class ForInStatement : Statement
 
         init = init.semantic(sc);
 
-        if(init.st == StatementType.ExpStatement)
+        if (auto es = cast(ExpStatement)init)
         {
-            ExpStatement es;
-
-            es = cast(ExpStatement)(init);
             es.exp.checkLvalue(sc);
         }
-        else if(init.st == StatementType.VarStatement)
+        else if(cast(VarStatement)init)
         {
         }
         else
@@ -1242,8 +1359,6 @@ final class ForInStatement : Statement
     {
         LocalVariables e;
         LocalVariables iter;
-        ExpStatement es;
-        VarStatement vs;
         idx_t base;
         IR property;
         OpOffset opoff;
@@ -1260,16 +1375,14 @@ final class ForInStatement : Statement
         irs.continueTarget = this;
         irs.breakTarget = this;
 
-        if(init.st == StatementType.ExpStatement)
+        if(auto es = cast(ExpStatement)init)
         {
-            es = cast(ExpStatement)(init);
             es.exp.toLvalue(irs, base, &property, opoff);
         }
-        else if(init.st == StatementType.VarStatement)
+        else if(auto vs = cast(VarStatement)init)
         {
             VarDeclaration vd;
 
-            vs = cast(VarStatement)(init);
             assert(vs.vardecls.length == 1);
             vd = vs.vardecls[0];
 
@@ -1686,7 +1799,7 @@ final class ReturnStatement : Statement
         exp = null;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         //writef("ReturnStatement.toBuffer()\n");
         sink("return ");
@@ -1735,7 +1848,7 @@ final class ImpliedReturnStatement : Statement
         }
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         if(exp)
             exp.toBuffer(sink);
@@ -1781,7 +1894,7 @@ final class ThrowStatement : Statement
         exp = null;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink("throw ");
         if(exp)
@@ -1908,7 +2021,7 @@ final class TryStatement : ScopeStatement
         finalbdy = null;
     }
 
-    override void toBuffer(scope void delegate(in char_t[]) sink) const
+    override void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink("try\n");
         bdy.toBuffer(sink);

@@ -20,7 +20,7 @@
 
 module dmdscript.lexer;
 
-import dmdscript.primitive : char_t, string_t, Identifier;
+import dmdscript.primitive : Identifier;
 
 debug import std.stdio;
 
@@ -130,7 +130,7 @@ enum Tok : int
 ///
 struct Token
 {
-    import dmdscript.primitive : char_t, number_t, real_t;
+    import dmdscript.primitive : number_t, real_t, RegexLiteral;
     import dmdscript.templateliteral : TemplateLiteral;
 
     Tok    value;
@@ -138,45 +138,49 @@ struct Token
 
     Token* next;
     // pointer to first character of this token within buffer
-    immutable(char_t)* ptr;
+    immutable(char)* ptr;
     uint   linnum;
     // where we saw the last line terminator
-    immutable(char_t)* sawLineTerminator;
+    immutable(char)* sawLineTerminator;
     union
     {
-        number_t    intvalue;
-        real_t      realvalue;
-        string_t     str;
-        Identifier  ident;
+        number_t         intvalue;
+        real_t           realvalue;
+        string           str;
+        Identifier       ident;
         TemplateLiteral* tliteral;
+        RegexLiteral*    regLiteral;
     };
 
     //--------------------------------------------------------------------
     ///
     @trusted
-    string_t toString() const
+    string toString() const
     {
         import std.conv : to;
 
-        string_t p;
+        string p;
 
         switch(value)
         {
         case Tok.Number:
-            p = intvalue.to!string_t;
+            p = intvalue.to!string;
             break;
 
         case Tok.Real:
             long l = cast(long)realvalue;
             if(l == realvalue)
-                p = l.to!string_t;
+                p = l.to!string;
             else
-                p = realvalue.to!string_t;
+                p = realvalue.to!string;
             break;
 
         case Tok.String:
-        case Tok.Regexp:
             p = str;
+            break;
+
+        case Tok.Regexp:
+            p = regLiteral.source;
             break;
 
         case Tok.Identifier:
@@ -206,7 +210,7 @@ enum Mode : ubyte
 ///
 class Lexer(Mode MODE)
 {
-    import dmdscript.primitive : char_t, Identifier;
+    import dmdscript.primitive : Identifier, RegexLiteral;
     import dmdscript.exception : ScriptException;
     import dmdscript.errmsgs;
 
@@ -252,18 +256,18 @@ class Lexer(Mode MODE)
     //====================================================================
 protected:
     uint currentline;
-    const string_t base;             // pointer to start of buffer
-    const string_t sourcename;       // for error message strings
+    const string base;             // pointer to start of buffer
+    const string sourcename;       // for error message strings
     static if (MODE & Mode.UseStringtable)
         IdTable idtable;         // use for Identifiers
 
     //--------------------------------------------------------------------
     @trusted pure nothrow
-    this(string_t sourcename, string_t base, IdTable baseTable = null)
+    this(string sourcename, string base, IdTable baseTable = null)
     {
         this.sourcename = sourcename;
         if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
-            base ~= cast(char_t)0x1A;
+            base ~= cast(char)0x1A;
         this.base = base;
         this.end = base.ptr + base.length;
         p = base.ptr;
@@ -299,7 +303,7 @@ protected:
 
     //--------------------------------------------------------------------
     //
-    void insertSemicolon(immutable(char_t)* loc)
+    void insertSemicolon(immutable(char)* loc)
     {
         // Push current token back into the input, and
         // create a new current token that is a semicolon
@@ -380,6 +384,11 @@ private:
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
 
+    invariant
+    {
+        assert (p <= end);
+    }
+
     //
     @safe pure nothrow
     Token* allocToken()
@@ -398,7 +407,7 @@ private:
 
     //
     @trusted pure
-    dchar get(immutable(char_t)* p)
+    dchar get(immutable(char)* p)
     {
         import std.utf : decode;
         assert(base.ptr <= p && p < base.ptr + base.length);
@@ -408,7 +417,7 @@ private:
 
     //
     @trusted pure
-    immutable(char_t)* inc(immutable(char_t)* p)
+    immutable(char)* inc(immutable(char)* p)
     {
         import std.utf : stride;
         assert(base.ptr <= p && p < base.ptr + base.length);
@@ -421,26 +430,22 @@ private:
     */
     void scan(Token* t)
     {
-        import std.ascii : isDigit, isPrintable;
+        import std.ascii : isDigit;
         import std.algorithm : startsWith;
         import std.range : popFront;
-        import std.uni : isAlpha;
+        import std.uni : isAlpha, isGraphical, isWhite, isNumber;
         import std.utf : encode;
-        import dmdscript.primitive : isStrWhiteSpaceChar;
 
-        char_t c;
+        char c;
         dchar d;
-        string_t id;
-        char_t[] buf;
+        string id;
+        char[] buf;
 
-        //writefln("Lexer.scan()");
         t.sawLineTerminator = null;
         for(;; )
         {
             t.ptr = p;
             //t.linnum = currentline;
-            //writefln("p = %x",cast(uint)p);
-            //writefln("p = %x, *p = x%02x, '%s'",cast(uint)p,*p,*p);
             switch(*p)
             {
             case 0, 0x1A:
@@ -483,8 +488,12 @@ private:
                 bool isidletter(dchar d)
                 {
                     import std.ascii : isAlphaNum;
-                    return isAlphaNum(d) || d == '_' || d == '$'
-                        || (d >= 0x80 && isAlpha(d));
+                    /* Vertical tilde(0x2E2F) seems like a punctuation.
+                       But, phobos classifies this to an Alphabet.
+                     */
+                    return d.isAlphaNum || d == '_' || d == '$'
+                        || (d >= 0x80 && d.isGraphical && !d.isWhite &&
+                            d != 0x2e2f /* vertical tilde */);
                 }
 
                 do
@@ -556,13 +565,7 @@ private:
             case '/':
                 p++;
                 c = *p;
-                if(c == '=')
-                {
-                    p++;
-                    t.value = Tok.Divideass;
-                    return;
-                }
-                else if(c == '*')
+                if(c == '*') // a block comment
                 {
                     p++;
                     for(;; p++)
@@ -592,14 +595,12 @@ private:
                         case 0x1A:
                             version (TEST262)
                             {
-                                continue;
+                                if (p+1 < end)
+                                    continue;
                             }
-                            else
-                            {
-                                error(BadCCommentError);
-                                t.value = Tok.Eof;
-                                return;
-                            }
+                            error(BadCCommentError);
+                            t.value = Tok.Eof;
+                            return;
                         default:
                             continue;
                         }
@@ -607,7 +608,7 @@ private:
                     }
                     continue;
                 }
-                else if(c == '/')
+                else if(c == '/') // one line comment.
                 {
                     auto r = p[0..end-p];
                     uint j;
@@ -655,14 +656,25 @@ private:
                     p++;
                     continue;*/
                 }
-                else if((t.str = regexp()) !is null)
+                else if((t.regLiteral = regexp()) !is null)
+                {
                     t.value = Tok.Regexp;
+                }
+                // You may think that '/=' is the most frequent word.
+                // this seems terrible, but TEST262 say like this.
+                // See_Also: test/language/literals/regexp/S7.8.5_A1.1_T2.js
+                else if(c == '=')
+                {
+                    p++;
+                    t.value = Tok.Divideass;
+                    return;
+                }
                 else
                     t.value = Tok.Divide;
                 return;
 
             case '.':
-                immutable(char_t)* q;
+                immutable(char)* q;
                 q = p + 1;
                 c = *q;
                 if(isDigit(c))
@@ -733,7 +745,7 @@ private:
                         else
                         {
                             // Scan ahead to see if it's the last token
-                            immutable(char_t) * q;
+                            immutable(char) * q;
 
                             q = p;
                             for(;; )
@@ -960,7 +972,9 @@ private:
                 goto default;
             default:
                 d = get(p);
-                if(d >= 0x80 && isAlpha(d))
+                if(d >= 0x80 && d.isGraphical && !d.isWhite && !d.isNumber &&
+                   d != 0x2E2F // vertical tilde.
+                    )
                     goto Lidentifier;
                 else if (d == 0x2028 || d == 0x2029) // <LS> / <PS>
                 {
@@ -969,14 +983,14 @@ private:
                     t.sawLineTerminator = p;
                     continue;
                 }
-                else if(isStrWhiteSpaceChar(d))
+                else if(d.isWhite)
                 {
                     p = inc(p);            //also skip unicode whitespace
                     continue;
                 }
                 else
                 {
-                    if(isPrintable(d))
+                    if(d.isGraphical)
                         error(BadCharCError(d));
                     else
                         error(BadCharXError(d));
@@ -1003,9 +1017,15 @@ private:
         {
         case '\'', '"', '?', '\\':
             break;
-        case 'a':
+        version (TEST262)
+        {
+        }
+        else
+        {
+        case 'a': // BEL
             c = 7;
             break;
+        }
         case 'b':
             c = 8;
             break;
@@ -1096,16 +1116,16 @@ private:
     /**************************************
      */
     @trusted
-    string_t chompString(in char_t quote)
+    string chompString(in char quote)
     {
         import std.array : Appender;
         import std.utf : encode, stride;
 
-        char_t c;
+        char c;
         dchar d;
         uint len;
-        char_t[dchar.sizeof / char_t.sizeof] unibuf;
-        static Appender!(char_t[]) stringbuffer;
+        char[dchar.sizeof / char.sizeof] unibuf;
+        static Appender!(char[]) stringbuffer;
 
         assert(*p == quote);
 
@@ -1165,13 +1185,15 @@ private:
      * pointer intact if it is not a regexp.
      */
     @trusted pure nothrow
-    string_t regexp()
+    RegexLiteral* regexp()
     {
         import std.ascii : isAlphaNum;
 
-        char_t c;
-        immutable(char_t)* s;
-        immutable(char_t)* start;
+        char c;
+        immutable(char)* s;
+        immutable(char)* start;
+        immutable(char)* flagstart;
+        RegexLiteral* ret;
 
         /*
             RegExpLiteral:  RegExpBody RegExpFlags
@@ -1193,8 +1215,12 @@ private:
          */
 
         //writefln("Lexer.regexp()\n");
-        start = p - 1;
+        start = p - 1; // start[0] == '\'
         s = p;
+
+        c = *s;
+        if (c == '*' || c == '+' || c == '?' || c == '{' || c == '}')
+            return null;
 
         // Do RegExpBody
         for(;; )
@@ -1215,11 +1241,18 @@ private:
                 case 0:                         // end of file
                 case 0x1A:                      // end of file
                     return null;                // not a regexp
+                case 0xe2:
+                    // <LS> / <PS>
+                    if (s[1] == 0x80 && (s[2] == 0xa8 || s[2] == 0xa9))
+                    {
+                        return null;
+                    }
+                    goto default;
                 default:
                     break;
                 }
                 s++;
-                continue;
+                goto default;
 
             case '/':
                 if(s == p + 1)
@@ -1228,13 +1261,11 @@ private:
 
             case '\r':
             case '\n':                          // new line
-            case 0:                             // end of file
-            case 0x1A:                          // end of file
                 return null;                    // not a regexp
-            case '*':
-                if(s == p + 1)
-                    return null;
-                goto default;
+            case 0, 0x1A:                       // end of file
+                if (s < end)
+                    goto default;
+                return null;                // not a regexp
 
             case 0xe2:
                 // <LS> / <PS>
@@ -1247,67 +1278,67 @@ private:
             break;
         }
 
+        flagstart = s;
+
+
         // Do RegExpFlags
-        for(;; )
+        bool global, ignorecase, multiline, unicode, sticky;
+        for(;; ++s)
         {
             c = *s;
-            if(isAlphaNum(c) || c == '_' || c == '$')
+            if      (c == 'g' && !global)
             {
-                s++;
+                global = true;
+            }
+            else if (c == 'i' && !ignorecase)
+            {
+                ignorecase = true;
+            }
+            else if (c == 'm' && !multiline)
+            {
+                multiline = true;
+            }
+            else if (c == 'u' && !unicode)
+            {
+                unicode = true;
+            }
+            else if (c == 'y' && !sticky)
+            {
+                sticky = true;
             }
             else
                 break;
         }
 
         // Finish pattern & return it
+        // return rel;
+        ret = new RegexLiteral(
+            start[0 .. s - start],
+            p[0 .. flagstart - 1 - p],
+            flagstart[0 .. s - flagstart]);
         p = s;
-        return start[0 .. s - start].idup;
+
+        return ret;
     }
 
     /***************************************
      */
-    @trusted pure
+   @trusted pure
     dchar unicode()
     {
-        import std.ascii : isDigit, isHexDigit, isLower;
-        dchar value;
-        uint n;
-        dchar c;
-        bool withBracket = false;
+        import dmdscript.primitive : parseUnicode;
 
-        value = 0;
+        assert (*(p-1) == '\\');
+        assert (*p == 'u');
         p++;
-
-        if (*p == '{')
+        size_t index = 0;
+        dchar value;
+        if (!parseUnicode!true(p[0..end-p], index, value))
         {
-            withBracket = true;
-            p++;
+            error(BadUSequenceError);
+            value = '\0';
         }
-        for(n = 0; n < 4; n++)
-        {
-            c = *p;
-            if      (isHexDigit(c)){}
-            else if (withBracket && c == '}')
-            {
-                p++;
-                break;
-            }
-            else
-            {
-                error(BadUSequenceError);
-                value = '\0';
-                break;
-            }
-            p++;
-            if(isDigit(c))
-                c -= '0';
-            else if(isLower(c))
-                c -= 'a' - 10;
-            else    // 'A' <= c && c <= 'Z'
-                c -= 'A' - 10;
-            value <<= 4;
-            value |= c;
-        }
+        p += index;
         return value;
     }
 
@@ -1322,11 +1353,11 @@ private:
         import core.sys.posix.stdlib : strtod;
         import dmdscript.primitive : number_t;
 
-        immutable(char_t)* start;
+        immutable(char)* start;
         number_t intvalue;
         real realvalue;
         int base = 10;
-        char_t c;
+        char c;
 
         start = p;
         for(;; )
@@ -1355,7 +1386,7 @@ private:
                 if(base == 0)
                     base = 10;
                 intvalue = 0;
-                foreach(char_t v; start[0 .. p - start])
+                foreach(char v; start[0 .. p - start])
                 {
                     if('0' <= v && v <= '9')
                         v -= '0';
@@ -1369,7 +1400,7 @@ private:
                     if((number_t.max - v) / base < intvalue)
                     {
                         realvalue = 0;
-                        foreach(char_t w; start[0 .. p - start])
+                        foreach(char w; start[0 .. p - start])
                         {
                             if('0' <= w && w <= '9')
                                 w -= '0';
@@ -1456,7 +1487,7 @@ private:
     }
 
     static @safe @nogc pure nothrow
-    Tok isKeyword(const(char_t)[] s)
+    Tok isKeyword(const(char)[] s)
     {
         if(0 < s.length && s[0] >= 'a' && s[0] <= 'w')
             switch(s.length)
@@ -1665,7 +1696,7 @@ private:
 final class IdTable
 {
     import dmdscript.RandAA;
-    alias Table = RandAA!(string_t, Identifier, false);
+    alias Table = RandAA!(string, Identifier, false);
 
     @safe pure nothrow
     this()
@@ -1674,7 +1705,7 @@ final class IdTable
     }
 
     @safe nothrow
-    Identifier build(string_t str)
+    Identifier build(string str)
     {
         import dmdscript.primitive : calcHash;
         auto hash = calcHash(str);
@@ -1698,7 +1729,7 @@ private:
 // This function seems that only be called at error handling,
 // and for debugging.
 @safe pure
-string_t tochars(Tok tok)
+string tochars(Tok tok)
 {
     import std.conv : to;
     import std.string : toLower;
@@ -1752,14 +1783,22 @@ string_t tochars(Tok tok)
     case Tok.Minusminus: return "--";
 
     default:
-        return tok.to!string_t.toLower;
+        return tok.to!string.toLower;
     }
     assert(0);
 }
 
 //
 @safe @nogc pure nothrow
-bool isBinDigit(char_t c)
+bool isBinDigit(char c)
 {
     return c == '0' || c == '1';
+}
+
+//
+double makeDouble(double x)
+{
+    auto l = *cast(long*)&x;
+    l &= ~1;
+    return *cast(double*)&l;
 }

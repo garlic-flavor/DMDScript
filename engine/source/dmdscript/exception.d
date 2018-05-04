@@ -16,8 +16,6 @@
  */
 module dmdscript.exception;
 
-import dmdscript.primitive : string_t, char_t;
-
 //------------------------------------------------------------------------------
 ///
 class ScriptException : Exception
@@ -29,8 +27,8 @@ class ScriptException : Exception
     //--------------------------------------------------------------------
     ///
     @nogc @safe pure nothrow
-    this(string_t type, string_t msg,
-         string_t file = __FILE__, size_t line = __LINE__)
+    this(string type, string msg,
+         string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line);
         typename = type;
@@ -38,8 +36,8 @@ class ScriptException : Exception
 
     ///
     @nogc @safe pure nothrow
-    this(string_t type, string_t msg, Throwable next,
-         string_t file = __FILE__, size_t line = __LINE__)
+    this(string type, string msg, Throwable next,
+         string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line, next);
         typename = type;
@@ -47,7 +45,7 @@ class ScriptException : Exception
 
     /// ditto
     @safe pure
-    this(string_t type, string_t message, string_t sourcename, string_t source,
+    this(string type, string message, string sourcename, string source,
          uint linnum, string file = __FILE__, size_t line = __LINE__)
     {
         super(message, file, line);
@@ -56,7 +54,7 @@ class ScriptException : Exception
     }
     /// ditto
     @safe pure
-    this(string_t type, string_t msg, uint linnum, string file = __FILE__,
+    this(string type, string msg, uint linnum, string file = __FILE__,
          size_t line = __LINE__)
     {
         super(msg, file, line);
@@ -67,16 +65,23 @@ class ScriptException : Exception
     //--------------------------------------------------------------------
     ///
     @safe pure nothrow
-    void addMessage(string_t message)
+    void addMessage(string message)
     {
         msg ~= message;
+    }
+
+    ///
+    @property @safe @nogc pure nothrow
+    string type() const
+    {
+        return typename;
     }
 
     //--------------------------------------------------------------------
     ///
     @safe pure
-    void addTrace(string_t sourcename, string_t source, uint linnum,
-                  string_t file = __FILE__, size_t line = __LINE__)
+    void addTrace(string sourcename, string source, uint linnum,
+                  string file = __FILE__, size_t line = __LINE__)
     {
         auto sd = SourceDescriptor(sourcename, source, linnum, file, line);
         if (!alreadyExists(sd))
@@ -84,9 +89,9 @@ class ScriptException : Exception
     }
     /// ditto
     @safe pure
-    void addTrace(string_t sourcename, string_t source,
-                  immutable(char_t)* pos,
-                  string_t f = __FILE__, size_t l = __LINE__)
+    void addTrace(string sourcename, string source,
+                  immutable(char)* pos,
+                  string f = __FILE__, size_t l = __LINE__)
     {
         auto sd = SourceDescriptor(sourcename, source, pos, f, l);
         if (!alreadyExists(sd))
@@ -94,7 +99,7 @@ class ScriptException : Exception
     }
     /// ditto
     @safe pure
-    void addTrace(uint linnum, string_t f = __FILE__, size_t l = __LINE__)
+    void addTrace(uint linnum, string f = __FILE__, size_t l = __LINE__)
     {
         auto sd = SourceDescriptor(linnum, f, l);
         if (!alreadyExists(sd))
@@ -103,7 +108,7 @@ class ScriptException : Exception
     /// ditto
     @safe pure
     void addTrace(const(IR)* base, const(IR)* code,
-                  string_t f = __FILE__, size_t l = __LINE__)
+                  string f = __FILE__, size_t l = __LINE__)
     {
         auto sd = SourceDescriptor(base, code, f, l);
         if (!alreadyExists(sd))
@@ -111,7 +116,7 @@ class ScriptException : Exception
     }
     /// ditto
     @safe @nogc pure nothrow
-    void addTrace(string_t sourcename, string_t funcname, string_t source)
+    void addTrace(string sourcename, string funcname, string source)
     {
         foreach (ref one; trace)
             one.addTrace(sourcename, funcname, source);
@@ -127,7 +132,7 @@ class ScriptException : Exception
 
             sink(typeid(this).name);
             sink("@"); sink(file);
-            sink("("); sink(line.to!string_t); sink(")");
+            sink("("); sink(line.to!string); sink(")");
 
             if (0 < msg.length)
                 sink(": ");
@@ -189,8 +194,8 @@ private:
     {
         //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        this(string_t name, string_t buf, immutable(char_t)* pos,
-             string_t dfile, size_t dline)
+        this(string name, string buf, immutable(char)* pos,
+             string dfile, size_t dline)
         {
             this.sourcename = name;
             this.buf = buf;
@@ -204,8 +209,8 @@ private:
         }
         //
         @safe @nogc pure nothrow
-        this(string_t name, string_t buf, uint linnum,
-             string_t dfile, size_t dline)
+        this(string name, string buf, uint linnum,
+             string dfile, size_t dline)
         {
             this.sourcename = name;
             this.buf = buf;
@@ -216,7 +221,7 @@ private:
         }
         //
         @safe @nogc pure nothrow
-        this(const(IR)* base, const(IR)* code, string_t dfile, size_t dline)
+        this(const(IR)* base, const(IR)* code, string dfile, size_t dline)
         {
             this.base = base;
             this.code = code;
@@ -229,7 +234,7 @@ private:
         }
         //
         @safe @nogc pure nothrow
-        this(uint linnum, string_t dfile, size_t dline)
+        this(uint linnum, string dfile, size_t dline)
         {
             this.linnum = linnum;
 
@@ -239,7 +244,7 @@ private:
 
         //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        void addTrace(string_t sourcename, string_t funcname, string_t buf)
+        void addTrace(string sourcename, string funcname, string buf)
         {
             if (this.sourcename.length == 0 && this.buf.length == 0)
             {
@@ -290,7 +295,7 @@ private:
                      sink(funcname);
                  }
                  sink("(");
-                 sink(linnum.to!string_t);
+                 sink(linnum.to!string);
                  sink(")");
                  setConsoleColor(savedcolor);
              }
@@ -299,7 +304,7 @@ private:
              {
                  sink("[@");
                  sink(dFilename);
-                 sink("("); sink(dLinnum.to!string_t); sink(")]");
+                 sink("("); sink(dLinnum.to!string); sink(")]");
              }
 
              if (0 < srcline.length)
@@ -318,7 +323,7 @@ private:
                      }
 
                      sink(' '.repeat.take(col).to!string);
-                     sink("^\n");
+                     sink(" ^\n");
                  }
              }
              else
@@ -361,14 +366,14 @@ private:
 
         //==========================================================
     private:
-        string_t sourcename;
-        string_t funcname;
+        string sourcename;
+        string funcname;
 
-        string_t dFilename;
+        string dFilename;
         size_t dLinnum;
 
-        string_t buf;
-        immutable(char_t)* pos; // pos is in buf.
+        string buf;
+        immutable(char)* pos; // pos is in buf.
 
         const(IR)* base;
         const(IR)* code;
@@ -376,7 +381,7 @@ private:
         uint linnum; // source line number (1 based, 0 if not available)
     }
     SourceDescriptor[] trace;
-    string_t typename;
+    string typename;
 
     //
     @safe @nogc pure nothrow
@@ -444,7 +449,7 @@ private:
 
 //------------------------------------------------------------------------------
 @trusted @nogc pure nothrow
-string_t getLineAt(string_t base, const(char_t)* p,
+string getLineAt(string base, const(char)* p,
                    out uint linnum, out int charpos)
 {
     immutable(char)* s;
@@ -486,7 +491,7 @@ string_t getLineAt(string_t base, const(char_t)* p,
 
 //------------------------------------------------------------------------------
 @safe @nogc pure nothrow
-string_t getLineAt(string_t src, uint linnum)
+string getLineAt(string src, uint linnum)
 {
     size_t slinestart = 0;
     size_t i;

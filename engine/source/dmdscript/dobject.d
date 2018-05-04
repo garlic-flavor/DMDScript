@@ -17,7 +17,7 @@
 
 module dmdscript.dobject;
 
-import dmdscript.primitive : string_t, Key;
+import dmdscript.primitive : Key;
 import dmdscript.value : Value, DError;
 import dmdscript.callcontext : CallContext;
 import dmdscript.dfunction : Dconstructor;
@@ -32,7 +32,7 @@ debug import std.stdio;
 //==============================================================================
 class Dobject
 {
-    import dmdscript.primitive : string_t, Text, Identifier, PropertyKey;
+    import dmdscript.primitive : Text, Identifier, PropertyKey;
     import dmdscript.property : Property, PropTable;
 
     PropTable proptable;
@@ -42,7 +42,7 @@ class Dobject
     mixin Initializer!DobjectConstructor;
 
     //
-    this(Dobject prototype = getPrototype, string_t cn = Key.Object,
+    this(Dobject prototype = getPrototype, string cn = Key.Object,
         PropTable pt = null)
     {
         if (pt is null)
@@ -57,7 +57,7 @@ class Dobject
     //--------------------------------------------------------------------
     //
     final @property @safe @nogc pure nothrow
-    string_t classname() const
+    string classname() const
     {
         return _classname;
     }
@@ -219,7 +219,7 @@ class Dobject
         return FunctionNotLvalueError;
     }
 
-    int CanPut(in string_t PropertyName)
+    int CanPut(in string PropertyName)
     {
         // ECMA 8.6.2.3
         auto key = PropertyKey(PropertyName);
@@ -288,7 +288,7 @@ class Dobject
     }
 
     @safe @nogc pure nothrow
-    string_t getTypeof() const
+    string getTypeof() const
     {   // ECMA 11.4.3
         return Text.object;
     }
@@ -474,7 +474,7 @@ class Dobject
 
 private:
 
-    string_t _classname;
+    string _classname;
     Dobject _prototype;
     bool _extensible = true;
 
@@ -748,7 +748,23 @@ DError* getOwnPropertyDescriptor(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    assert(0);
+    DError* sta;
+
+    if (arglist.length < 2)
+        goto failure;
+
+    if (auto target = arglist[0].toObject)
+    {
+        if (auto prop = target.GetOwnProperty(arglist[1].toPropertyKey))
+        {
+            ret.put(prop.toObject);
+            return null;
+        }
+    }
+
+failure:
+    ret.putVundefined;
+    return sta;
 }
 
 //
@@ -970,8 +986,8 @@ DError* toString(
 {
     import std.format : format;
 
-    string_t s;
-    string_t str;
+    string s;
+    string str;
 
     s = othis.classname;
 /+
@@ -1026,9 +1042,10 @@ DError* toSource(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.property : Property, PropertyKey;
+    import dmdscript.property : Property;
+    import dmdscript.primitive : PropertyKey;
 
-    string_t buf;
+    string buf;
     int any;
 
     buf = "{";
@@ -1056,7 +1073,7 @@ DError* hasOwnProperty(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.property : PropertyKey;
+    import dmdscript.primitive : PropertyKey;
 
     // ECMA v3 15.2.4.5
     auto key = (arglist.length ? arglist[0] : undefined).toPropertyKey;
@@ -1102,7 +1119,7 @@ DError* propertyIsEnumerable(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.property : PropertyKey;
+    import dmdscript.primitive : PropertyKey;
     // ECMA v3 15.2.4.7
     auto key = (arglist.length ? arglist[0] : undefined).toPropertyKey;
     if (auto p = othis.proptable.getOwnProperty(key))

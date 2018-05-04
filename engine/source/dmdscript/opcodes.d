@@ -224,7 +224,7 @@ struct IR
                     if(!o)
                     {
                         sta = CannotConvertToObject3Error(
-                            b.type.to!string_t, b.toString(cc),
+                            b.type.to!string, b.toString(cc),
                             id.toString);
                         goto Lthrow;
                     }
@@ -443,8 +443,8 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = CannotAssignError(a.type.to!string_t,
-                                                b.type.to!string_t);
+                        sta = CannotAssignError(a.type.to!string,
+                                                b.type.to!string);
                         goto Lthrow;
                     }
                     sta = o.PutDefault(*a);
@@ -468,6 +468,11 @@ struct IR
                         goto Lthrow;
                     code += IRTypes[Opcode.PutThis].size;
                     break;
+
+                case Opcode.PutThisLocal:
+                    assert (0, "not implemented yet.");
+                case Opcode.PutThisLocalConst:
+                    assert (0, "not implemented yet.");
 
                 case Opcode.Mov:                 // a = b
                     *(locals + (code + 1).index) = *(locals + (code + 2).index);
@@ -564,7 +569,7 @@ struct IR
                     if(c.isPrimitive)
                     {
                         sta = RhsMustBeObjectError("instanceof",
-                                                   c.type.to!string_t);
+                                                   c.type.to!string);
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
@@ -965,8 +970,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString(cc);
-                            string_t y = c.toString(cc);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) < 0;
                         }
@@ -992,8 +997,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString(cc);
-                            string_t y = c.toString(cc);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) <= 0;
                         }
@@ -1019,8 +1024,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString(cc);
-                            string_t y = c.toString(cc);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) > 0;
                         }
@@ -1046,8 +1051,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString(cc);
-                            string_t y = c.toString(cc);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) >= 0;
                         }
@@ -1258,8 +1263,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString(cc);
-                            string_t y = c.toString(cc);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) < 0;
                         }
@@ -1292,8 +1297,8 @@ struct IR
                         c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string_t x = b.toString(cc);
-                            string_t y = c.toString(cc);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) <= 0;
                         }
@@ -1417,7 +1422,7 @@ struct IR
                     {
                         auto s = id.toString;
                         sta = UndefinedNoCall3Error(
-                            b.type.to!string_t, b.toString(cc), s);
+                            b.type.to!string, b.toString(cc), s);
                         if (auto didyoumean = cc.searchSimilarWord(o, s))
                         {
                             sta.addMessage(", did you mean \"" ~
@@ -1467,7 +1472,7 @@ struct IR
                     o = b.toObject();
                     if(!o)
                     {
-                        sta = UndefinedNoCall2Error(b.type.to!string_t,
+                        sta = UndefinedNoCall2Error(b.type.to!string,
                                                     b.toString(cc));
                         goto Lthrow;
                     }
@@ -1504,7 +1509,7 @@ struct IR
                     o = v.toObject();
                     if(o is null)
                     {
-                        sta = CannotAssignTo2Error(b.type.to!string_t,
+                        sta = CannotAssignTo2Error(b.type.to!string,
                                                    id.toString);
                         goto Lthrow;
                     }
@@ -1546,7 +1551,7 @@ struct IR
                     o = b.toObject();
                     if(o is null)
                     {
-                        sta = UndefinedNoCall2Error(b.type.to!string_t,
+                        sta = UndefinedNoCall2Error(b.type.to!string,
                                                     b.toString(cc));
                         goto Lthrow;
                     }
@@ -1677,7 +1682,7 @@ struct IR
                     break loop;
                 } // the end of the final switch.
             }
-            catch(Throwable t)
+            catch (Throwable t)
             {
                 sta = unwindStack(t.toDError!typeerror);
                 if (sta !is null)
@@ -1708,7 +1713,7 @@ struct IR
      */
 
     debug static void toBuffer(size_t address, const(IR)* code,
-                               scope void delegate(in char_t[]) sink)
+                               scope void delegate(in char[]) sink)
     {
         static string proc(T)(size_t address, const(IR)* c)
         {
@@ -1724,12 +1729,12 @@ struct IR
         sink(IRTypeDispatcher!proc(code.opcode, address, code,));
     }
 
-    debug static string_t toString(const(IR)* code)
+    debug static string toString(const(IR)* code)
     {
         import std.format : format;
         import std.array : Appender;
 
-        Appender!string_t buf;
+        Appender!string buf;
         auto codestart = code;
 
         for(;; )
@@ -1803,7 +1808,6 @@ private:
 
 class Catch : Dobject
 {
-    import dmdscript.primitive : string_t;
     import dmdscript.callcontext : CallContext;
     import dmdscript.value : Value;
 
@@ -1815,7 +1819,7 @@ class Catch : Dobject
 
     // This is so we can distinguish between a real Dobject
     // and these fakers
-    override string_t getTypeof() const
+    override string getTypeof() const
     {
         return null;
     }
@@ -1834,7 +1838,6 @@ class Catch : Dobject
 //------------------------------------------------------------------------------
 class Finally : Dobject
 {
-    import dmdscript.primitive : string_t;
     import dmdscript.callcontext : CallContext;
     import dmdscript.value : Value;
     import dmdscript.opcodes : IR;
@@ -1844,7 +1847,7 @@ class Finally : Dobject
         return null;
     }
 
-    override string_t getTypeof() const
+    override string getTypeof() const
     {
         return null;
     }
@@ -1870,11 +1873,11 @@ DError* cannotConvert(ref CallContext cc, Value* b)
 
     if(b.isUndefinedOrNull)
     {
-        sta = CannotConvertToObject4Error(b.type.to!string_t);
+        sta = CannotConvertToObject4Error(b.type.to!string);
     }
     else
     {
-        sta = CannotConvertToObject2Error(b.type.to!string_t, b.toString(cc));
+        sta = CannotConvertToObject2Error(b.type.to!string, b.toString(cc));
     }
     return sta;
 }

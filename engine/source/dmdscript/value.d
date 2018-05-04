@@ -17,7 +17,7 @@
 
 module dmdscript.value;
 
-import dmdscript.primitive : string_t, Key, PropertyKey;
+import dmdscript.primitive : Key, PropertyKey;
 import dmdscript.dobject : Dobject;
 import dmdscript.property : Property;
 import dmdscript.errmsgs;
@@ -66,7 +66,7 @@ struct Value
     {
         enum canHave = is(T == bool) || is(T == const(bool)) ||
             is(T : Type) || is(T : PropertyKey) || is(T : double) ||
-            is(T : string_t) || is(T : Dobject) || is(T == Iterator*) ||
+            is(T : string) || is(T : Dobject) || is(T == Iterator*) ||
             is(T : Value);
     }
 
@@ -107,7 +107,7 @@ struct Value
             return _number;
         }
 
-        string_t text() const
+        string text() const
         {
             assert (_type == Type.String || _type == Type.Symbol);
             return _text;
@@ -163,7 +163,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted pure nothrow
-    void putVsymbol(string_t s)
+    void putVsymbol(string s)
     {
         auto pk = PropertyKey.symbol(s);
         _type = Type.Symbol;
@@ -203,7 +203,7 @@ struct Value
             _type = Type.Number;
             _number = t;
         }
-        else static if (is(T : string_t))
+        else static if (is(T : string))
         {
             _type = Type.String;
             _hash = 0;
@@ -260,7 +260,7 @@ struct Value
             _type = Type.Number;
             _number = t;
         }
-        else static if (is(T : string_t))
+        else static if (is(T : string))
         {
             _type = Type.String;
             _text = t;
@@ -800,7 +800,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    string_t toString() const
+    string toString() const
     {
         final switch(_type)
         {
@@ -826,7 +826,7 @@ struct Value
 
 
     //--------------------------------------------------------------------
-    string_t toString(ref CallContext cc)
+    string toString(ref CallContext cc)
     {
         final switch(_type)
         {
@@ -860,13 +860,13 @@ struct Value
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // needs more implementation.
-    string_t toLocaleString(ref CallContext cc)
+    string toLocaleString(ref CallContext cc)
     {
         return toString(cc);
     }
 
     //--------------------------------------------------------------------
-    string_t toString(ref CallContext cc, in int radix)
+    string toString(ref CallContext cc, in int radix)
     {
         import std.math : isFinite;
         import std.conv : to;
@@ -876,7 +876,9 @@ struct Value
             assert(2 <= radix && radix <= 36);
             if(!isFinite(_number))
                 return toString(cc);
-            return _number >= 0.0 ? to!(string_t)(cast(long)_number, radix) : "-"~to!(string_t)(cast(long)-_number,radix);
+            return _number >= 0.0 ?
+                to!string(cast(long)_number, radix) :
+                "-" ~ to!string(cast(long) - _number, radix);
         }
         else
         {
@@ -885,7 +887,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    string_t toSource(ref CallContext cc)
+    string toSource(ref CallContext cc)
     {
         import dmdscript.dglobal : undefined;
 
@@ -893,7 +895,7 @@ struct Value
         {
         case Type.String:
         {
-            string_t s;
+            string s;
 
             s = "\"" ~ _text ~ "\"";
             return s;
@@ -1058,7 +1060,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    string_t getTypeof()
+    string getTypeof()
     {
         final switch(_type)
         {
@@ -1305,7 +1307,7 @@ struct Value
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetFromPrimitiveError
-                .toThrow(PropertyName.toString, _type.to!string_t,
+                .toThrow(PropertyName.toString, _type.to!string,
                          toString(cc));
             //return &vundefined;
         }
@@ -1332,12 +1334,12 @@ struct Value
             else static if (is(K : uint))
             {
                 return CannotPutIndexToPrimitiveError(
-                    name, value.toString(cc), _type.to!string_t);
+                    name, value.toString(cc), _type.to!string);
             }
             else
             {
                 return CannotPutToPrimitiveError(name, value.toString(cc),
-                                                 _type.to!string_t);
+                                                 _type.to!string);
             }
         }
     }
@@ -1397,7 +1399,7 @@ struct Value
         {
             //PRINTF("Call method not implemented for primitive %p (%s)\n", this, string_t_ptr(toString()));
             ret.putVundefined();
-            return PrimitiveNoCallError(_type.to!string_t);
+            return PrimitiveNoCallError(_type.to!string);
         }
     }
 
@@ -1414,7 +1416,7 @@ struct Value
         else
         {
             ret.putVundefined();
-            return PrimitiveNoConstructError(_type.to!string_t);
+            return PrimitiveNoConstructError(_type.to!string);
         }
     }
 
@@ -1447,13 +1449,13 @@ private:
     Type _type = Type.Undefined;
     union
     {
-        bool _dbool;        // can be true or false
-        double  _number;
-        string_t  _text;
+        bool      _dbool;        // can be true or false
+        double    _number;
+        string   _text;
         Dobject   _object;
-        int   _int32;
-        uint  _uint32;
-        ushort  _uint16;
+        int       _int32;
+        uint      _uint32;
+        ushort    _uint16;
 
         Iterator* _iter;         // V_ITER
     }
@@ -1467,7 +1469,7 @@ private:
 
     //
     @trusted @nogc pure nothrow
-    void putSignalingUndefined(string_t id)
+    void putSignalingUndefined(string id)
     {
         _type = Type.RefError;
         _text = id;
@@ -1486,7 +1488,7 @@ enum vnull = Value(Value.Type.Null);
 
 //------------------------------------------------------------------------------
 @safe pure nothrow
-Value* signalingUndefined(in string_t id)
+Value* signalingUndefined(in string id)
 {
     auto p = new Value;
     p.putSignalingUndefined(id);
@@ -1497,7 +1499,7 @@ Value* signalingUndefined(in string_t id)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // check this.
 @disable
-Value* CanonicalNumericIndexString(ref CallContext cc, in string_t str)
+Value* CanonicalNumericIndexString(ref CallContext cc, in string str)
 {
     import dmdscript.dglobal : undefined;
     import dmdscript.primitive : stringcmp;
@@ -1542,7 +1544,7 @@ struct DError
 
     ///
     this(ref CallContext cc, ref Value v,
-         string_t file = __FILE__, size_t line = __LINE__)
+         string file = __FILE__, size_t line = __LINE__)
     {
         import dmdscript.protoerror : typeerror;
 
@@ -1568,7 +1570,7 @@ struct DError
 
     ///
 deprecated
-    this(string_t msg, string_t file = __FILE__, size_t line = __LINE__)
+    this(string msg, string file = __FILE__, size_t line = __LINE__)
     {
         import dmdscript.protoerror : typeerror;
         entity.put(new typeerror(new ScriptException(typeerror.Text, msg,
@@ -1585,7 +1587,7 @@ deprecated
         else
         {
             auto msg = entity.toString(cc);
-            string_t name = typeerror.Text;
+            string name = typeerror.Text;
             auto pk = PropertyKey(Key.constructor);
             if (auto constructor = entity.Get(pk, cc))
                 name = constructor.object.classname;
@@ -1595,7 +1597,7 @@ deprecated
 
     ///
     @safe @nogc pure nothrow
-    void addTrace(string_t sourcename, string_t funcname, string_t srctext)
+    void addTrace(string sourcename, string funcname, string srctext)
     {
         import dmdscript.protoerror;
 
@@ -1609,7 +1611,7 @@ deprecated
     ///
     @safe pure
     void addTrace(const(IR)* base, const(IR)* code,
-                  string_t f = __FILE__, size_t l = __LINE__)
+                  string f = __FILE__, size_t l = __LINE__)
     {
         import dmdscript.protoerror;
         if (auto d0 = cast(D0base)entity.object)
@@ -1621,7 +1623,7 @@ deprecated
 
     ///
     @safe pure
-    void addMessage(string_t message)
+    void addMessage(string message)
     {
         import dmdscript.protoerror;
 
@@ -1640,14 +1642,19 @@ package:
 DError* toDError(alias Proto = typeerror)(Throwable t)
 {
     import dmdscript.exception : ScriptException;
+    import dmdscript.protoerror : newD0, typeerror;
 
     assert(t !is null);
     ScriptException exception;
 
-    if (auto se = cast(ScriptException)t) exception = se;
-    else exception = new ScriptException(t.toString, t.file, t.line);
-    assert(exception !is null);
-
-    return new DError(new Proto(exception));
+    if (auto se = cast(ScriptException)t)
+        return new DError(newD0(se));
+    else
+    {
+        exception = new ScriptException(Proto.Text,
+                                        t.toString, t.file, t.line);
+        assert(exception !is null);
+        return new DError(new Proto(exception));
+    }
 }
 

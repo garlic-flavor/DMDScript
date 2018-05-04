@@ -24,7 +24,7 @@ debug import std.stdio;
 class Parser(Mode MODE) : Lexer!MODE
 {
     import dmdscript.functiondefinition : FunctionDefinition;
-    import dmdscript.primitive : string_t, Identifier;
+    import dmdscript.primitive : Identifier;
     import dmdscript.exception : ScriptException;
     import dmdscript.lexer : IdTable, Tok;
     import dmdscript.statement : TopStatement, Statement;
@@ -35,7 +35,7 @@ class Parser(Mode MODE) : Lexer!MODE
 
     FunctionDefinition lastnamedfunc;
 
-    this(string_t sourcename, string_t base, IdTable baseTable = null)
+    this(string sourcename, string base, IdTable baseTable = null)
     {
         //writefln("Parser.this(base = '%s')", base);
         super(sourcename, base, baseTable);
@@ -46,10 +46,10 @@ class Parser(Mode MODE) : Lexer!MODE
     /**********************************************
      */
     static ScriptException parseFunctionDefinition(
-        out FunctionDefinition pfd, string_t params, string_t bdy)
+        out FunctionDefinition pfd, string params, string bdy)
     {
         import std.array : Appender;
-        import dmdscript.property : PropertyKey;
+        import dmdscript.primitive : PropertyKey;
 
         Appender!(Identifier[]) parameters;
         Appender!(TopStatement[]) topstatements;
@@ -125,17 +125,18 @@ class Parser(Mode MODE) : Lexer!MODE
 private:
     enum Flag : uint
     {
-        normal          = 0,
-        initial         = 1,
+        normal          = 0x00,
+        initial         = 0x01,
 
-        allowIn         = 0,
-        noIn            = 2,
+        allowIn         = 0x00,
+        noIn            = 0x02,
 
         // Flag if we're in the for statement header, as
         // automatic semicolon insertion is suppressed inside it.
-        inForHeader     = 4,
+        inForHeader     = 0x04,
 
-        isModule        = 8,
+        isModule        = 0x08,
+        strictMode      = 0x10,
     }
     Flag flags;
 
@@ -183,7 +184,7 @@ private:
     auto parseFunction(FunctionFlag flag)()
     {
         import std.array : Appender;
-        import dmdscript.property : PropertyKey;
+        import dmdscript.primitive : PropertyKey;
 
         Identifier name;
         Appender!(Identifier[]) parameters;
@@ -305,7 +306,7 @@ private:
 
     Statement parseStatement()
     {
-        import dmdscript.property : PropertyKey;
+        import dmdscript.primitive : PropertyKey;
         import dmdscript.lexer : Token;
 
         Statement s;
@@ -361,6 +362,7 @@ private:
         case Tok.False:
         case Tok.Void:
         case Tok.Lbracket:
+        case Tok.Regexp:
         {
           auto exp = parseExpression(Flag.initial);
           parseOptionalSemi();
@@ -536,13 +538,11 @@ private:
             else if(token == Tok.In)
             {
                 Expression inexp;
-                VarStatement vs;
 
                 // Check that there's only one VarDeclaration
                 // in init.
-                if(init.st == StatementType.VarStatement)
+                if (auto vs = cast(VarStatement)init)
                 {
-                    vs = cast(VarStatement)init;
                     if(vs.vardecls.length != 1)
                         error(TooManyInVarsError(vs.vardecls.length));
                 }
@@ -709,6 +709,7 @@ private:
             }
             break;
         }
+
         default:
             error(StatementExpectedError(token.toString));
             nextToken();
@@ -804,7 +805,7 @@ private:
             break;
 
         case Tok.Regexp:
-            e = new RegExpLiteral(linnum, token.str);
+            e = new RegExpLiteral(linnum, token.regLiteral);
             token.str = null;        // release to gc
             nextToken();
             break;
@@ -991,6 +992,11 @@ private:
                     nextToken();
                     if (token == Tok.Rbrace)
                         break;
+                }
+                else
+                {
+                    error(ExpectedIdentifierError);
+                    break;
                 }
             }
             check(Tok.Rbrace);

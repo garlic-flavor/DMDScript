@@ -25,7 +25,7 @@ debug import std.stdio;
 final class PropTable
 {
     import dmdscript.value : Value, DError;
-    import dmdscript.primitive : string_t, PropertyKey;
+    import dmdscript.primitive : PropertyKey;
     import dmdscript.dobject : Dobject;
     import dmdscript.callcontext : CallContext;
     import dmdscript.dfunction : Dfunction;
@@ -82,6 +82,17 @@ final class PropTable
         return null;
     }
 
+    @trusted
+    Value* getOwnData(in PropertyKey key)
+    {
+        if (auto prop = _table.findExistingAlt(key, key.hash))
+        {
+            assert(!prop.isAccessor);
+            return &prop._value;
+        }
+        return null;
+    }
+
     //--------------------------------------------------------------------
     ///
     @safe
@@ -123,7 +134,7 @@ final class PropTable
                     return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
-            return p.set(value, attributes, cc, othis);
+            return p.setForce(value, cc, othis);
         }
         else if (auto p = getProperty(SpecialSymbols.opAssign))
         {
@@ -135,7 +146,7 @@ final class PropTable
                 else
                     return CannotPutError; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
-            return p.set(value, attributes, cc, othis);
+            return p.setForce(value, cc, othis);
         }
         else if (extensible)
         {
@@ -651,7 +662,7 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    bool canSetValue(ref Attribute a)
+    bool canSetValue(ref Attribute a) const
     {
         if (_attr & Attribute.Accessor)
         {
@@ -677,12 +688,8 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    DError* set(ref Value v, Attribute a, ref CallContext cc, Dobject othis,)
+    DError* setForce(ref Value v, ref CallContext cc, Dobject othis,)
     {
-        if (!canSetValue(a))
-            return CannotPutError;
-
-        _attr = a;
         if (_attr & Attribute.Accessor)
         {
             if (_Set !is null)
@@ -789,11 +796,10 @@ struct Property
 
     //--------------------------------------------------------------------
     /// See_Also: Ecma-262-v7/6.2.4.4
-    @disable
     Dobject toObject()
     {
         import std.exception : enforce;
-        enum Attr = Attribute.None;
+        enum Attr = Attribute.DontConfig;
 
         auto obj = new Dobject(Dobject.getPrototype);
         Value tmp;
@@ -816,7 +822,7 @@ struct Property
         tmp.put(0 == (_attr & Attribute.DontEnum));
         obj.DefineOwnProperty(Key.enumerable, tmp, Attr)
             .enforce;
-        tmp.put(0 == (_attr & Attribute.DontConfig));
+       tmp.put(0 == (_attr & Attribute.DontConfig));
         obj.DefineOwnProperty(Key.configurable, tmp, Attr).enforce;
         return obj;
     }

@@ -25,7 +25,7 @@ debug import std.stdio;
 class Symbol
 {
     import dmdscript.scopex : Scope;
-    import dmdscript.primitive : char_t, Identifier;
+    import dmdscript.primitive : Identifier;
 
     Identifier ident;
 
@@ -69,7 +69,7 @@ class Symbol
     }
 
     final
-    void toBuffer(scope void delegate(in char_t[]) sink) const
+    void toBuffer(scope void delegate(in char[]) sink) const
     {
         sink(toString);
     }

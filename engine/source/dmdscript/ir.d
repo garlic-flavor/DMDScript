@@ -201,6 +201,9 @@ enum Opcode : ubyte
     TryFinally,
     FinallyRet,
     CheckRef,//Like Scope Get W/O Target, Occures Mostly On (Legal) Programmer Mistakes
+
+    PutThisLocal,
+    PutThisLocalConst,
 }
 
 // this holds an index value that points a Value* in the local variable array.
@@ -862,6 +865,9 @@ alias IRTypes = AliasSeq!(
     IRjump1!(Opcode.TryFinally),
     IR0!(Opcode.FinallyRet),
     IRCheckRef,
+
+    IR2!(Opcode.PutThisLocal, Identifier), // let identifier = exp
+    IR2!(Opcode.PutThisLocalConst, Identifier), // const identifier = exp
     );
 
 unittest
@@ -1100,11 +1106,17 @@ auto IRTypeDispatcher(alias PROC, ARGS...)(Opcode op, ARGS args)
         return PROC!(IRTypes[Opcode.FinallyRet])(args);
     case Opcode.CheckRef:
         return PROC!(IRTypes[Opcode.CheckRef])(args);
+
+
+    case Opcode.PutThisLocal:
+        return PROC!(IRTypes[Opcode.PutThisLocal])(args);
+    case Opcode.PutThisLocalConst:
+        return PROC!(IRTypes[Opcode.PutThisLocalConst])(args);
     }
 }
 
 
-//
+//..............................................................................
 private template isGet(Opcode CODE)
 {
     bool _impl(Opcode code)
@@ -1133,8 +1145,9 @@ private template isGet(Opcode CODE)
             Opcode.Assert,
 
             Opcode.Throw, Opcode.TryCatch, Opcode.TryFinally,
-            Opcode.FinallyRet, Opcode.CheckRef:
+            Opcode.FinallyRet, Opcode.CheckRef,
 
+            Opcode.PutThisLocal, Opcode.PutThisLocalConst:
             return false;
 
         case Opcode.String, Opcode.ThisGet, Opcode.Number, Opcode.Object,

@@ -60,7 +60,7 @@ class Darray : Dobject
     DError* Set(in PropertyKey key, ref Value v,
                 in Property.Attribute attributes, ref CallContext cc)
     {
-        import dmdscript.property : PropertyKey;
+        import dmdscript.primitive : PropertyKey;
         size_t index;
         if (key.isArrayIndex(index))
         {
@@ -347,13 +347,13 @@ DError* toLocaleString(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : string_t, PropertyKey;
+    import dmdscript.primitive : PropertyKey;
     import dmdscript.program : Program;
     import dmdscript.locale : Locale;
 
     // ECMA v3 15.4.4.3
-    string_t separator;
-    string_t r;
+    string separator;
+    string r;
     uint len;
     uint k;
     Value* v;
@@ -471,11 +471,11 @@ DError* join(
 void array_join(ref CallContext cc, Dobject othis, out Value ret,
                 Value[] arglist)
 {
-    import dmdscript.primitive : string_t, Text, PropertyKey;
+    import dmdscript.primitive : Text, PropertyKey;
 
     // ECMA 15.4.4.3
-    string_t separator;
-    string_t r;
+    string separator;
+    string r;
     uint len;
     uint k;
     Value* v;
@@ -506,10 +506,10 @@ DError* toSource(
     DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : string_t, PropertyKey;
+    import dmdscript.primitive : PropertyKey;
 
-    string_t separator;
-    string_t r;
+    string separator;
+    string r;
     uint len;
     uint k;
     Value* v;
@@ -848,15 +848,14 @@ else
 static Dobject comparefn;
 static CallContext* comparecc;
 
-extern (C) int compare_value(const void* x, const void* y)
+extern (C) int compare_value(scope const void* x, scope const void* y)
 {
     import std.string : stdcmp = cmp;
-    import dmdscript.primitive : string_t;
 
     Value* vx = cast(Value*)x;
     Value* vy = cast(Value*)y;
-    string_t sx;
-    string_t sy;
+    string sx;
+    string sy;
     int cmp;
 
     //writef("compare_value()\n");
@@ -908,7 +907,7 @@ DError* sort(
     Value[] arglist)
 {
     import core.sys.posix.stdlib : qsort;
-    import dmdscript.property : PropertyKey;
+    import dmdscript.primitive : PropertyKey;
 
     // ECMA v3 15.4.4.11
     Value* v;
@@ -1021,8 +1020,8 @@ DError* sort(
         }
     }
 
-    delete p1;
-    delete p2;
+    p1.destroy(); p1 = null;
+    p2.destroy(); p2 = null;
 
     ret.put(othis);
     return null;
