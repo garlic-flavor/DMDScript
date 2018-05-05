@@ -358,6 +358,8 @@ struct Value
     @trusted
     double toNumber(ref CallContext cc)
     {
+        import std.uni : isWhite;
+
         final switch(_type)
         {
         case Type.RefError:
@@ -383,7 +385,7 @@ struct Value
             // Consume trailing whitespace
             foreach(dchar c; _text[endidx .. $])
             {
-                if(!isStrWhiteSpaceChar(c))
+                if(!c.isWhite)
                 {
                     n = double.nan;
                     break;

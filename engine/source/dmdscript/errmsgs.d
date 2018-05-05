@@ -142,8 +142,8 @@ enum CannotConvertToObject4Error = err!(typeerror, string)
     ("cannot convert %s to Object");
 enum CannotAssignToError = err!(referenceerror, string)
     ("cannot assign to %s");
-enum CannotAssignToOnCheckLvalueError = err!(syntaxerror, string)
-    ("cannot assign to %s");
+enum CannotEscapeKeywordError = syntaxerr!(string)
+    ("escaped expression is not permitted to %s");
 enum CannotAssignError = err!(typeerror, string, string)
     ("cannot assign %s to %s");
 enum CannotAssignTo2Error = err!(typeerror, string, string)

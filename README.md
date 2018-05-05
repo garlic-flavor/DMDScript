@@ -35,31 +35,32 @@ An implementation of the ECMA 262 (Javascript) programming language
 * [x] Read the ECMA262 v3 specification (roughly).
 * [x] Read original source codes.
 * [x] Rewrite codes with recent D's style to make development easy.
-      + [x] Remove the undead module.
-      + [x] Replace some functions with phobos's one.
-      + [x] Reduce Super-Hacker's magic.
-      + [x] Reduce pointers.
-      + [x] Reduce global variables.
-      + [x] Reduce bare member variables. (use capsuled objects.)
-      + [x] Economize namespaces.
-      + [x] Add function attributes.
-      + [x] Capsulelize more. (use 'private', and property methods.)
-      + [x] Add manual stack tracing.
-      + [x] Use local importing.
+    + [x] Remove the undead module.
+    + [x] Replace some functions with phobos's one.
+    + [x] Reduce Super-Hacker's magic.
+    + [x] Reduce pointers.
+    + [x] Reduce global variables.
+    + [x] Reduce bare member variables. (use capsuled objects.)
+    + [x] Economize namespaces.
+    + [x] Add function attributes.
+    + [x] Capsulelize more. (use 'private', and property methods.)
+    + [x] Add manual stack tracing.
+    + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262(commit id#3bfad28cc).(0/31760)
-      + [x] language/comments/*
-      + [x] language/line-terminators/*
-      + [x] language/white-space/*
-      + [x] language/reserved-word/* (see below.)
-      + [x] language/identifiers/*
-      + [ ] ~~language/asi/*~~
-      + [ ] ~~language/future-reserved-words/*~~
-      + [ ] ~~language/types/* (see below)~~
-      + [ ] ~~language/literals/boolean/*~~
-      + [ ] ~~language/literals/null/*~~
-      + [ ] ~~language/literals/numeric/*~~
-      + [ ] ~~language/literals/string/* (see below.)~~
+* [ ] Run test262.(434/31760)
+    + [x] language/comments/*
+    + [x] language/line-terminators/*
+    + [x] language/white-space/*
+    + [x] language/reserved-word/* (see below.)
+    + [x] language/identifiers/*
+    + [x] language/asi/*
+    + [x] language/future-reserved-words/*
+    + [x] language/types/boolean/*
+    + [ ] ~~language/types/* (see below)~~
+    + [ ] ~~language/literals/boolean/*~~
+    + [ ] ~~language/literals/null/*~~
+    + [ ] ~~language/literals/numeric/*~~
+    + [ ] ~~language/literals/string/* (see below.)~~
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
@@ -74,6 +75,9 @@ An implementation of the ECMA 262 (Javascript) programming language
   test262-harness-py doesn't enforce that.
 
 ### problems.
+* __test262-harness-py seems to be outdated.__
+  This is a problem.
+
 * __about character encoding.__
   test262 assumes that the encoding is UTF16. And illegal Unicode sequences are permitted sometimes.
   Otherwise, DMDScript choose UTF8 and any illegal Unicode sequences are not permitted as dmd is.

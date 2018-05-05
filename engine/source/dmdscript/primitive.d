@@ -286,31 +286,6 @@ static public:
 alias Identifier = const(PropertyKey)*;
 
 //------------------------------------------------------------------------------
-@safe @nogc pure nothrow
-int isStrWhiteSpaceChar(dchar c)
-{
-    switch(c)
-    {
-    case ' ':
-    case '\t':
-    case 0xA0:          // <NBSP>
-    case '\f':
-    case '\v':
-    case '\r':
-    case '\n':
-    case 0x2028:        // <LS>
-    case 0x2029:        // <PS>
-    case 0x2001:        // <USP>
-    case 0x2000:        // should we do this one?
-        return 1;
-
-    default:
-        break;
-    }
-    return 0;
-}
-
-//------------------------------------------------------------------------------
 enum Cmask = 0xdf; // ('a' & Cmask) == 'A'
 
 //------------------------------------------------------------------------------
@@ -364,6 +339,7 @@ Input:
 double StringNumericLiteral(string str, out size_t endidx, int parsefloat)
 {
     import std.string : toStringz;
+    import std.uni : isWhite;
     import core.sys.posix.stdlib : strtod;
 
     // Convert StringNumericLiteral using ECMA 9.3.1
@@ -378,7 +354,7 @@ double StringNumericLiteral(string str, out size_t endidx, int parsefloat)
     eoff = str.length;
     foreach(size_t j, dchar c; str)
     {
-        if(!isStrWhiteSpaceChar(c))
+        if(!c.isWhite)
         {
             eoff = j;
             break;

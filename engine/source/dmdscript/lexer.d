@@ -440,6 +440,7 @@ private:
         dchar d;
         string id;
         char[] buf;
+        bool useEscaped;
 
         t.sawLineTerminator = null;
         for(;; )
@@ -483,6 +484,7 @@ private:
             Lidentifier:
             {
                 id = null;
+                useEscaped = false;
 
                 static @safe @nogc pure nothrow
                 bool isidletter(dchar d)
@@ -512,6 +514,7 @@ private:
                             p = ps;
                             break;
                         }
+                        useEscaped = true;
                         buf = null;
                         encode(buf, d);
                         id ~= buf;
@@ -523,6 +526,7 @@ private:
                                 auto pstart = p;
                                 p++;
                                 d = unicode();
+                                useEscaped = true;
                                 if(isidletter(d))
                                 {
                                     buf = null;
@@ -552,6 +556,8 @@ private:
                 t.value = isKeyword(id);
                 if(Tok.reserved < t.value)
                 {
+                    if (useEscaped)
+                        error(CannotEscapeKeywordError(id));
                     t.str = id;
                     return;
                 }

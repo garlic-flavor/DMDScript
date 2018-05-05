@@ -79,7 +79,7 @@ class Expression
 
         if (sc.exception is null)
         {
-            sc.exception = CannotAssignToOnCheckLvalueError.toThrow(
+            sc.exception = CannotAssignToError.toThrow(
                 toString, sourcename, sc.getSource, linnum);
         }
         assert(sc.exception !is null);

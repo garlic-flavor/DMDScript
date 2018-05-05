@@ -369,7 +369,7 @@ DError* parseInt(
     Value[] arglist)
 {
     import std.utf : decode;
-    import dmdscript.primitive : isStrWhiteSpaceChar;
+    import std.uni : isWhite;
 
     // ECMA 15.1.2.2
     Value* v2;
@@ -389,7 +389,7 @@ DError* parseInt(
     {
         size_t idx = i;
         dchar c = decode(str, idx);
-        if(!isStrWhiteSpaceChar(c))
+        if(!c.isWhite)
             break;
         i = idx;
     }
