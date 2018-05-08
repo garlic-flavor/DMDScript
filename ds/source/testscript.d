@@ -139,7 +139,7 @@ int main(string[] args)
         srcfiles ~= new SrcFile("test", null);
     }
 
-    stderr.writefln("%d source files", srcfiles.length);
+//    stderr.writefln("%d source files", srcfiles.length);
 
     // Read files, parse them, execute them
     foreach (SrcFile m; srcfiles)

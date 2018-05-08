@@ -24,11 +24,28 @@ An implementation of the ECMA 262 (Javascript) programming language
 
 
 ### Current development environment.
-| | version |
-| --- | --- |
-| dmd | 2.080.0 |
-| test262 | #3bfad28cc |
+|              |    version |
+| ------------ | ---------- |
+| Architecture |        x86 |
+| OS           | Windows 10 |
+| dmd          |    2.080.0 |
+| test262      | #3bfad28cc |
 
+### about harness.d
+This aims to alternate test262-harness-py.
+
+#### expected directory layout.
+
+	--+-- DMDScript --+   cwd
+	  |               +-- dmdscript.exe
+	  |               +-- harness.d
+	  |               +-- test262.json
+	  |
+	  +-- test262 --+-- test -- ...  <- all tests are here.
+	                +-- harness -- ... <- sta.js and assert.js are here.
+
+#### how to run tests in specific directory.
+	>rdmd harness.d run -p language/white-space
 
 ### progress
 * [x] Read the ECMA262 v3 specification (roughly).
@@ -46,20 +63,21 @@ An implementation of the ECMA 262 (Javascript) programming language
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(434/30833)
+* [ ] Run test262.(155/30833)
     + [x] language/comments/*
     + [x] language/line-terminators/*
     + [x] language/white-space/*
-    + [x] language/reserved-word/* (see below.)
-    + [x] language/identifiers/*
-    + [x] language/asi/*
-    + [x] language/future-reserved-words/*
-    + [x] language/types/boolean/*
+    + [ ] language/reserved-word/* (see below.)
+    + [ ] language/identifiers/*
+    + [ ] language/asi/*
+    + [ ] language/future-reserved-words/*
+    + [ ] language/types/boolean/*
     + [ ] ~~language/types/* (see below)~~
     + [ ] ~~language/literals/boolean/*~~
     + [ ] ~~language/literals/null/*~~
     + [ ] ~~language/literals/numeric/*~~
     + [ ] ~~language/literals/string/* (see below.)~~
+    + [ ] annexB/language/comments
 * [ ] Implement test262-harness-d.
     + [x] The first compile.
     + [ ] Implement very useful functionalities. 
@@ -67,14 +85,16 @@ An implementation of the ECMA 262 (Javascript) programming language
 * [ ] Make pull requests?(0/???)
 
 ### failed tests.
-* language/source-text/6.1.js
-  A surrogate pair consumes one code unit on DMDScript.
-* language/comments/S7.4_A5.js
-  An illegal Unicode sequence is not permitted.
-* language/comments/S7.4_A6.js
-  An illegal Unicode sequence is not permitted.
-* language/reserved-words/await-script.js and await-module.js
-  test262-harness-py doesn't enforce that.
+* ..\test262\test\annexB\language\comments\multi-line-html-close.js
+  failed.
+* ..\test262\test\language\comments\S7.4_A5.js
+  An invalid Unicode sequence is not allowed.
+* ..\test262\test\language\comments\S7.4_A6.js
+  An invalid Unicode sequence is not allowed.
+* ..\test262\test\language\reserved-words\await-module.js
+  failed.
+* ..\test262\test\language\source-text\6.1.js
+  A surrogate pair takes one code unit.
 
 ### problems.
 * __test262-harness-py seems to be outdated.__
@@ -91,7 +111,7 @@ An implementation of the ECMA 262 (Javascript) programming language
   ~~I introduced CESU-8 as an internal representation of a string.~~
   ~~CESU-8 = Compatibility Encoding Scheme for UTF-16.~~
   ~~CESU-8 is almost same with UTF-8, but CESU-8 takes 6 bytes to represent a surrogate pair.~~
-  ~~See Also https://en.wikipedia.org/wiki/UTF-8#CESU-8 ~~
+  ~~See Also https://en.wikipedia.org/wiki/UTF-8#CESU-8 .~~
   ~~I don't know this is OK or NG.~~
   ~~so, this feature may be changed.~~
   I change my mind.

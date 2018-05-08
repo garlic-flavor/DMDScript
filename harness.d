@@ -1,6 +1,6 @@
 /** test262-harness-d.
 Version:    ALPHA(dmd2.080.0)
-Date:       2018-May-07 16:56:01
+Date:       2018-May-07 23:27:38
 Authors:    KUMA
 License:    CC0
  */
@@ -8,15 +8,27 @@ import std.stdio;
 
 enum applicationName = "test262-harness-d";
 enum _VERSION_ = "ALPHA(dmd2.080.0)";
+
 enum copyrightMessage = q"EOS
 Licensed under CC0 2018. Some rights reserved written by KUMA.
 EOS";
+
 enum helpMessage = q"EOS
+This program run test262 with dmdscript.
+
 Usage:
->./harness.exe [init|run|rerun|full|status]
+>./harness.exe [init|run|check|retry|full|status] (options)
+
+Summary of each command:
+  init   -- Make database file, test262.json.
+  run    -- Run tests until first failure.
+  check  -- Run tests that already passed only.
+  retry  -- Run tests that failed only.
+  full   -- Run all tests.
+  status -- Show current progress.
 
 Show more help:
->./harness.exe [init|run|rerun|full|status] --help
+>./harness.exe [init|run|check|retry|full|status] --help
 EOS";
 
 enum helpAboutInit = q"EOS
@@ -25,6 +37,25 @@ Initialize test262 database. And output to test262.json in cwd.
 
 Usage:
 >./harness.exe init (-j test262.json) (-r test) (-t ../test262)
+
+Options:
+  --json -j    -- Specify the file path to a database.
+                  default value is 'test262.json'
+
+  --test -t    -- Specify the path to test262.
+                  default value is '../test262'
+
+  --root -r    -- Specify the root directory name in test262.
+                  default value is 'test'
+
+  --harness    -- Specify the root directory name for harnesses in test262.
+                  default value is 'harness'
+
+  --include -i -- Specify files to include.
+                  default value is ['sta.js', 'assert.js'].
+
+  --engine -e  -- Specify the path to dmdscript.
+                  default value is './dmdscript'
 EOS";
 
 enum helpAboutRun = q"EOS
@@ -33,16 +64,66 @@ Do tests until first failure.
 
 Usage:
 >./harness.exe run (-p 'a part of path of targeted tests.') (-j test262.json)
+
+Options:
+  --json -j    -- Specify the file path to a database.
+                  default value is 'test262.json'
+
+  --pattern -p -- Specify a part of the path to target scripts.
+                  This value is not a regular expression.
+                  No wild card can be used.
+
+  --ignore     -- With this switch, Scripts that marked to be ignored will run.
 EOS";
 
-enum helpAboutRerun = q"EOS
-About rerun command:
+enum helpAboutCheck = q"EOS
+About check command:
+Do tests that already passed only.
 
+Usage:
+>./harness.exe check
+
+Options:
+  --json -j    -- Specify the file path to a database.
+                  default value is 'test262.json'
+
+  --pattern -p -- Specify a part of the path to target scripts.
+                  This value is not a regular expression.
+                  No wild card can be used.
+
+  --ignore     -- With this switch, Scripts that marked to be ignored will run.
+EOS";
+
+enum helpAboutRetry = q"EOS
+About retry command:
+Do tests that failed only.
+
+Usage:
+>./harness.exe retry
+
+Options:
+  --json -j    -- Specify the file path to a database.
+                  default value is 'test262.json'
+
+  --pattern -p -- Specify a part of the path to target scripts.
+                  This value is not a regular expression.
+                  No wild card can be used.
+
+  --ignore     -- With this switch, Scripts that marked to be ignored will run.
 EOS";
 
 enum helpAboutFull = q"EOS
 About full command:
 
+Options:
+  --json -j    -- Specify the file path to a database.
+                  default value is 'test262.json'
+
+  --pattern -p -- Specify a part of the path to target scripts.
+                  This value is not a regular expression.
+                  No wild card can be used.
+
+  --ignore     -- With this switch, Scripts that marked to be ignored will run.
 EOS";
 
 enum helpAboutStatus = q"EOS
@@ -61,7 +142,8 @@ enum RunType
     none = "",
     init = "init",
     untilFirstFailure = "run",
-    allPassedAndGoOn = "rerun",
+    passedOnly = "check",
+    failedOnly = "retry",
     full = "full",
     status = "status",
 }
@@ -82,6 +164,7 @@ struct ArgsInfo
     string harness;
     string pattern;
     bool ignoreComplain;
+    bool verbose;
 }
 
 //==============================================================================
@@ -98,26 +181,40 @@ void main(string[] args)
         return;
     }
 
-    if (!info.test262path.exists || !info.test262path.isDir)
+    if      (!info.test262path.exists || !info.test262path.isDir)
         throw new Exception (info.test262path ~ " is not found.");
+    else if (info.verbose)
+        writeln (info.test262path, " is found.");
 
     info.test262 = info.test262path.buildPath(info.test262root);
-    if (!info.test262.exists || !info.test262path.isDir)
+    if      (!info.test262.exists || !info.test262.isDir)
         throw new Exception (info.test262 ~ " is not found.");
+    else if (info.verbose)
+        writeln (info.test262, " is found.");
 
-    if (!info.engine.exists || !info.engine.isFile)
+    if      (!info.engine.exists || !info.engine.isFile)
         throw new Exception (info.engine ~ " is not found.");
+    else if (info.verbose)
+        writeln (info.engine, " is found.");
 
     info.harness = info.test262path.buildPath(info.test262harness);
-    if (!info.harness.exists || !info.harness.isDir)
+    if      (!info.harness.exists || !info.harness.isDir)
         throw new Exception (info.harness ~ " is not found.");
+    else if (info.verbose)
+        writeln (info.harness, " is found.");
+
     info.includes = new string[info.includeNames.length];
     for (size_t i = 0; i < info.includeNames.length; ++i)
     {
         info.includes[i] = info.harness.buildPath(info.includeNames[i]);
-        if (!info.includes[i].exists || !info.includes[i].isFile)
+        if      (!info.includes[i].exists || !info.includes[i].isFile)
             throw new Exception (info.includes[i] ~ " is not found.");
+        else if (info.verbose)
+            writeln (info.includes[i], " is found.");
     }
+
+    if (info.verbose)
+        writeln ("ready.");
 
     if      (info.type == RunType.init)
         doInit(info);
@@ -130,6 +227,7 @@ void main(string[] args)
 //------------------------------------------------------------------------------
 ArgsInfo getInfo(string[] args)
 {
+    import std.array : replace;
     import std.getopt : getopt;
 
     ArgsInfo info;
@@ -148,7 +246,11 @@ ArgsInfo getInfo(string[] args)
         "harness", "A root directory of harnesses.", &info.test262harness,
         "include|i", "File names to include.", &info.includeNames,
         "ignore", "Ignore the ignore mark.", &info.ignoreComplain,
+        "verbose|v", "Make harness.d verbose.", &info.verbose,
         );
+
+    if (0 < info.pattern.length)
+        info.pattern = info.pattern.replace("/", "\\");
 
     info.needsHelp = result.helpWanted;
 
@@ -162,8 +264,11 @@ ArgsInfo getInfo(string[] args)
         case RunType.untilFirstFailure:
             info.type = RunType.untilFirstFailure;
             break;
-        case RunType.allPassedAndGoOn:
-            info.type = RunType.allPassedAndGoOn;
+        case RunType.passedOnly:
+            info.type = RunType.passedOnly;
+            break;
+        case RunType.failedOnly:
+            info.type = RunType.failedOnly;
             break;
         case RunType.full:
             info.type = RunType.full;
@@ -179,6 +284,9 @@ ArgsInfo getInfo(string[] args)
     if (info.type == RunType.none)
         info.needsHelp = true;
 
+    if (info.verbose)
+        writeln("getopt succeeded.");
+
     return info;
 }
 
@@ -193,8 +301,11 @@ void showHelp(RunType about)
     case RunType.untilFirstFailure:
         helpAboutRun.writeln;
         break;
-    case RunType.allPassedAndGoOn:
-        helpAboutRerun.writeln;
+    case RunType.passedOnly:
+        helpAboutCheck.writeln;
+        break;
+    case RunType.failedOnly:
+        helpAboutRetry.writeln;
         break;
     case RunType.full:
         helpAboutFull.writeln;
@@ -217,6 +328,7 @@ void doInit(in ref ArgsInfo info)
     import std.file : dirEntries, SpanMode, DirEntry, write;
     import std.json : toJSON, JSONValue;
 
+    writeln ("Do initialization process. this may take while...");
     auto data = info.test262.dirEntries(SpanMode.depth)
         .filter!(f=>f.name.endsWith(".js"))
         .map!(a=>a.name.toMetaData)
@@ -657,6 +769,7 @@ void toMetaData(YAML[] yamls, ref MetaData meta)
 //==============================================================================
 void runTest(in ref ArgsInfo info)
 {
+    import std.stdio : stdout, stdin;
     import std.file : exists, isFile, read, write;
     import std.conv : to;
     import std.json : JSONValue, parseJSON, toJSON;
@@ -664,82 +777,206 @@ void runTest(in ref ArgsInfo info)
     import std.range : empty;
     import std.process : pipeProcess, Redirect, wait;
     import std.string : strip;
-    import std.array : array;
+    import std.array : array, Appender, join;
 
-    if (!info.database.exists || !info.database.isFile)
+    if (!info.database.exists)
+        doInit(info);
+
+    if      (!info.database.exists || !info.database.isFile)
         throw new Exception (info.database ~ " is not found.");
+    else if (info.verbose)
+        writeln (info.database, " is found.");
 
     string engine = info.engine;
     auto table = info.database.read.to!string.parseJSON.object;
     if (!info.newEngine)
     {
         engine = table["engine"].str;
-        if (!engine.exists || !engine.isFile)
+        if      (!engine.exists || !engine.isFile)
             throw new Exception (engine ~ " is not found.");
+        else if (info.verbose)
+            writeln (info.engine, " is found.");
     }
 
     auto baseCommand = [engine];
     foreach (one; info.includes)
         baseCommand ~= "-i" ~ one;
 
-    size_t allCount;
+    size_t ranCount;
     size_t passedCount;
     size_t failedCount;
     size_t ignoredCount;
     bool aborting = false;
-    table["tests"] = table["tests"].array.map!(
+    string inputs;
+    Appender!(string[]) outputs;
+    Appender!(string[]) errouts;
+
+    if (info.verbose)
+        writeln ("protocol start...");
+
+    table["tests"] = table["tests"].array.map!( // リストを巡回する。
         (jv){
+            // コマンドラインから与えたパターンでフィルタする。
             if (0 < info.pattern.length &&
                 jv["path"].str.find(info.pattern).empty)
                 return jv;
 
+            //
             auto meta = jv.MetaData;
 
-            if (meta.result == MetaData.Result.passed &&
-                info.type != RunType.allPassedAndGoOn)
+            // 以前に失敗してたやつだけ
+            if      (info.type == RunType.failedOnly)
+            {
+                if (meta.result != MetaData.Result.failed)
+                    return jv;
+            }
+            // 以前に成功してるやつだけに絞る。
+            else if (info.type == RunType.passedOnly)
+            {
+                if (meta.result != MetaData.Result.passed)
+                    return jv;
+            }
+            // 以前に成功したやつはもういい。
+            else if (meta.result == MetaData.Result.passed)
+            {
+                ++passedCount;
                 return jv;
-
-            ++allCount;
-            if (aborting)
-                return jv;
-            if (0 < meta.complaint.length && !info.ignoreComplain)
+            }
+            // 無視するとマークされてるから飛ばす。
+            else if (meta.result == MetaData.Result.failed &&
+                     0 < meta.complaint.length && !info.ignoreComplain)
             {
                 ++ignoredCount;
                 return jv;
             }
 
-            auto pipes = pipeProcess(baseCommand ~ meta.path, Redirect.stderr);
-            auto exitcode = wait(pipes.pid);
+            if (aborting) // このグループで失敗が出たからやめたい。
+                return jv;
 
-            if ((exitcode != 0) == meta.negative.yes) // success
+            // スクリプトの実行
+            ++ranCount;
+            if (info.verbose)
+                writeln ((baseCommand ~ meta.path).join(" "));
+            auto pipes = pipeProcess(baseCommand ~ meta.path,
+                                     Redirect.stdout | Redirect.stderr);
+
+            // 出力を収集
+            errouts.shrinkTo(0);
+            foreach (one; pipes.stderr.byLine)
+                errouts.put(one.idup);
+
+            outputs.shrinkTo(0);
+            foreach (one; pipes.stdout.byLine)
+                outputs.put(one.idup);
+
+            auto exitcode = wait(pipes.pid);
+            if (info.verbose)
+                writeln ("exit code: ", exitcode);
+
+            if (exitcode == 0) // スクリプトが正常終了した。
             {
-                meta.result = MetaData.Result.passed;
-                ++passedCount;
+                if (meta.negative.yes) // 異常終了すべきだった。
+                {
+                    writeln(meta.path, " should failure with ",
+                            meta.negative.type, ", but success.");
+                    goto failed;
+                }
+                writeln (meta.path, " passed.");
+                goto succeeded;
             }
-            else // failure.
+            else // スクリプトが異常終了した。
             {
-                meta.result = MetaData.Result.failed;
-                writeln(meta.path, " is failed.");
-                foreach (line; pipes.stderr.byLine)
+                if (meta.negative.yes) // 異常終了すべきだった。
+                {
+                    // 期待されたエラーが出ているか
+                    // 1行目に期待される文字列が出てるかを見てるだけ。
+                    if (0 < errouts.data.length &&
+                        !errouts.data[0].find(meta.negative.type).empty)
+                    {
+                        writeln(meta.path, " failed as expected.");
+                        goto succeeded;
+                    }
+
+                    // 出てなかった。
+                    writeln(meta.path, " should failure with ",
+                            meta.negative.type, ".");
+                    goto failed;
+                }
+                writeln(meta.path, " failed.");
+                goto failed;
+            }
+
+            void printOutputs()
+            {
+                // 標準出力の表示
+                stdout.flush;
+                writeln;
+                writeln("-- stdout ----------------------------------------");
+
+                foreach (line; outputs.data)
                     line.writeln;
 
                 writeln;
+                writeln("-- stderr ----------------------------------------");
 
-                foreach (one; meta.path.read.to!string
-                         .takeMetaSection.parseYAML)
-                {
-                    writeln("[", one.key, "]:");
-                    writeln(one.value);
-                }
-
-                writeln;
-
-                std.stdio.write("complain to this?>");
-                meta.complaint = readln.to!string.strip;
-
-                if (info.type != RunType.full)
-                    aborting = true;
+                foreach (line; errouts.data)
+                    line.writeln;
             }
+
+        succeeded:
+            meta.result = MetaData.Result.passed;
+            ++passedCount;
+
+            if (info.verbose)
+                printOutputs;
+
+            return meta.toJSONValue;
+
+        failed:
+            meta.result = MetaData.Result.failed;
+
+            printOutputs;
+
+            writeln;
+            writeln("-- MetaInfo --------------------------------------");
+
+            // スクリプトのメタ情報の表示
+            foreach (one; meta.path.read.to!string
+                     .takeMetaSection.parseYAML)
+            {
+                writeln("[", one.key, "]:");
+                writeln(one.value);
+            }
+
+            if (0 < meta.complaint.length)
+            {
+                writeln;
+                writeln("[complaint]:");
+                writeln(meta.complaint);
+            }
+
+            writeln;
+            writeln("--------------------------------------------------");
+
+            // 言い訳するか
+            stdout.write("complain to this?>");
+            inputs = stdin.readln.to!string.strip;
+
+            if      (0 < inputs.length)
+            {
+                ++ignoredCount;
+                meta.complaint = inputs;
+            }
+            else if (0 < meta.complaint.length)
+                ++ignoredCount;
+            else
+                ++failedCount;
+
+            // 続行するかどうか。
+            if (meta.complaint.length == 0 && info.type != RunType.full &&
+                info.type != RunType.failedOnly)
+                aborting = true;
+
             return meta.toJSONValue;
         }).array.JSONValue;
 
@@ -747,7 +984,7 @@ void runTest(in ref ArgsInfo info)
 
     info.database.write(cont.toJSON(true));
 
-    writeln("Run ", allCount, " tests.");
+    writeln("Ran ", ranCount, " tests.");
     writeln("Passed ", passedCount);
     writeln("Failed ", failedCount);
     writeln("Ignored ", ignoredCount);
@@ -760,6 +997,7 @@ void showStatus(in ref ArgsInfo info)
     import std.conv : to;
     import std.array : Appender;
     import std.json : parseJSON, JSON_TYPE;
+    import std.path : dirName;
 
     if (!info.database.exists || !info.database.isFile)
         throw new Exception (info.database ~ " is not found.");
@@ -767,37 +1005,60 @@ void showStatus(in ref ArgsInfo info)
     auto table = info.database.read.to!string.parseJSON.object;
 
     writeln("Target engine: ", table["engine"].str);
-    writeln("Default includes: ", table["includes"].array);
-    writeln;
 
     size_t allCount, passedCount, failedCount, ignoredCount;
     Appender!(string[]) buf;
+    bool[string] passedDir;
+
     foreach (one; table["tests"].array)
     {
         ++allCount;
 
         auto t = one.object;
+        auto path = t["path"].str;
+        auto dir = path.dirName;
+
         if (auto p = "result" in t)
         {
             if      ((*p).type == JSON_TYPE.TRUE)
+            {
                 ++passedCount;
+                passedDir[dir] = passedDir.get(dir, true);
+            }
             else if (auto p2 = "complaint" in t)
             {
                 ++ignoredCount;
-                buf.put(t["path"].str);
-                buf.put("    " ~ (*p2).str);
+                buf.put("* " ~ path);
+                buf.put("  " ~ (*p2).str);
+                passedDir[dir] = passedDir.get(dir, true);
             }
             else
+            {
                 ++failedCount;
+                buf.put("* " ~ path);
+                buf.put("  failed.");
+                passedDir[dir] = false;
+            }
         }
+        else
+            passedDir[dir] = false;
     }
 
     writeln("In ", allCount, " tests, ");
     writeln(passedCount, " passed,");
     writeln(failedCount, " failed,");
     writeln(ignoredCount, " ignored.");
+    writeln("Current progress is ",
+            (passedCount + ignoredCount) * 100 / allCount, "%(",
+            passedCount + ignoredCount, "/", allCount, ")");
     writeln;
 
+    writeln("Passed directories:");
+    foreach (key, val; passedDir)
+        if (val) writeln(key);
+    writeln;
+
+    writeln("Complaints:");
     foreach (one; buf.data)
         one.writeln;
 }

@@ -561,7 +561,7 @@ private static:
 
 
 /*********************************************
- * Initialize the built-in's.
+ * Initialize built-ins.
  */
 void dobject_init()
 {

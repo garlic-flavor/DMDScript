@@ -367,14 +367,29 @@ protected:
 
             // Future-reserved-words are allowed
         default:
-            if (Tok.reserved_min < token && token < Tok.reserved_max)
+            static if (MODE & Mode.Module)
             {
-                static if (MODE & Mode.UseStringtable)
-                    return idtable.build(token.str);
-                else
-                    return Identifier.build(token.str);
+                if (Tok.reserved_min < token && token < Tok.reserved_max)
+                {
+                    static if (MODE & Mode.UseStringtable)
+                        return idtable.build(token.str);
+                    else
+                        return Identifier.build(token.str);
+                }
+                return null;
             }
-            return null;
+            else
+            {
+                if (Tok.reserved_min < token && token < Tok.reserved_max ||
+                    Tok.Await == token)
+                {
+                    static if (MODE & Mode.UseStringtable)
+                        return idtable.build(token.str);
+                    else
+                        return Identifier.build(token.str);
+                }
+                return null;
+            }
         }
     }
 
