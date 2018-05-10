@@ -234,6 +234,11 @@ class SrcFile
          * one there, forcing an extra copy to be made of the
          * source text.)
          */
+        /*
+          When the include file does not end with line terminator,
+          the line number of the error message is wrong.
+          So, each include files have a sentinel of line terminator.
+         */
 
         //writef("read file '%s'\n",srcfile);
 
@@ -246,8 +251,9 @@ class SrcFile
         foreach (string filename; includes)
         {
             len += std.file.getSize(filename);
+            len++; // room for sentinal of line terminator
         }
-        len++; // leave room for sentinal
+        len++; // leave room for sentinel
 
         assert(len < uint.max);
 
@@ -261,6 +267,9 @@ class SrcFile
             buf = std.file.read(filename);
             buffer[i .. i + buf.length] = cast(string)buf[];
             i += buf.length;
+
+            buffer[i] = '\n';
+            ++i;
         }
 
         buf = std.file.read(srcfile);
@@ -274,6 +283,7 @@ class SrcFile
 
     void compile()
     {
+        import dmdscript.exception;
         /* Create a DMDScript program, and compile our text buffer.
          */
 
@@ -284,15 +294,48 @@ class SrcFile
             program.dumpMode = dumpMode;
         }
 
-        program.compile(srcfile, assumeUnique(buffer), null);
+        try program.compile (assumeUnique(buffer), null);
+        catch (ScriptException e)
+        {
+            e.addSourceInfo (getSourceInfo);
+            throw e;
+        }
     }
 
     void execute()
     {
+        import dmdscript.exception;
         /* Execute the resulting program.
          */
 
-        program.execute(null);
+        try program.execute(null);
+        catch (ScriptException e)
+        {
+            e.addSourceInfo (getSourceInfo);
+            throw e;
+        }
+    }
+
+
+    auto getSourceInfo()
+    {
+        import dmdscript.exception : ScriptException;
+        alias SESource = ScriptException.Source;
+
+        import std.conv : to;
+        import std.exception : assumeUnique;
+
+        auto sources = new SESource[includes.length + 1];
+
+        foreach (i, name; includes ~ srcfile)
+        {
+            auto size = cast(size_t)std.file.getSize(name);
+            auto buf = new char[size+1];
+            buf[0..size] = cast(char[])std.file.read(name);
+            buf[size] = '\n';
+            sources[i] = new SESource(name, buf.assumeUnique);
+        }
+        return sources;
     }
 
 debug public:

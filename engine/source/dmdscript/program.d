@@ -47,8 +47,7 @@ class Program
     1. with text representing group of topstatements (pfd == null)
     2. with text representing a function name & body (pfd != null)
     */
-    void compile(string progIdentifier, string srctext,
-                 FunctionDefinition* pfd)
+    void compile(string srctext, FunctionDefinition* pfd)
     {
         import dmdscript.statement : TopStatement;
         import dmdscript.lexer : Mode;
@@ -58,7 +57,7 @@ class Program
         TopStatement[] topstatements;
         string msg;
 
-        auto p = new Parser!(Mode.UseStringtable)(progIdentifier, srctext);
+        auto p = new Parser!(Mode.UseStringtable)(srctext);
 
         if(auto exception = p.parseProgram(topstatements))
         {
@@ -82,8 +81,7 @@ class Program
         // Make globalfunction an anonymous one (by passing in null for name) so
         // it won't get instantiated as a property
         globalfunction = new FunctionDefinition(
-            srctext, 0, 1, null, progIdentifier, null,
-            topstatements);
+            0, 1, null, null, topstatements);
 
         // Any functions parsed in topstatements wind up in the global
         // object (cc.global), where they are found by normal property lookups.
@@ -101,7 +99,6 @@ class Program
 
         Scope sc;
         sc.ctor(this, globalfunction);  // create global scope
-        sc.src = srctext;
         globalfunction.semantic(&sc);
 
         if (sc.exception !is null)
@@ -205,12 +202,8 @@ class Program
                          ret, locals.ptr);
 
         if(result !is null)
-        {
-            auto exception = result.toScriptException(callcontext);
-            exception.addTrace(globalfunction.sourcename, null,
-                               globalfunction.srctext);
-            throw exception;
-        }
+            throw result.toScriptException(callcontext);
+
         callcontext.pop(dfs);
         p1.destroy; p1 = null;
     }

@@ -29,7 +29,6 @@ struct Scope
 {
     Scope*             enclosing;    // enclosing Scope
 
-    string            src;          // source text
     Program            program;      // Root module
     // deprecated ScopeSymbol*       scopesym;     // current symbol
     FunctionDefinition funcdef;      // what function we're in
@@ -48,7 +47,6 @@ struct Scope
     {
         enclosing = null;
 
-        src = null;
         program = null;
         // scopesym = null;
         funcdef = null;
@@ -177,18 +175,6 @@ struct Scope
         }
         ls = cast(LabelSymbol)st.insert(ls);
         return ls;
-    }
-
-    @property @safe @nogc pure nothrow
-    string getSource()
-    {
-        for(auto sc = &this; sc !is null; sc = sc.enclosing)
-        {
-            if(sc.src)
-                return sc.src;
-        }
-
-        return null;
     }
 }
 

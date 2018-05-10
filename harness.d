@@ -56,6 +56,8 @@ Options:
 
   --engine -e  -- Specify the path to dmdscript.
                   default value is './dmdscript'
+
+  --inherit    -- Inherit results from an existing test262.json
 EOS";
 
 enum helpAboutRun = q"EOS
@@ -165,6 +167,7 @@ struct ArgsInfo
     string pattern;
     bool ignoreComplain;
     bool verbose;
+    bool inherit;
 }
 
 //==============================================================================
@@ -247,6 +250,7 @@ ArgsInfo getInfo(string[] args)
         "include|i", "File names to include.", &info.includeNames,
         "ignore", "Ignore the ignore mark.", &info.ignoreComplain,
         "verbose|v", "Make harness.d verbose.", &info.verbose,
+        "inherit", "Inherit results from an existing database.", &info.inherit,
         );
 
     if (0 < info.pattern.length)
@@ -325,14 +329,62 @@ void doInit(in ref ArgsInfo info)
 {
     import std.array : array;
     import std.algorithm : filter, endsWith, map, sort, fold, startsWith;
-    import std.file : dirEntries, SpanMode, DirEntry, write;
-    import std.json : toJSON, JSONValue;
+    import std.conv : to;
+    import std.file : dirEntries, SpanMode, DirEntry, write, exists, isFile,
+        read;
+    import std.json : toJSON, JSONValue, parseJSON;
+
+    if (info.inherit)
+    {
+        if      (!info.database.exists || !info.database.isFile)
+            throw new Exception (info.database ~ " is not found.");
+        else if (info.verbose)
+            writeln (info.database, " is found.");
+    }
 
     writeln ("Do initialization process. this may take while...");
-    auto data = info.test262.dirEntries(SpanMode.depth)
-        .filter!(f=>f.name.endsWith(".js"))
-        .map!(a=>a.name.toMetaData)
-        .map!(a=>a.toJSONValue).array.JSONValue;
+
+    JSONValue data;
+    if (info.inherit)
+    {
+        if (info.verbose)
+            writeln ("Results will be inherited from ", info.database, ".");
+
+        auto old = info.database.read.to!string.parseJSON.object["tests"]
+            .array.map!(a=>a.MetaData).array.sort;
+
+        data = info.test262.dirEntries(SpanMode.depth)
+            .filter!(f=>f.name.endsWith(".js"))
+            .map!(
+                (a)
+                {
+                    auto md = a.name.toMetaData;
+                    auto eq = old.equalRange(md.path);
+                    if (!eq.empty)
+                    {
+                        md.result = eq.front.result;
+                        if (info.verbose && md.result != MetaData.Result.none)
+                            writeln ("The result of ", md.path,
+                                     " is inherited as ", md.result, ".");
+                        md.complaint = eq.front.complaint;
+                        if (info.verbose && 0 < md.complaint.length)
+                            writeln ("The complaint of ", md.path,
+                                     " is inherited as \"", md.complaint,
+                                     "\".");
+                    }
+                    else if (info.verbose)
+                        writeln (md.path, " is not found in an old database.");
+                    return md.toJSONValue;
+                })
+            .array.JSONValue;
+    }
+    else
+    {
+        data = info.test262.dirEntries(SpanMode.depth)
+            .filter!(f=>f.name.endsWith(".js"))
+            .map!(a=>a.name.toMetaData.toJSONValue)
+            .array.JSONValue;
+    }
 
     JSONValue[string] table;
     table["engine"] = info.engine.JSONValue;
@@ -396,6 +448,8 @@ struct MetaData
     Result result;
     bool ignore;
     string complaint;
+
+    alias path this;
 
     JSONValue toJSONValue() const
     {
@@ -506,7 +560,7 @@ struct MetaData
                 features = val.array.map!(a=>a.str).array;
                 break;
             case "result":
-                result = val.type == JSON_TYPE.TRUE ?
+                result = (val.type == JSON_TYPE.TRUE) ?
                     Result.passed : Result.failed;
                 break;
             case "ignore":
@@ -622,6 +676,12 @@ YAML[] parseYAML(string[] lines, in int baseIndent, ref size_t i)
 
             for (++i; i < lines.length; ++i)
             {
+                if (lines[i].strip.length == 0)
+                {
+                    buf.put("");
+                    continue;
+                }
+
                 auto idt = lines[i].countUntil!(a=>!a.isWhite);
                 if (idt <= indent)
                     break;

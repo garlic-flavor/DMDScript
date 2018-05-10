@@ -66,21 +66,21 @@ class Expression
     void checkLvalue(Scope* sc)
     {
         import std.format : format;
-        string sourcename;
+        string funcname;
 
         assert(sc !is null);
         if(sc.funcdef)
         {
             if(sc.funcdef.isAnonymous)
-                sourcename = "anonymous";
+                funcname = "anonymous";
             else if(sc.funcdef.name)
-                sourcename = sc.funcdef.name.toString;
+                funcname = sc.funcdef.name.toString;
         }
 
         if (sc.exception is null)
         {
             sc.exception = CannotAssignToError.toThrow(
-                toString, sourcename, sc.getSource, linnum);
+                toString, funcname, linnum);
         }
         assert(sc.exception !is null);
 

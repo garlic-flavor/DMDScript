@@ -266,11 +266,11 @@ struct CallContext
         {
             if (auto f = one.callerf)
             {
-                err.addTrace(f.sourcename,
-                             f.name !is null ? f.name.toString : null,
-                             f.srctext);
-                if (0 < f.sourcename.length)
+                if (f.name !is null)
+                {
+                    err.addTrace(f.name.toString);
                     break;
+                }
             }
         }
     }

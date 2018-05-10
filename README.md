@@ -87,14 +87,14 @@ This aims to alternate test262-harness-py.
 ### failed tests.
 * ..\test262\test\annexB\language\comments\multi-line-html-close.js
   failed.
-* ..\test262\test\language\comments\S7.4_A5.js
-  An invalid Unicode sequence is not allowed.
-* ..\test262\test\language\comments\S7.4_A6.js
-  An invalid Unicode sequence is not allowed.
-* ..\test262\test\language\reserved-words\await-module.js
+* ..\test262\test\annexB\language\comments\single-line-html-close-asi.js
   failed.
-* ..\test262\test\language\source-text\6.1.js
-  A surrogate pair takes one code unit.
+* ..\test262\test\annexB\language\comments\single-line-html-close.js
+  failed.
+* ..\test262\test\language\comments\S7.4_A5.js
+  A invalid Unicode sequence is not allowed.
+* ..\test262\test\language\comments\S7.4_A6.js
+  A invalid Unicode sequence is not allowed.
 
 ### problems.
 * __test262-harness-py seems to be outdated.__

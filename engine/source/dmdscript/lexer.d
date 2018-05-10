@@ -223,7 +223,7 @@ class Lexer(Mode MODE)
     {
         assert(se !is null);
 
-        se.addTrace(sourcename, base, token.ptr);
+        se.addTrace(currentline, cast(size_t)(token.ptr - base.ptr));
 
         assert(base.ptr < end);
         p = end - 1;
@@ -257,15 +257,13 @@ class Lexer(Mode MODE)
 protected:
     uint currentline;
     const string base;             // pointer to start of buffer
-    const string sourcename;       // for error message strings
     static if (MODE & Mode.UseStringtable)
         IdTable idtable;         // use for Identifiers
 
     //--------------------------------------------------------------------
     @trusted pure nothrow
-    this(string sourcename, string base, IdTable baseTable = null)
+    this(string base, IdTable baseTable = null)
     {
-        this.sourcename = sourcename;
         if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
             base ~= cast(char)0x1A;
         this.base = base;

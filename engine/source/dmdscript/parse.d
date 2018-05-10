@@ -35,10 +35,10 @@ class Parser(Mode MODE) : Lexer!MODE
 
     FunctionDefinition lastnamedfunc;
 
-    this(string sourcename, string base, IdTable baseTable = null)
+    this(string base, IdTable baseTable = null)
     {
         //writefln("Parser.this(base = '%s')", base);
-        super(sourcename, base, baseTable);
+        super(base, baseTable);
         nextToken();            // start up the scanner
     }
 
@@ -55,7 +55,7 @@ class Parser(Mode MODE) : Lexer!MODE
         Appender!(TopStatement[]) topstatements;
         FunctionDefinition fd = null;
 
-        auto p = new Parser!(Mode.None)("anonymous", params);
+        auto p = new Parser!(Mode.None)(params);
 
         // Parse FormalParameterList
         while(p.token != Tok.Eof)
@@ -81,7 +81,7 @@ class Parser(Mode MODE) : Lexer!MODE
             goto Lreturn;
 
         // Parse StatementList
-        p = new Parser!(Mode.None)("anonymous", bdy);
+        p = new Parser!(Mode.None)(bdy);
         for(;; )
         {
             if(p.token == Tok.Eof)
@@ -89,7 +89,7 @@ class Parser(Mode MODE) : Lexer!MODE
             topstatements.put(p.parseStatement());
         }
 
-        fd = new FunctionDefinition(bdy, 0, 0, null, null, parameters.data,
+        fd = new FunctionDefinition(0, 0, null, parameters.data,
                                     topstatements.data);
 
         Lreturn:
@@ -270,7 +270,7 @@ private:
         topstatements = parseTopStatements();
         check(Tok.Rbrace);
 
-        f = new FunctionDefinition(base, linnum, 0, name, sourcename,
+        f = new FunctionDefinition(linnum, 0, name,
                                    parameters.data, topstatements);
         static if (flag == FunctionFlag.literal ||
                    flag == FunctionFlag.property)

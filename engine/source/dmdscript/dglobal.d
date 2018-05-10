@@ -226,7 +226,7 @@ DError* eval(
 
     // Parse program
     TopStatement[] topstatements;
-    auto p = new Parser!(Mode.None)("eval", s);
+    auto p = new Parser!(Mode.None)(s);
     if((exception = p.parseProgram(topstatements)) !is null)
     {
 
@@ -244,7 +244,6 @@ DError* eval(
     {
         Scope sc;
         sc.ctor(fd);
-        sc.src = s;
         fd.semantic(&sc);
         exception = sc.exception;
         sc.dtor();
@@ -346,7 +345,7 @@ DError* eval(
         result = IR.call(cc, cc.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace(null, "eval", s);
+            result.addTrace("eval");
         }
         cc.pop(dfs);
 

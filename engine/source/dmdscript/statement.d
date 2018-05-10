@@ -91,16 +91,16 @@ class TopStatement
 
         if (sc.exception is null)
         {
-            string sourcename;
+            string funcname;
             if (sc.funcdef !is null)
             {
                 if      (sc.funcdef.isAnonymous)
-                    sourcename = "anonymous";
+                    funcname = "anonymous";
                 else if (sc.funcdef.name)
-                    sourcename = sc.funcdef.name.toString;
+                    funcname = sc.funcdef.name.toString;
             }
 
-            se.addTrace(sourcename, sc.getSource, linnum);
+            se.addTrace(funcname, linnum);
             sc.exception = se;
         }
         assert(se !is null);

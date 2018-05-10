@@ -48,7 +48,6 @@ class FunctionDefinition : TopStatement
         int, "_padding", 5));
 
     Identifier name;             // null for anonymous function
-    string sourcename;
     Identifier[] parameters;      // array of Identifier's
     TopStatement[] topstatements; // array of TopStatement's
 
@@ -63,8 +62,6 @@ class FunctionDefinition : TopStatement
     IR* code;
     uint nlocals;
 
-    string srctext;
-
     @safe @nogc pure nothrow
     this(TopStatement[] topstatements)
     {
@@ -74,17 +71,14 @@ class FunctionDefinition : TopStatement
     }
 
     @safe @nogc pure nothrow
-    this(string srctext, uint linnum, bool isglobal,
-         Identifier  name, string srcname,
+    this(uint linnum, bool isglobal, Identifier name,
          Identifier[] parameters, TopStatement[] topstatements)
     {
         super(linnum);
 
         //writef("FunctionDefinition('%ls')\n", name ? name.string : L"");
-        this.srctext = srctext;
         this.isglobal = isglobal;
         this.name = name;
-        this.sourcename = srcname;
         this.parameters = parameters;
         this.topstatements = topstatements;
     }

@@ -293,15 +293,14 @@ struct err(alias Proto, ARGS...)
         return new ScriptException(Proto.Text, fmt.format(args), file, line);
     }
 
-    //
+    // //
     @safe
-    ScriptException toThrow(ARGS args, string sourcename, string source,
-                            uint linnum, string f = __FILE__,
-                            size_t l = __LINE__) const
+    ScriptException toThrow(ARGS args, string funcname, uint linnum,
+                            string f = __FILE__, size_t l = __LINE__) const
     {
         import std.format : format;
-        return new ScriptException(Proto.Text, fmt.format(args), sourcename,
-                                   source, linnum, f, l);
+        return new ScriptException(
+            Proto.Text, fmt.format(args), funcname, linnum, f, l);
     }
 }
 

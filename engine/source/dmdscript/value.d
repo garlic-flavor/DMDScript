@@ -1599,14 +1599,14 @@ deprecated
 
     ///
     @safe @nogc pure nothrow
-    void addTrace(string sourcename, string funcname, string srctext)
+    void addTrace(string funcname)
     {
         import dmdscript.protoerror;
 
         if (auto d0 = cast(D0base)entity.object)
         {
             assert(d0.exception);
-            d0.exception.addTrace(sourcename, funcname, srctext);
+            d0.exception.addTrace(funcname);
         }
     }
 
