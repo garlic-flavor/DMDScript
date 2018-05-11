@@ -145,78 +145,55 @@ class ScriptException : Exception
         size_t lineCount;
     }
 
+    //--------------------------------------------------------------------
     ///
-    void addSourceInfo(Source[] sources)
+    void setSourceInfo(Source[] delegate(string realmId) callback)
     {
         foreach (ref one; trace)
-            one.addSourceInfo(sources);
+            one.setSourceInfo(callback);
     }
 
     //--------------------------------------------------------------------
-    ///
-    override void toString(scope void delegate(in char[]) sink) const
+    //
+    void firstTrace(scope void delegate(in char[]) sink) const
     {
-        debug
+        import core.internal.string : unsignedToTempString;
+
+        char[20] tmpBuff = void;
+
+        sink(typeid(this).name);
+        sink("@");
+        sink(file);
+        sink("(");
+        sink(unsignedToTempString(line, tmpBuff, 10));
+        sink(")");
+    }
+
+    //
+    TraceDescriptor[] traces()
+    {
+        return trace;
+    }
+
+    //
+    void restInfo(scope void delegate(in char[]) sink) const
+    {
+        foreach (t; info)
         {
-            import std.conv : to;
-
-            sink(typeid(this).name);
-            sink("@"); sink(file);
-            sink("("); sink(line.to!string); sink(")");
-
-            if (0 < msg.length)
-                sink(": ");
-            else
-                sink("\n");
-        }
-
-        sink(typename);
-        sink(": ");
-
-        if (0 < msg.length)
-        {
-            auto savedcolor = setConsoleColorRed;
-            sink(msg);
-            setConsoleColor(savedcolor);
+            sink(t);
             sink("\n");
         }
-
-        sink("--------------------\n");
-
-        try
-        {
-            foreach (one; trace)
-                one.toString(sink);
-        }
-        catch (Throwable){}
-
-        debug
-        {
-            if (info)
-            {
-                try
-                {
-                    sink("\n--------------------");
-                    foreach (t; info)
-                    { sink("\n"); sink(t); }
-                }
-                catch (Throwable){}
-            }
-        }
-
-        if (next !is null)
-        {
-            sink("\n--------------------\n");
-            next.toString(sink);
-        }
     }
-    alias toString = super.toString;
+
+    //
+    void nextInfo(scope void delegate(in char[]) sink) const
+    {
+        if (next !is null)
+            next.toString(sink);
+    }
+
 
     //====================================================================
-    // import core.internal.traits : externDFunc;
-    // alias sizeToTempString = externDFunc!(
-    //     "core.internal.string.unsignedToTempString",
-    //     char[] function(ulong, char[], uint) @safe pure nothrow @nogc);
 private:
     //--------------------------------------------------------------------
     struct TraceDescriptor
@@ -276,14 +253,14 @@ private:
         }
 
         //----------------------------------------------------------
-        void addSourceInfo(Source[] sources)
+        void setSourceInfo(Source[] delegate(string realmId) callback)
         {
             size_t accLine;
             size_t accOffset;
             if (linnum == 0)
                 return;
 
-            foreach (one; sources)
+            foreach (one; callback(realmId))
             {
                 if (linnum <= accLine + one.lineCount)
                 {
@@ -300,81 +277,82 @@ private:
         }
 
         //----------------------------------------------------------
-        void toString(scope void delegate(in char[]) sink) const
+        void scriptNameAndLine(scope void delegate(in char[]) sink) const
         {
-             import std.conv : to;
-             import std.array : replace;
-             import std.range : repeat, take;
-             import std.string : stripRight;
-             import dmdscript.ir : Opcode;
+            import core.internal.string : unsignedToTempString;
 
-             enum Tab = "    ";
+            char[20] tmpBuff = void;
 
-             if ((0 < sourcename.length || 0 < funcname.length) && 0 < linnum)
-             {
-                 auto savedcolor = setConsoleColorIntensity;
-                 sink("@");
-                 if (0 < sourcename.length)
-                     sink(sourcename);
-                 if (0 < funcname.length)
-                 {
-                     if (0 < sourcename.length)
-                         sink("/");
-                     sink(funcname);
-                 }
-                 sink("(");
-                 sink(linnum.to!string);
-                 sink(")");
-                 setConsoleColor(savedcolor);
-             }
+            if ((0 < sourcename.length || funcname.length) && 0 < linnum)
+                sink("@");
+            if (0 < sourcename.length)
+                sink(sourcename);
+            if (0 < funcname.length)
+            {
+                if (0 < sourcename.length)
+                    sink("/");
+                sink(funcname);
+            }
+            sink("(");
+            sink(unsignedToTempString(linnum, tmpBuff, 10));
+            sink(")");
+        }
 
-             debug
-             {
-                 sink("[@");
-                 sink(dFilename);
-                 sink("("); sink(dLinnum.to!string); sink(")]");
-             }
+        void dFileAndLine(scope void delegate(in char[]) sink) const
+        {
+            import core.internal.string : unsignedToTempString;
 
-             if (0 < line.length)
-             {
-                 sink("\n>"); sink(line.replace("\t", Tab).stripRight);
-                 sink("\n");
+            char[20] tmpBuff = void;
 
-                 if (haveOffset)
-                 {
-                     size_t col = 0;
+            sink("[@");
+            sink(dFilename);
+            sink("(");
+            sink(unsignedToTempString(dLinnum, tmpBuff, 10));
+            sink(")]");
+        }
 
-                     for (size_t i = 0; i < line.length && i < offset; ++i)
-                     {
-                         if (line[i] == '\t') col += Tab.length;
-                         else ++col;
-                     }
+        void sourceTrace(scope void delegate(in char[]) sink) const
+        {
+            import std.array : replace;
+            import std.string : stripRight;
+            enum Tab = "    ";
 
-                     sink(' '.repeat.take(col).to!string);
-                     sink(" ^\n");
-                 }
-             }
-             else
-                 sink("\n");
+            if (0 == line.length)
+                return;
 
-             debug
-             {
-                 if (base !is null && code !is null && 0 < linnum)
-                 {
-                     for (const(IR)* ite = base; ; ite += IR.size(ite.opcode))
-                     {
-                         if (ite.opcode == Opcode.End ||
-                             ite.opcode == Opcode.Error ||
-                             code.opcode.linnum < ite.opcode.linnum)
-                             break;
-                         if (ite.opcode.linnum < code.opcode.linnum)
-                             continue;
-                         sink(ite is code ? "\n*" : "\n ");
-                         IR.toBuffer(0, ite, sink);
-                     }
-                     sink("\n");
-                 }
-             }
+            sink(">");
+            sink(line.replace("\t", Tab).stripRight);
+            if (haveOffset)
+            {
+                sink("\n");
+                for (size_t i = 0; i < line.length && i < offset; ++i)
+                {
+                    if (line[i] == '\t')
+                        sink(Tab);
+                    else
+                        sink(" ");
+                }
+                sink(" ^\n");
+            }
+        }
+
+        void irTrace(scope void delegate(in char[]) sink) const
+        {
+            import dmdscript.ir : Opcode;
+            if (base is null || code is null || 0 == linnum)
+                return;
+
+            for (const(IR)* ite = base; ; ite += IR.size(ite.opcode))
+            {
+                if (ite.opcode == Opcode.End || ite.opcode == Opcode.Error ||
+                    code.opcode.linnum < ite.opcode.linnum)
+                    break;
+                if (ite.opcode.linnum < code.opcode.linnum)
+                    continue;
+                sink(ite is code ? "*" : " ");
+                IR.toBuffer(0, ite, sink);
+                sink("\n");
+            }
         }
 
         //
@@ -404,6 +382,9 @@ private:
         string line; //
         bool haveOffset;//
         size_t offset; //
+
+        string realmId;
+        Source[] delegate(string) getSourceInfo;
     }
 
     //====================================================================
@@ -417,59 +398,6 @@ private:
     {
         return 0 < trace.length && trace[$-1] == sd;
     }
-
-
-    //
-    static short setConsoleColorRed()
-    {
-        version (Windows)
-        {
-            import core.sys.windows.windows;
-
-            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-            assert (hConsole !is INVALID_HANDLE_VALUE);
-            CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-            GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-            auto saved_attributes = consoleInfo.wAttributes;
-            SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-            return saved_attributes;
-        }
-        else
-            return 0;
-    }
-
-    //
-    static short setConsoleColorIntensity()
-    {
-        version (Windows)
-        {
-            import core.sys.windows.windows;
-
-            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-            assert (hConsole !is INVALID_HANDLE_VALUE);
-            CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-            GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-            auto saved_attributes = consoleInfo.wAttributes;
-            SetConsoleTextAttribute(hConsole, FOREGROUND_INTENSITY);
-            return saved_attributes;
-        }
-        else
-            return 0;
-    }
-
-    //
-    static void setConsoleColor(short saved_attributes)
-    {
-        version (Windows)
-        {
-            import core.sys.windows.windows;
-
-            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-            assert (hConsole !is INVALID_HANDLE_VALUE);
-            SetConsoleTextAttribute(hConsole, saved_attributes);
-        }
-    }
-
 }
 
 //==============================================================================

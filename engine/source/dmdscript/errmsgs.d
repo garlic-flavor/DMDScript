@@ -5,6 +5,8 @@ module dmdscript.errmsgs;
 
 import dmdscript.protoerror;
 
+debug import std.stdio;
+
 // deprecated // not used
 // {
 // enum RuntimePrefixError =
@@ -295,7 +297,7 @@ struct err(alias Proto, ARGS...)
 
     // //
     @safe
-    ScriptException toThrow(ARGS args, string funcname, uint linnum,
+    ScriptException toThrow(ARGS args, uint linnum, string funcname,
                             string f = __FILE__, size_t l = __LINE__) const
     {
         import std.format : format;

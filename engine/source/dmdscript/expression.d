@@ -80,7 +80,7 @@ class Expression
         if (sc.exception is null)
         {
             sc.exception = CannotAssignToError.toThrow(
-                toString, funcname, linnum);
+                toString, linnum, funcname);
         }
         assert(sc.exception !is null);
 

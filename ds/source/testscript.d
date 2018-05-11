@@ -179,32 +179,121 @@ int main(string[] args)
 
 void errout(Throwable t) nothrow
 {
-    version (Windows) // Fuuu****uuuck!
-    {
-        import std.windows.charset : toMBSz;
-        import core.stdc.stdio : fprintf, stderr, fflush;
+    import dmdscript.exception : ScriptException;
+    import std.stdio : stderr, stdout;
 
-        try
-        {
-            stdout.flush;
-            fflush(stderr);
-            t.toString((b){fprintf(stderr, "%s", b.toMBSz);});
-            fprintf(stderr, "\n");
-            fflush(stderr);
-        }
-        catch(Throwable){}
-    }
-    else
+    version (Windows)
     {
-        try
+        //
+        static void setConsoleColorRed(void delegate() proc)
+        {
+            import core.sys.windows.windows;
+
+            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            assert (hConsole !is INVALID_HANDLE_VALUE);
+            CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+            GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+            auto saved_attributes = consoleInfo.wAttributes;
+            SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+
+            scope (exit)
+                SetConsoleTextAttribute(hConsole, saved_attributes);
+
+            proc();
+        }
+
+        //
+        static void setConsoleColorIntensity(void delegate() proc)
+        {
+            import core.sys.windows.windows;
+
+            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            assert (hConsole !is INVALID_HANDLE_VALUE);
+            CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+            GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+            auto saved_attributes = consoleInfo.wAttributes;
+            SetConsoleTextAttribute(hConsole, FOREGROUND_INTENSITY);
+
+            scope (exit)
+                SetConsoleTextAttribute(hConsole, saved_attributes);
+
+            proc();
+        }
+    }
+
+    try
+    {
+        void sink(in char[] b)
+        {
+            version (Windows)
+            {
+                import std.windows.charset : toMBSz;
+
+                auto buf = b.toMBSz;
+                for (size_t i = 0; i < size_t.max; ++i)
+                {
+                    if (buf[i] == '\0')
+                    {
+                        stderr.write(buf[0..i]);
+                        break;
+                    }
+                }
+            }
+            else
+                stderr.write(b);
+        }
+
+
+        if (auto se = cast(ScriptException)t)
         {
             stdout.flush;
             stderr.flush;
-            stderr.writeln(t.toString);
+
+            se.firstTrace(&sink);
+            sink(": ");
+            setConsoleColorIntensity(
+                (){
+                    sink(se.type);
+                    sink(": ");
+                });
+
+            setConsoleColorRed((){sink(se.msg);});
+            sink("\n--------------------\n");
+
+            foreach (one; se.traces)
+            {
+                setConsoleColorIntensity(
+                    (){one.scriptNameAndLine(&sink);});
+
+                one.dFileAndLine(&sink);
+                sink("\n");
+
+                one.sourceTrace(&sink);
+                sink("\n");
+
+                one.irTrace(&sink);
+                sink("\n");
+            }
+
+            sink("\n--------------------\n");
+            se.restInfo(&sink);
+            sink("\n--------------------\n");
+            se.nextInfo(&sink);
+
+            sink("\n");
+            stderr.flush;
+
+        }
+        else
+        {
+            stdout.flush;
+            stderr.flush;
+            t.toString(&sink);
+            sink("\n");
             stderr.flush;
         }
-        catch(Throwable){}
     }
+    catch(Throwable){}
 }
 
 
@@ -294,10 +383,10 @@ class SrcFile
             program.dumpMode = dumpMode;
         }
 
-        try program.compile (assumeUnique(buffer), null);
+        try program.compile (srcfile, buffer.assumeUnique, null);
         catch (ScriptException e)
         {
-            e.addSourceInfo (getSourceInfo);
+            e.setSourceInfo (&getSourceInfo);
             throw e;
         }
     }
@@ -311,13 +400,13 @@ class SrcFile
         try program.execute(null);
         catch (ScriptException e)
         {
-            e.addSourceInfo (getSourceInfo);
+            e.setSourceInfo (&getSourceInfo);
             throw e;
         }
     }
 
 
-    auto getSourceInfo()
+    auto getSourceInfo(string realmId)
     {
         import dmdscript.exception : ScriptException;
         alias SESource = ScriptException.Source;

@@ -47,7 +47,12 @@ class Program
     1. with text representing group of topstatements (pfd == null)
     2. with text representing a function name & body (pfd != null)
     */
-    void compile(string srctext, FunctionDefinition* pfd)
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Now, teh argument id is not used temporarily. But I schedule to use it later.
+
+
+    void compile(string id, string srctext, FunctionDefinition* pfd)
     {
         import dmdscript.statement : TopStatement;
         import dmdscript.lexer : Mode;
