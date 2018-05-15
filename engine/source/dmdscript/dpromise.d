@@ -27,22 +27,32 @@ import dmdscript.callcontext : CallContext;
 ///
 class Dpromise : Dobject
 {
-    import dmdscript.dobject : Initializer;
-
-    this()
-    {
-        this(getPrototype);
-    }
-
+private:
     this(Dobject prototype)
     {
         import dmdscript.primitive : Key;
         super(prototype, Key.Promise);
     }
-
-    mixin Initializer!DpromiseConstructor;
 }
 
+
+//
+class DpromiseConstructor : Dconstructor
+{
+    this(Dobject superClassPrototype, Dobject functionPrototype)
+    {
+        import dmdscript.primitive : Key;
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.Promise, 1);
+        install(functionPrototype);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        assert (0);
+    }
+}
 
 //==============================================================================
 private:
@@ -50,7 +60,7 @@ private:
 //
 @DFD(1, DFD.Type.Static)
 DError* all(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -59,7 +69,7 @@ DError* all(
 //
 @DFD(1, DFD.Type.Static)
 DError* race(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -68,7 +78,7 @@ DError* race(
 //
 @DFD(1, DFD.Type.Static)
 DError* reject(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -77,7 +87,7 @@ DError* reject(
 //
 @DFD(1, DFD.Type.Static)
 DError* resolve(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -85,27 +95,11 @@ DError* resolve(
 
 
 
-//
-class DpromiseConstructor : Dconstructor
-{
-    this()
-    {
-        import dmdscript.primitive : Key;
-        super(Key.Promise, 1, Dfunction.getPrototype);
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        assert (0);
-    }
-}
-
 
 //
 @DFD(1, DFD.Type.Prototype, "catch")
 DError* _catch(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -114,7 +108,7 @@ DError* _catch(
 //
 @DFD(2)
 DError* then(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

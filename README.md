@@ -63,7 +63,7 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(155/30833)
+* [ ] Run test262.(125/30833)
     + [x] language/comments/*
     + [x] language/line-terminators/*
     + [x] language/white-space/*
@@ -87,7 +87,6 @@ This aims to alternate test262-harness-py.
 ### the next to do.
 Implement CreateRealm.
 
-
 ### failed tests.
 * ..\test262\test\annexB\language\comments\multi-line-html-close.js
   failed.
@@ -99,6 +98,8 @@ Implement CreateRealm.
   A invalid Unicode sequence is not allowed.
 * ..\test262\test\language\comments\S7.4_A6.js
   A invalid Unicode sequence is not allowed.
+* ..\test262\test\language\expressions\delete\white-space-line-terminator-between-delete-unaryexpression-allowed.js
+  failed.
 
 ### problems.
 * __test262-harness-py seems to be outdated.__

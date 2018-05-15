@@ -22,6 +22,7 @@ import dmdscript.dobject : Dobject;
 import dmdscript.property : Property;
 import dmdscript.errmsgs;
 import dmdscript.callcontext : CallContext;
+import dmdscript.protoerror: cTypeError = TypeError;
 debug import std.stdio;
 
 // !!! NOTICE !!!
@@ -130,10 +131,10 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    DError* checkReference() const
+    DError* checkReference(CallContext cc) const
     {
         if(_type == Type.RefError)
-            return UndefinedVarError(_text);
+            return UndefinedVarError(cc, _text);
         return null;
     }
 
@@ -296,7 +297,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    void toPrimitive(ref CallContext cc, ref Value v,
+    void toPrimitive(CallContext cc, ref Value v,
                      in Type PreferredType = Type.RefError)
     {
         if(_type == Type.Object)
@@ -356,7 +357,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    double toNumber(ref CallContext cc)
+    double toNumber(CallContext cc)
     {
         import std.uni : isWhite;
 
@@ -416,14 +417,14 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    d_time toDtime(ref CallContext cc)
+    d_time toDtime(CallContext cc)
     {
         return cast(d_time)toNumber(cc);
     }
 
     //--------------------------------------------------------------------
     @safe
-    double toInteger(ref CallContext cc)
+    double toInteger(CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -461,7 +462,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    int toInt32(ref CallContext cc)
+    int toInt32(CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -504,7 +505,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    uint toUint32(ref CallContext cc)
+    uint toUint32(CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -547,7 +548,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    short toInt16(ref CallContext cc)
+    short toInt16(CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -588,7 +589,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    ushort toUint16(ref CallContext cc)
+    ushort toUint16(CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -629,7 +630,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    byte toInt8(ref CallContext cc)
+    byte toInt8(CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -670,7 +671,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    ubyte toUint8(ref CallContext cc)
+    ubyte toUint8(CallContext cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -711,7 +712,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    ubyte toUint8Clamp(ref CallContext cc)
+    ubyte toUint8Clamp(CallContext cc)
     {
         import std.math : lrint, isInfinity, isNaN;
 
@@ -828,7 +829,7 @@ struct Value
 
 
     //--------------------------------------------------------------------
-    string toString(ref CallContext cc)
+    string toString(CallContext cc)
     {
         final switch(_type)
         {
@@ -852,7 +853,7 @@ struct Value
             if(val.isPrimitive)
                 return val.toString(cc);
             else
-                return val.toObject.classname;
+                return val.toObject(cc).classname;
         }
         case Type.Iter:
             assert(0);
@@ -862,13 +863,13 @@ struct Value
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // needs more implementation.
-    string toLocaleString(ref CallContext cc)
+    string toLocaleString(CallContext cc)
     {
         return toString(cc);
     }
 
     //--------------------------------------------------------------------
-    string toString(ref CallContext cc, in int radix)
+    string toString(CallContext cc, in int radix)
     {
         import std.math : isFinite;
         import std.conv : to;
@@ -889,7 +890,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    string toSource(ref CallContext cc)
+    string toSource(CallContext cc)
     {
         import dmdscript.dglobal : undefined;
 
@@ -941,7 +942,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    Dobject toObject()
+    Dobject toObject(CallContext cc)
     {
         import dmdscript.dstring : Dstring;
         import dmdscript.dnumber : Dnumber;
@@ -960,13 +961,13 @@ struct Value
             //RuntimeErrorx("cannot convert null to Object");
             return null;
         case Type.Boolean:
-            return new Dboolean(_dbool);
+            return cc.dglobal.dBoolean(_dbool);
         case Type.Number:
-            return new Dnumber(_number);
+            return cc.dglobal.dNumber(_number);
         case Type.String:
-            return new Dstring(_text);
+            return cc.dglobal.dString(_text);
         case Type.Symbol:
-            return new Dsymbol(this);
+            return cc.dglobal.dSymbol(this);
         case Type.Object:
             return _object;
         case Type.Iter:
@@ -977,7 +978,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @disable
-    double ToLength(ref CallContext cc)
+    double ToLength(CallContext cc)
     {
         import std.math : isInfinity;
         enum MAX_LENGTH = (2UL ^^ 53) - 1;
@@ -1135,7 +1136,7 @@ struct Value
 
 // deprecated
 //     @trusted
-//     bool isArrayIndex(ref CallContext cc, out uint index)
+//     bool isArrayIndex(CallContext cc, out uint index)
 //     {
 //         switch(_type)
 //         {
@@ -1299,7 +1300,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    Value* Get(in PropertyKey PropertyName, ref CallContext cc)
+    Value* Get(in PropertyKey PropertyName, CallContext cc)
     {
         import std.conv : to;
 
@@ -1316,7 +1317,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    DError* Set(K, V)(in auto ref K name, auto ref V value, ref CallContext cc)
+    DError* Set(K, V)(in auto ref K name, auto ref V value, CallContext cc)
         if (canHave!V && PropertyKey.IsKey!K)
 
     {
@@ -1330,27 +1331,27 @@ struct Value
         {
             static if      (is(K : PropertyKey))
             {
-                return CannotPutToPrimitiveError(
+                return CannotPutToPrimitiveError(cc,
                     name.toString, value.toString(cc), getTypeof);
             }
             else static if (is(K : uint))
             {
-                return CannotPutIndexToPrimitiveError(
+                return CannotPutIndexToPrimitiveError(cc,
                     name, value.toString(cc), _type.to!string);
             }
             else
             {
-                return CannotPutToPrimitiveError(name, value.toString(cc),
+                return CannotPutToPrimitiveError(cc, name, value.toString(cc),
                                                  _type.to!string);
             }
         }
     }
 
     //--------------------------------------------------------------------
-    Value* GetV(K)(in auto ref K PropertyName, ref CallContext cc)
+    Value* GetV(K)(in auto ref K PropertyName, CallContext cc)
         if (PropertyKey.IsKey!K)
     {
-        if (auto obj = toObject)
+        if (auto obj = toObject(cc))
             return obj.Get(PropertyName, cc);
         else
             return null;
@@ -1358,7 +1359,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @disable
-    Value* GetMethod(K)(in auto ref K PropertyName, ref CallContext cc)
+    Value* GetMethod(K)(in auto ref K PropertyName, CallContext cc)
         if (PropertyKey.IsKey!K)
     {
         import dmdscript.errmsgs;
@@ -1379,7 +1380,7 @@ struct Value
 
 
     //--------------------------------------------------------------------
-    DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    DError* Call(CallContext cc, Dobject othis, out Value ret,
                  Value[] arglist)
     {
         import std.conv : to;
@@ -1401,12 +1402,12 @@ struct Value
         {
             //PRINTF("Call method not implemented for primitive %p (%s)\n", this, string_t_ptr(toString()));
             ret.putVundefined();
-            return PrimitiveNoCallError(_type.to!string);
+            return PrimitiveNoCallError(cc, _type.to!string);
         }
     }
 
     //--------------------------------------------------------------------
-    DError* Construct(ref CallContext cc, out Value ret, Value[] arglist)
+    DError* Construct(CallContext cc, out Value ret, Value[] arglist)
     {
         import std.conv : to;
         if(_type == Type.Object)
@@ -1418,24 +1419,24 @@ struct Value
         else
         {
             ret.putVundefined();
-            return PrimitiveNoConstructError(_type.to!string);
+            return PrimitiveNoConstructError(cc, _type.to!string);
         }
     }
 
     //--------------------------------------------------------------------
-    DError* putIterator(out Value v)
+    DError* putIterator(CallContext cc, out Value v)
     {
         if(_type == Type.Object)
             return _object.putIterator(v);
         else
         {
             v.putVundefined();
-            return ForInMustBeObjectError;
+            return ForInMustBeObjectError(cc);
         }
     }
 
     //--------------------------------------------------------------------
-    DError* Invoke(K)(in auto ref K key, ref CallContext cc,
+    DError* Invoke(K)(in auto ref K key, CallContext cc,
                       out Value ret, Value[] args)
         if (PropertyKey.IsKey!K)
     {
@@ -1501,7 +1502,7 @@ Value* signalingUndefined(in string id)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // check this.
 @disable
-Value* CanonicalNumericIndexString(ref CallContext cc, in string str)
+Value* CanonicalNumericIndexString(CallContext cc, in string str)
 {
     import dmdscript.dglobal : undefined;
     import dmdscript.primitive : stringcmp;
@@ -1545,10 +1546,10 @@ struct DError
     alias entity this;
 
     ///
-    this(ref CallContext cc, ref Value v,
+    this(CallContext cc, ref Value v,
          string file = __FILE__, size_t line = __LINE__)
     {
-        import dmdscript.protoerror : typeerror;
+        import dmdscript.protoerror : TypeError;
 
         if (v.type == Value.Type.Object)
         {
@@ -1556,8 +1557,8 @@ struct DError
         }
         else
         {
-            entity.put(new typeerror(
-                           new ScriptException(typeerror.Text, v.toString(cc),
+            entity.put(cc.dglobal.dTypeError(
+                           new ScriptException(TypeError.Text, v.toString(cc),
                                                file, line)));
         }
     }
@@ -1571,25 +1572,25 @@ struct DError
 
 
     ///
-deprecated
-    this(string msg, string file = __FILE__, size_t line = __LINE__)
-    {
-        import dmdscript.protoerror : typeerror;
-        entity.put(new typeerror(new ScriptException(typeerror.Text, msg,
-                                                     file, line)));
-    }
+// deprecated
+//     this(string msg, string file = __FILE__, size_t line = __LINE__)
+//     {
+//         import dmdscript.protoerror : TypeError;
+//         entity.put(new typeerror(new ScriptException(typeerror.Text, msg,
+//                                                      file, line)));
+//     }
 
     ///
-    ScriptException toScriptException(ref CallContext cc)
+    ScriptException toScriptException(CallContext cc)
     {
-        import dmdscript.protoerror;
+        import dmdscript.protoerror: TypeError;
 
-        if (auto d0 = cast(D0base)entity.toObject)
+        if (auto d0 = cast(D0base)entity.toObject(cc))
             return d0.exception;
         else
         {
             auto msg = entity.toString(cc);
-            string name = typeerror.Text;
+            string name = TypeError.Text;
             auto pk = PropertyKey(Key.constructor);
             if (auto constructor = entity.Get(pk, cc))
                 name = constructor.object.classname;
@@ -1601,7 +1602,7 @@ deprecated
     @safe @nogc pure nothrow
     void addTrace(string funcname)
     {
-        import dmdscript.protoerror;
+        import dmdscript.protoerror: D0base;
 
         if (auto d0 = cast(D0base)entity.object)
         {
@@ -1611,7 +1612,7 @@ deprecated
     }
 
     ///
-    @safe pure
+   @safe pure
     void addTrace(const(IR)* base, const(IR)* code,
                   string f = __FILE__, size_t l = __LINE__)
     {
@@ -1620,6 +1621,16 @@ deprecated
         {
             assert(d0.exception);
             d0.exception.addTrace(base, code, f, l);
+        }
+    }
+
+    void setSourceInfo(
+        ScriptException.Source[] delegate(string realmId) callback)
+    {
+        if (auto d0 = cast(D0base)entity.object)
+        {
+            assert(d0.exception);
+            d0.exception.setSourceInfo(callback);
         }
     }
 
@@ -1641,22 +1652,22 @@ deprecated
 package:
 
 @trusted
-DError* toDError(alias Proto = typeerror)(Throwable t)
+DError* toDError(Ctor = cTypeError)(Throwable t, CallContext cc)
 {
     import dmdscript.exception : ScriptException;
-    import dmdscript.protoerror : newD0, typeerror;
+    import dmdscript.protoerror : toD0, TypeError;
 
     assert(t !is null);
     ScriptException exception;
 
     if (auto se = cast(ScriptException)t)
-        return new DError(newD0(se));
+        return new DError(se.toD0!Ctor(cc));
     else
     {
-        exception = new ScriptException(Proto.Text,
+        exception = new ScriptException(Ctor.Text,
                                         t.toString, t.file, t.line);
         assert(exception !is null);
-        return new DError(new Proto(exception));
+        return new DError(exception.toD0!Ctor(cc));
     }
 }
 

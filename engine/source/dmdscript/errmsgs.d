@@ -3,7 +3,8 @@
 
 module dmdscript.errmsgs;
 
-import dmdscript.protoerror;
+import dmdscript.protoerror: cTypeError = TypeError, RangeError, SyntaxError,
+    cReferenceError = ReferenceError;
 
 debug import std.stdio;
 
@@ -114,65 +115,65 @@ enum NoThrowExpressionError = syntaxerr!()
 // enum UndefinedObjectSymbolError =
 //     err!typeerror("%s.%s is undefined");
 // }
-enum FunctionWantsNumberError = err!(typeerror, string, string)
+enum FunctionWantsNumberError = err!(cTypeError, string, string)
     ("Number.prototype.%s() expects a Number not a %s");
-enum FunctionWantsStringError = err!(typeerror, string, string)
+enum FunctionWantsStringError = err!(cTypeError, string, string)
     ("String.prototype.%s() expects a String not a %s");
-enum FunctionWantsDateError = err!(typeerror, string, string)
+enum FunctionWantsDateError = err!(cTypeError, string, string)
     ("Date.prototype.%s() expects a Date not a %s");
-enum UndefinedNoCall2Error = err!(typeerror, string, string)
+enum UndefinedNoCall2Error = err!(cTypeError, string, string)
     ("%s %s is undefined and has no Call method");
-enum UndefinedNoCall3Error = err!(typeerror, string, string, string)
+enum UndefinedNoCall3Error = err!(cTypeError, string, string, string)
     ("%s %s.%s is undefined and has no Call method");
-enum FunctionWantsBoolError = err!(typeerror, string, string)
+enum FunctionWantsBoolError = err!(cTypeError, string, string)
     ("Boolean.prototype.%s() expects a Boolean not a %s");
-enum ArrayLenOutOfBoundsError = err!(rangeerror, double)
+enum ArrayLenOutOfBoundsError = err!(RangeError, double)
     ("arg to Array(len) must be 0 .. 2**32-1, not %.16g");
-enum ValueOutOfRangeError = err!(rangeerror, string, string)
+enum ValueOutOfRangeError = err!(RangeError, string, string)
     ("Number.prototype.%s() %s out of range");
-enum TypeError = err!(typeerror, string)
+enum TypeError = err!(cTypeError, string)
     ("TypeError in %s");
-enum RegexpCompileError = err!(syntaxerror, string)
+enum RegexpCompileError = err!(SyntaxError, string)
     ("Error compiling regular expression : %s");
-enum NotTransferrableError = err!(typeerror, string)
+enum NotTransferrableError = err!(cTypeError, string)
     ("%s not transferrable");
-enum CannotConvertToObject2Error = err!(typeerror, string, string)
+enum CannotConvertToObject2Error = err!(cTypeError, string, string)
     ("%s %s cannot convert to Object");
-enum CannotConvertToObject3Error = err!(typeerror, string, string, string)
+enum CannotConvertToObject3Error = err!(cTypeError, string, string, string)
     ("%s %s.%s cannot convert to Object");
-enum CannotConvertToObject4Error = err!(typeerror, string)
+enum CannotConvertToObject4Error = err!(cTypeError, string)
     ("cannot convert %s to Object");
-enum CannotAssignToError = err!(referenceerror, string)
+enum CannotAssignToError = err!(cReferenceError, string)
     ("cannot assign to %s");
 enum CannotEscapeKeywordError = syntaxerr!(string)
     ("escaped expression is not permitted to %s");
-enum CannotAssignError = err!(typeerror, string, string)
+enum CannotAssignError = err!(cTypeError, string, string)
     ("cannot assign %s to %s");
-enum CannotAssignTo2Error = err!(typeerror, string, string)
+enum CannotAssignTo2Error = err!(cTypeError, string, string)
     ("cannot assign to %s.%s");
-enum FunctionNotLvalueError = err!typeerror
+enum FunctionNotLvalueError = err!cTypeError
     ("cannot assign to function");
-enum RhsMustBeObjectError = err!(typeerror, string, string)
+enum RhsMustBeObjectError = err!(cTypeError, string, string)
     ("RHS of %s must be an Object, not a %s");
-enum CannotPutToPrimitiveError = err!(typeerror, string, string, string)
+enum CannotPutToPrimitiveError = err!(cTypeError, string, string, string)
     ("can't Put('%s', %s) to a primitive %s");
 enum CannotPutIndexToPrimitiveError =
-    err!(typeerror, uint, string, string)
+    err!(cTypeError, uint, string, string)
     ("can't Put(%u, %s) to a primitive %s");
-enum ObjectCannotBePrimitiveError = err!typeerror
+enum ObjectCannotBePrimitiveError = err!cTypeError
     ("object cannot be converted to a primitive type");
-enum CannotGetFromPrimitiveError = err!(typeerror, string, string, string)
+enum CannotGetFromPrimitiveError = err!(cTypeError, string, string, string)
     ("can't Get(%s) from primitive %s(%s)");
 enum CannotGetIndexFromPrimitiveError =
-    err!(typeerror, size_t, string, string)
+    err!(cTypeError, size_t, string, string)
     ("can't Get(%d) from primitive %s(%s)");
-enum PrimitiveNoConstructError = err!(typeerror, string)
+enum PrimitiveNoConstructError = err!(cTypeError, string)
     ("primitive %s has no Construct method");
-enum PrimitiveNoCallError = err!(typeerror, string)
+enum PrimitiveNoCallError = err!(cTypeError, string)
     ("primitive %s has no Call method");
-enum ForInMustBeObjectError = err!typeerror
+enum ForInMustBeObjectError = err!cTypeError
     ("for-in must be on an object, not a primitive");
-enum AssertError = err!(typeerror, size_t)
+enum AssertError = err!(cTypeError, size_t)
     ("assert() line %d");
 // deprecated // not used
 // {
@@ -182,23 +183,23 @@ enum AssertError = err!(typeerror, size_t)
 // enum SSError =
 //     err!typeerror("%s: %s");
 // }
-enum NoDefaultPutError = err!typeerror
+enum NoDefaultPutError = err!cTypeError
     ("no Default Put for object");
-enum SNoConstructError = err!(typeerror, string)
+enum SNoConstructError = err!(cTypeError, string)
     ("%s does not have a [[Construct]] property");
-enum SNoCallError = err!(typeerror, string)
+enum SNoCallError = err!(cTypeError, string)
     ("%s does not have a [[Call]] property");
-enum SNoInstanceError = err!(typeerror, string)
+enum SNoInstanceError = err!(cTypeError, string)
     ("%s does not have a [[HasInstance]] property");
-enum LengthIntError = err!rangeerror
+enum LengthIntError = err!RangeError
     ("length property must be an integer");
-enum TlsNotTransferrableError = err!typeerror
+enum TlsNotTransferrableError = err!cTypeError
     ("Array.prototype.toLocaleString() not transferrable");
-enum TsNotTransferrableError = err!typeerror
+enum TsNotTransferrableError = err!cTypeError
     ("Function.prototype.toString() not transferrable");
-enum ArrayArgsError = err!typeerror
+enum ArrayArgsError = err!cTypeError
     ("Function.prototype.apply(): argArray must be array or arguments object");
-enum MustBeObjectError = err!(typeerror, string)
+enum MustBeObjectError = err!(cTypeError, string)
     (".prototype must be an Object, not a %s");
 // deprecated // not used
 // {
@@ -217,22 +218,22 @@ enum MustBeObjectError = err!(typeerror, string)
 // enum NotCollectionError =
 //     err!typeerror("argument not a collection");
 // }
-enum NotValidUTFError = err!(typeerror, string, string, uint)
+enum NotValidUTFError = err!(cTypeError, string, string, uint)
     ("%s.%s expects a valid UTF codepoint not \\u%x");
-enum UndefinedVarError = err!(referenceerror, string)
+enum UndefinedVarError = err!(cReferenceError, string)
     ("Variable '%s' is not defined");
 enum CantBreakInternalError = syntaxerr!(string)
     ("Can't break to internal loop label %s");
 // deprecated // not used
 // {
 // enum EUnexpectedError =
-//     err!typeerror("Unexpected");
+//     err!cTypeError("Unexpected");
 // }
 
-enum NoDefaultValueError = err!typeerror
+enum NoDefaultValueError = err!cTypeError
     ("No [[DefaultValue]]");
 
-enum ReferenceError = err!(referenceerror, string)
+enum ReferenceError = err!(cReferenceError, string)
     ("%s");
 
 version (TEST262)
@@ -243,16 +244,16 @@ version (TEST262)
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // needs more proper implementation.
-enum CannotPutError = err!(typeerror)("Cannot put error");
-enum CreateDataPropertyError = err!(typeerror)("Cannot create a property");
-enum CreateMethodPropertyError = err!(typeerror)("Cannot create a method property");
-enum NotCallableError = err!(typeerror, string)
+enum CannotPutError = err!(cTypeError)("Cannot put error");
+enum CreateDataPropertyError = err!(cTypeError)("Cannot create a property");
+enum CreateMethodPropertyError = err!(cTypeError)("Cannot create a method property");
+enum NotCallableError = err!(cTypeError, string)
     ("%s is not callable");
-enum CantDeleteError = err!(typeerror, string)
+enum CantDeleteError = err!(cTypeError, string)
     ("fail to delete %s.");
 
 
-enum PreventExtensionsFailureError = err!(typeerror, string)
+enum PreventExtensionsFailureError = err!(cTypeError, string)
     ("[%s].PreventExtensions() failed.");
 
 //==============================================================================
@@ -260,8 +261,9 @@ private:
 
 //------------------------------------------------------------------------------
 //
-struct err(alias Proto, ARGS...)
+struct err(alias Ctor, ARGS...)
 {
+    import dmdscript.callcontext: CallContext;
     import dmdscript.value : DError, toDError;
     import dmdscript.opcodes : IR;
     import dmdscript.exception : ScriptException;
@@ -277,12 +279,12 @@ struct err(alias Proto, ARGS...)
 
     //
     @safe
-    DError* opCall(ARGS args, string file = __FILE__,
+    DError* opCall(CallContext cc, ARGS args, string file = __FILE__,
                    size_t line = __LINE__) const
     {
         import std.format : format;
-        return new ScriptException(Proto.Text, fmt.format(args), file, line)
-            .toDError!Proto;
+        return new ScriptException(Ctor.Text, fmt.format(args), file, line)
+            .toDError!Ctor(cc);
     }
     alias opCall this;
 
@@ -292,7 +294,7 @@ struct err(alias Proto, ARGS...)
                             size_t line = __LINE__) const
     {
         import std.format : format;
-        return new ScriptException(Proto.Text, fmt.format(args), file, line);
+        return new ScriptException(Ctor.Text, fmt.format(args), file, line);
     }
 
     // //
@@ -302,7 +304,7 @@ struct err(alias Proto, ARGS...)
     {
         import std.format : format;
         return new ScriptException(
-            Proto.Text, fmt.format(args), funcname, linnum, f, l);
+            Ctor.Text, fmt.format(args), funcname, linnum, f, l);
     }
 }
 
@@ -324,7 +326,7 @@ struct syntaxerr(ARGS...)
     {
         import std.format : format;
 
-        return new ScriptException(syntaxerror.Text, fmt.format(args), linnum,
+        return new ScriptException(SyntaxError.Text, fmt.format(args), linnum,
                                    file, line);
     }
     alias opCall this;

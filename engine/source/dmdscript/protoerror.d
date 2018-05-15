@@ -29,90 +29,134 @@ debug import std.stdio;
 
 //------------------------------------------------------------------------------
 ///
-class D0(alias TEXT_D1) : D0base
+class D0(alias Text) : D0base
 {
     import dmdscript.dfunction : Dfunction;
-    import dmdscript.dobject : Initializer;
     import dmdscript.primitive : PropertyKey;
 
+    this(Dobject prototype, string m)
+    {
+        super(prototype, Text, m);
+    }
+
+
+    this(Dobject prototype, ScriptException exception)
+    {
+        super(prototype, exception);
+        assert (GetPrototypeOf !is null);
+    }
+
+    this(Dobject prototype, PropertyKey name, ScriptException exception)
+    {
+        super(prototype, name, exception);
+        assert (GetPrototypeOf !is null);
+    }
+
+}
+
+//------------------------------------------------------------------------------
+class D0_constructor(alias TEXT_D1) : Dconstructor
+{
+    import dmdscript.primitive: PropertyKey;
+    import dmdscript.callcontext: CallContext;
+    import dmdscript.value: DError, Value;
+    import dmdscript.dglobal: undefined;
+
     enum Text = PropertyKey(TEXT_D1);
+    alias Type = D0!Text;
 
-    this(string m)
+    this(Dobject superPrototype, Dobject functionPrototype)
     {
-        super(Text.text, getPrototype, m);
-    }
+        import dmdscript.property: Property;
+        import dmdscript.primitive: Key;
 
+        super(new Dobject(superPrototype), functionPrototype, Text, 1);
 
-    this(ScriptException exception)
-    {
-        super(getPrototype, exception);
-        assert (getPrototype !is null);
-    }
-
-    this(string name, ScriptException exception)
-    {
-        super(name, getPrototype, exception);
-        assert (getPrototype !is null);
-    }
-
-    mixin Initializer!D0_constructor _Initializer;
-
-package static:
-
-    //
-    void initFuncs()
-    {
-        import dmdscript.property : Property;
-
-        _Initializer.initFuncs(Text.text, &newD0);
+        install(functionPrototype);
 
         Value val;
         val.put(Text);
-        _class_prototype.DefineOwnProperty(Key.name, val,
-                                           Property.Attribute.None);
-        val.put(TEXT_D1 ~ ".prototype.message");
-        _class_prototype.DefineOwnProperty(Key.message, val,
-                                           Property.Attribute.None);
-        _class_prototype.DefineOwnProperty(Key.description, val,
-                                           Property.Attribute.None);
-        val.put(0);
-        _class_prototype.DefineOwnProperty(Key.number, val,
-                                           Property.Attribute.None);
+        DefineOwnProperty(Key.name, val, Property.Attribute.None);
+        val.put(Text ~ ".prototype.message");
+        DefineOwnProperty(Key.message, val, Property.Attribute.None);
+        DefineOwnProperty(Key.description, val, Property.Attribute.None);
+        // val.put(0);
+        // cp.DefineOwnProperty(Key.number, val, Property.Attribute.None);
     }
 
-private static:
-
-    Dobject newD0(string s)
+    override DError* Construct(CallContext cc, out Value ret,
+                               Value[] arglist)
     {
-        return new D0(s);
+        // ECMA 15.11.7.2
+        Value* m;
+        Dobject o;
+        string s;
+
+        m = (arglist.length) ? &arglist[0] : &undefined;
+        // ECMA doesn't say what we do if m is undefined
+        if(m.isUndefined())
+            s = classname;
+        else
+            s = m.toString(cc);
+        o = opCall(s);
+        ret.put(o);
+        return null;
+    }
+
+    override DError* Call(CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
+    {
+        // ECMA v3 15.11.7.1
+        return Construct(cc, ret, arglist);
+    }
+
+    Type opCall(ARGS...)(ARGS args)
+    {
+        return new Type(classPrototype, args);
     }
 }
 
-alias syntaxerror = D0!"SyntaxError";
-alias evalerror = D0!"EvalError";
-alias referenceerror = D0!"ReferenceError";
-alias rangeerror = D0!"RangeError";
-alias typeerror = D0!"TypeError";
-alias urierror = D0!"URIError";
 
-D0base newD0(ScriptException e)
+alias SyntaxError = D0_constructor!"SyntaxError";
+alias EvalError = D0_constructor!"EvalError";
+alias ReferenceError = D0_constructor!"ReferenceError";
+alias RangeError = D0_constructor!"RangeError";
+alias TypeError = D0_constructor!"TypeError";
+alias UriError = D0_constructor!"URIError";
+
+D0base toD0(Ctor)(ScriptException e, CallContext cc)
 {
-    switch (e.type)
+    static if      (is(Ctor == SyntaxError))
+        return cc.dglobal.dSyntaxError(e);
+    else static if (is(Ctor == EvalError))
+        return cc.dglobal.dEvalError(e);
+    else static if (is(Ctor == ReferenceError))
+        return cc.dglobal.dReferenceError(e);
+    else static if (is(Ctor == RangeError))
+        return cc.dglobal.dRangeError(e);
+    else static if (is(Ctor == TypeError))
+        return cc.dglobal.dTypeError(e);
+    else static if (is(Ctor == UriError))
+        return cc.dglobal.dUriError(e);
+    else
     {
-    case syntaxerror.Text:
-        return new syntaxerror(e);
-    case evalerror.Text:
-        return new evalerror(e);
-    case referenceerror.Text:
-        return new referenceerror(e);
-    case rangeerror.Text:
-        return new rangeerror(e);
-    case typeerror.Text:
-        return new typeerror(e);
-    case urierror.Text:
-        return new urierror(e);
-    default:
-        return null;
+        switch (e.type)
+        {
+        case SyntaxError.Text:
+            return cc.dglobal.dSyntaxError(e);
+        case EvalError.Text:
+            return cc.dglobal.dEvalError(e);
+        case ReferenceError.Text:
+            return cc.dglobal.dReferenceError(e);
+        case RangeError.Text:
+            return cc.dglobal.dRangeError(e);
+        case TypeError.Text:
+            return cc.dglobal.dTypeError(e);
+        case UriError.Text:
+            return cc.dglobal.dUriError(e);
+        default:
+            return null;
+        }
     }
     assert (0);
 }
@@ -122,12 +166,12 @@ package:
 
 class D0base : Dobject
 {
-    import dmdscript.primitive : Key;
+    import dmdscript.primitive : Key, PropertyKey;
     import dmdscript.exception : ScriptException;
 
     ScriptException exception;
 
-    protected this(string typename, Dobject prototype, string m)
+    protected this(Dobject prototype, PropertyKey typename, string m)
     {
         import dmdscript.property : Property;
 
@@ -158,7 +202,7 @@ class D0base : Dobject
         //                   Property.Attribute.None);
     }
 
-    protected this(string typename, Dobject prototype,
+    protected this(Dobject prototype, PropertyKey typename,
                    ScriptException exception)
     {
         import dmdscript.property : Property;
@@ -178,57 +222,14 @@ class D0base : Dobject
 }
 
 
-
 //==============================================================================
 private:
-
-//------------------------------------------------------------------------------
-class D0_constructor : Dconstructor
-{
-    import dmdscript.callcontext : CallContext;
-    import dmdscript.value : DError, Value;
-    import dmdscript.dglobal : undefined;
-
-    Dobject function(string) newD0;
-
-    this(string text_d1, Dobject function(string) newD0)
-    {
-        super(text_d1, 1, Dfunction.getPrototype);
-        this.newD0 = newD0;
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        // ECMA 15.11.7.2
-        Value* m;
-        Dobject o;
-        string s;
-
-        m = (arglist.length) ? &arglist[0] : &undefined;
-        // ECMA doesn't say what we do if m is undefined
-        if(m.isUndefined())
-            s = classname;
-        else
-            s = m.toString(cc);
-        o = (*newD0)(s);
-        ret.put(o);
-        return null;
-    }
-
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
-                          Value[] arglist)
-    {
-        // ECMA v3 15.11.7.1
-        return Construct(cc, ret, arglist);
-    }
-}
 
 //------------------------------------------------------------------------------
 //
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Key;
@@ -242,7 +243,7 @@ DError* toString(
 //
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Key;

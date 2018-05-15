@@ -24,16 +24,17 @@ import dmdscript.dfunction : Dconstructor;
 import dmdscript.value : Value, DError;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 
+
 //==============================================================================
 ///
 class Derror : Dobject
 {
-    import dmdscript.dobject : Initializer;
     import dmdscript.property : Property;
 
-    this(ref CallContext cc, Value* m, Value* v2)
+private:
+    this(Dobject prototype, CallContext cc, Value* m, Value* v2)
     {
-        super(getPrototype, Key.Error);
+        super(prototype, Key.Error);
 
         string msg;
         msg = m.toString(cc);
@@ -68,34 +69,7 @@ class Derror : Dobject
     {
         super(prototype, Key.Error);
     }
-
-public static:
-    mixin Initializer!DerrorConstructor _Initializer;
-
-    void initPrototype()
-    {
-        import dmdscript.primitive : Text;
-        import dmdscript.property : Property;
-
-        _Initializer.initPrototype;
-
-        Value val;
-        val.put(Key.Error);
-        _class_prototype.DefineOwnProperty(Key.name, val,
-                                           Property.Attribute.None);
-        val.put(Text.Empty);
-        _class_prototype.DefineOwnProperty(Key.message, val,
-                                           Property.Attribute.None);
-        _class_prototype.DefineOwnProperty(Key.description, val,
-                                           Property.Attribute.None);
-        val.put(0);
-        _class_prototype.DefineOwnProperty(Key.number, val,
-                                           Property.Attribute.None);
-    }
 }
-
-//==============================================================================
-private:
 
 // Comes from MAKE_HRESULT(SEVERITY_ERROR, FACILITY_CONTROL, 0)
 const uint FACILITY = 0x800A0000;
@@ -103,12 +77,34 @@ const uint FACILITY = 0x800A0000;
 //------------------------------------------------------------------------------
 class DerrorConstructor : Dconstructor
 {
-    this()
+    this(Dobject superClassPrototype, Dobject functionPrototype)
     {
-        super(1, Dfunction.getPrototype);
+        import dmdscript.primitive: Text;
+        import dmdscript.property: Property;
+
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.Error, 1);
+
+        install(functionPrototype);
+
+        auto cp = classPrototype;
+
+        Value val;
+        val.put(Key.Error);
+        cp.DefineOwnProperty(Key.name, val, Property.Attribute.None);
+        val.put(Text.Empty);
+        cp.DefineOwnProperty(Key.message, val, Property.Attribute.None);
+        cp.DefineOwnProperty(Key.description, val, Property.Attribute.None);
+        // val.put(0);
+        // cp.DefineOwnProperty(Key.number, val, Property.Attribute.None);
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    Derror opCall(ARGS...)(ARGS args)
+    {
+        return new Derror(classPrototype, args);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.dglobal : undefined;
@@ -142,17 +138,20 @@ class DerrorConstructor : Dconstructor
             n = &arglist[1];
             break;
         }
-        o = new Derror(cc, m, n);
+        o = opCall(cc, m, n);
         ret.put(o);
         return null;
     }
 }
 
+//==============================================================================
+private:
+
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.dglobal : undefined;

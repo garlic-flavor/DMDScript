@@ -22,7 +22,7 @@ import dmdscript.primitive : PropertyKey, Text, PKey = Key;
 import dmdscript.callcontext;
 import dmdscript.dobject;
 import dmdscript.value;
-import dmdscript.protoerror;
+// import dmdscript.protoerror;
 import dmdscript.darray;
 import dmdscript.dfunction;
 import dmdscript.property;
@@ -36,7 +36,6 @@ debug import std.stdio;
 enum { EXEC_STRING, EXEC_ARRAY, EXEC_BOOLEAN, EXEC_INDEX };
 
 /* ===================== Dregexp_constructor ==================== */
-
 class DregexpConstructor : Dconstructor
 {
     Value* input;
@@ -51,9 +50,11 @@ class DregexpConstructor : Dconstructor
     Value* index;
     Value* lastIndex;
 
-    this()
+    this(Dobject superClassPrototype, Dobject functionPrototype)
     {
-        super(Key.RegExp, 2, Dfunction.getPrototype);
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.RegExp, 2);
+        install(functionPrototype);
 
         Value v;
         v.put(Text.Empty);
@@ -127,7 +128,12 @@ class DregexpConstructor : Dconstructor
         // any difference.
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    Dregexp opCall(ARGS...)(ARGS args)
+    {
+        return new Dregexp(classPrototype, args);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Text;
@@ -156,7 +162,7 @@ class DregexpConstructor : Dconstructor
             pattern = &arglist[0];
             break;
         }
-        R = Dregexp.isRegExp(pattern);
+        R = Dregexp.isRegExp(cc, pattern);
         if(R)
         {
             if(flags.isUndefined)
@@ -166,7 +172,7 @@ class DregexpConstructor : Dconstructor
             }
             else
             {
-                return TypeError("RegExp.prototype.constructor");
+                return TypeError(cc, "RegExp.prototype.constructor");
             }
         }
         else
@@ -174,10 +180,10 @@ class DregexpConstructor : Dconstructor
             P = pattern.isUndefined ? Text.Empty : pattern.toString(cc);
             F = flags.isUndefined ? Text.Empty : flags.toString(cc);
         }
-        r = new Dregexp(P, F);
+        r = opCall(P, F);
         if(r.re.errors !is null)
         {
-            return RegexpCompileError(r.re.errors.toString);
+            return RegexpCompileError(cc, r.re.errors.toString);
         }
         else
         {
@@ -186,7 +192,7 @@ class DregexpConstructor : Dconstructor
         }
     }
 
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 262 v3 15.10.3.1
@@ -210,7 +216,7 @@ class DregexpConstructor : Dconstructor
         return Construct(cc, ret, arglist);
     }
 
-    override Value* Get(in PropertyKey PropertyName, ref CallContext cc)
+    override Value* Get(in PropertyKey PropertyName, CallContext cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
         return super.Get(sk, cc);
@@ -218,7 +224,7 @@ class DregexpConstructor : Dconstructor
 
     override
     DError* Set(in PropertyKey PropertyName, ref Value value,
-                in Property.Attribute attributes, ref CallContext cc)
+                in Property.Attribute attributes, CallContext cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
         return Dfunction.Set(sk, value, attributes, cc);
@@ -275,7 +281,7 @@ class DregexpConstructor : Dconstructor
 /* ===================== Dregexp_prototype_toString =============== */
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a RegExp
@@ -292,7 +298,7 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return NotTransferrableError("RegExp.prototype.toString()");
+        return NotTransferrableError(cc, "RegExp.prototype.toString()");
     }
     return null;
 }
@@ -300,28 +306,28 @@ DError* toString(
 /* ===================== Dregexp_prototype_test =============== */
 @DFD(1)
 DError* test(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.10.6.3 says this is equivalent to:
     //	RegExp.prototype.exec(string) != null
-    return Dregexp.exec(othis, ret, arglist, EXEC_BOOLEAN);
+    return Dregexp.exec(othis, cc, ret, arglist, EXEC_BOOLEAN);
 }
 
 /* ===================== Dregexp_prototype_exec ============= */
 @DFD(1)
 DError* exec(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return Dregexp.exec(othis, ret, arglist, EXEC_ARRAY);
+    return Dregexp.exec(othis, cc, ret, arglist, EXEC_ARRAY);
 }
 
 
 /* ===================== Dregexp_prototype_compile ============= */
 @DFD(2)
 DError* compile(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.regex : RegexException;
@@ -365,7 +371,7 @@ DError* compile(
     else
     {
         ret.putVundefined();
-        return NotTransferrableError("RegExp.prototype.compile()");
+        return NotTransferrableError(cc, "RegExp.prototype.compile()");
     }
 
     // Documentation says nothing about a return value,
@@ -379,7 +385,8 @@ DError* compile(
 ///
 class Dregexp : Dobject
 {
-    import dmdscript.dobject : Initializer;
+    import dmdscript.primitive: PropertyKey;
+    // import dmdscript.dobject : Initializer;
 
     Value* global;
     Value* ignoreCase;
@@ -389,9 +396,9 @@ class Dregexp : Dobject
 
     RegExp re;
 
-    this(string pattern, string attributes)
+    this(Dobject prototype, string pattern, string attributes)
     {
-        super(getPrototype, Key.RegExp);
+        super(prototype, Key.RegExp);
 
         Value v;
         v.put(Text.Empty);
@@ -442,7 +449,7 @@ class Dregexp : Dobject
         }
     }
 
-    this(Dobject prototype, string cname = Key.RegExp)
+    this(Dobject prototype, PropertyKey cname = Key.RegExp)
     {
         super(prototype, cname);
 
@@ -483,26 +490,27 @@ class Dregexp : Dobject
         re = new RegExp(null, null);
     }
 
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
 
         v = Get(Key.exec, cc);
-        return v.toObject().Call(cc, this, ret, arglist);
+        return v.toObject(cc).Call(cc, this, ret, arglist);
     }
 
 static:
-    Dregexp isRegExp(Value* v)
+    Dregexp isRegExp(CallContext cc, Value* v)
     {
         if      (v.isPrimitive)
             return null;
         else
-            return cast(Dregexp)v.toObject;
+            return cast(Dregexp)v.toObject(cc);
     }
 
-    DError* exec(Dobject othis, out Value ret, Value[] arglist, int rettype)
+    DError* exec(Dobject othis, CallContext cc, out Value ret,
+                 Value[] arglist, int rettype)
     {
         // othis must be a RegExp
         if (auto dr = cast(Dregexp)othis)
@@ -512,7 +520,7 @@ static:
             DregexpConstructor dc;
             uint i;
             int lasti;
-            CallContext cc;
+//            CallContext cc;
 
             if(arglist.length)
                 s = arglist[0].toString(cc);
@@ -520,12 +528,12 @@ static:
             {
                 Dfunction df;
 
-                df = Dregexp.getConstructor();
+                df = cc.dglobal.dRegexp;
                 s = (cast(DregexpConstructor)df).input.text;
             }
 
             r = dr.re;
-            dc = cast(DregexpConstructor)Dregexp.getConstructor();
+            dc = cast(DregexpConstructor)cc.dglobal.dRegexp;
 
             // Decide if we are multiline
             r.multiline = 0 != dr.multiline.dbool;
@@ -589,7 +597,7 @@ static:
                 {
                 case EXEC_ARRAY:
                 {
-                    Darray a = new Darray();
+                    Darray a = cc.dglobal.dArray();
 
                     auto val = Value(r.input);
                     a.Set(Key.input, val, Property.Attribute.None, cc);
@@ -687,13 +695,13 @@ static:
         else
         {
             ret.putVundefined();
-            return NotTransferrableError("RegExp.prototype.exec()");
+            return NotTransferrableError(cc, "RegExp.prototype.exec()");
         }
 
         return null;
     }
 
-    mixin Initializer!DregexpConstructor;
+    // mixin Initializer!DregexpConstructor;
 }
 
 

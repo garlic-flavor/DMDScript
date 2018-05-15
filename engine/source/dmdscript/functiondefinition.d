@@ -70,13 +70,11 @@ class FunctionDefinition : TopStatement
         this.topstatements = topstatements;
     }
 
-    @safe @nogc pure nothrow
+//    @safe @nogc pure nothrow
     this(uint linnum, bool isglobal, Identifier name,
          Identifier[] parameters, TopStatement[] topstatements)
     {
         super(linnum);
-
-        //writef("FunctionDefinition('%ls')\n", name ? name.string : L"");
         this.isglobal = isglobal;
         this.name = name;
         this.parameters = parameters;
@@ -95,12 +93,12 @@ class FunctionDefinition : TopStatement
         TopStatement ts;
         FunctionDefinition fd;
 
-        //writef("FunctionDefinition::semantic(%s)\n", this);
+        // writeln("FunctionDefinition::semantic(",
+        //         name !is null ? name.text: "", ")");
 
         // Log all the FunctionDefinition's so we can rapidly
         // instantiate them at runtime
         fd = /*enclosingFunction =*/ sc.funcdef;
-
         // But only push it if it is not already in the array
         for(i = 0;; i++)
         {
@@ -206,7 +204,7 @@ class FunctionDefinition : TopStatement
     }
 
     final
-    void instantiate(ref CallContext cc, Property.Attribute attributes)
+    void instantiate(CallContext cc, Property.Attribute attributes)
     {
         // Instantiate all the Var's per 10.1.3
         auto actobj = cc.variable;
@@ -222,8 +220,9 @@ class FunctionDefinition : TopStatement
         // Instantiate the Function's per 10.1.3
         foreach(FunctionDefinition fd; functiondefinitions)
         {
+
             // Set [[Scope]] property per 13.2 step 7
-            auto fobject = new DdeclaredFunction(fd, cc.scopes.dup);
+            auto fobject = new DdeclaredFunction(cc, fd, cc.scopes.dup);
             val.put(fobject);
             if(fd.name !is null && !fd.isliteral) // skip anonymous functions
             {
@@ -259,7 +258,7 @@ class FunctionDefinition : TopStatement
         }
         if(!isglobal)
         {
-            sink("}");
+            sink("}\n");
         }
     }
 }

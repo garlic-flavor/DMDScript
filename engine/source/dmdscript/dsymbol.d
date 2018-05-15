@@ -29,36 +29,20 @@ import dmdscript.value : DError, Value;
 class Dsymbol : Dobject
 {
     import dmdscript.primitive : Key;
-    import dmdscript.dobject : Initializer;
 
-    this(string desc)
+private:
+    this(Dobject prototype, string desc)
     {
-        super(Dsymbol.getPrototype, Key.Symbol);
+        super(prototype, Key.Symbol);
         value.putVsymbol(desc);
     }
 
-    this(ref Value desc)
+    this(Dobject prototype, ref Value desc)
     {
-        super(Dsymbol.getPrototype, Key.Symbol);
+        super(prototype, Key.Symbol);
         value = desc;
     }
-
-    mixin Initializer!DsymbolConstructor;
 }
-
-
-//==============================================================================
-private:
-
-//
-@DFD(1, DFD.Type.Static, "for")
-DError* _for(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist)
-{
-    assert(0);
-}
-
 
 //
 class DsymbolConstructor : Dconstructor
@@ -66,26 +50,44 @@ class DsymbolConstructor : Dconstructor
     import dmdscript.dfunction : Dfunction;
     import dmdscript.primitive : Key;
 
-    this()
+    this(Dobject superClassPrototype, Dobject functionPrototype)
     {
-        super(Key.Symbol, 1, Dfunction.getPrototype);
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.Symbol, 1);
 
-       // DefineOwnProperty(Key.Iterator,,,
+        install(functionPrototype);
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    Dsymbol opCall(ARGS...)(ARGS args)
+    {
+        return new Dsymbol(classPrototype, args);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
     }
 
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         ret.putVsymbol(0 < arglist.length ? arglist[0].toString(cc) :
                                             Key.undefined.idup);
         return null;
     }
+}
+
+//==============================================================================
+private:
+
+//
+@DFD(1, DFD.Type.Static, "for")
+DError* _for(
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert(0);
 }
 
 

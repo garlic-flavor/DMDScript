@@ -31,7 +31,7 @@ import dmdscript.errmsgs;
 import dmdscript.property;
 import dmdscript.ddeclaredfunction;
 import dmdscript.dfunction;
-import dmdscript.protoerror;
+// import dmdscript.protoerror;
 import dmdscript.dglobal : undefined;
 
 debug import std.stdio;
@@ -62,7 +62,7 @@ struct IR
     /****************************
      * This is the main interpreter loop.
      */
-    static DError* call(ref CallContext cc, Dobject othis, const(IR)* code,
+    static DError* call(CallContext cc, Dobject othis, const(IR)* code,
                         out Value ret, Value* locals)
     {
         import std.array : join;
@@ -108,7 +108,7 @@ struct IR
                 }
                 else if (auto ca = cast(Catch)o)
                 {
-                    o = new Dobject(Dobject.getPrototype);
+                    o = cc.dglobal.dObject();
                     version(JSCRIPT_CATCH_BUG)
                     {
                         PutValue(cc, ca.name, &err.entity);
@@ -189,7 +189,7 @@ struct IR
                     int i32;
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                     {
                         sta = cannotConvert(cc, b);
@@ -220,10 +220,10 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     id = (code + 3).id;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                     {
-                        sta = CannotConvertToObject3Error(
+                        sta = CannotConvertToObject3Error(cc,
                             b.type.to!string, b.toString(cc),
                             id.toString);
                         goto Lthrow;
@@ -240,7 +240,7 @@ struct IR
                     id = (code+1).id;
                     if (cc.get(*id) is null)
                     {
-                        sta = UndefinedVarError(id.toString);
+                        sta = UndefinedVarError(cc, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.CheckRef].size;
@@ -287,14 +287,14 @@ struct IR
                 case Opcode.PutGetterS:
                 {
                     a = locals + (code + 1).index;
-                    auto f = cast(Dfunction)a.toObject;
+                    auto f = cast(Dfunction)a.toObject(cc);
                     if (f is null)
                     {
                         sta = cannotConvert(cc, a);
                         goto Lthrow;
                     }
                     b = locals + (code + 2).index;
-                    o = b.toObject;
+                    o = b.toObject(cc);
                     if(o is null)
                     {
                         sta = cannotConvert(cc, b);
@@ -302,7 +302,7 @@ struct IR
                     }
                     if (!o.SetGetter(*(code+3).id, f, Property.Attribute.None))
                     {
-                        sta = CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PutGetterS].size;
@@ -315,14 +315,14 @@ struct IR
                 case Opcode.PutSetterS:
                 {
                     a = locals + (code + 1).index;
-                    auto f = cast(Dfunction)a.toObject;
+                    auto f = cast(Dfunction)a.toObject(cc);
                     if (f is null)
                     {
                         sta = cannotConvert(cc, a);
                         goto Lthrow;
                     }
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                     {
                         sta = cannotConvert(cc, b);
@@ -330,7 +330,7 @@ struct IR
                     }
                     if (!o.SetSetter(*(code+3).id, f, Property.Attribute.None))
                     {
-                        sta = CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PutSetterS].size;
@@ -371,7 +371,7 @@ struct IR
                     a = locals + (code + 1).index;
                     if(!v)
                     {
-                        sta = UndefinedVarError(id.toString);
+                        sta = UndefinedVarError(cc, id.toString);
                         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                         // To_Do: add b's information
                         goto Lthrow;
@@ -415,7 +415,7 @@ struct IR
                 case Opcode.PutS:            // b.s = a
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                     {
                         sta = cannotConvert(cc, b);
@@ -430,7 +430,7 @@ struct IR
 
                 case Opcode.PutScope:            // s = a
                     a = locals + (code + 1).index;
-                    sta = a.checkReference;
+                    sta = a.checkReference(cc);
                     if (sta !is null)
                         goto Lthrow;
                     cc.set(*(code + 2).id, *a);
@@ -440,14 +440,14 @@ struct IR
                 case Opcode.PutDefault:              // b = a
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                     {
-                        sta = CannotAssignError(a.type.to!string,
+                        sta = CannotAssignError(cc, a.type.to!string,
                                                 b.type.to!string);
                         goto Lthrow;
                     }
-                    sta = o.PutDefault(*a);
+                    sta = o.PutDefault(cc, *a);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutDefault].size;
@@ -488,7 +488,7 @@ struct IR
                 case Opcode.Object:              // a = object
                 {
                     auto fd = cast(FunctionDefinition)(code+2).fd;
-                    auto fobject = new DdeclaredFunction(fd, cc.scopes.dup);
+                    auto fobject = new DdeclaredFunction(cc, fd, cc.scopes.dup);
                     (locals + (code + 1).index).put(fobject);
                     code += IRTypes[Opcode.Object].size;
                     break;
@@ -568,13 +568,13 @@ struct IR
                     c = locals + (code + 3).index;
                     if(c.isPrimitive)
                     {
-                        sta = RhsMustBeObjectError("instanceof",
+                        sta = RhsMustBeObjectError(cc, "instanceof",
                                                    c.type.to!string);
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    sta = c.toObject.HasInstance(cc, *a, *b);
+                    sta = c.toObject(cc).HasInstance(cc, *a, *b);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.Instance].size;
@@ -705,7 +705,7 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
                     pk = b.toPropertyKey;
-                    o = c.toObject();
+                    o = c.toObject(cc);
                     if(!o)
                         throw RhsMustBeObjectError.toThrow(
                             "in", c.toString(cc));
@@ -771,7 +771,7 @@ struct IR
                             }
                             else
                             {
-                                sta = UndefinedVarError(id.toString);
+                                sta = UndefinedVarError(cc, id.toString);
                                 goto Lthrow;
                             }
                         }
@@ -851,7 +851,7 @@ struct IR
                     }
                     else
                     {
-                        sta = ReferenceError(id.toString);
+                        sta = ReferenceError(cc, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PostIncScope].size;
@@ -894,7 +894,7 @@ struct IR
                     }
                     else
                     {
-                        sta = ReferenceError(id.toString);
+                        sta = ReferenceError(cc, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PostDecScope].size;
@@ -909,7 +909,7 @@ struct IR
                         bo = true;
                     else
                     {
-                        o = b.toObject();
+                        o = b.toObject(cc);
                         if(!o)
                         {
                             sta = cannotConvert(cc, b);
@@ -1329,7 +1329,7 @@ struct IR
                 case Opcode.Iter:                // a = iter(b)
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                     {
                         sta = cannotConvert(cc, b);
@@ -1395,7 +1395,7 @@ struct IR
                     assert (id !is null);
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                     {
                         goto Lcallerror;
@@ -1421,7 +1421,7 @@ struct IR
                     Lcallerror:
                     {
                         auto s = id.toString;
-                        sta = UndefinedNoCall3Error(
+                        sta = UndefinedNoCall3Error(cc,
                             b.type.to!string, b.toString(cc), s);
                         if (auto didyoumean = cc.searchSimilarWord(o, s))
                         {
@@ -1440,7 +1440,7 @@ struct IR
                     {
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
                         auto n = id.toString;
-                        sta = UndefinedVarError(n);
+                        sta = UndefinedVarError(cc, n);
                         if (auto didyoumean = cc.searchSimilarWord(n))
                         {
                             sta.addMessage(", did you mean \"" ~
@@ -1469,10 +1469,10 @@ struct IR
                 case Opcode.CallV:   // v(argc, argv) = a
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                     {
-                        sta = UndefinedNoCall2Error(b.type.to!string,
+                        sta = UndefinedNoCall2Error(cc, b.type.to!string,
                                                     b.toString(cc));
                         goto Lthrow;
                     }
@@ -1498,7 +1498,7 @@ struct IR
 
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(!o)
                         goto Lcallerror;
                     //v = o.GetLambda(s, Value.calcHash(s));
@@ -1506,14 +1506,14 @@ struct IR
                     if(v is null)
                         goto Lcallerror;
                     //writef("calling... '%s'\n", v.toString());
-                    o = v.toObject();
+                    o = v.toObject(cc);
                     if(o is null)
                     {
-                        sta = CannotAssignTo2Error(b.type.to!string,
+                        sta = CannotAssignTo2Error(cc, b.type.to!string,
                                                    id.toString);
                         goto Lthrow;
                     }
-                    sta = o.put_Value(*a, (locals + (code + 5).index)
+                    sta = o.put_Value(cc, *a, (locals + (code + 5).index)
                                       [0 .. (code + 4).argc]);
                     if(sta !is null)
                         goto Lthrow;
@@ -1528,19 +1528,19 @@ struct IR
                     v = cc.get(*id, o);
                     if(v is null)
                     {
-                        sta = UndefinedNoCall2Error("property",
+                        sta = UndefinedNoCall2Error(cc, "property",
                                                     id.toString);
                         goto Lthrow;
                     }
-                    o = v.toObject();
+                    o = v.toObject(cc);
                     if(o is null)
                     {
-                        sta = CannotAssignToError(id.toString);
+                        sta = CannotAssignToError(cc, id.toString);
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
                     c = locals + (code + 4).index;
-                    sta = o.put_Value(*a, c[0 .. (code + 3).argc]);
+                    sta = o.put_Value(cc, *a, c[0 .. (code + 3).argc]);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutCallScope].size;
@@ -1548,16 +1548,16 @@ struct IR
 
                 case Opcode.PutCallV:        // v(argc, argv) = a
                     b = locals + (code + 2).index;
-                    o = b.toObject();
+                    o = b.toObject(cc);
                     if(o is null)
                     {
-                        sta = UndefinedNoCall2Error(b.type.to!string,
+                        sta = UndefinedNoCall2Error(cc, b.type.to!string,
                                                     b.toString(cc));
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
                     c = locals + (code + 4).index;
-                    sta = o.put_Value(*a, c[0 .. (code + 3).argc]);
+                    sta = o.put_Value(cc, *a, c[0 .. (code + 3).argc]);
                     if(sta !is null)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutCallV].size;
@@ -1579,7 +1579,7 @@ struct IR
                 case Opcode.Push:
                     SCOPECACHE_CLEAR();
                     a = locals + (code + 1).index;
-                    o = a.toObject();
+                    o = a.toObject(cc);
                     if(!o)
                     {
                         sta = cannotConvert(cc, a);
@@ -1618,7 +1618,7 @@ struct IR
 
                 case Opcode.RetExp:
                     a = locals + (code + 1).index;
-                    sta = a.checkReference;
+                    sta = a.checkReference(cc);
                     if (sta !is null)
                         goto Lthrow;
                     ret = *a;
@@ -1627,7 +1627,7 @@ struct IR
 
                 case Opcode.ImpRet:
                     a = locals + (code + 1).index;
-                    sta = a.checkReference;
+                    sta = a.checkReference(cc);
                     if (sta !is null)
                         goto Lthrow;
                     ret = *a;
@@ -1641,7 +1641,7 @@ struct IR
 
                     Lthrow:
                     sta = unwindStack(sta);
-                    if(sta)
+                    if(sta !is null)
                     {
                         sta.addTrace(codestart, code);
                         return sta;
@@ -1667,7 +1667,7 @@ struct IR
                     version(all)  // Not supported under some com servers
                     {
                         auto linnum = (code + 1).index;
-                        sta = AssertError(linnum);
+                        sta = AssertError(cc, linnum);
                         goto Lthrow;
                     }
                     else
@@ -1684,7 +1684,7 @@ struct IR
             }
             catch (Throwable t)
             {
-                sta = unwindStack(t.toDError!typeerror);
+                sta = unwindStack(t.toDError(cc));
                 if (sta !is null)
                 {
                     sta.addTrace(codestart, code);
@@ -1812,7 +1812,7 @@ class Catch : Dobject
     import dmdscript.value : Value;
 
     // This is so scope_get() will skip over these objects
-    override Value* Get(in PropertyKey, ref CallContext) const
+    override Value* Get(in PropertyKey, CallContext) const
     {
         return null;
     }
@@ -1842,7 +1842,7 @@ class Finally : Dobject
     import dmdscript.value : Value;
     import dmdscript.opcodes : IR;
 
-    override Value* Get(in PropertyKey, ref CallContext) const
+    override Value* Get(in PropertyKey, CallContext) const
     {
         return null;
     }
@@ -1866,18 +1866,18 @@ class Finally : Dobject
 /*
 Helper function for Values that cannot be converted to Objects.
  */
-DError* cannotConvert(ref CallContext cc, Value* b)
+DError* cannotConvert(CallContext cc, Value* b)
 {
     import std.conv : to;
     DError* sta;
 
     if(b.isUndefinedOrNull)
     {
-        sta = CannotConvertToObject4Error(b.type.to!string);
+        sta = CannotConvertToObject4Error(cc, b.type.to!string);
     }
     else
     {
-        sta = CannotConvertToObject2Error(b.type.to!string, b.toString(cc));
+        sta = CannotConvertToObject2Error(cc, b.type.to!string, b.toString(cc));
     }
     return sta;
 }

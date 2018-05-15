@@ -23,6 +23,7 @@ import dmdscript.dobject : Dobject;
 import dmdscript.value : Value, DError, vundefined;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
     installConstants;
+import dmdscript.property : Property;
 
 debug import std.stdio;
 
@@ -60,34 +61,69 @@ string banner()
 ///
 class Dglobal : Dobject
 {
-    this(char[][] argv)
-    {
-        import dmdscript.dfunction : Dfunction;
-        import dmdscript.property : Property;
-        import dmdscript.darray : Darray;
-        import dmdscript.dstring : Dstring;
-        import dmdscript.dboolean : Dboolean;
-        import dmdscript.dnumber : Dnumber;
-        import dmdscript.ddate : Ddate;
-        import dmdscript.dregexp : Dregexp;
-        import dmdscript.derror : Derror;
-        import dmdscript.protoerror;
-        import dmdscript.dmath : Dmath;
-        import dmdscript.dsymbol : Dsymbol;
-        import dmdscript.dproxy : Dproxy;
-        import dmdscript.primitive : PropertyKey;
+    import dmdscript.dobject: Dobject, DobjectConstructor;
+    import dmdscript.dfunction: DfunctionConstructor;
+    import dmdscript.darray: DarrayConstructor;
+    import dmdscript.dstring: DstringConstructor;
+    import dmdscript.dboolean: DbooleanConstructor;
+    import dmdscript.dnumber: DnumberConstructor;
+    // import dmdscript.ddate;
+    import dmdscript.dregexp: DregexpConstructor;
+    // import dmdscript.derror;
+    import dmdscript.dmath: Dmath;
+    import dmdscript.dsymbol: DsymbolConstructor;
+    // import dmdscript.dproxy;
+    import dmdscript.protoerror: SyntaxError, EvalError, ReferenceError,
+        RangeError, TypeError, UriError;
 
-        CallContext cc;
+    Dobject rootPrototype, functionPrototype;
+    DobjectConstructor dObject;
+    DfunctionConstructor dFunction;
+    DarrayConstructor dArray;
+    DregexpConstructor dRegexp;
+    DbooleanConstructor dBoolean;
+    DnumberConstructor dNumber;
+    DstringConstructor dString;
+    DsymbolConstructor dSymbol;
+
+    SyntaxError dSyntaxError;
+    EvalError dEvalError;
+    ReferenceError dReferenceError;
+    RangeError dRangeError;
+    TypeError dTypeError;
+    UriError dUriError;
+
+    Dmath dMath;
+
+    this(in char[][] argv)
+    {
+        import dmdscript.primitive: PropertyKey;
+        import dmdscript.dnative: install;
+
+        rootPrototype = new Dobject(null);
+        functionPrototype = new Dobject(rootPrototype, Key.Function);
 
         // Dglobal.prototype is implementation-dependent
-        super(Dobject.getPrototype, Key.global);
+        super(rootPrototype, Key.global);
 
-        Dobject f = Dfunction.getPrototype();
+        void init(T...)(ref T args)
+        {
+            Value val;
+            foreach (ref one; args)
+            {
+                one = new typeof(one)(rootPrototype, functionPrototype);
+                val.put(one);
+                DefineOwnProperty(one.name, val, Property.Attribute.DontEnum);
+            }
+        }
+
+        init(dObject, dFunction,
+             dArray, dRegexp, dBoolean, dNumber, dString, dSymbol,
+             dSyntaxError, dEvalError, dReferenceError, dRangeError, dTypeError,
+             dUriError);
 
         // ECMA 15.1
         // Add in built-in objects which have attribute { DontEnum }
-
-        // Value properties
 
         version (TEST262)
         {
@@ -108,65 +144,75 @@ class Dglobal : Dobject
 
         debug
         {
+            auto cc = new CallContext(this);
             auto v = Get(PropertyKey("Infinity"), cc);
-            assert(!v.isUndefined);
-            assert(v.toNumber(cc) is double.infinity);
+            assert (!v.isUndefined);
+            assert (v.type == Value.Type.Number);
+            assert (v.number is double.infinity);
         }
 
-        DFD.install(this, Property.Attribute.DontEnum);
+        install!(dmdscript.dglobal, Dobject)(this, functionPrototype);
 
         // Now handled by AssertExp()
         // Put(Text.assert, Dglobal_assert(), DontEnum);
 
         // Constructor properties
-        Value val;
-        val.put(Dobject.getConstructor);
-        DefineOwnProperty(Key.Object, val, Property.Attribute.DontEnum);
-        val.put(Dfunction.getConstructor);
-        DefineOwnProperty(Key.Function, val, Property.Attribute.DontEnum);
-        val.put(Darray.getConstructor);
-        DefineOwnProperty(Key.Array, val, Property.Attribute.DontEnum);
-        val.put(Dstring.getConstructor);
-        DefineOwnProperty(Key.String, val, Property.Attribute.DontEnum);
-        val.put(Dboolean.getConstructor);
-        DefineOwnProperty(Key.Boolean, val, Property.Attribute.DontEnum);
-        val.put(Dnumber.getConstructor);
-        DefineOwnProperty(Key.Number, val, Property.Attribute.DontEnum);
-        val.put(Ddate.getConstructor);
-        DefineOwnProperty(Key.Date, val, Property.Attribute.DontEnum);
-        val.put(Dregexp.getConstructor);
-        DefineOwnProperty(Key.RegExp, val, Property.Attribute.DontEnum);
-        val.put(Derror.getConstructor);
-        DefineOwnProperty(Key.Error, val, Property.Attribute.DontEnum);
+        // Value val;
+        // val.put(Dobject.getConstructor);
+        // DefineOwnProperty(Key.Object, val, Property.Attribute.DontEnum);
+        // val.put(Dfunction.getConstructor);
+        // DefineOwnProperty(Key.Function, val, Property.Attribute.DontEnum);
+        // val.put(Darray.getConstructor);
+        // DefineOwnProperty(Key.Array, val, Property.Attribute.DontEnum);
+        // val.put(Dstring.getConstructor);
+        // DefineOwnProperty(Key.String, val, Property.Attribute.DontEnum);
+        // val.put(Dboolean.getConstructor);
+        // DefineOwnProperty(Key.Boolean, val, Property.Attribute.DontEnum);
+        // val.put(Dnumber.getConstructor);
+        // DefineOwnProperty(Key.Number, val, Property.Attribute.DontEnum);
+        // val.put(Ddate.getConstructor);
+        // DefineOwnProperty(Key.Date, val, Property.Attribute.DontEnum);
+        // val.put(Dregexp.getConstructor);
+        // DefineOwnProperty(Key.RegExp, val, Property.Attribute.DontEnum);
+        // val.put(Derror.getConstructor);
+        // DefineOwnProperty(Key.Error, val, Property.Attribute.DontEnum);
 
-        val.put(Dsymbol.getConstructor);
-        DefineOwnProperty(Key.Symbol, val, Property.Attribute.DontEnum);
-        val.put(Dproxy.getConstructor);
-        DefineOwnProperty(Key.Proxy, val, Property.Attribute.DontEnum);
+        // val.put(Dsymbol.getConstructor);
+        // DefineOwnProperty(Key.Symbol, val, Property.Attribute.DontEnum);
+        // val.put(Dproxy.getConstructor);
+        // DefineOwnProperty(Key.Proxy, val, Property.Attribute.DontEnum);
 
 
-        val.put(syntaxerror.getConstructor);
-        DefineOwnProperty(syntaxerror.Text, val, Property.Attribute.DontEnum);
-        val.put(evalerror.getConstructor);
-        DefineOwnProperty(evalerror.Text, val, Property.Attribute.DontEnum);
-        val.put(referenceerror.getConstructor);
-        DefineOwnProperty(referenceerror.Text, val,
-                          Property.Attribute.DontEnum);
-        val.put(rangeerror.getConstructor);
-        DefineOwnProperty(rangeerror.Text, val, Property.Attribute.DontEnum);
-        val.put(typeerror.getConstructor);
-        DefineOwnProperty(typeerror.Text, val, Property.Attribute.DontEnum);
-        val.put(urierror.getConstructor);
-        DefineOwnProperty(urierror.Text, val, Property.Attribute.DontEnum);
+        // val.put(syntaxerror.getConstructor);
+        // DefineOwnProperty(syntaxerror.Text, val, Property.Attribute.DontEnum);
+        // val.put(evalerror.getConstructor);
+        // DefineOwnProperty(evalerror.Text, val, Property.Attribute.DontEnum);
+        // val.put(referenceerror.getConstructor);
+        // DefineOwnProperty(referenceerror.Text, val,
+        //                   Property.Attribute.DontEnum);
+        // val.put(rangeerror.getConstructor);
+        // DefineOwnProperty(rangeerror.Text, val, Property.Attribute.DontEnum);
+        // val.put(typeerror.getConstructor);
+        // DefineOwnProperty(typeerror.Text, val, Property.Attribute.DontEnum);
+        // val.put(urierror.getConstructor);
+        // DefineOwnProperty(urierror.Text, val, Property.Attribute.DontEnum);
 
 
         // Other properties
-        assert(Dmath.object);
-        val.put(Dmath.object);
+        // assert(Dmath.object);
+        // val.put(Dmath.object);
+        // DefineOwnProperty(Key.Math, val, Property.Attribute.DontEnum);
+        dMath = new Dmath(rootPrototype, functionPrototype);
+        Value val;
+        val.put(dMath);
         DefineOwnProperty(Key.Math, val, Property.Attribute.DontEnum);
 
         // Build an "arguments" property out of argv[],
         // and add it to the global object.
+
+/*
+        CallContext cc;
+
         Darray arguments;
 
         arguments = new Darray();
@@ -183,6 +229,20 @@ class Dglobal : Dobject
         val.put(Value.Type.Null);
         arguments.DefineOwnProperty(Key.callee, val,
                                     Property.Attribute.DontEnum);
+*/
+//     debug
+//     {
+//         import dmdscript.primitive : PropertyKey;
+//         CallContext cc;
+//         assert(Dstring.getConstructor.Get(PropertyKey("fromCharCode"), cc));
+
+//         auto prop = Dobject.getPrototype
+//             .GetOwnProperty(PropertyKey("__proto__"));
+//         assert (prop !is null);
+//         assert (prop.isAccessor);
+//     }
+
+
     }
 }
 
@@ -192,7 +252,7 @@ private:
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* eval(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -204,7 +264,6 @@ DError* eval(
     import dmdscript.lexer : Mode;
     import dmdscript.property : Property;
     import dmdscript.opcodes : IR;
-    import dmdscript.protoerror : syntaxerror;
     import dmdscript.callcontext : DefinedFunctionScope;
 
     // ECMA 15.1.2.1
@@ -229,13 +288,18 @@ DError* eval(
     auto p = new Parser!(Mode.None)(s);
     if((exception = p.parseProgram(topstatements)) !is null)
     {
-
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // solve this.
     // For eval()'s, use location of caller, not the string
     // errinfo.linnum = 0;
+        exception.setSourceInfo(
+            (id)
+            {
+                return [new ScriptException.Source("eval", s)];
+            });
+
         ret.putVundefined();
-        return new DError(new syntaxerror(exception));
+        return new DError(cc.dglobal.dSyntaxError(exception));
     }
 
     // Analyze, generate code
@@ -265,7 +329,7 @@ DError* eval(
     // For eval()'s, use location of caller, not the string
     // errinfo.linnum = 0;
         ret.putVundefined();
-        return new DError(new syntaxerror(exception));
+        return new DError(cc.dglobal.dSyntaxError(exception));
     }
     fd.toIR(null);
 
@@ -338,14 +402,18 @@ DError* eval(
         scopes = cc.scopes;
         assert (0 < scopes.length);
         assert (cc.callerothis);
-        auto dfs = DefinedFunctionScope(scopes[0..$-1], scopes[$-1],
-                                        pthis, fd, cc.callerothis);
+        auto dfs = new DefinedFunctionScope(scopes[0..$-1], scopes[$-1],
+                                            pthis, fd, cc.callerothis);
 
         cc.push(dfs);
         result = IR.call(cc, cc.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace("eval");
+            result.setSourceInfo(
+                (id)
+                {
+                    return [new ScriptException.Source("eval", s)];
+                });
         }
         cc.pop(dfs);
 
@@ -364,7 +432,7 @@ DError* eval(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* parseInt(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : decode;
@@ -492,7 +560,7 @@ DError* parseInt(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* parseFloat(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : StringNumericLiteral;
@@ -520,7 +588,7 @@ char[16 + 1] TOHEX = "0123456789ABCDEF";
 
 @DFD(1)
 DError* escape(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -588,7 +656,7 @@ DError* escape(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* unescape(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -678,7 +746,7 @@ DError* unescape(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* isNaN(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isNaN;
@@ -701,7 +769,7 @@ DError* isNaN(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* isFinite(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isFinite;
@@ -722,18 +790,16 @@ DError* isFinite(
 }
 
 //------------------------------------------------------------------------------
-DError* URI_error(string s)
+DError* URI_error(CallContext cc, string s)
 {
-    import dmdscript.protoerror : urierror;
-
-    Dobject o = new urierror(s ~ "() failure");
+    Dobject o = cc.dglobal.dUriError(s ~ "() failure");
     auto v = new DError;
     v.put(o);
     return v;
 }
 @DFD(1)
 DError* decodeURI(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decode, URIException;
@@ -748,7 +814,7 @@ DError* decodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(__FUNCTION__);
+        return URI_error(cc, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -757,7 +823,7 @@ DError* decodeURI(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* decodeURIComponent(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decodeComponent, URIException;
@@ -773,7 +839,7 @@ DError* decodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(__FUNCTION__);
+        return URI_error(cc, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -782,7 +848,7 @@ DError* decodeURIComponent(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* encodeURI(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encode, URIException;
@@ -798,7 +864,7 @@ DError* encodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(__FUNCTION__);
+        return URI_error(cc, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -807,7 +873,7 @@ DError* encodeURI(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* encodeURIComponent(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encodeComponent, URIException;
@@ -822,7 +888,7 @@ DError* encodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(__FUNCTION__);
+        return URI_error(cc, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -830,7 +896,7 @@ DError* encodeURIComponent(
 
 //------------------------------------------------------------------------------
 void dglobal_print(
-    ref CallContext cc, Dobject othis, out Value ret, Value[] arglist)
+    CallContext cc, Dobject othis, out Value ret, Value[] arglist)
 {
     import std.stdio : writef;
     // Our own extension
@@ -871,7 +937,7 @@ void dglobal_print(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* print(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Our own extension
@@ -882,7 +948,7 @@ DError* print(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* println(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.stdio : writef;
@@ -896,7 +962,7 @@ DError* println(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* readln(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -953,7 +1019,7 @@ DError* readln(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* getenv(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.string : toStringz;
@@ -978,7 +1044,7 @@ DError* getenv(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngine(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Text;
@@ -990,7 +1056,7 @@ DError* ScriptEngine(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineBuildVersion(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(BUILD_VERSION);
@@ -1000,7 +1066,7 @@ DError* ScriptEngineBuildVersion(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineMajorVersion(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(MAJOR_VERSION);
@@ -1010,7 +1076,7 @@ DError* ScriptEngineMajorVersion(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineMinorVersion(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(MINOR_VERSION);
@@ -1020,7 +1086,7 @@ DError* ScriptEngineMinorVersion(
 //------------------------------------------------------------------------------
 
 //
-string arg0string(ref CallContext cc, Value[] arglist)
+string arg0string(CallContext cc, Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &undefined;
     return v.toString(cc);

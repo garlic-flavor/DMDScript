@@ -29,20 +29,30 @@ import dmdscript.callcontext : CallContext;
 ///
 class DJSON : Dobject
 {
-    import dmdscript.dobject : Initializer;
-
-    this()
-    {
-        this(getPrototype);
-    }
-
+private:
     this(Dobject prototype)
     {
         import dmdscript.primitive : Key;
         super(prototype, Key.JSON);
     }
+}
 
-    mixin Initializer!DJSONConstructor;
+
+class DJSONConstructor : Dconstructor
+{
+    this(Dobject superClassPrototype, Dobject functionPrototype)
+    {
+        import dmdscript.primitive : Key;
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.JSON, 1);
+        install(functionPrototype);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        assert (0);
+    }
 }
 
 
@@ -52,7 +62,7 @@ private:
 //
 @DFD(1, DFD.Type.Static)
 DError* parse(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -61,26 +71,10 @@ DError* parse(
 //
 @DFD(1, DFD.Type.Static)
 DError* stringfy(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
 }
 
-
-
-class DJSONConstructor : Dconstructor
-{
-    this()
-    {
-        import dmdscript.primitive : Key;
-        super(Key.JSON, 1, Dfunction.getPrototype);
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        assert (0);
-    }
-}
 

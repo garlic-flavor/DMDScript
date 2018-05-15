@@ -31,8 +31,13 @@ class DboundFunction : Dobject
     Dobject BoundThis;
     Value[] BoundArguments;
 
+    this()
+    {
+        super(null);
+    }
+
     override
-    DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    DError* Call(CallContext cc, Dobject othis, out Value ret,
                  Value[] arglist)
     {
         assert(BoundTargetFunction !is null);

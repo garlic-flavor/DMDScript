@@ -103,7 +103,7 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    Value* get(in ref PropertyKey key, ref CallContext cc, Dobject othis)
+    Value* get(in ref PropertyKey key, CallContext cc, Dobject othis)
     {
         if (auto p = getProperty(key))
             return p.get(cc, othis);
@@ -114,7 +114,7 @@ final class PropTable
     ///
     DError* set(in ref PropertyKey key, ref Value value,
                 in Property.Attribute attributes,
-                ref CallContext cc, Dobject othis, in bool extensible)
+                CallContext cc, Dobject othis, in bool extensible)
     {
         if      (auto p = _table.findExistingAlt(key, key.hash))
         {
@@ -124,14 +124,14 @@ final class PropTable
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
             if (!_canExtend(key))
             {
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
             return p.setForce(value, cc, othis);
@@ -144,7 +144,7 @@ final class PropTable
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(cc); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
             return p.setForce(value, cc, othis);
         }
@@ -156,7 +156,7 @@ final class PropTable
         }
         else
         {
-            return CannotPutError;
+            return CannotPutError(cc);
         }
     }
 
@@ -464,7 +464,7 @@ struct Property
     }
 
     // See_Also: Ecma-262-v7/6.2.4.5
-    this(Dobject obj, ref CallContext cc)
+    this(Dobject obj, CallContext cc)
     {
         bool valueOrWritable = false;
 
@@ -482,26 +482,26 @@ struct Property
         if (auto v = obj.Get(Key.get, cc))
         {
             if (valueOrWritable)
-                throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
+                throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             _attr |= Attribute.Accessor;
-            _Get = cast(Dfunction)v.toObject;
+            _Get = cast(Dfunction)v.toObject(cc);
             if (_Get is null)
-                throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
+                throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         }
 
         if (auto v = obj.Get(Key.set, cc))
         {
             if (valueOrWritable)
-                throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
+                throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             _attr |= Attribute.Accessor;
-            _Set = cast(Dfunction)v.toObject;
+            _Set = cast(Dfunction)v.toObject(cc);
             if (_Set is null)
-                throw CannotPutError.toScriptException(cc); // !!!!!!!!!!!!!!!
+                throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         }
     }
 
     // See_Also: Ecma-262-v7/6.2.4.5
-    this(ref Value v, Dobject obj, ref CallContext cc)
+    this(ref Value v, Dobject obj, CallContext cc)
     {
         _attr = getAttribute(cc, obj);
         _value = v;
@@ -637,7 +637,7 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    Value* get(ref CallContext cc, Dobject othis)
+    Value* get(CallContext cc, Dobject othis)
     {
         if (_attr & Attribute.Accessor)
         {
@@ -688,7 +688,7 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    DError* setForce(ref Value v, ref CallContext cc, Dobject othis,)
+    DError* setForce(ref Value v, CallContext cc, Dobject othis,)
     {
         if (_attr & Attribute.Accessor)
         {
@@ -796,12 +796,12 @@ struct Property
 
     //--------------------------------------------------------------------
     /// See_Also: Ecma-262-v7/6.2.4.4
-    Dobject toObject()
+    Dobject toObject(CallContext cc)
     {
         import std.exception : enforce;
         enum Attr = Attribute.DontConfig;
 
-        auto obj = new Dobject(Dobject.getPrototype);
+        auto obj = cc.dglobal.dObject();
         Value tmp;
         bool r;
         if (_attr & Attribute.Accessor)
@@ -854,7 +854,7 @@ public static:
 
 private static:
 
-    Attribute getAttribute(ref CallContext cc, Dobject obj)
+    Attribute getAttribute(CallContext cc, Dobject obj)
     {
         bool valueOrWritable = false;
         assert(obj !is null);

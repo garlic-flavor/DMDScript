@@ -22,22 +22,24 @@ class Program
 {
     import dmdscript.callcontext : CallContext;
     import dmdscript.functiondefinition : FunctionDefinition;
+    import dmdscript.dglobal : Dglobal;
 
     this()
     {
-        import dmdscript.dobject : dobject_init;
+        // import dmdscript.dobject : dobject_init;
         import dmdscript.dglobal : Dglobal;
 
 
-        dobject_init();
-        callcontext = CallContext(new Dglobal(null));
+        dglobal = new Dglobal(null);
+        // dobject_init();
+        callcontext = new CallContext(dglobal);
 
         debug callcontext.program = this;
 
         debug
         {
             import dmdscript.ddate : Ddate;
-            assert(Ddate.getPrototype.proptable.length != 0);
+            // assert(Ddate.getPrototype.proptable.length != 0);
         }
     }
 
@@ -158,11 +160,11 @@ class Program
         Value ret;
         DError* result;
         Darray arguments;
-        Dobject dglobal = callcontext.global;
+//        Dglobal dglobal = callcontext.global;
         assert (dglobal !is null);
 
         // Set argv and argc for execute
-        arguments = new Darray();
+        arguments = dglobal.dArray();
         auto val = Value(arguments);
         dglobal.Set(Key.arguments, val,
                     Property.Attribute.DontDelete |
@@ -198,10 +200,9 @@ class Program
                                    Property.Attribute.DontDelete |
                                    Property.Attribute.DontConfig);
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
-
         ret.putVundefined();
-        auto dfs = DefinedFunctionScope(null, dglobal, null, globalfunction,
-                                        dglobal);
+        auto dfs = new DefinedFunctionScope(null, dglobal, null, globalfunction,
+                                            dglobal);
         callcontext.push(dfs);
         result = IR.call(callcontext, dglobal, globalfunction.code,
                          ret, locals.ptr);
@@ -224,6 +225,7 @@ class Program
     //====================================================================
 private:
 
+    Dglobal dglobal;
     CallContext callcontext;
     FunctionDefinition globalfunction;
 

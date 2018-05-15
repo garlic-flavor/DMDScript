@@ -30,16 +30,16 @@ import dmdscript.property : Property, PropTable;
 // NOT IMPLEMENTED YET.
 class Dproxy : Dobject
 {
-    import dmdscript.dobject : Initializer;
     import dmdscript.dfunction : Dfunction;
 
-    this(ref CallContext cc, Dobject prototype, Dobject prop)
+private:
+    this(Dobject prototype, CallContext cc, Dobject prop)
     {
         super(prototype, Key.Proxy);
 
         if (auto ret = prop.Get(Key.set, cc))
         {
-            if (auto func = cast(Dfunction)ret.toObject)
+            if (auto func = cast(Dfunction)ret.toObject(cc))
             {
                 SetSetter(PropTable.SpecialSymbols.opAssign, func,
                           Property.Attribute.DontEnum);
@@ -48,8 +48,36 @@ class Dproxy : Dobject
 
     }
 
-    mixin Initializer!DproxyConstructor;
+}
 
+class DproxyConstructor : Dconstructor
+{
+    this(Dobject superClassPrototype, Dobject functionPrototype)
+    {
+        import dmdscript.primitive : Key;
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.Proxy, 1);
+        install(functionPrototype);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        Dobject proto, attr;
+
+        if (0 < arglist.length)
+            proto = arglist[0].toObject(cc);
+        else
+            proto = new Dobject(null);
+
+        if (1 < arglist.length)
+            attr = arglist[1].toObject(cc);
+        else
+            attr = new Dobject(null);
+
+        ret.put(new Dproxy(proto, cc, attr));
+        return null;
+    }
 }
 
 //==============================================================================
@@ -65,36 +93,9 @@ enum Key : PropertyKey
 //
 @DFD(2, DFD.Type.Static)
 DError* revocable(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
 }
 
-class DproxyConstructor : Dconstructor
-{
-    this()
-    {
-        import dmdscript.primitive : Key;
-        super(Key.Proxy, 1, Dfunction.getPrototype);
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        Dobject proto, attr;
-
-        if (0 < arglist.length)
-            proto = arglist[0].toObject;
-        else
-            proto = new Dobject(null);
-
-        if (1 < arglist.length)
-            attr = arglist[1].toObject;
-        else
-            attr = new Dobject(null);
-
-        ret.put(new Dproxy(cc, proto, attr));
-        return null;
-    }
-}

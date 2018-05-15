@@ -27,20 +27,30 @@ import dmdscript.callcontext : CallContext;
 ///
 class Dreflect : Dobject
 {
-    import dmdscript.dobject : Initializer;
-
-    this()
-    {
-        this(getPrototype);
-    }
-
+private:
     this(Dobject prototype)
     {
         import dmdscript.primitive : Key;
         super(prototype, Key.Reflect);
     }
+}
 
-    mixin Initializer!DreflectConstructor;
+//
+class DreflectConstructor : Dconstructor
+{
+    this(Dobject superClassPrototype, Dobject functionPrototype)
+    {
+        import dmdscript.primitive : Key;
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.Promise, 1);
+        install(functionPrototype);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        assert (0);
+    }
 }
 
 
@@ -50,7 +60,7 @@ private:
 //
 @DFD(1, DFD.Type.Static)
 DError* apply(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -59,7 +69,7 @@ DError* apply(
 //
 @DFD(3, DFD.Type.Static)
 DError* defineProperty(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -68,7 +78,7 @@ DError* defineProperty(
 //
 @DFD(2, DFD.Type.Static)
 DError* deleteProperty(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -77,7 +87,7 @@ DError* deleteProperty(
 //
 @DFD(2, DFD.Type.Static)
 DError* get(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -86,7 +96,7 @@ DError* get(
 //
 @DFD(2, DFD.Type.Static)
 DError* getOwnPropertyDescriptor(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -95,7 +105,7 @@ DError* getOwnPropertyDescriptor(
 //
 @DFD(2, DFD.Type.Static)
 DError* getPrototypeOf(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -104,7 +114,7 @@ DError* getPrototypeOf(
 //
 @DFD(1, DFD.Type.Static)
 DError* has(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -113,7 +123,7 @@ DError* has(
 //
 @DFD(1, DFD.Type.Static)
 DError* isExtensible(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -122,7 +132,7 @@ DError* isExtensible(
 //
 @DFD(1, DFD.Type.Static)
 DError* ownKeys(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -131,7 +141,7 @@ DError* ownKeys(
 //
 @DFD(1, DFD.Type.Static)
 DError* preventExtensions(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -140,7 +150,7 @@ DError* preventExtensions(
 //
 @DFD(3, DFD.Type.Static)
 DError* set(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -149,33 +159,17 @@ DError* set(
 //
 @DFD(2, DFD.Type.Static)
 DError* setPrototypeOf(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
-}
-
-//
-class DreflectConstructor : Dconstructor
-{
-    this()
-    {
-        import dmdscript.primitive : Key;
-        super(Key.Promise, 1, Dfunction.getPrototype);
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        assert (0);
-    }
 }
 
 
 //
 @DFD(1, DFD.Type.Prototype, "catch")
 DError* _catch(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -184,7 +178,7 @@ DError* _catch(
 //
 @DFD(2)
 DError* then(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

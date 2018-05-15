@@ -449,11 +449,12 @@ DError* trunc(
 
 class Dmath : Dobject
 {
-    this()
+    this(Dobject rootPrototype, Dobject functionPrototype)
     {
-        import dmdscript.property : Property;
+        import dmdscript.property: Property;
+        import dmdscript.dnative: install;
 
-        super(Dobject.getPrototype, Key.Math);
+        super(rootPrototype, Key.Math);
 
         enum attributes =
             Property.Attribute.DontEnum |
@@ -473,16 +474,7 @@ class Dmath : Dobject
                    Property.Attribute.DontDelete |
                    Property.Attribute.SilentReadOnly);
 
-        DFD.install(this, attributes);
+        install!(dmdscript.dmath)(this, functionPrototype, attributes);
     }
-
-static:
-    void initialize()
-    {
-        object = new Dmath();
-    }
-
-package static:
-    Dmath object;
 }
 

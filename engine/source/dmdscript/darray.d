@@ -24,43 +24,28 @@ module dmdscript.darray;
 // in slice.
 version =  SliceSpliceExtension;
 
-import dmdscript.primitive : Key;
+import dmdscript.dobject: Dobject;
+import dmdscript.value: Value, DError;
 import dmdscript.callcontext : CallContext;
-import dmdscript.value : Value, DError, vundefined;
-import dmdscript.dglobal : undefined;
-import dmdscript.dobject : Dobject;
 import dmdscript.dfunction : Dconstructor;
-import dmdscript.property : Property;
-import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 
 //==============================================================================
 ///
 class Darray : Dobject
 {
-    import dmdscript.dobject : Initializer;
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive: PropertyKey, Key;
+    import dmdscript.property: Property;
 
     Value length;               // length property
     uint ulength;
 
-    this()
-    {
-        this(getPrototype);
-    }
-
-    this(Dobject prototype)
-    {
-        super(prototype, Key.Array);
-        length.put(0);
-        ulength = 0;
-    }
-
     override
     DError* Set(in PropertyKey key, ref Value v,
-                in Property.Attribute attributes, ref CallContext cc)
+                in Property.Attribute attributes, CallContext cc)
     {
-        import dmdscript.primitive : PropertyKey;
+        import dmdscript.errmsgs: LengthIntError;
+
         size_t index;
         if (key.isArrayIndex(index))
         {
@@ -89,7 +74,7 @@ class Darray : Dobject
                     i = v.toUint32(cc);
                     if(i != v.toInteger(cc))
                     {
-                        return LengthIntError;
+                        return LengthIntError(cc);
                     }
                     if(i < ulength)
                     {
@@ -150,7 +135,7 @@ class Darray : Dobject
         }
     }
 
-    override Value* Get(in PropertyKey PropertyName, ref CallContext cc)
+    override Value* Get(in PropertyKey PropertyName, CallContext cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(PropertyName == Key.length)
@@ -176,94 +161,78 @@ class Darray : Dobject
         }
     }
 
+private:
+    this(Dobject prototype)
+    {
+        super(prototype, Key.Array);
+        length.put(0);
+        ulength = 0;
+    }
+
+
 public static:
 
-    @disable
-    Darray CreateArrayFromList(Value[] list)
-    {
-        auto array = new Darray;
-        foreach(uint i, ref one; list)
-        {
-            array.CreateDataProperty(PropertyKey(i), one);
-        }
-        return array;
-    }
+    // @disable
+    // Darray CreateArrayFromList(Value[] list)
+    // {
+    //     auto array = new Darray;
+    //     foreach(uint i, ref one; list)
+    //     {
+    //         array.CreateDataProperty(PropertyKey(i), one);
+    //     }
+    //     return array;
+    // }
 
-    @disable
-    Value[] CreateListFromArrayLike(
-        Dobject obj, ref CallContext cc,
-        Value.Type elementTypes = cast(Value.Type)(
-            Value.Type.Undefined | Value.Type.Null | Value.Type.Boolean |
-            Value.Type.String | Value.Type.Number | Value.Type.Object))
-    {
-        assert(obj);
-        auto len = cast(size_t)obj.Get(Key.length, cc).ToLength(cc);
-        auto list = new Value[len];
-        for (uint i = 0; i < len; ++i)
-        {
-            if (auto v = obj.Get(PropertyKey(i), cc))
-            {
-                if (0 == (v.type & elementTypes))
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    // use errmsgs.
-                    throw new Exception("element type mismatch.");
-                list[i] = *v;
-            }
-        }
-        return list;
-    }
+//     @disable
+//     Value[] CreateListFromArrayLike(
+//         Dobject obj, CallContext cc,
+//         Value.Type elementTypes = cast(Value.Type)(
+//             Value.Type.Undefined | Value.Type.Null | Value.Type.Boolean |
+//             Value.Type.String | Value.Type.Number | Value.Type.Object))
+//     {
+//         assert(obj);
+//         auto len = cast(size_t)obj.Get(Key.length, cc).ToLength(cc);
+//         auto list = new Value[len];
+//         for (uint i = 0; i < len; ++i)
+//         {
+//             if (auto v = obj.Get(PropertyKey(i), cc))
+//             {
+//                 if (0 == (v.type & elementTypes))
+// //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//                     // use errmsgs.
+//                     throw new Exception("element type mismatch.");
+//                 list[i] = *v;
+//             }
+//         }
+//         return list;
+//     }
 
-    mixin Initializer!DarrayConstructor;
+    // mixin Initializer!DarrayConstructor;
 }
-
-//==============================================================================
-private:
-
-//
-@DFD(1, DFD.Type.Static)
-DError* from(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist)
-{
-    assert (0);
-}
-
-//
-@DFD(1, DFD.Type.Static)
-DError* isArray(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist)
-{
-    assert (0);
-}
-
-//
-@DFD(1, DFD.Type.Static)
-DError* of(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
-    Value[] arglist)
-{
-    assert (0);
-}
-
-
 
 //------------------------------------------------------------------------------
 class DarrayConstructor : Dconstructor
 {
-    this()
+    this(Dobject superPrototype, Dobject functionPrototype)
     {
-        super(Key.Array, 1, Dfunction.getPrototype);
+        import dmdscript.primitive: Key;
+        super(new Dobject(superPrototype), functionPrototype,
+              Key.Array, 1);
+
+        install(functionPrototype);
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : PropertyKey;
+        import dmdscript.errmsgs: ArrayLenOutOfBoundsError;
+        import dmdscript.property: Property;
+
         // ECMA 15.4.2
         Darray a;
 
-        a = new Darray();
+        a = opCall;
         if(arglist.length == 0)
         {
             a.ulength = 0;
@@ -281,7 +250,7 @@ class DarrayConstructor : Dconstructor
                 if(cast(double)len != v.number)
                 {
                     ret.putVundefined;
-                    return ArrayLenOutOfBoundsError(v.number);
+                    return ArrayLenOutOfBoundsError(cc, v.number);
                 }
                 else
                 {
@@ -327,13 +296,53 @@ class DarrayConstructor : Dconstructor
         //writef("Darray_constructor.Construct(): length = %g\n", a.length.number);
         return null;
     }
+
+
+    Darray opCall()
+    {
+        return new Darray(classPrototype);
+    }
+
 }
+
+
+//==============================================================================
+private:
+
+//
+@DFD(1, DFD.Type.Static)
+DError* from(
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* isArray(
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+//
+@DFD(1, DFD.Type.Static)
+DError* of(
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    assert (0);
+}
+
+
 
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     //writef("Darray_prototype_toString()\n");
@@ -344,12 +353,13 @@ DError* toString(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toLocaleString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
-    import dmdscript.program : Program;
-    import dmdscript.locale : Locale;
+    import dmdscript.primitive: PropertyKey, Key;
+    import dmdscript.program: Program;
+    import dmdscript.locale: Locale;
+    import dmdscript.errmsgs: TlsNotTransferrableError;
 
     // ECMA v3 15.4.4.3
     string separator;
@@ -361,7 +371,7 @@ DError* toLocaleString(
     if ((cast(Darray)othis) is null)
     {
         ret.putVundefined();
-        return TlsNotTransferrableError;
+        return TlsNotTransferrableError(cc);
     }
 
     v = othis.Get(Key.length, cc);
@@ -386,7 +396,7 @@ DError* toLocaleString(
         {
             Dobject ot;
 
-            ot = v.toObject();
+            ot = v.toObject(cc);
             v = ot.Get(Key.toLocaleString, cc);
             if(v && !v.isPrimitive())   // if it's an Object
             {
@@ -411,10 +421,11 @@ DError* toLocaleString(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* concat(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive: PropertyKey, Key;
+    import dmdscript.property: Property;
     // ECMA v3 15.4.4.4
     Darray A;
     Darray E;
@@ -423,7 +434,7 @@ DError* concat(
     uint n;
     uint a;
 
-    A = new Darray();
+    A = cc.dglobal.dArray();
     n = 0;
     v = &othis.value;
     for(a = 0;; a++)
@@ -460,7 +471,7 @@ DError* concat(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* join(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     array_join(cc, othis, ret, arglist);
@@ -468,10 +479,10 @@ DError* join(
 }
 
 //
-void array_join(ref CallContext cc, Dobject othis, out Value ret,
+void array_join(CallContext cc, Dobject othis, out Value ret,
                 Value[] arglist)
 {
-    import dmdscript.primitive : Text, PropertyKey;
+    import dmdscript.primitive : Text, PropertyKey, Key;
 
     // ECMA 15.4.4.3
     string separator;
@@ -503,10 +514,10 @@ void array_join(ref CallContext cc, Dobject othis, out Value ret,
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toSource(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive : PropertyKey, Key;
 
     string separator;
     string r;
@@ -537,10 +548,12 @@ DError* toSource(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* pop(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive: PropertyKey, Key;
+    import dmdscript.property: Property;
+    import dmdscript.dglobal: undefined;
     // ECMA v3 15.4.4.6
     Value* v;
     Value val;
@@ -573,10 +586,12 @@ DError* pop(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* push(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive: PropertyKey, Key;
+    import dmdscript.property: Property;
+    import dmdscript.dglobal: undefined;
 
     // ECMA v3 15.4.4.7
     Value* v;
@@ -603,10 +618,11 @@ DError* push(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* reverse(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive: PropertyKey, Key;
+    import dmdscript.property: Property;
 
     // ECMA 15.4.4.4
     uint a;
@@ -646,10 +662,14 @@ DError* reverse(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* shift(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive: PropertyKey, Key;
+    import dmdscript.property: Property;
+    import dmdscript.dglobal: undefined;
+    import dmdscript.value: vundefined;
+
     // ECMA v3 15.4.4.9
     Value* v;
     Value* result;
@@ -694,10 +714,14 @@ DError* shift(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* slice(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive: PropertyKey, Key;
+    import dmdscript.dglobal: undefined;
+    import dmdscript.value: vundefined;
+    import dmdscript.property: Property;
+
     // ECMA v3 15.4.4.10
     uint len;
     uint n;
@@ -827,7 +851,7 @@ else
             r8 = len;
     }
 }
-    A = new Darray();
+    A = cc.dglobal.dArray();
     for(n = 0; k < r8; k++)
     {
         v = othis.Get(PropertyKey(k), cc);
@@ -903,11 +927,12 @@ extern (C) int compare_value(scope const void* x, scope const void* y)
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* sort(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : qsort;
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive : PropertyKey, Key;
+    import dmdscript.property: Property;
 
     // ECMA v3 15.4.4.11
     Value* v;
@@ -1030,10 +1055,13 @@ DError* sort(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* splice(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive : PropertyKey, Key;
+    import dmdscript.dglobal: undefined;
+    import dmdscript.value: vundefined;
+    import dmdscript.property: Property;
 
     // ECMA v3 15.4.4.12
     uint len;
@@ -1126,7 +1154,7 @@ else
         delcnt = len - startidx;
 }
 
-    A = new Darray();
+    A = cc.dglobal.dArray();
 
     // If deleteCount is not specified, ECMA implies it should
     // be 0, while "JavaScript The Definitive Guide" says it should
@@ -1193,10 +1221,12 @@ else
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* unshift(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.primitive : PropertyKey;
+    import dmdscript.primitive : PropertyKey, Key;
+    import dmdscript.dglobal: undefined;
+    import dmdscript.property: Property;
     // ECMA v3 15.4.4.13
     Value* v;
     uint len;
@@ -1231,7 +1261,7 @@ DError* unshift(
 //
 @DFD(1)
 DError* copyWithin(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1240,7 +1270,7 @@ DError* copyWithin(
 //
 @DFD(0)
 DError* entries(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1249,7 +1279,7 @@ DError* entries(
 //
 @DFD(1)
 DError* every(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1258,7 +1288,7 @@ DError* every(
 //
 @DFD(1)
 DError* fill(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1267,7 +1297,7 @@ DError* fill(
 //
 @DFD(1)
 DError* filter(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1276,7 +1306,7 @@ DError* filter(
 //
 @DFD(1)
 DError* find(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1285,7 +1315,7 @@ DError* find(
 //
 @DFD(1)
 DError* findIndex(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1294,7 +1324,7 @@ DError* findIndex(
 //
 @DFD(1)
 DError* forEach(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1303,7 +1333,7 @@ DError* forEach(
 //
 @DFD(1)
 DError* includes(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1312,7 +1342,7 @@ DError* includes(
 //
 @DFD(1)
 DError* indexOf(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1321,7 +1351,7 @@ DError* indexOf(
 //
 @DFD(1)
 DError* keys(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1330,7 +1360,7 @@ DError* keys(
 //
 @DFD(1)
 DError* lastIndexOf(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1339,7 +1369,7 @@ DError* lastIndexOf(
 //
 @DFD(1)
 DError* map(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1348,7 +1378,7 @@ DError* map(
 //
 @DFD(1)
 DError* reduce(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1357,7 +1387,7 @@ DError* reduce(
 //
 @DFD(1)
 DError* reduceRight(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1366,7 +1396,7 @@ DError* reduceRight(
 //
 @DFD(1)
 DError* some(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1375,7 +1405,7 @@ DError* some(
 //
 @DFD(1)
 DError* values(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

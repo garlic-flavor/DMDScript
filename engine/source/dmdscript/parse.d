@@ -39,7 +39,7 @@ class Parser(Mode MODE) : Lexer!MODE
     {
         //writefln("Parser.this(base = '%s')", base);
         super(base, baseTable);
-        nextToken();            // start up the scanner
+//        nextToken();            // start up the scanner
     }
 
 
@@ -56,6 +56,7 @@ class Parser(Mode MODE) : Lexer!MODE
         FunctionDefinition fd = null;
 
         auto p = new Parser!(Mode.None)(params);
+        p.nextToken;
 
         // Parse FormalParameterList
         while(p.token != Tok.Eof)
@@ -82,6 +83,7 @@ class Parser(Mode MODE) : Lexer!MODE
 
         // Parse StatementList
         p = new Parser!(Mode.None)(bdy);
+        p.nextToken;
         for(;; )
         {
             if(p.token == Tok.Eof)
@@ -104,6 +106,7 @@ class Parser(Mode MODE) : Lexer!MODE
     {
         try
         {
+            nextToken;
             topstatements = parseTopStatements();
             check(Tok.Eof);
             //writef("parseProgram done\n");
@@ -115,8 +118,8 @@ class Parser(Mode MODE) : Lexer!MODE
         }
         catch(Throwable t)
         {
-            import dmdscript.protoerror : syntaxerror;
-            exception = new ScriptException(syntaxerror.Text,
+            import dmdscript.protoerror : SyntaxError;
+            exception = new ScriptException(SyntaxError.Text,
                                             "Unexpected exception.", t);
         }
         return exception;

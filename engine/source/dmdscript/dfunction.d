@@ -22,14 +22,15 @@ import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : DError, Value;
 import dmdscript.errmsgs;
+import dmdscript.primitive : Key;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+debug import std.stdio;
 
 //==============================================================================
 ///
 abstract class Dfunction : Dobject
 {
-    import dmdscript.primitive : Text, Key;
-    import dmdscript.dobject : Initializer;
+    import dmdscript.primitive : Text, Key, PropertyKey;
 
     @disable
     enum Kind
@@ -50,7 +51,7 @@ abstract class Dfunction : Dobject
     Dobject HomeObject;
 
     override abstract
-    DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    DError* Call(CallContext cc, Dobject othis, out Value ret,
                  Value[] arglist);
 
     //
@@ -72,7 +73,7 @@ abstract class Dfunction : Dobject
     }
 
     //
-    override DError* HasInstance(ref CallContext cc, out Value ret, ref Value v)
+    override DError* HasInstance(CallContext cc, out Value ret, ref Value v)
     {
         import std.conv : to;
 
@@ -83,13 +84,13 @@ abstract class Dfunction : Dobject
 
         if(v.isPrimitive())
             goto Lfalse;
-        V = v.toObject();
+        V = v.toObject(cc);
         w = Get(Key.prototype, cc);
         if(w.isPrimitive())
         {
-            return MustBeObjectError(w.type.to!string);
+            return MustBeObjectError(cc, w.type.to!string);
         }
-        o = w.toObject();
+        o = w.toObject(cc);
         for(;; )
         {
             V = V.GetPrototypeOf;
@@ -109,7 +110,7 @@ abstract class Dfunction : Dobject
     }
 
     @disable
-    bool OrdinaryHasInstance(Dobject o, ref CallContext cc)
+    bool OrdinaryHasInstance(Dobject o, CallContext cc)
     {
         if (auto btf = cast(BoundFunctionExoticObject)this)
         {
@@ -132,28 +133,22 @@ abstract class Dfunction : Dobject
     }
 
 
+    @property @safe @nogc pure nothrow
+    inout(PropertyKey) name() inout
+    {
+        return _name;
+    }
+
 protected:
-    string name;
+    PropertyKey _name;
 
     //
-    this(uint length)
-    {
-        this(length, Dfunction.getPrototype());
-    }
-
-    //
-    this(uint length, Dobject prototype)
-    {
-        this(Key.Function, length, prototype);
-    }
-
-    //
-    this(string name, uint length, Dobject prototype)
+    this(Dobject prototype, PropertyKey name, uint length)
     {
         import dmdscript.property : Property;
 
         super(prototype, Key.Function);
-        this.name = name;
+        _name = name;
 
         Value val;
         val.put(length);
@@ -176,15 +171,13 @@ protected:
 
 public static:
     //
-    Dfunction isFunction(Value* v)
+    Dfunction isFunction(CallContext cc, Value* v)
     {
         if (v.isPrimitive)
             return null;
         else
-            return cast(Dfunction)v.toObject;
+            return cast(Dfunction)v.toObject(cc);
     }
-
-    mixin Initializer!DfunctionConstructor;
 }
 
 //------------------------------------------------------------------------------
@@ -192,44 +185,74 @@ abstract class Dconstructor : Dfunction
 {
     //
     abstract override
-    DError* Construct(ref CallContext cc, out Value ret, Value[] arglist);
+    DError* Construct(CallContext cc, out Value ret, Value[] arglist);
 
 
     //
     override
-    DError* Call(ref CallContext cc, Dobject, out Value ret, Value[] arglist)
+    DError* Call(CallContext cc, Dobject, out Value ret, Value[] arglist)
     {
         // ECMA 15.3.1
         return Construct(cc, ret, arglist);
     }
 
+    @property @safe @nogc pure nothrow
+    inout(Dobject) classPrototype() inout
+    {
+        assert (_classPrototype !is null);
+        return _classPrototype;
+    }
+
 protected:
+
     //
-    this(uint length, Dobject prototype)
+    this(Dobject classPrototype, Dobject functionPrototype,
+         PropertyKey name, uint length)
     {
-        super(length, prototype);
+        import dmdscript.property: Property;
+
+        super(functionPrototype, name, length);
+        _classPrototype = classPrototype;
+
+        Value val;
+        val.put(this);
+        _classPrototype.DefineOwnProperty (Key.constructor, val,
+                                           Property.Attribute.DontEnum);
+        val.put(_classPrototype);
+        DefineOwnProperty (Key.prototype, val,
+                           Property.Attribute.DontEnum |
+                           Property.Attribute.DontDelete |
+                           Property.Attribute.ReadOnly);
     }
 
     //
-    this(string name, uint length, Dobject prototype)
+    template install()
     {
-        super(name, length, prototype);
+        void install(string M = __MODULE__)(Dobject functionPrototype)
+        {
+            import dmdscript.dnative: _i = install;
+            assert (proptable !is null);
+            assert (_classPrototype !is null);
+            mixin("import " ~ M ~ ";");
+            _i!(mixin(M))(this, functionPrototype);
+            _i!(mixin(M))(_classPrototype, functionPrototype);
+        }
     }
-}
-
-
-//==============================================================================
 private:
+    Dobject _classPrototype;
+}
 
 //------------------------------------------------------------------------------
 class DfunctionConstructor : Dconstructor
 {
-    this()
+    this(Dobject, Dobject functionPrototype)
     {
-        super(1, Dfunction.getPrototype);
+        super(functionPrototype, functionPrototype, Key.Function, 1);
+
+        install(functionPrototype);
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.functiondefinition : FunctionDefinition;
@@ -265,7 +288,7 @@ class DfunctionConstructor : Dconstructor
             Parser!(Mode.None).parseFunctionDefinition(fd, P, bdy)) !is null)
             goto Lsyntaxerror;
 
-        if(fd)
+        if(fd !is null)
         {
             Scope sc;
 
@@ -275,7 +298,7 @@ class DfunctionConstructor : Dconstructor
             if(exception !is null)
                 goto Lsyntaxerror;
             fd.toIR(null);
-            auto fobj = new DdeclaredFunction(fd, cc.scopes.dup);
+            auto fobj = new DdeclaredFunction(cc, fd, cc.scopes.dup);
             // fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
             // fobj.scopex = cc.scopes.dup;
             ret.put(fobj);
@@ -289,7 +312,7 @@ class DfunctionConstructor : Dconstructor
         Dobject o;
 
         ret.putVundefined();
-        o = new syntaxerror(exception);
+        o = cc.dglobal.dSyntaxError(exception);
         auto v = new DError;
         v.put(o);
         return v;
@@ -297,11 +320,14 @@ class DfunctionConstructor : Dconstructor
 }
 
 
+//==============================================================================
+private:
+
 //------------------------------------------------------------------------------
 //
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a Function
@@ -320,7 +346,7 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return TsNotTransferrableError;
+        return TsNotTransferrableError(cc);
     }
     return null;
 }
@@ -329,7 +355,7 @@ DError* toString(
 //
 @DFD(2)
 DError* apply(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.3.4.3
@@ -363,7 +389,7 @@ DError* apply(
     if(thisArg.isUndefinedOrNull())
         o = cc.global;
     else
-        o = thisArg.toObject();
+        o = thisArg.toObject(cc);
 
     if(argArray.isUndefinedOrNull())
     {
@@ -375,11 +401,11 @@ DError* apply(
         {
             Ltypeerror:
             ret.putVundefined();
-            return ArrayArgsError;
+            return ArrayArgsError(cc);
         }
         Dobject a;
 
-        a = argArray.toObject();
+        a = argArray.toObject(cc);
 
         // Must be array or arguments object
         if(((cast(Darray)a) is null) && ((cast(Darguments)a) is null))
@@ -421,7 +447,7 @@ DError* apply(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* bind(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -432,7 +458,7 @@ DError* bind(
 //
 @DFD(1)
 DError* call(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.3.4.4
@@ -451,7 +477,7 @@ DError* call(
         if(thisArg.isUndefinedOrNull())
             o = cc.global;
         else
-            o = thisArg.toObject();
+            o = thisArg.toObject(cc);
         v = othis.Call(cc, o, ret, arglist[1 .. $]);
     }
     return v;

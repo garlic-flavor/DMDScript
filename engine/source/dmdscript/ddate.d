@@ -41,12 +41,12 @@ enum TIMEFORMAT
     UTCString,
 }
 
-d_time parseDateString(ref CallContext cc, string s)
+d_time parseDateString(CallContext cc, string s)
 {
     return s.parse;
 }
 
-string dateToString(ref CallContext cc, d_time t, TIMEFORMAT tf)
+string dateToString(CallContext cc, d_time t, TIMEFORMAT tf)
 {
     string p;
 
@@ -102,7 +102,7 @@ string dateToString(ref CallContext cc, d_time t, TIMEFORMAT tf)
 /* ===================== Ddate.constructor functions ==================== */
 @DFD(1, DFD.Type.Static)
 DError* parse(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.4.2
@@ -123,7 +123,7 @@ DError* parse(
 
 @DFD(7, DFD.Type.Static)
 DError* UTC(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.4.3 - 15.9.4.10
@@ -183,7 +183,7 @@ DError* UTC(
 //
 @DFD(1, DFD.Type.Static)
 DError* now(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -191,27 +191,22 @@ DError* now(
 
 
 /* ===================== Ddate_constructor ==================== */
-
 class DdateConstructor : Dconstructor
 {
-    this()
+    this(Dobject superClassPrototype, Dobject functionPrototype)
     {
-        super(Key.Date, 7, Dfunction.getPrototype);
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.Date, 7);
 
-/*
-        static enum NativeFunctionData[] nfd =
-        [
-            { Key.parse, &Ddate_parse, 1 },
-            { Key.UTC, &Ddate_UTC, 7 },
-        ];
-
-        DnativeFunction.initialize(this, nfd, Property.Attribute.DontEnum);
-//*/
-        // DFD.install!(mixin(__MODULE__))
-        //     (this, Property.Attribute.DontEnum);
+        install(functionPrototype);
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    Ddate opCall(ARGS...)(ARGS args)
+    {
+        return new Ddate(classPrototype, args);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.9.3
@@ -288,12 +283,12 @@ class DdateConstructor : Dconstructor
             break;
         }
         //writefln("\tn = %s", n);
-        o = new Ddate(n);
+        o = opCall(n);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
 
@@ -321,10 +316,10 @@ class DdateConstructor : Dconstructor
 
 /* ===================== Ddate.prototype functions =============== */
 
-DError* checkdate(out Value ret, string name, Dobject othis)
+DError* checkdate(CallContext cc, out Value ret, string name, Dobject othis)
 {
     ret.putVundefined();
-    return FunctionWantsDateError(name, othis.classname);
+    return FunctionWantsDateError(cc, name, othis.classname);
 }
 
 int getThisTime(out Value ret, Dobject othis, out d_time n)
@@ -351,7 +346,7 @@ int getThisLocalTime(out Value ret, Dobject othis, out d_time n)
 }
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.2
@@ -360,7 +355,7 @@ DError* toString(
 
     //writefln("Ddate_prototype_toString()");
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.toString, othis);
+        return checkdate(cc, ret, Key.toString, othis);
 
     version(DATETOSTRING)
     {
@@ -377,7 +372,7 @@ DError* toString(
 }
 @DFD(0)
 DError* toDateString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.3
@@ -385,7 +380,7 @@ DError* toDateString(
     string s;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.toDateString, othis);
+        return checkdate(cc, ret, Key.toDateString, othis);
 
     version(DATETOSTRING)
     {
@@ -402,7 +397,7 @@ DError* toDateString(
 }
 @DFD(0)
 DError* toTimeString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.4
@@ -410,7 +405,7 @@ DError* toTimeString(
     string s;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.toTimeString, othis);
+        return checkdate(cc, ret, Key.toTimeString, othis);
 
     version(DATETOSTRING)
     {
@@ -428,40 +423,40 @@ DError* toTimeString(
 }
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.3
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.valueOf, othis);
+        return checkdate(cc, ret, Key.valueOf, othis);
     getThisTime(ret, othis, n);
     return null;
 }
 @DFD(0)
 DError* getTime(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.4
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getTime, othis);
+        return checkdate(cc, ret, Key.getTime, othis);
     getThisTime(ret, othis, n);
     return null;
 }
 @DFD(0)
 DError* getYear(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.5
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(ret, Key.getYear, othis);
+        return checkdate(cc, ret, Key.getYear, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -481,14 +476,14 @@ DError* getYear(
 }
 @DFD(0)
 DError* getFullYear(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.6
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getFullYear, othis);
+        return checkdate(cc, ret, Key.getFullYear, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -499,14 +494,14 @@ DError* getFullYear(
 }
 @DFD(0)
 DError* getUTCFullYear(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.7
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(ret, Key.getUTCFullYear, othis);
+        return checkdate(cc, ret, Key.getUTCFullYear, othis);
     if(getThisTime(ret, othis, n) == 0)
     {
         n = yearFromTime(n);
@@ -516,14 +511,14 @@ DError* getUTCFullYear(
 }
 @DFD(0)
 DError* getMonth(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.8
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(ret, Key.getMonth, othis);
+        return checkdate(cc, ret, Key.getMonth, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -534,14 +529,14 @@ DError* getMonth(
 }
 @DFD(0)
 DError* getUTCMonth(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.9
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(ret, Key.getUTCMonth, othis);
+        return checkdate(cc, ret, Key.getUTCMonth, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -552,14 +547,14 @@ DError* getUTCMonth(
 }
 @DFD(0)
 DError* getDate(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.10
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(ret, Key.getDate, othis);
+        return checkdate(cc, ret, Key.getDate, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -572,14 +567,14 @@ DError* getDate(
 }
 @DFD(0)
 DError* getUTCDate(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.11
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(ret, Key.getUTCDate, othis);
+        return checkdate(cc, ret, Key.getUTCDate, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -590,14 +585,14 @@ DError* getUTCDate(
 }
 @DFD(0)
 DError* getDay(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.12
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(ret, Key.getDay, othis);
+        return checkdate(cc, ret, Key.getDay, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -608,14 +603,14 @@ DError* getDay(
 }
 @DFD(0)
 DError* getUTCDay(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.13
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getUTCDay, othis);
+        return checkdate(cc, ret, Key.getUTCDay, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -626,14 +621,14 @@ DError* getUTCDay(
 }
 @DFD(0)
 DError* getHours(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.14
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getHours, othis);
+        return checkdate(cc, ret, Key.getHours, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -644,14 +639,14 @@ DError* getHours(
 }
 @DFD(0)
 DError* getUTCHours(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.15
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getUTCHours, othis);
+        return checkdate(cc, ret, Key.getUTCHours, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -662,14 +657,14 @@ DError* getUTCHours(
 }
 @DFD(0)
 DError* getMinutes(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.16
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getMinutes, othis);
+        return checkdate(cc, ret, Key.getMinutes, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -680,14 +675,14 @@ DError* getMinutes(
 }
 @DFD(0)
 DError* getUTCMinutes(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.17
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getUTCMinutes, othis);
+        return checkdate(cc, ret, Key.getUTCMinutes, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -698,14 +693,14 @@ DError* getUTCMinutes(
 }
 @DFD(0)
 DError* getSeconds(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.18
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getSeconds, othis);
+        return checkdate(cc, ret, Key.getSeconds, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -716,14 +711,14 @@ DError* getSeconds(
 }
 @DFD(0)
 DError* getUTCSeconds(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.19
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getUTCSeconds, othis);
+        return checkdate(cc, ret, Key.getUTCSeconds, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -734,14 +729,14 @@ DError* getUTCSeconds(
 }
 @DFD(0)
 DError* getMilliseconds(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.20
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getMilliseconds, othis);
+        return checkdate(cc, ret, Key.getMilliseconds, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -752,14 +747,14 @@ DError* getMilliseconds(
 }
 @DFD(0)
 DError* getUTCMilliseconds(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.21
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getUTCMilliseconds, othis);
+        return checkdate(cc, ret, Key.getUTCMilliseconds, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -770,14 +765,14 @@ DError* getUTCMilliseconds(
 }
 @DFD(0)
 DError* getTimezoneOffset(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.22
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.getTimezoneOffset, othis);
+        return checkdate(cc, ret, Key.getTimezoneOffset, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -788,14 +783,14 @@ DError* getTimezoneOffset(
 }
 @DFD(1)
 DError* setTime(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.23
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setTime, othis);
+        return checkdate(cc, ret, Key.setTime, othis);
 
     if(!arglist.length)
         n = d_time_nan;
@@ -808,7 +803,7 @@ DError* setTime(
 }
 @DFD(1)
 DError* setMilliseconds(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.24
@@ -819,7 +814,7 @@ DError* setMilliseconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setMilliseconds, othis);
+        return checkdate(cc, ret, Key.setMilliseconds, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -836,7 +831,7 @@ DError* setMilliseconds(
 }
 @DFD(1)
 DError* setUTCMilliseconds(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.25
@@ -846,7 +841,7 @@ DError* setUTCMilliseconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setUTCMilliseconds, othis);
+        return checkdate(cc, ret, Key.setUTCMilliseconds, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -863,7 +858,7 @@ DError* setUTCMilliseconds(
 }
 @DFD(2)
 DError* setSeconds(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.26
@@ -874,7 +869,7 @@ DError* setSeconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setSeconds, othis);
+        return checkdate(cc, ret, Key.setSeconds, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -905,7 +900,7 @@ DError* setSeconds(
 }
 @DFD(2)
 DError* setUTCSeconds(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.27
@@ -916,7 +911,7 @@ DError* setUTCSeconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setUTCSeconds, othis);
+        return checkdate(cc, ret, Key.setUTCSeconds, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -947,7 +942,7 @@ DError* setUTCSeconds(
 }
 @DFD(3)
 DError* setMinutes(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.28
@@ -959,7 +954,7 @@ DError* setMinutes(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setMinutes, othis);
+        return checkdate(cc, ret, Key.setMinutes, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -999,7 +994,7 @@ DError* setMinutes(
 }
 @DFD(3)
 DError* setUTCMinutes(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.29
@@ -1011,7 +1006,7 @@ DError* setUTCMinutes(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setUTCMinutes, othis);
+        return checkdate(cc, ret, Key.setUTCMinutes, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1051,7 +1046,7 @@ DError* setUTCMinutes(
 }
 @DFD(4)
 DError* setHours(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.30
@@ -1064,7 +1059,7 @@ DError* setHours(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setHours, othis);
+        return checkdate(cc, ret, Key.setHours, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1115,7 +1110,7 @@ DError* setHours(
 }
 @DFD(4)
 DError* setUTCHours(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.31
@@ -1128,7 +1123,7 @@ DError* setUTCHours(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setUTCHours, othis);
+        return checkdate(cc, ret, Key.setUTCHours, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1179,7 +1174,7 @@ DError* setUTCHours(
 }
 @DFD(1)
 DError* setDate(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.32
@@ -1189,7 +1184,7 @@ DError* setDate(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setDate, othis);
+        return checkdate(cc, ret, Key.setDate, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1206,7 +1201,7 @@ DError* setDate(
 }
 @DFD(1)
 DError* setUTCDate(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.33
@@ -1216,7 +1211,7 @@ DError* setUTCDate(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setUTCDate, othis);
+        return checkdate(cc, ret, Key.setUTCDate, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1233,7 +1228,7 @@ DError* setUTCDate(
 }
 @DFD(2)
 DError* setMonth(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.34
@@ -1244,7 +1239,7 @@ DError* setMonth(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setMonth, othis);
+        return checkdate(cc, ret, Key.setMonth, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1275,7 +1270,7 @@ DError* setMonth(
 }
 @DFD(2)
 DError* setUTCMonth(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.35
@@ -1286,7 +1281,7 @@ DError* setUTCMonth(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setUTCMonth, othis);
+        return checkdate(cc, ret, Key.setUTCMonth, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1317,7 +1312,7 @@ DError* setUTCMonth(
 }
 @DFD(3)
 DError* setFullYear(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.36
@@ -1329,7 +1324,7 @@ DError* setFullYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setFullYear, othis);
+        return checkdate(cc, ret, Key.setFullYear, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1369,7 +1364,7 @@ DError* setFullYear(
 }
 @DFD(3)
 DError* setUTCFullYear(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.37
@@ -1381,7 +1376,7 @@ DError* setUTCFullYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setUTCFullYear, othis);
+        return checkdate(cc, ret, Key.setUTCFullYear, othis);
 
     getThisTime(ret, othis, t);
     if(t == d_time_nan)
@@ -1421,7 +1416,7 @@ DError* setUTCFullYear(
 }
 @DFD(1)
 DError* setYear(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.38
@@ -1433,7 +1428,7 @@ DError* setYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.setYear, othis);
+        return checkdate(cc, ret, Key.setYear, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1460,7 +1455,7 @@ DError* setYear(
 }
 @DFD(0)
 DError* toLocaleString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.39
@@ -1468,7 +1463,7 @@ DError* toLocaleString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.toLocaleString, othis);
+        return checkdate(cc, ret, Key.toLocaleString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1479,7 +1474,7 @@ DError* toLocaleString(
 }
 @DFD(0)
 DError* toLocaleDateString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.6
@@ -1487,7 +1482,7 @@ DError* toLocaleDateString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.toLocaleDateString, othis);
+        return checkdate(cc, ret, Key.toLocaleDateString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1498,7 +1493,7 @@ DError* toLocaleDateString(
 }
 @DFD(0)
 DError* toLocaleTimeString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.7
@@ -1506,7 +1501,7 @@ DError* toLocaleTimeString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.toLocaleTimeString, othis);
+        return checkdate(cc, ret, Key.toLocaleTimeString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1516,7 +1511,7 @@ DError* toLocaleTimeString(
 }
 @DFD(0)
 DError* toUTCString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.40
@@ -1524,7 +1519,7 @@ DError* toUTCString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(ret, Key.toUTCString, othis);
+        return checkdate(cc, ret, Key.toUTCString, othis);
 
     if(getThisTime(ret, othis, t))
         t = 0;
@@ -1536,7 +1531,7 @@ DError* toUTCString(
 //
 @DFD(1)
 DError* toJSON(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1622,17 +1617,17 @@ class DdatePrototype : Ddate
 
 class Ddate : Dobject
 {
-    import dmdscript.dobject : Initializer;
+private:
 
-    this(double n)
+    this(Dobject prototype, double n)
     {
-        super(getPrototype, Key.Date);
+        super(prototype, Key.Date);
         value.put(n);
     }
 
-    this(d_time n)
+    this(Dobject prototype, d_time n)
     {
-        super(getPrototype, Key.Date);
+        super(prototype, Key.Date);
         value.putVtime(n);
     }
 
@@ -1641,8 +1636,6 @@ class Ddate : Dobject
         super(prototype, Key.Date);
         value.put(double.nan);
     }
-
-    mixin Initializer!DdateConstructor;
 
 /*
 static:

@@ -23,7 +23,7 @@ import dmdscript.dobject : Dobject;
 
 //------------------------------------------------------------------------------
 ///
-struct DefinedFunctionScope
+class DefinedFunctionScope
 {
     import dmdscript.dfunction : Dfunction;
     import dmdscript.functiondefinition : FunctionDefinition;
@@ -76,13 +76,14 @@ private:
 
 //------------------------------------------------------------------------------
 ///
-struct CallContext
+class CallContext
 {
     import std.array : Appender;
     import dmdscript.primitive : PropertyKey;
     import dmdscript.property : Property;
     import dmdscript.value : Value, DError;
     import dmdscript.dfunction : Dfunction;
+    import dmdscript.dglobal : Dglobal;
 
     //--------------------------------------------------------------------
     /**
@@ -90,8 +91,9 @@ struct CallContext
         global = The outermost searching field.
      */
     @safe pure nothrow
-    this(Dobject global)
+    this(Dglobal global)
     {
+        _dglobal = global;
         _current = new DefinedFunctionScope(null, global, null, null, global);
         _scopex.put(_current);
     }
@@ -102,6 +104,12 @@ struct CallContext
     inout(Dobject) global() inout
     {
         return _current.global;
+    }
+
+    @property @safe @nogc pure nothrow
+    inout(Dglobal) dglobal() inout
+    {
+        return _dglobal;
     }
 
     //--------------------------------------------------------------------
@@ -211,9 +219,9 @@ struct CallContext
     A parameter s can be on the stack, not on the heap.
     */
     @trusted pure nothrow
-    void push(ref DefinedFunctionScope s)
+    void push(DefinedFunctionScope s)
     {
-        _current = &s;
+        _current = s;
         _scopex.put(_current);
     }
 
@@ -223,9 +231,9 @@ struct CallContext
     the one for the prior pushFunctionScope/pushEvalScope calling.
     */
     @trusted pure
-    bool pop(ref DefinedFunctionScope s)
+    bool pop(DefinedFunctionScope s)
     {
-        if (_current !is &s)
+        if (_current !is s)
             return false;
 
         assert (1 < _scopex.data.length);
@@ -291,8 +299,9 @@ struct CallContext
 
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 private:
-    Appender!(DefinedFunctionScope*[]) _scopex;
-    DefinedFunctionScope* _current;      // current scope chain
+    Dglobal _dglobal;
+    Appender!(DefinedFunctionScope[]) _scopex;
+    DefinedFunctionScope _current;      // current scope chain
     bool _interrupt;        // !=0 if cancelled due to interrupt
 
     invariant
@@ -426,7 +435,7 @@ struct Stack
 
     //--------------------------------------------------------------------
     //
-    Value* get(ref CallContext cc, in ref PropertyKey key, out Dobject pthis)
+    Value* get(CallContext cc, in ref PropertyKey key, out Dobject pthis)
     {
         Value* v;
         Dobject o;
@@ -453,7 +462,7 @@ struct Stack
 
     //--------------------------------------------------------------------
     //
-    Value* get(ref CallContext cc, in ref PropertyKey key)
+    Value* get(CallContext cc, in ref PropertyKey key)
     {
         auto stack = _stack.data;
         for (size_t d = stack.length; 0 < d; --d)
@@ -466,7 +475,7 @@ struct Stack
 
     //--------------------------------------------------------------------
     //
-    DError* set(ref CallContext cc, in ref PropertyKey key, ref Value value,
+    DError* set(CallContext cc, in ref PropertyKey key, ref Value value,
                    Property.Attribute attr = Property.Attribute.None)
     {
         import dmdscript.property : Property;
@@ -481,7 +490,7 @@ struct Stack
                 auto o = stack[d - 1];
                 if (auto v = o.Get(key, cc))
                 {
-                    if (auto err = v.checkReference)
+                    if (auto err = v.checkReference(cc))
                         return err;
                     else
                         return o.Set(key, value, attr, cc);
@@ -496,7 +505,7 @@ struct Stack
 
     //--------------------------------------------------------------------
     //
-    DError* setThis(ref CallContext cc, in ref PropertyKey key, ref Value value,
+    DError* setThis(CallContext cc, in ref PropertyKey key, ref Value value,
                     Property.Attribute attr)
     {
         assert (0 < _initialSize);
@@ -506,7 +515,7 @@ struct Stack
 
     //--------------------------------------------------------------------
     //
-    DError* setThisLocal(ref CallContext cc, in ref PropertyKey key,
+    DError* setThisLocal(CallContext cc, in ref PropertyKey key,
                          ref Value value, Property.Attribute attr)
     {
         assert (0 < _stack.data.length);
@@ -515,7 +524,7 @@ struct Stack
 
     //--------------------------------------------------------------------
     //
-    string[] searchSimilarWord(ref CallContext cc, string name)
+    string[] searchSimilarWord(CallContext cc, string name)
     {
         import std.string : soundexer;
         import std.array : join;
@@ -539,7 +548,7 @@ private:
 
 //..............................................................................
 //
-string[] searchSimilarWord(ref CallContext cc, Dobject target,
+string[] searchSimilarWord(CallContext cc, Dobject target,
                              in ref char[4] key)
 {
     import std.array : Appender;

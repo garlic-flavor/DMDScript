@@ -34,23 +34,29 @@ class DdeclaredFunction : Dconstructor
 private
     Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
 
-    this(FunctionDefinition fd, Dobject[] scopex)
+    this(CallContext cc, FunctionDefinition fd, Dobject[] scopex)
     {
-        import dmdscript.primitive : Key;
+        import dmdscript.primitive : Key, PropertyKey;
         import dmdscript.property : Property;
 
-        assert(Dfunction.getPrototype);
+        assert (cc);
+        assert (cc.dglobal);
+        assert (cc.dglobal.functionPrototype);
         assert (fd !is null);
 
-        string name = fd.name is null ? Key.Function : fd.name.toString;
-        super(name, cast(uint)fd.parameters.length, Dfunction.getPrototype);
+        auto name = fd.name is null ?
+            Key.Function : PropertyKey(fd.name.toString);
+
+        super(cc.dglobal.dObject(), cc.dglobal.functionPrototype,
+              name, cast(uint)fd.parameters.length);
+
         assert(GetPrototypeOf);
 
         this.fd = fd;
         this.scopex = scopex;
 
         // ECMA 3 13.2
-        auto o = new Dobject(Dobject.getPrototype);        // step 9
+        auto o = cc.dglobal.dObject();        // step 9
         auto val = Value(o);
         // step 11
         DefineOwnProperty(Key.prototype, val, Property.Attribute.DontEnum);
@@ -60,7 +66,7 @@ private
 
     }
 
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // 1. Create activation object per ECMA 10.1.6
@@ -93,7 +99,7 @@ private
 
         // Generate the activation object
         // ECMA v3 10.1.6
-        actobj = new Dobject(null);
+        actobj = cc.dglobal.dObject();
 
         Value vtmp;//should not be referenced by the end of func
         if(fd.name)
@@ -113,7 +119,8 @@ private
 
         // Generate the Arguments Object
         // ECMA v3 10.1.8
-        args = new Darguments(cc.caller, this, actobj, fd.parameters, arglist);
+        args = new Darguments(cc.dglobal.rootPrototype, cc.caller, this,
+                              actobj, fd.parameters, arglist);
         vtmp.put(args);
         actobj.Set(Key.arguments, vtmp, Property.Attribute.DontDelete, cc);
 
@@ -134,7 +141,7 @@ private
         fd.instantiate(cc, Property.Attribute.DontDelete |
                        Property.Attribute.DontConfig);
 
-        auto dfs = DefinedFunctionScope(scopex, actobj, this, fd, othis);
+        auto dfs = new DefinedFunctionScope(scopex, actobj, this, fd, othis);
         cc.push(dfs);
 
         Value[] p1;
@@ -170,7 +177,7 @@ private
         return result;
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Key;
@@ -183,9 +190,9 @@ private
 
         v = Get(Key.prototype, cc);
         if(v.isPrimitive())
-            proto = Dobject.getPrototype;
+            proto = cc.dglobal.rootPrototype;
         else
-            proto = v.toObject();
+            proto = v.toObject(cc);
         othis = new Dobject(proto);
         result = Call(cc, othis, ret, arglist);
         if(!result)

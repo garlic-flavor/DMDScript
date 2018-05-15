@@ -29,36 +29,31 @@ import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 ///
 class Dboolean : Dobject
 {
-    import dmdscript.dobject : Initializer;
-
-    this(bool b)
-    {
-        super(Dboolean.getPrototype, Key.Boolean);
-        value.put(b);
-    }
-
-    this(Dobject prototype)
+private:
+    this(Dobject prototype, bool b = false)
     {
         super(prototype, Key.Boolean);
-        value.put(false);
+        value.put(b);
     }
-
-    mixin Initializer!DbooleanConstructor;
 }
 
-
-//==============================================================================
-private:
 
 //------------------------------------------------------------------------------
 class DbooleanConstructor : Dconstructor
 {
-    this()
+    this(Dobject superClassPrototype, Dobject functionPrototype)
     {
-        super(Key.Boolean, 1, Dfunction.getPrototype);
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.Boolean, 1);
+        install(functionPrototype);
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    Dboolean opCall(bool b = false)
+    {
+        return new Dboolean(classPrototype, b);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.6.2
@@ -66,12 +61,12 @@ class DbooleanConstructor : Dconstructor
         Dobject o;
 
         b = (arglist.length) ? arglist[0].toBoolean() : false;
-        o = new Dboolean(b);
+        o = opCall(b);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(CallContext cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 15.6.1
@@ -83,11 +78,14 @@ class DbooleanConstructor : Dconstructor
     }
 }
 
+//==============================================================================
+private:
+
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a Boolean
@@ -98,7 +96,7 @@ DError* toString(
     else
     {
         ret.putVundefined;
-        return FunctionWantsBoolError(Key.toString, othis.classname);
+        return FunctionWantsBoolError(cc, Key.toString, othis.classname);
     }
     return null;
 }
@@ -106,7 +104,7 @@ DError* toString(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     //FuncLog f("Boolean.prototype.valueOf()");
@@ -120,7 +118,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined;
-        return FunctionWantsBoolError(Key.valueOf, othis.classname);
+        return FunctionWantsBoolError(cc, Key.valueOf, othis.classname);
     }
     return null;
 }

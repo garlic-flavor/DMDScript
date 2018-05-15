@@ -109,7 +109,7 @@ class ScriptException : Exception
             trace ~= sd;
     }
     /// ditto
-    @safe pure
+   @safe pure
     void addTrace(const(IR)* base, const(IR)* code,
                   string f = __FILE__, size_t l = __LINE__)
     {
@@ -259,6 +259,8 @@ private:
             size_t accOffset;
             if (linnum == 0)
                 return;
+            if (0 < sourcename.length)
+                return;
 
             foreach (one; callback(realmId))
             {
@@ -293,9 +295,12 @@ private:
                     sink("/");
                 sink(funcname);
             }
-            sink("(");
-            sink(unsignedToTempString(linnum, tmpBuff, 10));
-            sink(")");
+            if (0 < linnum)
+            {
+                sink("(");
+                sink(unsignedToTempString(linnum, tmpBuff, 10));
+                sink(")");
+            }
         }
 
         void dFileAndLine(scope void delegate(in char[]) sink) const
@@ -361,11 +366,11 @@ private:
         {
             return
                 (base !is null && base is r.base &&
-                 code !is null && code is r.code) ||
+                 code !is null && code is r.code);// ||
 
-                (0 < linnum && linnum is r.linnum) ||
+                // (0 < linnum && linnum is r.linnum) ||
 
-                (haveOffset && offset is r.offset);
+                // (haveOffset && offset is r.offset);
         }
 
         //==========================================================

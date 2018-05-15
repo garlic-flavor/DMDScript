@@ -32,21 +32,94 @@ import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
 ///
 class Dnumber : Dobject
 {
-    import dmdscript.dobject : Initializer;
-
-    this(double n)
-    {
-        super(getPrototype, Key.Number);
-        value.put(n);
-    }
-
-    this(Dobject prototype)
+private:
+    this(Dobject prototype, double n = 0)
     {
         super(prototype, Key.Number);
-        value.put(0);
+        value.put(n);
+    }
+}
+
+//------------------------------------------------------------------------------
+class DnumberConstructor : Dconstructor
+{
+    this(Dobject superClassProperty, Dobject functionPrototype)
+    {
+        import dmdscript.property : Property;
+
+        super(new Dobject(superClassProperty), functionPrototype,
+              Key.Number, 1);
+
+        install(functionPrototype);
+        // auto attributes =
+        //     Property.Attribute.DontEnum |
+        //     Property.Attribute.DontDelete |
+        //     Property.Attribute.ReadOnly;
+
+        // DefineOwnProperty(Key.MAX_VALUE, double.max, attributes);
+        // DefineOwnProperty(Key.MIN_VALUE, double.min_normal*double.epsilon,
+        //     attributes);
+        // DefineOwnProperty(Key.NaN, double.nan, attributes);
+        // DefineOwnProperty(Key.NEGATIVE_INFINITY, -double.infinity, attributes);
+        // DefineOwnProperty(Key.POSITIVE_INFINITY, double.infinity, attributes);
+
+        version (TEST262)
+        {
+            installConstants!(
+                "EPSILON", double.epsilon,
+                "MAX_SAFE_INTEGER", double.min_exp - 1,
+                "MIN_SAFE_INTEGER", -double.min_exp + 1,
+                "MIN_VALUE", double.min_normal * double.epsilon,
+                "NEGATIVE_INFINITY", -double.infinity,
+                "POSITIVE_INFINITY", double.infinity)(this);
+
+            installConstants!(
+                "NaN", double.nan)(this,
+                                   Property.Attribute.DontEnum |
+                                   Property.Attribute.DontDelete |
+                                   Property.Attribute.SilentReadOnly);
+        }
+        else
+        {
+            installConstants!(
+                "EPSILON", double.epsilon,
+                "MAX_SAFE_INTEGER", double.min_exp - 1,
+                "MIN_SAFE_INTEGER", -double.min_exp + 1,
+                "MIN_VALUE", double.min_normal * double.epsilon,
+                "NaN", double.nan,
+                "NEGATIVE_INFINITY", -double.infinity,
+                "POSITIVE_INFINITY", double.infinity)(this);
+        }
     }
 
-    mixin Initializer!DnumberConstructor;
+    Dnumber opCall(double n = 0)
+    {
+        return new Dnumber(classPrototype, n);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        // ECMA 15.7.2
+        double n;
+        Dobject o;
+
+        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
+        o = opCall(n);
+        ret.put(o);
+        return null;
+    }
+
+    override DError* Call(CallContext cc, Dobject othis, out Value ret,
+                          Value[] arglist)
+    {
+        // ECMA 15.7.1
+        double n;
+
+        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
+        ret.put(n);
+        return null;
+    }
 }
 
 
@@ -78,7 +151,7 @@ enum Key : PropertyKey
 //
 @DFD(1, DFD.Type.Static)
 DError* isFinite(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -87,7 +160,7 @@ DError* isFinite(
 //
 @DFD(1, DFD.Type.Static)
 DError* isInteger(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -96,7 +169,7 @@ DError* isInteger(
 //
 @DFD(1, DFD.Type.Static)
 DError* isNaN(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -105,7 +178,7 @@ DError* isNaN(
 //
 @DFD(1, DFD.Type.Static)
 DError* isSafeInteger(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -114,7 +187,7 @@ DError* isSafeInteger(
 //
 @DFD(1, DFD.Type.Static)
 DError* parseFloat(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -123,97 +196,18 @@ DError* parseFloat(
 //
 @DFD(1, DFD.Type.Static)
 DError* parseInt(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
 }
 
 
-//------------------------------------------------------------------------------
-class DnumberConstructor : Dconstructor
-{
-    this()
-    {
-        import dmdscript.property : Property;
-
-        super(Key.Number, 1, Dfunction.getPrototype);
-
-        // auto attributes =
-        //     Property.Attribute.DontEnum |
-        //     Property.Attribute.DontDelete |
-        //     Property.Attribute.ReadOnly;
-
-        // DefineOwnProperty(Key.MAX_VALUE, double.max, attributes);
-        // DefineOwnProperty(Key.MIN_VALUE, double.min_normal*double.epsilon,
-        //     attributes);
-        // DefineOwnProperty(Key.NaN, double.nan, attributes);
-        // DefineOwnProperty(Key.NEGATIVE_INFINITY, -double.infinity, attributes);
-        // DefineOwnProperty(Key.POSITIVE_INFINITY, double.infinity, attributes);
-        // DCD.install!(mixin(__MODULE__)) (this,
-        //                                  Property.Attribute.DontEnum |
-        //                                  Property.Attribute.DontDelete |
-        //                                  Property.Attribute.ReadOnly);
-
-        version (TEST262)
-        {
-            installConstants!(
-                "EPSILON", double.epsilon,
-                "MAX_SAFE_INTEGER", double.min_exp - 1,
-                "MIN_SAFE_INTEGER", -double.min_exp + 1,
-                "MIN_VALUE", double.min_normal * double.epsilon,
-                "NEGATIVE_INFINITY", -double.infinity,
-                "POSITIVE_INFINITY", double.infinity)(this);
-
-            installConstants!(
-                "NaN", double.nan)(this,
-                                   Property.Attribute.DontEnum |
-                                   Property.Attribute.DontDelete |
-                                   Property.Attribute.SilentReadOnly);
-        }
-        else
-        {
-            installConstants!(
-                "EPSILON", double.epsilon,
-                "MAX_SAFE_INTEGER", double.min_exp - 1,
-                "MIN_SAFE_INTEGER", -double.min_exp + 1,
-                "MIN_VALUE", double.min_normal * double.epsilon,
-                "NaN", double.nan,
-                "NEGATIVE_INFINITY", -double.infinity,
-                "POSITIVE_INFINITY", double.infinity)(this);
-        }
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        // ECMA 15.7.2
-        double n;
-        Dobject o;
-
-        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
-        o = new Dnumber(n);
-        ret.put(o);
-        return null;
-    }
-
-    override DError* Call(ref CallContext cc, Dobject othis, out Value ret,
-                          Value[] arglist)
-    {
-        // ECMA 15.7.1
-        double n;
-
-        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
-        ret.put(n);
-        return null;
-    }
-}
-
 
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.2
@@ -252,7 +246,7 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return FunctionWantsNumberError(Key.toString, othis.classname);
+        return FunctionWantsNumberError(cc, Key.toString, othis.classname);
     }
     return null;
 }
@@ -260,7 +254,7 @@ DError* toString(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toLocaleString(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.3
@@ -273,7 +267,8 @@ DError* toLocaleString(
     else
     {
         ret.putVundefined();
-        return FunctionWantsNumberError(Key.toLocaleString, othis.classname);
+        return FunctionWantsNumberError(
+            cc, Key.toLocaleString, othis.classname);
     }
     return null;
 }
@@ -281,7 +276,7 @@ DError* toLocaleString(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a Number
@@ -292,7 +287,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined();
-        return FunctionWantsNumberError(Key.valueOf, othis.classname);
+        return FunctionWantsNumberError(cc, Key.valueOf, othis.classname);
     }
     return null;
 }
@@ -341,7 +336,7 @@ number_t deconstruct_real(double x, int f, out int pe)
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toFixed(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -366,7 +361,7 @@ DError* toFixed(
     if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
     {
         ret.putVundefined();
-        return ValueOutOfRangeError(Key.toFixed, "fractonDigits");
+        return ValueOutOfRangeError(cc, Key.toFixed, "fractonDigits");
     }
     v = &othis.value;
     x = v.toNumber(cc);
@@ -466,7 +461,7 @@ DError* toFixed(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toExponential(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -518,7 +513,7 @@ DError* toExponential(
             if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
             {
                 ret.putVundefined();
-                return ValueOutOfRangeError(Key.toExponential,
+                return ValueOutOfRangeError(cc, Key.toExponential,
                                             "fractionDigits");
             }
 
@@ -605,7 +600,7 @@ DError* toExponential(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toPrecision(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -663,7 +658,7 @@ DError* toPrecision(
             if(precision < 1 || precision > 21)
             {
                 ret.putVundefined();
-                return ValueOutOfRangeError(Key.toPrecision, "precision");
+                return ValueOutOfRangeError(cc, Key.toPrecision, "precision");
             }
 
             p = cast(int)precision;

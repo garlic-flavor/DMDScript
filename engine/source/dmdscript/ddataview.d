@@ -27,20 +27,33 @@ import dmdscript.callcontext : CallContext;
 ///
 class DdataView : Dobject
 {
-    import dmdscript.dobject : Initializer;
 
-    this()
-    {
-        this(getPrototype);
-    }
-
+private:
     this(Dobject prototype)
     {
         import dmdscript.primitive : Key;
         super(prototype, Key.DataView);
     }
 
-    mixin Initializer!DdataViewConstructor;
+}
+
+//
+class DdataViewConstructor : Dconstructor
+{
+    this(Dobject superClassPrototype, Dobject functionPrototype)
+    {
+        import dmdscript.primitive : Key;
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.DataView, 1);
+
+        install(functionPrototype);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        assert (0);
+    }
 }
 
 
@@ -48,25 +61,9 @@ class DdataView : Dobject
 private:
 
 //
-class DdataViewConstructor : Dconstructor
-{
-    this()
-    {
-        import dmdscript.primitive : Key;
-        super(Key.DataView, 1, Dfunction.getPrototype);
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        assert (0);
-    }
-}
-
-//
 @DFD()
 DError* buffer(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -75,7 +72,7 @@ DError* buffer(
 //
 @DFD
 DError* byteLength(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -84,7 +81,7 @@ DError* byteLength(
 //
 @DFD
 DError* byteOffset(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -93,7 +90,7 @@ DError* byteOffset(
 //
 @DFD
 DError* getFloat32(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -102,7 +99,7 @@ DError* getFloat32(
 //
 @DFD
 DError* getFloat64(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -111,7 +108,7 @@ DError* getFloat64(
 //
 @DFD
 DError* getInt8(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -120,7 +117,7 @@ DError* getInt8(
 //
 @DFD
 DError* getInt16(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -129,7 +126,7 @@ DError* getInt16(
 //
 @DFD
 DError* getInt32(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -138,7 +135,7 @@ DError* getInt32(
 //
 @DFD
 DError* getUint8(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -147,7 +144,7 @@ DError* getUint8(
 //
 @DFD
 DError* getUint16(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -156,7 +153,7 @@ DError* getUint16(
 //
 @DFD
 DError* getUint32(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -165,7 +162,7 @@ DError* getUint32(
 //
 @DFD
 DError* setFloat32(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -174,7 +171,7 @@ DError* setFloat32(
 //
 @DFD
 DError* setFloat64(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -183,7 +180,7 @@ DError* setFloat64(
 //
 @DFD
 DError* setInt8(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -192,7 +189,7 @@ DError* setInt8(
 //
 @DFD
 DError* setInt16(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -201,7 +198,7 @@ DError* setInt16(
 //
 @DFD
 DError* setInt32(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -210,7 +207,7 @@ DError* setInt32(
 //
 @DFD
 DError* setUint8(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -219,7 +216,7 @@ DError* setUint8(
 //
 @DFD
 DError* setUint16(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -228,7 +225,7 @@ DError* setUint16(
 //
 @DFD
 DError* setUint32(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

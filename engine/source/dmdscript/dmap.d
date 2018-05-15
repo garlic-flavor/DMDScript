@@ -27,45 +27,39 @@ import dmdscript.callcontext : CallContext;
 ///
 class Dmap : Dobject
 {
-    import dmdscript.dobject : Initializer;
-
-    this()
-    {
-        this(getPrototype);
-    }
-
+private:
     this(Dobject prototype)
     {
         import dmdscript.primitive : Key;
         super(prototype, Key.Map);
     }
-
-    mixin Initializer!DmapConstructor;
 }
-
-
-//==============================================================================
-private:
 
 class DmapConstructor : Dconstructor
 {
-    this()
+    this(Dobject superClassPrototype, Dobject functionPrototype)
     {
         import dmdscript.primitive : Key;
-        super(Key.Map, 1, Dfunction.getPrototype);
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.Map, 1);
+        install(functionPrototype);
     }
 
-    override DError* Construct(ref CallContext cc, out Value ret,
+    override DError* Construct(CallContext cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
     }
 }
 
+
+//==============================================================================
+private:
+
 //
 @DFD()
 DError* clear(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -74,7 +68,7 @@ DError* clear(
 //
 @DFD(1, DFD.Type.Prototype, "delete")
 DError* _delete(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -83,7 +77,7 @@ DError* _delete(
 //
 @DFD()
 DError* entries(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -92,7 +86,7 @@ DError* entries(
 //
 @DFD(1)
 DError* forEach(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -101,7 +95,7 @@ DError* forEach(
 //
 @DFD(1)
 DError* get(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -110,7 +104,7 @@ DError* get(
 //
 @DFD(1)
 DError* has(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -119,7 +113,7 @@ DError* has(
 //
 @DFD
 DError* keys(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -128,7 +122,7 @@ DError* keys(
 //
 @DFD(1)
 DError* set(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -137,7 +131,7 @@ DError* set(
 //
 @DFD
 DError* size(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -146,7 +140,7 @@ DError* size(
 //
 @DFD
 DError* values(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

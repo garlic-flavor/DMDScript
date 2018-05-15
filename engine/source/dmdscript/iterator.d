@@ -145,9 +145,9 @@ struct Iterator
 static:
 
     @disable
-    Dobject CreateIterResultObject(Value value, bool done)
+    Dobject CreateIterResultObject(CallContext cc, Value value, bool done)
     {
-        auto obj = new Dobject;
+        auto obj = cc.dglobal.dObject();
         obj.CreateDataProperty(Key.value, value);
         auto val = Value(done);
         obj.CreateDataProperty(Key.done, val);

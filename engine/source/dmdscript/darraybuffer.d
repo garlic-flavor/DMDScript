@@ -27,22 +27,33 @@ import dmdscript.callcontext : CallContext;
 ///
 class DarrayBuffer : Dobject
 {
-    import dmdscript.dobject : Initializer;
 
-    this()
-    {
-        this(getPrototype);
-    }
-
+private:
     this(Dobject prototype)
     {
         import dmdscript.primitive : Key;
         super(prototype, Key.Map);
     }
-
-    mixin Initializer!DarrayBufferConstructor;
 }
 
+//
+class DarrayBufferConstructor : Dconstructor
+{
+    this(Dobject superClassPrototype, Dobject functionPrototype)
+    {
+        import dmdscript.primitive: Key;
+        super(new Dobject(superClassPrototype), functionPrototype,
+              Key.ArrayBuffer, 1);
+
+        install(functionPrototype);
+    }
+
+    override DError* Construct(CallContext cc, out Value ret,
+                               Value[] arglist)
+    {
+        assert (0);
+    }
+}
 
 //==============================================================================
 private:
@@ -50,32 +61,17 @@ private:
 //
 @DFD(1, DFD.Type.Static)
 DError* isView(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
 }
 
-//
-class DarrayBufferConstructor : Dconstructor
-{
-    this()
-    {
-        import dmdscript.primitive : Key;
-        super(Key.ArrayBuffer, 1, Dfunction.getPrototype);
-    }
-
-    override DError* Construct(ref CallContext cc, out Value ret,
-                               Value[] arglist)
-    {
-        assert (0);
-    }
-}
 
 //
 @DFD()
 DError* byteLength(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -84,7 +80,7 @@ DError* byteLength(
 //
 @DFD(2)
 DError* slice(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

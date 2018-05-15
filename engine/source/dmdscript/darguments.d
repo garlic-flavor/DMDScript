@@ -36,13 +36,13 @@ class Darguments : Dobject
     Dobject actobj;             // activation object
     Identifier[] parameters;
 
-    this(Dobject caller, Dobject callee, Dobject actobj,
-         Identifier[] parameters, Value[] arglist)
+    this(Dobject prototype, Dobject caller, Dobject callee,
+         Dobject actobj, Identifier[] parameters, Value[] arglist)
 
     {
         import dmdscript.primitive : Key;
 
-        super(Dobject.getPrototype());
+        super(prototype);
 
         this.actobj = actobj;
         this.parameters = parameters;
@@ -73,7 +73,7 @@ class Darguments : Dobject
     }
 
     override protected
-    Value* Get(in PropertyKey PropertyName, ref CallContext cc)
+    Value* Get(in PropertyKey PropertyName, CallContext cc)
     {
         import dmdscript.primitive : StringToIndex;
 
@@ -85,7 +85,7 @@ class Darguments : Dobject
 
     override
     DError* Set(in PropertyKey PropertyName, ref Value value,
-                in Property.Attribute attributes, ref CallContext cc)
+                in Property.Attribute attributes, CallContext cc)
     {
         import dmdscript.primitive : StringToIndex;
 
