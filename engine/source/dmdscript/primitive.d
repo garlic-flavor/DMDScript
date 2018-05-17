@@ -288,6 +288,10 @@ alias Identifier = const(PropertyKey)*;
 //------------------------------------------------------------------------------
 enum Cmask = 0xdf; // ('a' & Cmask) == 'A'
 
+
+//------------------------------------------------------------------------------
+alias ModulePool = string delegate(string moduleSpecifier);
+
 //------------------------------------------------------------------------------
 /*
 Convert d_string to an index, if it is one.

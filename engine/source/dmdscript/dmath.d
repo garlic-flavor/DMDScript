@@ -20,72 +20,71 @@ module dmdscript.dmath;
 import std.math;
 import std.random;
 
-import dmdscript.callcontext : CallContext;
 import dmdscript.value : DError, Value, vundefined;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
     installConstants;
 import dmdscript.primitive : Key;
-import dmdscript.dglobal : undefined;
+import dmdscript.drealm : undefined, Drealm;
 
-double math_helper(ref CallContext cc, Value[] arglist)
+double math_helper(Drealm realm, Value[] arglist)
 {
     Value *v;
 
     v = arglist.length ? &arglist[0] : &undefined;
-    return v.toNumber(cc);
+    return v.toNumber(realm);
 }
 @DFD(1)
 DError* abs(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.1
     double result;
 
-    result = fabs(math_helper(cc, arglist));
+    result = fabs(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* acos(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.2
     double result;
 
-    result = std.math.acos(math_helper(cc, arglist));
+    result = std.math.acos(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* asin(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.3
     double result;
 
-    result = std.math.asin(math_helper(cc, arglist));
+    result = std.math.asin(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* atan(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.4
     double result;
 
-    result = std.math.atan(math_helper(cc, arglist));
+    result = std.math.atan(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(2)
 DError* atan2(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.5
@@ -93,76 +92,76 @@ DError* atan2(
     Value* v2;
     double result;
 
-    n1 = math_helper(cc, arglist);
+    n1 = math_helper(realm, arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
-    result = std.math.atan2(n1, v2.toNumber(cc));
+    result = std.math.atan2(n1, v2.toNumber(realm));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* ceil(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.6
     double result;
 
-    result = std.math.ceil(math_helper(cc, arglist));
+    result = std.math.ceil(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 
 @DFD(1)
 DError* cos(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.7
     double result;
 
-    result = std.math.cos(math_helper(cc, arglist));
+    result = std.math.cos(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* exp(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.8
     double result;
 
-    result = std.math.exp(math_helper(cc, arglist));
+    result = std.math.exp(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* floor(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.9
     double result;
 
-    result = std.math.floor(math_helper(cc, arglist));
+    result = std.math.floor(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* log(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.10
     double result;
 
-    result = std.math.log(math_helper(cc, arglist));
+    result = std.math.log(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(2)
 DError* max(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.8.2.11
@@ -173,7 +172,7 @@ DError* max(
     result = -double.infinity;
     foreach(Value v; arglist)
     {
-        n = v.toNumber(cc);
+        n = v.toNumber(realm);
         if(isNaN(n))
         {
             result = double.nan;
@@ -193,7 +192,7 @@ DError* max(
 }
 @DFD(2)
 DError* min(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.8.2.12
@@ -204,7 +203,7 @@ DError* min(
     result = double.infinity;
     foreach(Value v; arglist)
     {
-        n = v.toNumber(cc);
+        n = v.toNumber(realm);
         if(isNaN(n))
         {
             result = double.nan;
@@ -224,7 +223,7 @@ DError* min(
 }
 @DFD(2)
 DError* pow(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.13
@@ -232,15 +231,15 @@ DError* pow(
     Value *v2;
     double result;
 
-    n1 = math_helper(cc, arglist);
+    n1 = math_helper(realm, arglist);
     v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
-    result = std.math.pow(n1, v2.toNumber(cc));
+    result = std.math.pow(n1, v2.toNumber(realm));
     ret.put(result);
     return null;
 }
 @DFD(0)
 DError* random(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.14
@@ -270,13 +269,13 @@ DError* random(
 }
 @DFD(1)
 DError* round(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.15
     double result;
 
-    result = math_helper(cc, arglist);
+    result = math_helper(realm, arglist);
     if(!isNaN(result))
         result = copysign(std.math.floor(result + .5), result);
     ret.put(result);
@@ -284,37 +283,37 @@ DError* round(
 }
 @DFD(1)
 DError* sin(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.16
     double result;
 
-    result = std.math.sin(math_helper(cc, arglist));
+    result = std.math.sin(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* sqrt(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.17
     double result;
 
-    result = std.math.sqrt(math_helper(cc, arglist));
+    result = std.math.sqrt(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
 @DFD(1)
 DError* tan(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.8.2.18
     double result;
 
-    result = std.math.tan(math_helper(cc, arglist));
+    result = std.math.tan(math_helper(realm, arglist));
     ret.put(result);
     return null;
 }
@@ -322,7 +321,7 @@ DError* tan(
 //
 @DFD(1)
 DError* cbrt(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -331,7 +330,7 @@ DError* cbrt(
 //
 @DFD(1)
 DError* clz32(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -340,7 +339,7 @@ DError* clz32(
 //
 @DFD(1)
 DError* cosh(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -349,7 +348,7 @@ DError* cosh(
 //
 @DFD(1)
 DError* expm1(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -358,7 +357,7 @@ DError* expm1(
 //
 @DFD(1)
 DError* fround(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -367,7 +366,7 @@ DError* fround(
 //
 @DFD(1)
 DError* hypot(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -376,7 +375,7 @@ DError* hypot(
 //
 @DFD(2)
 DError* imul(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -385,7 +384,7 @@ DError* imul(
 //
 @DFD(1)
 DError* log1p(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -394,7 +393,7 @@ DError* log1p(
 //
 @DFD(1)
 DError* log10(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -403,7 +402,7 @@ DError* log10(
 //
 @DFD(1)
 DError* log2(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -412,7 +411,7 @@ DError* log2(
 //
 @DFD(1)
 DError* sign(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -421,7 +420,7 @@ DError* sign(
 //
 @DFD(1)
 DError* sinh(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -430,7 +429,7 @@ DError* sinh(
 //
 @DFD(1)
 DError* tanh(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -439,7 +438,7 @@ DError* tanh(
 //
 @DFD(1)
 DError* trunc(
-    DnativeFunction pthis, ref CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

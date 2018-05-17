@@ -18,12 +18,12 @@
 
 module dmdscript.protoerror;
 
-import dmdscript.dobject : Dobject;
-import dmdscript.dfunction : Dconstructor;
-import dmdscript.callcontext : CallContext;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
-import dmdscript.value : DError, Value;
-import dmdscript.exception : ScriptException;
+import dmdscript.dobject: Dobject;
+import dmdscript.dfunction: Dconstructor;
+import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.value: DError, Value;
+import dmdscript.exception: ScriptException;
+import dmdscript.drealm: Drealm;
 
 debug import std.stdio;
 
@@ -58,9 +58,8 @@ class D0(alias Text) : D0base
 class D0_constructor(alias TEXT_D1) : Dconstructor
 {
     import dmdscript.primitive: PropertyKey;
-    import dmdscript.callcontext: CallContext;
     import dmdscript.value: DError, Value;
-    import dmdscript.dglobal: undefined;
+    import dmdscript.drealm: undefined;
 
     enum Text = PropertyKey(TEXT_D1);
     alias Type = D0!Text;
@@ -84,7 +83,7 @@ class D0_constructor(alias TEXT_D1) : Dconstructor
         // cp.DefineOwnProperty(Key.number, val, Property.Attribute.None);
     }
 
-    override DError* Construct(CallContext cc, out Value ret,
+    override DError* Construct(Drealm realm, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.11.7.2
@@ -97,17 +96,17 @@ class D0_constructor(alias TEXT_D1) : Dconstructor
         if(m.isUndefined())
             s = classname;
         else
-            s = m.toString(cc);
+            s = m.toString(realm);
         o = opCall(s);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(Drealm realm, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA v3 15.11.7.1
-        return Construct(cc, ret, arglist);
+        return Construct(realm, ret, arglist);
     }
 
     Type opCall(ARGS...)(ARGS args)
@@ -124,36 +123,36 @@ alias RangeError = D0_constructor!"RangeError";
 alias TypeError = D0_constructor!"TypeError";
 alias UriError = D0_constructor!"URIError";
 
-D0base toD0(Ctor)(ScriptException e, CallContext cc)
+D0base toD0(Ctor)(ScriptException e, Drealm realm)
 {
     static if      (is(Ctor == SyntaxError))
-        return cc.dglobal.dSyntaxError(e);
+        return realm.dSyntaxError(e);
     else static if (is(Ctor == EvalError))
-        return cc.dglobal.dEvalError(e);
+        return realm.dEvalError(e);
     else static if (is(Ctor == ReferenceError))
-        return cc.dglobal.dReferenceError(e);
+        return realm.dReferenceError(e);
     else static if (is(Ctor == RangeError))
-        return cc.dglobal.dRangeError(e);
+        return realm.dRangeError(e);
     else static if (is(Ctor == TypeError))
-        return cc.dglobal.dTypeError(e);
+        return realm.dTypeError(e);
     else static if (is(Ctor == UriError))
-        return cc.dglobal.dUriError(e);
+        return realm.dUriError(e);
     else
     {
         switch (e.type)
         {
         case SyntaxError.Text:
-            return cc.dglobal.dSyntaxError(e);
+            return realm.dSyntaxError(e);
         case EvalError.Text:
-            return cc.dglobal.dEvalError(e);
+            return realm.dEvalError(e);
         case ReferenceError.Text:
-            return cc.dglobal.dReferenceError(e);
+            return realm.dReferenceError(e);
         case RangeError.Text:
-            return cc.dglobal.dRangeError(e);
+            return realm.dRangeError(e);
         case TypeError.Text:
-            return cc.dglobal.dTypeError(e);
+            return realm.dTypeError(e);
         case UriError.Text:
-            return cc.dglobal.dUriError(e);
+            return realm.dUriError(e);
         default:
             return null;
         }
@@ -229,24 +228,24 @@ private:
 //
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Key;
     if (auto d0 = cast(D0base)othis)
         ret.put(d0.exception.toString);
     else
-        ret.put(othis.Get(Key.message, cc));
+        ret.put(othis.Get(Key.message, realm));
     return null;
 }
 
 //
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Key;
-    ret.put(othis.Get(Key.number, cc));
+    ret.put(othis.Get(Key.number, realm));
     return null;
 }

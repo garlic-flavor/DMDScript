@@ -15,10 +15,9 @@
  * http://www.digitalmars.com/dscript/cppscript.html
  */
 
-module dmdscript.dglobal;
+module dmdscript.drealm;
 
 import dmdscript.primitive : Key;
-import dmdscript.callcontext : CallContext;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : Value, DError, vundefined;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
@@ -59,10 +58,10 @@ string banner()
 
 //==============================================================================
 ///
-class Dglobal : Dobject
+class Drealm : Dobject // aka global environment.
 {
     import dmdscript.dobject: Dobject, DobjectConstructor;
-    import dmdscript.dfunction: DfunctionConstructor;
+    import dmdscript.dfunction: DfunctionConstructor, Dfunction;
     import dmdscript.darray: DarrayConstructor;
     import dmdscript.dstring: DstringConstructor;
     import dmdscript.dboolean: DbooleanConstructor;
@@ -75,6 +74,9 @@ class Dglobal : Dobject
     // import dmdscript.dproxy;
     import dmdscript.protoerror: SyntaxError, EvalError, ReferenceError,
         RangeError, TypeError, UriError;
+
+    import dmdscript.primitive: PropertyKey, ModulePool;
+    import dmdscript.callcontext: DefinedFunctionScope;
 
     Dobject rootPrototype, functionPrototype;
     DobjectConstructor dObject;
@@ -95,7 +97,9 @@ class Dglobal : Dobject
 
     Dmath dMath;
 
-    this(in char[][] argv)
+    // CallContext callcontext;
+
+    this(string realmId, ModulePool modulePool, in char[][] argv = null)
     {
         import dmdscript.primitive: PropertyKey;
         import dmdscript.dnative: install;
@@ -105,6 +109,13 @@ class Dglobal : Dobject
 
         // Dglobal.prototype is implementation-dependent
         super(rootPrototype, Key.global);
+
+        _id = realmId;
+        _modulePool = modulePool;
+
+        // callcontext = new CallContext(this);
+        _current = new DefinedFunctionScope(null, this, null, null, this);
+        _scopex.put(_current);
 
         void init(T...)(ref T args)
         {
@@ -144,14 +155,13 @@ class Dglobal : Dobject
 
         debug
         {
-            auto cc = new CallContext(this);
-            auto v = Get(PropertyKey("Infinity"), cc);
+            auto v = Get(PropertyKey("Infinity"), this);
             assert (!v.isUndefined);
             assert (v.type == Value.Type.Number);
             assert (v.number is double.infinity);
         }
 
-        install!(dmdscript.dglobal, Dobject)(this, functionPrototype);
+        install!(dmdscript.drealm)(this, functionPrototype);
 
         // Now handled by AssertExp()
         // Put(Text.assert, Dglobal_assert(), DontEnum);
@@ -244,6 +254,254 @@ class Dglobal : Dobject
 
 
     }
+
+    //--------------------------------------------------------------------
+    ///
+    @property @safe @nogc pure nothrow
+    ModulePool modulePool()
+    {
+        return _modulePool;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @property @safe @nogc pure nothrow
+    string id() const
+    {
+        return _id;
+    }
+
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+    //--------------------------------------------------------------------
+    /** Get the current interrupting flag.
+
+    When this is true, dmdscript.opcodes.IR.call will return immediately.
+    */
+    @property @safe @nogc pure nothrow
+    bool isInterrupting() const
+    {
+        return _interrupt;
+    }
+
+    /// Make the interrupting flag to true.
+    @property @safe @nogc pure nothrow
+    void interrupt()
+    {
+        _interrupt = true;
+    }
+
+    //--------------------------------------------------------------------
+    /** Search a variable in the current scope chain.
+
+    Params:
+        key   = The name of the variable.
+        pthis = The field that contains the searched variable.
+    */
+    Value* get(in ref PropertyKey key, out Dobject pthis)
+    {
+        return _current.get(this, key, pthis);
+    }
+
+    /// ditto
+    Value* get(in ref PropertyKey key)
+    {
+        return _current.get(this, key);
+    }
+
+    //--------------------------------------------------------------------
+    /** Assign to a variable in the current scope chain.
+
+    Or, define the variable in global field.
+    */
+    DError* set(in ref PropertyKey key, ref Value value,
+                Property.Attribute attr = Property.Attribute.None)
+    {
+        return _current.set(this, key, value, attr);
+    }
+
+    //--------------------------------------------------------------------
+    /// Define/Assign a variable in the current innermost field.
+    DError* setThis(in ref PropertyKey key, ref Value value,
+                       Property.Attribute attr)
+    {
+        return _current.setThis(this, key, value, attr);
+    }
+
+    //--------------------------------------------------------------------
+    /// Get the current innermost field that compose a function.
+    @property @safe @nogc pure nothrow
+    inout(Dobject) variable() inout
+    {
+        return _current.rootScope;
+    }
+
+    //--------------------------------------------------------------------
+    /// Get the object who calls the current function.
+    @property @safe @nogc pure nothrow
+    inout(Dfunction) caller() inout
+    {
+        return _current.caller;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @property @safe @nogc pure nothrow
+    inout(Dobject) callerothis() inout
+    {
+        return _current.callerothis;
+    }
+
+    //--------------------------------------------------------------------
+    /** Get the stack of searching fields.
+
+    scopex[0] is the outermost searching field (== global).
+    scopex[$-1] is the innermost searching field.
+    */
+    @property @safe @nogc pure nothrow
+    inout(Dobject)[] scopes() inout
+    {
+        return _current.stack;
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    @safe @nogc pure nothrow
+    inout(Dobject) getNonFakeObject() inout
+    {
+        return _current.getNonFakeObject;
+    }
+
+
+    //--------------------------------------------------------------------
+    /**
+    Calling this followed by calling IR.call, provides an ordinary function
+    calling.
+
+    A parameter s can be on the stack, not on the heap.
+    */
+    @trusted pure nothrow
+    void push(DefinedFunctionScope s)
+    {
+        _current = s;
+        _scopex.put(_current);
+    }
+
+    //--------------------------------------------------------------------
+    /*
+    Following the IR.call, this should be called by the parameter that same with
+    the one for the prior pushFunctionScope/pushEvalScope calling.
+    */
+    @trusted pure
+    bool pop(DefinedFunctionScope s)
+    {
+        if (_current !is s)
+            return false;
+
+        assert (1 < _scopex.data.length);
+
+        _scopex.shrinkTo(_scopex.data.length - 1);
+        _current = _scopex.data[$-1];
+        return true;
+    }
+
+    //--------------------------------------------------------------------
+    /// Stack the object composing a scope block.
+    @safe pure nothrow
+    void push(Dobject obj)
+    {
+        _current.push(obj);
+    }
+
+    //--------------------------------------------------------------------
+    /** Remove the innermost searching field composing a scope block.
+    And returns that object.
+
+    When the innermost field is composing a function or an eval, no object will
+    be removed form the stack, and a null will be returned.
+    */
+    // @safe pure
+    Dobject popScope()
+    {
+        return _current.pop;
+    }
+
+
+    //--------------------------------------------------------------------
+    /// Add stack tracing information to the DError.
+    void addTraceInfoTo(DError* err)
+    {
+        assert (err !is null);
+
+        foreach_reverse(ref one; _scopex.data)
+        {
+            if (auto f = one.callerf)
+            {
+                err.addTrace (_id,
+                              f.name !is null ?
+                              "function " ~ f.name.toString : "");
+            }
+        }
+    }
+
+    //--------------------------------------------------------------------
+    ///
+    string[] searchSimilarWord(string name)
+    {
+        return _current.searchSimilarWord(this, name);
+    }
+    /// ditto
+    string[] searchSimilarWord(Dobject target, string name)
+    {
+        import std.string : soundexer;
+        import dmdscript.callcontext: ssw = searchSimilarWord;
+        auto key = name.soundexer;
+        return ssw(this, target, key);
+    }
+
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+package:
+
+    debug
+    {
+        import dmdscript.program : Program;
+
+        //
+        @property @safe @nogc pure nothrow
+            Program.DumpMode dumpMode() const
+        {
+            return _prog !is null ? _prog.dumpMode : Program.DumpMode.None;
+        }
+
+        //
+        @property @safe @nogc pure nothrow
+            void program(Program p)
+        {
+            _prog = p;
+        }
+
+    private:
+        Program _prog;
+    }
+
+private:
+    import std.array: Appender;
+
+    ModulePool _modulePool;
+    string _id;
+
+    Appender!(DefinedFunctionScope[]) _scopex;
+    DefinedFunctionScope _current; // current scope chain
+    bool _interrupt;               // true if cancelled due to interrupt
+
+    invariant
+    {
+        assert (_current !is null);
+        assert (0 < _scopex.data.length);
+        assert (_scopex.data[$-1] is _current);
+    }
+
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 }
 
 //==============================================================================
@@ -252,7 +510,7 @@ private:
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* eval(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -281,25 +539,21 @@ DError* eval(
         ret = *v;
         return null;
     }
-    s = v.toString(cc);
+    s = v.toString(realm);
 
     // Parse program
     TopStatement[] topstatements;
-    auto p = new Parser!(Mode.None)(s);
+    auto p = new Parser!(Mode.None)(realm.id, s);
     if((exception = p.parseProgram(topstatements)) !is null)
     {
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // solve this.
     // For eval()'s, use location of caller, not the string
     // errinfo.linnum = 0;
-        exception.setSourceInfo(
-            (id)
-            {
-                return [new ScriptException.Source("eval", s)];
-            });
+        exception.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
 
         ret.putVundefined();
-        return new DError(cc.dglobal.dSyntaxError(exception));
+        return new DError(realm.dSyntaxError(exception));
     }
 
     // Analyze, generate code
@@ -316,7 +570,7 @@ DError* eval(
     debug
     {
         import dmdscript.program : Program;
-        if (cc.dumpMode & Program.DumpMode.Statement)
+        if (realm.dumpMode & Program.DumpMode.Statement)
             TopStatement.dump(topstatements).writeln;
     }
 
@@ -329,14 +583,14 @@ DError* eval(
     // For eval()'s, use location of caller, not the string
     // errinfo.linnum = 0;
         ret.putVundefined();
-        return new DError(cc.dglobal.dSyntaxError(exception));
+        return new DError(realm.dSyntaxError(exception));
     }
     fd.toIR(null);
 
     debug
     {
         import dmdscript.opcodes : IR;
-        if (cc.dumpMode & Program.DumpMode.IR)
+        if (realm.dumpMode & Program.DumpMode.IR)
             IR.toString(fd.code).writeln;
     }
 
@@ -357,32 +611,31 @@ DError* eval(
         locals = p1;
     }
 
+    // version(none)
+    // {
+    //     Array scopex;
+    //     scopex.reserve(realm.scoperoot + fd.withdepth + 2);
+    //     for(uint u = 0; u < realm.scoperoot; u++)
+    //         scopex.push(realm.scopex.data[u]);
 
-    version(none)
-    {
-        Array scopex;
-        scopex.reserve(cc.scoperoot + fd.withdepth + 2);
-        for(uint u = 0; u < cc.scoperoot; u++)
-            scopex.push(cc.scopex.data[u]);
+    //     Array *scopesave = realm.scopex;
+    //     realm.scopex = &scopex;
+    //     Dobject variablesave = realm.variable;
+    //     realm.variable = realm;
 
-        Array *scopesave = cc.scopex;
-        cc.scopex = &scopex;
-        Dobject variablesave = cc.variable;
-        cc.variable = cc.global;
+    //     fd.instantiate(realm, 0);
 
-        fd.instantiate(cc.variable, 0);
+    //     // The this value is the same as the this value of the
+    //     // calling context.
+    //     result = IR.call(realm, othis, fd.code, ret, locals);
 
-        // The this value is the same as the this value of the
-        // calling context.
-        result = IR.call(cc, othis, fd.code, ret, locals);
-
-        delete p1;
-        cc.variable = variablesave;
-        cc.scopex = scopesave;
-        return result;
-    }
-    else
-    {
+    //     delete p1;
+    //     realm.variable = variablesave;
+    //     realm.scopex = scopesave;
+    //     return result;
+    // }
+    // else
+    // {
 
         // The scope chain is initialized to contain the same objects,
         // in the same order, as the calling context's scope chain.
@@ -393,29 +646,24 @@ DError* eval(
         // Variable instantiation is performed using the calling
         // context's variable object and using empty
         // property attributes
-        fd.instantiate(cc, Property.Attribute.None);
+        fd.instantiate(realm, Property.Attribute.None);
         // fd.instantiate(cc.scopex, cc.variable, Property.Attribute.None);
 
 
         // The this value is the same as the this value of the
         // calling context.
-        scopes = cc.scopes;
+        scopes = realm.scopes;
         assert (0 < scopes.length);
-        assert (cc.callerothis);
+        assert (realm.callerothis);
         auto dfs = new DefinedFunctionScope(scopes[0..$-1], scopes[$-1],
-                                            pthis, fd, cc.callerothis);
+                                            pthis, fd, realm.callerothis);
 
-        cc.push(dfs);
-        result = IR.call(cc, cc.callerothis, fd.code, ret, locals.ptr);
+        realm.push(dfs);
+        result = IR.call(realm, realm.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
-        {
-            result.setSourceInfo(
-                (id)
-                {
-                    return [new ScriptException.Source("eval", s)];
-                });
-        }
-        cc.pop(dfs);
+            result.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
+
+        realm.pop(dfs);
 
         if(p1)
         {
@@ -425,14 +673,14 @@ DError* eval(
         fd = null;
 
         return result;
-    }
+    // }
 
 }
 
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* parseInt(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : decode;
@@ -448,7 +696,7 @@ DError* parseInt(
     size_t i;
     string str;
 
-    str = arg0string(cc, arglist);
+    str = arg0string(realm, arglist);
 
     //writefln("Dglobal_parseInt('%s')", string);
 
@@ -482,7 +730,7 @@ DError* parseInt(
     if(arglist.length >= 2)
     {
         v2 = &arglist[1];
-        radix = v2.toInt32(cc);
+        radix = v2.toInt32(realm);
     }
 
     if(radix)
@@ -560,7 +808,7 @@ DError* parseInt(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* parseFloat(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : StringNumericLiteral;
@@ -569,7 +817,7 @@ DError* parseFloat(
     double n;
     size_t endidx;
 
-    string str = arg0string(cc, arglist);
+    string str = arg0string(realm, arglist);
     n = StringNumericLiteral(str, endidx, 1);
 
     ret.put(n);
@@ -588,7 +836,7 @@ char[16 + 1] TOHEX = "0123456789ABCDEF";
 
 @DFD(1)
 DError* escape(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -600,7 +848,7 @@ DError* escape(
     uint unicodes;
     size_t slen;
 
-    s = arg0string(cc, arglist);
+    s = arg0string(realm, arglist);
     escapes = 0;
     unicodes = 0;
     foreach(dchar c; s)
@@ -656,7 +904,7 @@ DError* escape(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* unescape(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -669,7 +917,7 @@ DError* unescape(
     char[4] tmp;
     size_t len;
 
-    s = arg0string(cc, arglist);
+    s = arg0string(realm, arglist);
     //writefln("Dglobal.unescape(s = '%s')", s);
     for(size_t k = 0; k < s.length; k++)
     {
@@ -746,7 +994,7 @@ DError* unescape(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* isNaN(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isNaN;
@@ -760,7 +1008,7 @@ DError* isNaN(
         v = &arglist[0];
     else
         v = &undefined;
-    n = v.toNumber(cc);
+    n = v.toNumber(realm);
     b = isNaN(n) ? true : false;
     ret.put(b);
     return null;
@@ -769,7 +1017,7 @@ DError* isNaN(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* isFinite(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isFinite;
@@ -783,30 +1031,30 @@ DError* isFinite(
         v = &arglist[0];
     else
         v = &undefined;
-    n = v.toNumber(cc);
+    n = v.toNumber(realm);
     b = isFinite(n) ? true : false;
     ret.put(b);
     return null;
 }
 
 //------------------------------------------------------------------------------
-DError* URI_error(CallContext cc, string s)
+DError* URI_error(Drealm realm, string s)
 {
-    Dobject o = cc.dglobal.dUriError(s ~ "() failure");
+    Dobject o = realm.dUriError(s ~ "() failure");
     auto v = new DError;
     v.put(o);
     return v;
 }
 @DFD(1)
 DError* decodeURI(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decode, URIException;
     // ECMA v3 15.1.3.1
     string s;
 
-    s = arg0string(cc, arglist);
+    s = arg0string(realm, arglist);
     try
     {
         s = decode(s);
@@ -814,7 +1062,7 @@ DError* decodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(cc, __FUNCTION__);
+        return URI_error(realm, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -823,7 +1071,7 @@ DError* decodeURI(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* decodeURIComponent(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decodeComponent, URIException;
@@ -831,7 +1079,7 @@ DError* decodeURIComponent(
     // ECMA v3 15.1.3.2
     string s;
 
-    s = arg0string(cc, arglist);
+    s = arg0string(realm, arglist);
     try
     {
         s = decodeComponent(s);
@@ -839,7 +1087,7 @@ DError* decodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(cc, __FUNCTION__);
+        return URI_error(realm, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -848,7 +1096,7 @@ DError* decodeURIComponent(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* encodeURI(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encode, URIException;
@@ -856,7 +1104,7 @@ DError* encodeURI(
     // ECMA v3 15.1.3.3
     string s;
 
-    s = arg0string(cc, arglist);
+    s = arg0string(realm, arglist);
     try
     {
         s = encode(s);
@@ -864,7 +1112,7 @@ DError* encodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(cc, __FUNCTION__);
+        return URI_error(realm, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -873,14 +1121,14 @@ DError* encodeURI(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* encodeURIComponent(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encodeComponent, URIException;
     // ECMA v3 15.1.3.4
     string s;
 
-    s = arg0string(cc, arglist);
+    s = arg0string(realm, arglist);
     try
     {
         s = encodeComponent(s);
@@ -888,7 +1136,7 @@ DError* encodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(cc, __FUNCTION__);
+        return URI_error(realm, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -896,7 +1144,7 @@ DError* encodeURIComponent(
 
 //------------------------------------------------------------------------------
 void dglobal_print(
-    CallContext cc, Dobject othis, out Value ret, Value[] arglist)
+    Drealm realm, Dobject othis, out Value ret, Value[] arglist)
 {
     import std.stdio : writef;
     // Our own extension
@@ -920,11 +1168,11 @@ void dglobal_print(
                     }
                 }
 
-                printf("%s", arglist[i].toString(cc).toMBSz);
+                printf("%s", arglist[i].toString(realm).toMBSz);
             }
             else
             {
-                string s = arglist[i].toString(cc);
+                string s = arglist[i].toString(realm);
 
                 writef("%s", s);
             }
@@ -937,24 +1185,24 @@ void dglobal_print(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* print(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Our own extension
-    dglobal_print(cc, othis, ret, arglist);
+    dglobal_print(realm, othis, ret, arglist);
     return null;
 }
 
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* println(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.stdio : writef;
 
     // Our own extension
-    dglobal_print(cc, othis, ret, arglist);
+    dglobal_print(realm, othis, ret, arglist);
     writef("\n");
     return null;
 }
@@ -962,7 +1210,7 @@ DError* println(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* readln(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -1019,7 +1267,7 @@ DError* readln(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* getenv(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.string : toStringz;
@@ -1030,7 +1278,7 @@ DError* getenv(
     ret.putVundefined();
     if(arglist.length)
     {
-        string s = arglist[0].toString(cc);
+        string s = arglist[0].toString(realm);
         char* p = getenv(toStringz(s));
         if(p)
             ret.put(p[0 .. strlen(p)].idup);
@@ -1044,7 +1292,7 @@ DError* getenv(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngine(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Text;
@@ -1056,7 +1304,7 @@ DError* ScriptEngine(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineBuildVersion(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(BUILD_VERSION);
@@ -1066,7 +1314,7 @@ DError* ScriptEngineBuildVersion(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineMajorVersion(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(MAJOR_VERSION);
@@ -1076,7 +1324,7 @@ DError* ScriptEngineMajorVersion(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineMinorVersion(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(MINOR_VERSION);
@@ -1086,10 +1334,10 @@ DError* ScriptEngineMinorVersion(
 //------------------------------------------------------------------------------
 
 //
-string arg0string(CallContext cc, Value[] arglist)
+string arg0string(Drealm realm, Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &undefined;
-    return v.toString(cc);
+    return v.toString(realm);
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -91,10 +91,10 @@ class ScriptException : Exception
     }
 
     @safe pure
-    void addTrace (uint linnum, size_t offset,
+    void addTrace (string realmId, uint linnum, size_t offset,
                    string f = __FILE__, size_t l = __LINE__)
     {
-        auto sd = TraceDescriptor (linnum, offset, f, l);
+        auto sd = TraceDescriptor (realmId, linnum, offset, f, l);
         if (!alreadyExists(sd))
             trace ~= sd;
     }
@@ -119,10 +119,10 @@ class ScriptException : Exception
     }
     /// ditto
     @safe @nogc pure nothrow
-    void addTrace(string funcname)
+    void addTrace(string realmId, string funcname)
     {
         foreach (ref one; trace)
-            one.addTrace(funcname);
+            one.addTrace(realmId, funcname);
     }
 
     //
@@ -147,7 +147,7 @@ class ScriptException : Exception
 
     //--------------------------------------------------------------------
     ///
-    void setSourceInfo(Source[] delegate(string realmId) callback)
+    void setSourceInfo(Source[] delegate(string id) callback)
     {
         foreach (ref one; trace)
             one.setSourceInfo(callback);
@@ -235,8 +235,10 @@ private:
 
         //
         @safe @nogc pure nothrow
-        this(uint linnum, size_t offset, string dfile, size_t dline)
+        this(string realmId, uint linnum, size_t offset,
+             string dfile, size_t dline)
         {
+            this.realmId = realmId;
             this.linnum = linnum;
             this.offset = offset;
             this.haveOffset = true;
@@ -246,14 +248,16 @@ private:
 
         //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        void addTrace(string funcname)
+        void addTrace(string realmId, string funcname)
         {
+            if (this.realmId.length == 0)
+                this.realmId = realmId;
             if (this.funcname.length == 0)
                 this.funcname = funcname;
         }
 
         //----------------------------------------------------------
-        void setSourceInfo(Source[] delegate(string realmId) callback)
+        void setSourceInfo(Source[] delegate(string) callback)
         {
             size_t accLine;
             size_t accOffset;
@@ -285,6 +289,12 @@ private:
 
             char[20] tmpBuff = void;
 
+            if (0 < realmId.length)
+            {
+                sink("(#");
+                sink(realmId);
+                sink(")");
+            }
             if ((0 < sourcename.length || funcname.length) && 0 < linnum)
                 sink("@");
             if (0 < sourcename.length)
@@ -389,7 +399,6 @@ private:
         size_t offset; //
 
         string realmId;
-        Source[] delegate(string) getSourceInfo;
     }
 
     //====================================================================

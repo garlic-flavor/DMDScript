@@ -70,7 +70,7 @@ class FunctionDefinition : TopStatement
         this.topstatements = topstatements;
     }
 
-//    @safe @nogc pure nothrow
+    @safe @nogc pure nothrow
     this(uint linnum, bool isglobal, Identifier name,
          Identifier[] parameters, TopStatement[] topstatements)
     {
@@ -204,17 +204,17 @@ class FunctionDefinition : TopStatement
     }
 
     final
-    void instantiate(CallContext cc, Property.Attribute attributes)
+    void instantiate(Drealm realm, Property.Attribute attributes)
     {
         // Instantiate all the Var's per 10.1.3
-        auto actobj = cc.variable;
+        auto actobj = realm.variable;
         auto val = vundefined;
         foreach(name; varnames)
         {
             // If name is already declared, don't override it
             actobj.Set(PropertyKey(name.toString), val,
                        Property.Attribute.Instantiate |
-                       Property.Attribute.DontOverride | attributes, cc);
+                       Property.Attribute.DontOverride | attributes, realm);
         }
 
         // Instantiate the Function's per 10.1.3
@@ -222,12 +222,12 @@ class FunctionDefinition : TopStatement
         {
 
             // Set [[Scope]] property per 13.2 step 7
-            auto fobject = new DdeclaredFunction(cc, fd, cc.scopes.dup);
+            auto fobject = new DdeclaredFunction(realm, fd, realm.scopes.dup);
             val.put(fobject);
             if(fd.name !is null && !fd.isliteral) // skip anonymous functions
             {
                 actobj.Set(*fd.name, val,
-                           Property.Attribute.Instantiate | attributes, cc);
+                           Property.Attribute.Instantiate | attributes, realm);
             }
         }
     }

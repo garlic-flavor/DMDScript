@@ -18,17 +18,17 @@
 
 module dmdscript.dnative;
 
-import dmdscript.callcontext : CallContext;
-import dmdscript.dobject : Dobject;
-import dmdscript.dfunction : Dfunction;
-import dmdscript.value : Value, DError;
-import dmdscript.property : Property;
+import dmdscript.dobject: Dobject;
+import dmdscript.dfunction: Dfunction;
+import dmdscript.value: Value, DError;
+import dmdscript.property: Property;
+import dmdscript.drealm: Drealm;
 debug import std.stdio;
 
 //------------------------------------------------------------------------------
 ///
 alias PCall = DError* function(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist);
 
 //------------------------------------------------------------------------------
@@ -46,10 +46,10 @@ class DnativeFunction : Dfunction
         pcall = func;
     }
 
-    override DError* Call(CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(Drealm realm, Dobject othis, out Value ret,
                           Value[] arglist)
     {
-        return (*pcall)(this, cc, othis, ret, arglist);
+        return (*pcall)(this, realm, othis, ret, arglist);
     }
 }
 

@@ -1842,3 +1842,27 @@ final class CondExp : BinExp
     }
 }
 
+
+//------------------------------------------------------------------------------
+final class ImportExpression : Expression
+{
+    string moduleSpecifier;
+
+    this(uint linnum, string moduleSpecifier)
+    {
+        super(linnum, Tok.Import);
+        this.moduleSpecifier = moduleSpecifier;
+    }
+
+    override @safe @nogc pure nothrow
+    Expression semantic(Scope* sc)
+    {
+        return this;
+    }
+
+    override
+    void toIR(IRstate* irs, idx_t ret)
+    {
+        assert (0);
+    }
+}

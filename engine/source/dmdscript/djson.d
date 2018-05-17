@@ -19,11 +19,11 @@ module dmdscript.djson;
 
 
 
-import dmdscript.dfunction : Dconstructor;
-import dmdscript.dobject : Dobject;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
-import dmdscript.value : DError, Value;
-import dmdscript.callcontext : CallContext;
+import dmdscript.dfunction: Dconstructor;
+import dmdscript.dobject: Dobject;
+import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.value: DError, Value;
+import dmdscript.drealm: Drealm;
 
 //==============================================================================
 ///
@@ -48,7 +48,7 @@ class DJSONConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(CallContext cc, out Value ret,
+    override DError* Construct(Drealm realm, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -62,7 +62,7 @@ private:
 //
 @DFD(1, DFD.Type.Static)
 DError* parse(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -71,7 +71,7 @@ DError* parse(
 //
 @DFD(1, DFD.Type.Static)
 DError* stringfy(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

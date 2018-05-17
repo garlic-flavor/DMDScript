@@ -17,11 +17,11 @@
 
 module dmdscript.dsymbol;
 
-import dmdscript.dobject : Dobject;
-import dmdscript.dfunction : Dconstructor;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
-import dmdscript.callcontext : CallContext;
-import dmdscript.value : DError, Value;
+import dmdscript.dobject: Dobject;
+import dmdscript.dfunction: Dconstructor;
+import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.value: DError, Value;
+import dmdscript.drealm: Drealm;
 
 
 //==============================================================================
@@ -63,16 +63,16 @@ class DsymbolConstructor : Dconstructor
         return new Dsymbol(classPrototype, args);
     }
 
-    override DError* Construct(CallContext cc, out Value ret,
+    override DError* Construct(Drealm realm, out Value ret,
                                Value[] arglist)
     {
         assert (0);
     }
 
-    override DError* Call(CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(Drealm realm, Dobject othis, out Value ret,
                           Value[] arglist)
     {
-        ret.putVsymbol(0 < arglist.length ? arglist[0].toString(cc) :
+        ret.putVsymbol(0 < arglist.length ? arglist[0].toString(realm) :
                                             Key.undefined.idup);
         return null;
     }
@@ -84,7 +84,7 @@ private:
 //
 @DFD(1, DFD.Type.Static, "for")
 DError* _for(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);

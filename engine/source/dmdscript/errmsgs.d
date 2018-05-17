@@ -263,10 +263,10 @@ private:
 //
 struct err(alias Ctor, ARGS...)
 {
-    import dmdscript.callcontext: CallContext;
     import dmdscript.value : DError, toDError;
     import dmdscript.opcodes : IR;
     import dmdscript.exception : ScriptException;
+    import dmdscript.drealm: Drealm;
 
     string fmt; //
 
@@ -279,12 +279,12 @@ struct err(alias Ctor, ARGS...)
 
     //
     @safe
-    DError* opCall(CallContext cc, ARGS args, string file = __FILE__,
+    DError* opCall(Drealm realm, ARGS args, string file = __FILE__,
                    size_t line = __LINE__) const
     {
         import std.format : format;
         return new ScriptException(Ctor.Text, fmt.format(args), file, line)
-            .toDError!Ctor(cc);
+            .toDError!Ctor(realm);
     }
     alias opCall this;
 

@@ -17,13 +17,13 @@
 
 module dmdscript.dboolean;
 
-import dmdscript.primitive : Key;
-import dmdscript.callcontext : CallContext;
-import dmdscript.dobject : Dobject;
-import dmdscript.value : DError, Value;
-import dmdscript.dfunction : Dconstructor;
+import dmdscript.primitive: Key;
+import dmdscript.dobject: Dobject;
+import dmdscript.value: DError, Value;
+import dmdscript.dfunction: Dconstructor;
 import dmdscript.errmsgs;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.drealm: Drealm;
 
 //==============================================================================
 ///
@@ -53,7 +53,7 @@ class DbooleanConstructor : Dconstructor
         return new Dboolean(classPrototype, b);
     }
 
-    override DError* Construct(CallContext cc, out Value ret,
+    override DError* Construct(Drealm realm, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.6.2
@@ -66,7 +66,7 @@ class DbooleanConstructor : Dconstructor
         return null;
     }
 
-    override DError* Call(CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(Drealm realm, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 15.6.1
@@ -85,18 +85,18 @@ private:
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a Boolean
     if (auto db = cast(Dboolean)othis)
     {
-        ret.put(db.value.toString(cc));
+        ret.put(db.value.toString(realm));
     }
     else
     {
         ret.putVundefined;
-        return FunctionWantsBoolError(cc, Key.toString, othis.classname);
+        return FunctionWantsBoolError(realm, Key.toString, othis.classname);
     }
     return null;
 }
@@ -104,7 +104,7 @@ DError* toString(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     //FuncLog f("Boolean.prototype.valueOf()");
@@ -118,7 +118,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined;
-        return FunctionWantsBoolError(cc, Key.valueOf, othis.classname);
+        return FunctionWantsBoolError(realm, Key.valueOf, othis.classname);
     }
     return null;
 }

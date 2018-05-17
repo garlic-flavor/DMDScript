@@ -22,9 +22,9 @@ import dmdscript.dobject : Dobject;
 
 struct Iterator
 {
-    import dmdscript.primitive : PropertyKey;
-    import dmdscript.callcontext : CallContext;
-    import dmdscript.value : Value, DError;
+    import dmdscript.primitive: PropertyKey;
+    import dmdscript.value: Value, DError;
+    import dmdscript.drealm: Drealm;
 
     PropertyKey[] keys;
     size_t  keyindex;
@@ -104,9 +104,9 @@ struct Iterator
 
     // Ecma-262-v7/7.4.2
     @disable
-    DError* IteratorNext(ref CallContext cc, out Value ret, Value[] args = null)
+    DError* IteratorNext(Drealm realm, out Value ret, Value[] args = null)
     {
-        auto err = o.value.Invoke(Key.next, cc, ret, args);
+        auto err = o.value.Invoke(Key.next, realm, ret, args);
         if (ret.type != Value.Type.Object)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // use errmsgs
@@ -116,26 +116,26 @@ struct Iterator
 
     // Ecma-262-v7/7.4.3
     @disable
-    bool IteratorComplete(ref CallContext cc)
+    bool IteratorComplete(Drealm realm)
     {
-        if (auto ret = o.Get(Key.done, cc))
+        if (auto ret = o.Get(Key.done, realm))
             return ret.toBoolean;
         return false;
     }
 
     // Ecma-262-v7/7.4.4
     @disable
-    Value* IteratorValue(ref CallContext cc)
+    Value* IteratorValue(Drealm realm)
     {
-        return o.Get(Key.value, cc);
+        return o.Get(Key.value, realm);
     }
 
     // Ecma-262-v7/7.4.5
     @disable
-    bool IteratorStep(ref CallContext cc, out Value ret)
+    bool IteratorStep(Drealm realm, out Value ret)
     {
-        auto err = IteratorNext(cc, ret);
-        return IteratorComplete(cc);
+        auto err = IteratorNext(realm, ret);
+        return IteratorComplete(realm);
     }
 
     // Ecma-262-v7/7.4.6
@@ -145,9 +145,9 @@ struct Iterator
 static:
 
     @disable
-    Dobject CreateIterResultObject(CallContext cc, Value value, bool done)
+    Dobject CreateIterResultObject(Drealm realm, Value value, bool done)
     {
-        auto obj = cc.dglobal.dObject();
+        auto obj = realm.dObject();
         obj.CreateDataProperty(Key.value, value);
         auto val = Value(done);
         obj.CreateDataProperty(Key.done, val);

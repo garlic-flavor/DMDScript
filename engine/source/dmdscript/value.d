@@ -17,11 +17,11 @@
 
 module dmdscript.value;
 
-import dmdscript.primitive : Key, PropertyKey;
-import dmdscript.dobject : Dobject;
-import dmdscript.property : Property;
+import dmdscript.primitive: Key, PropertyKey;
+import dmdscript.dobject: Dobject;
+import dmdscript.property: Property;
 import dmdscript.errmsgs;
-import dmdscript.callcontext : CallContext;
+import dmdscript.drealm: Drealm;
 import dmdscript.protoerror: cTypeError = TypeError;
 debug import std.stdio;
 
@@ -131,10 +131,10 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    DError* checkReference(CallContext cc) const
+    DError* checkReference(Drealm realm) const
     {
         if(_type == Type.RefError)
-            return UndefinedVarError(cc, _text);
+            return UndefinedVarError(realm, _text);
         return null;
     }
 
@@ -297,7 +297,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    void toPrimitive(CallContext cc, ref Value v,
+    void toPrimitive(Drealm realm, ref Value v,
                      in Type PreferredType = Type.RefError)
     {
         if(_type == Type.Object)
@@ -314,8 +314,8 @@ struct Value
                 a runtime error is generated.
              */
             assert(_object);
-            if (auto a = _object.DefaultValue(cc, v, PreferredType))
-                throw a.toScriptException(cc);
+            if (auto a = _object.DefaultValue(realm, v, PreferredType))
+                throw a.toScriptException(realm);
             if(!v.isPrimitive)
             {
                 v.putVundefined;
@@ -357,7 +357,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    double toNumber(CallContext cc)
+    double toNumber(Drealm realm)
     {
         import std.uni : isWhite;
 
@@ -402,12 +402,12 @@ struct Value
             // void* a;
 
             v = &val;
-            toPrimitive(cc, *v, Type.Number);
+            toPrimitive(realm, *v, Type.Number);
             /*a = toPrimitive(v, TypeNumber);
               if(a)//rerr
               return double.nan;*/
             if(v.isPrimitive)
-                return v.toNumber(cc);
+                return v.toNumber(realm);
             else
                 return double.nan;
         }
@@ -417,14 +417,14 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    d_time toDtime(CallContext cc)
+    d_time toDtime(Drealm realm)
     {
-        return cast(d_time)toNumber(cc);
+        return cast(d_time)toNumber(realm);
     }
 
     //--------------------------------------------------------------------
     @safe
-    double toInteger(CallContext cc)
+    double toInteger(Drealm realm)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -444,7 +444,7 @@ struct Value
         {
             double number;
 
-            number = toNumber(cc);
+            number = toNumber(realm);
             if(number.isNaN)
                 number = 0;
             else if(number == 0 || isInfinity(number))
@@ -462,7 +462,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    int toInt32(CallContext cc)
+    int toInt32(Drealm realm)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -482,7 +482,7 @@ struct Value
             double number;
             long ll;
 
-            number = toNumber(cc);
+            number = toNumber(realm);
             if(isNaN(number))
                 int32 = 0;
             else if(number == 0 || isInfinity(number))
@@ -505,7 +505,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    uint toUint32(CallContext cc)
+    uint toUint32(Drealm realm)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -525,7 +525,7 @@ struct Value
             double number;
             long ll;
 
-            number = toNumber(cc);
+            number = toNumber(realm);
             if(isNaN(number))
                 uint32 = 0;
             else if(number == 0 || isInfinity(number))
@@ -548,7 +548,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    short toInt16(CallContext cc)
+    short toInt16(Drealm realm)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -567,7 +567,7 @@ struct Value
             short int16;
             double number;
 
-            number = toNumber(cc);
+            number = toNumber(realm);
             if(isNaN(number))
                 int16 = 0;
             else if(number == 0 || isInfinity(number))
@@ -589,7 +589,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    ushort toUint16(CallContext cc)
+    ushort toUint16(Drealm realm)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -608,7 +608,7 @@ struct Value
             ushort uint16;
             double number;
 
-            number = toNumber(cc);
+            number = toNumber(realm);
             if(isNaN(number))
                 uint16 = 0;
             else if(number == 0 || isInfinity(number))
@@ -630,7 +630,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    byte toInt8(CallContext cc)
+    byte toInt8(Drealm realm)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -649,7 +649,7 @@ struct Value
             byte int8;
             double number;
 
-            number = toNumber(cc);
+            number = toNumber(realm);
             if(isNaN(number))
                 int8 = 0;
             else if(number == 0 || isInfinity(number))
@@ -671,7 +671,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    ubyte toUint8(CallContext cc)
+    ubyte toUint8(Drealm realm)
     {
         import std.math : floor, isInfinity, isNaN;
 
@@ -690,7 +690,7 @@ struct Value
             ubyte uint8;
             double number;
 
-            number = toNumber(cc);
+            number = toNumber(realm);
             if(isNaN(number))
                 uint8 = 0;
             else if(number == 0 || isInfinity(number))
@@ -712,7 +712,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @safe
-    ubyte toUint8Clamp(CallContext cc)
+    ubyte toUint8Clamp(Drealm realm)
     {
         import std.math : lrint, isInfinity, isNaN;
 
@@ -731,7 +731,7 @@ struct Value
             ubyte uint8;
             double number;
 
-            number = toNumber(cc);
+            number = toNumber(realm);
             if      (isNaN(number))
                 uint8 = 0;
             else if (number <= 0)
@@ -829,7 +829,7 @@ struct Value
 
 
     //--------------------------------------------------------------------
-    string toString(CallContext cc)
+    string toString(Drealm realm)
     {
         final switch(_type)
         {
@@ -849,11 +849,11 @@ struct Value
         case Type.Object:
         {
             Value val;
-            toPrimitive(cc, val, Type.String);
+            toPrimitive(realm, val, Type.String);
             if(val.isPrimitive)
-                return val.toString(cc);
+                return val.toString(realm);
             else
-                return val.toObject(cc).classname;
+                return val.toObject(realm).classname;
         }
         case Type.Iter:
             assert(0);
@@ -863,13 +863,13 @@ struct Value
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // needs more implementation.
-    string toLocaleString(CallContext cc)
+    string toLocaleString(Drealm realm)
     {
-        return toString(cc);
+        return toString(realm);
     }
 
     //--------------------------------------------------------------------
-    string toString(CallContext cc, in int radix)
+    string toString(Drealm realm, in int radix)
     {
         import std.math : isFinite;
         import std.conv : to;
@@ -878,21 +878,21 @@ struct Value
         {
             assert(2 <= radix && radix <= 36);
             if(!isFinite(_number))
-                return toString(cc);
+                return toString(realm);
             return _number >= 0.0 ?
                 to!string(cast(long)_number, radix) :
                 "-" ~ to!string(cast(long) - _number, radix);
         }
         else
         {
-            return toString(cc);
+            return toString(realm);
         }
     }
 
     //--------------------------------------------------------------------
-    string toSource(CallContext cc)
+    string toSource(Drealm realm)
     {
-        import dmdscript.dglobal : undefined;
+        import dmdscript.drealm: undefined;
 
         switch(_type)
         {
@@ -910,11 +910,11 @@ struct Value
             Value* v;
 
             auto pk = PropertyKey(Key.toSource);
-            v = Get(pk, cc);
+            v = Get(pk, realm);
             if(!v)
                 v = &undefined;
             if(v.isPrimitive())
-                return v.toSource(cc);
+                return v.toSource(realm);
             else          // it's an Object
             {
                 DError* a;
@@ -924,25 +924,25 @@ struct Value
 
                 o = v._object;
                 ret = &val;
-                a = o.Call(cc, this._object, *ret, null);
+                a = o.Call(realm, this._object, *ret, null);
                 if(a)                             // if exception was thrown
                 {
                     debug writef("Vobject.toSource() failed with %x\n", a);
                 }
                 else if(ret.isPrimitive())
-                    return ret.toString(cc);
+                    return ret.toString(realm);
             }
             return Key.undefined;
         }
         default:
-            return toString(cc);
+            return toString(realm);
         }
         assert(0);
     }
 
     //--------------------------------------------------------------------
     @trusted
-    Dobject toObject(CallContext cc)
+    Dobject toObject(Drealm realm)
     {
         import dmdscript.dstring : Dstring;
         import dmdscript.dnumber : Dnumber;
@@ -961,13 +961,13 @@ struct Value
             //RuntimeErrorx("cannot convert null to Object");
             return null;
         case Type.Boolean:
-            return cc.dglobal.dBoolean(_dbool);
+            return realm.dBoolean(_dbool);
         case Type.Number:
-            return cc.dglobal.dNumber(_number);
+            return realm.dNumber(_number);
         case Type.String:
-            return cc.dglobal.dString(_text);
+            return realm.dString(_text);
         case Type.Symbol:
-            return cc.dglobal.dSymbol(this);
+            return realm.dSymbol(this);
         case Type.Object:
             return _object;
         case Type.Iter:
@@ -978,12 +978,12 @@ struct Value
 
     //--------------------------------------------------------------------
     @disable
-    double ToLength(CallContext cc)
+    double ToLength(Drealm realm)
     {
         import std.math : isInfinity;
         enum MAX_LENGTH = (2UL ^^ 53) - 1;
 
-        auto len = toInteger(cc);
+        auto len = toInteger(realm);
         if      (len < 0) return 0;
         else if (len.isInfinity) return MAX_LENGTH;
         else if (MAX_LENGTH < len) return MAX_LENGTH;
@@ -1300,24 +1300,24 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    Value* Get(in PropertyKey PropertyName, CallContext cc)
+    Value* Get(in PropertyKey PropertyName, Drealm realm)
     {
         import std.conv : to;
 
         if(_type == Type.Object)
-            return _object.Get(PropertyName, cc);
+            return _object.Get(PropertyName, realm);
         else
         {
             // Should we generate the error, or just return undefined?
             throw CannotGetFromPrimitiveError
                 .toThrow(PropertyName.toString, _type.to!string,
-                         toString(cc));
+                         toString(realm));
             //return &vundefined;
         }
     }
 
     //--------------------------------------------------------------------
-    DError* Set(K, V)(in auto ref K name, auto ref V value, CallContext cc)
+    DError* Set(K, V)(in auto ref K name, auto ref V value, Drealm realm)
         if (canHave!V && PropertyKey.IsKey!K)
 
     {
@@ -1325,46 +1325,46 @@ struct Value
 
         if(_type == Type.Object)
         {
-            return _object.Set(name, value, Property.Attribute.None, cc);
+            return _object.Set(name, value, Property.Attribute.None, realm);
         }
         else
         {
             static if      (is(K : PropertyKey))
             {
-                return CannotPutToPrimitiveError(cc,
-                    name.toString, value.toString(cc), getTypeof);
+                return CannotPutToPrimitiveError(realm,
+                    name.toString, value.toString(realm), getTypeof);
             }
             else static if (is(K : uint))
             {
-                return CannotPutIndexToPrimitiveError(cc,
-                    name, value.toString(cc), _type.to!string);
+                return CannotPutIndexToPrimitiveError(realm,
+                    name, value.toString(realm), _type.to!string);
             }
             else
             {
-                return CannotPutToPrimitiveError(cc, name, value.toString(cc),
-                                                 _type.to!string);
+                return CannotPutToPrimitiveError(
+                    realm, name, value.toString(cc), _type.to!string);
             }
         }
     }
 
     //--------------------------------------------------------------------
-    Value* GetV(K)(in auto ref K PropertyName, CallContext cc)
+    Value* GetV(K)(in auto ref K PropertyName, Drealm realm)
         if (PropertyKey.IsKey!K)
     {
-        if (auto obj = toObject(cc))
-            return obj.Get(PropertyName, cc);
+        if (auto obj = toObject(realm))
+            return obj.Get(PropertyName, realm);
         else
             return null;
     }
 
     //--------------------------------------------------------------------
     @disable
-    Value* GetMethod(K)(in auto ref K PropertyName, CallContext cc)
+    Value* GetMethod(K)(in auto ref K PropertyName, Drealm realm)
         if (PropertyKey.IsKey!K)
     {
         import dmdscript.errmsgs;
 
-        if (auto func = GetV(PropertyName, cc))
+        if (auto func = GetV(PropertyName, realm))
         {
             if (func.isCallable)
                 return func;
@@ -1380,7 +1380,7 @@ struct Value
 
 
     //--------------------------------------------------------------------
-    DError* Call(CallContext cc, Dobject othis, out Value ret,
+    DError* Call(Drealm realm, Dobject othis, out Value ret,
                  Value[] arglist)
     {
         import std.conv : to;
@@ -1389,7 +1389,7 @@ struct Value
         {
             DError* a;
 
-            a = _object.Call(cc, othis, ret, arglist);
+            a = _object.Call(realm, othis, ret, arglist);
             //if (a) writef("Vobject.Call() returned %x\n", a);
             return a;
         }
@@ -1402,16 +1402,16 @@ struct Value
         {
             //PRINTF("Call method not implemented for primitive %p (%s)\n", this, string_t_ptr(toString()));
             ret.putVundefined();
-            return PrimitiveNoCallError(cc, _type.to!string);
+            return PrimitiveNoCallError(realm, _type.to!string);
         }
     }
 
     //--------------------------------------------------------------------
-    DError* Construct(CallContext cc, out Value ret, Value[] arglist)
+    DError* Construct(Drealm realm, out Value ret, Value[] arglist)
     {
         import std.conv : to;
         if(_type == Type.Object)
-            return _object.Construct(cc, ret, arglist);
+            return _object.Construct(realm, ret, arglist);
         else if(_type == Type.RefError){
             throwRefError();
             assert(0);
@@ -1419,29 +1419,29 @@ struct Value
         else
         {
             ret.putVundefined();
-            return PrimitiveNoConstructError(cc, _type.to!string);
+            return PrimitiveNoConstructError(realm, _type.to!string);
         }
     }
 
     //--------------------------------------------------------------------
-    DError* putIterator(CallContext cc, out Value v)
+    DError* putIterator(Drealm realm, out Value v)
     {
         if(_type == Type.Object)
             return _object.putIterator(v);
         else
         {
             v.putVundefined();
-            return ForInMustBeObjectError(cc);
+            return ForInMustBeObjectError(realm);
         }
     }
 
     //--------------------------------------------------------------------
-    DError* Invoke(K)(in auto ref K key, CallContext cc,
+    DError* Invoke(K)(in auto ref K key, Drealm realm,
                       out Value ret, Value[] args)
         if (PropertyKey.IsKey!K)
     {
-        if (auto f = GetV(key, cc))
-            return f.Call(cc, object, ret, args);
+        if (auto f = GetV(key, realm))
+            return f.Call(realm, object, ret, args);
         else
             return null;
     }
@@ -1502,9 +1502,9 @@ Value* signalingUndefined(in string id)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // check this.
 @disable
-Value* CanonicalNumericIndexString(CallContext cc, in string str)
+Value* CanonicalNumericIndexString(Drealm realm, in string str)
 {
-    import dmdscript.dglobal : undefined;
+    import dmdscript.drealm: undefined;
     import dmdscript.primitive : stringcmp;
 
     auto value = new Value;
@@ -1516,12 +1516,12 @@ Value* CanonicalNumericIndexString(CallContext cc, in string str)
     {
         Value v;
         v.put(str);
-        auto number = v.toNumber(cc);
+        auto number = v.toNumber(realm);
         debug
         {
             Value v2;
             v2.put(number);
-            if(0 != stringcmp(v2.toString(cc), str))
+            if(0 != stringcmp(v2.toString(realm), str))
                 return &undefined;
         }
         value.put(number);
@@ -1540,13 +1540,12 @@ struct DError
     import dmdscript.opcodes : IR;
     import dmdscript.exception : ScriptException;
     import dmdscript.protoerror : D0base;
-    import dmdscript.callcontext : CallContext;
 
     Value entity;
     alias entity this;
 
     ///
-    this(CallContext cc, ref Value v,
+    this(Drealm realm, ref Value v,
          string file = __FILE__, size_t line = __LINE__)
     {
         import dmdscript.protoerror : TypeError;
@@ -1557,8 +1556,9 @@ struct DError
         }
         else
         {
-            entity.put(cc.dglobal.dTypeError(
-                           new ScriptException(TypeError.Text, v.toString(cc),
+            entity.put(realm.dTypeError(
+                           new ScriptException(TypeError.Text,
+                                               v.toString(realm),
                                                file, line)));
         }
     }
@@ -1570,44 +1570,34 @@ struct DError
         entity.put(err);
     }
 
-
     ///
-// deprecated
-//     this(string msg, string file = __FILE__, size_t line = __LINE__)
-//     {
-//         import dmdscript.protoerror : TypeError;
-//         entity.put(new typeerror(new ScriptException(typeerror.Text, msg,
-//                                                      file, line)));
-//     }
-
-    ///
-    ScriptException toScriptException(CallContext cc)
+    ScriptException toScriptException(Drealm realm)
     {
         import dmdscript.protoerror: TypeError;
 
-        if (auto d0 = cast(D0base)entity.toObject(cc))
+        if (auto d0 = cast(D0base)entity.toObject(realm))
             return d0.exception;
         else
         {
-            auto msg = entity.toString(cc);
+            auto msg = entity.toString(realm);
             string name = TypeError.Text;
             auto pk = PropertyKey(Key.constructor);
-            if (auto constructor = entity.Get(pk, cc))
+            if (auto constructor = entity.Get(pk, realm))
                 name = constructor.object.classname;
             return new ScriptException(name, msg);
         }
     }
 
-    ///
+    // ///
     @safe @nogc pure nothrow
-    void addTrace(string funcname)
+    void addTrace(string realmId, string funcname)
     {
         import dmdscript.protoerror: D0base;
 
         if (auto d0 = cast(D0base)entity.object)
         {
             assert(d0.exception);
-            d0.exception.addTrace(funcname);
+            d0.exception.addTrace(realmId, funcname);
         }
     }
 
@@ -1624,8 +1614,7 @@ struct DError
         }
     }
 
-    void setSourceInfo(
-        ScriptException.Source[] delegate(string realmId) callback)
+    void setSourceInfo(ScriptException.Source[] delegate(string) callback)
     {
         if (auto d0 = cast(D0base)entity.object)
         {
@@ -1652,7 +1641,7 @@ struct DError
 package:
 
 @trusted
-DError* toDError(Ctor = cTypeError)(Throwable t, CallContext cc)
+DError* toDError(Ctor = cTypeError)(Throwable t, Drealm realm)
 {
     import dmdscript.exception : ScriptException;
     import dmdscript.protoerror : toD0, TypeError;
@@ -1661,13 +1650,13 @@ DError* toDError(Ctor = cTypeError)(Throwable t, CallContext cc)
     ScriptException exception;
 
     if (auto se = cast(ScriptException)t)
-        return new DError(se.toD0!Ctor(cc));
+        return new DError(se.toD0!Ctor(realm));
     else
     {
         exception = new ScriptException(Ctor.Text,
                                         t.toString, t.file, t.line);
         assert(exception !is null);
-        return new DError(exception.toD0!Ctor(cc));
+        return new DError(exception.toD0!Ctor(realm));
     }
 }
 

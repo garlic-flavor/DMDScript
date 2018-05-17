@@ -17,13 +17,12 @@
 
 module dmdscript.derror;
 
-import dmdscript.primitive : Key;
-import dmdscript.callcontext : CallContext;
-import dmdscript.dobject : Dobject;
-import dmdscript.dfunction : Dconstructor;
-import dmdscript.value : Value, DError;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
-
+import dmdscript.primitive: Key;
+import dmdscript.dobject: Dobject;
+import dmdscript.dfunction: Dconstructor;
+import dmdscript.value: Value, DError;
+import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.drealm: Drealm;
 
 //==============================================================================
 ///
@@ -32,36 +31,36 @@ class Derror : Dobject
     import dmdscript.property : Property;
 
 private:
-    this(Dobject prototype, CallContext cc, Value* m, Value* v2)
+    this(Dobject prototype, Drealm realm, Value* m, Value* v2)
     {
         super(prototype, Key.Error);
 
         string msg;
-        msg = m.toString(cc);
+        msg = m.toString(realm);
         auto val = Value(msg);
-        Set(Key.message, val, Property.Attribute.None, cc);
-        Set(Key.description, val, Property.Attribute.None, cc);
+        Set(Key.message, val, Property.Attribute.None, realm);
+        Set(Key.description, val, Property.Attribute.None, realm);
         if(m.isString())
         {
         }
         else if(m.isNumber)
         {
-            double n = m.toNumber(cc);
+            double n = m.toNumber(realm);
             n = cast(double)(/*FACILITY |*/ cast(int)n);
             val.put(n);
-            Set(Key.number, val, Property.Attribute.None, cc);
+            Set(Key.number, val, Property.Attribute.None, realm);
         }
         if(v2.isString)
         {
-            Set(Key.description, *v2, Property.Attribute.None, cc);
-            Set(Key.message, *v2, Property.Attribute.None, cc);
+            Set(Key.description, *v2, Property.Attribute.None, realm);
+            Set(Key.message, *v2, Property.Attribute.None, realm);
         }
         else if(v2.isNumber)
         {
-            double n = v2.toNumber(cc);
+            double n = v2.toNumber(realm);
             n = cast(double)(/*FACILITY |*/ cast(int)n);
             val.put(n);
-            Set(Key.number, val, Property.Attribute.None, cc);
+            Set(Key.number, val, Property.Attribute.None, realm);
         }
     }
 
@@ -104,10 +103,10 @@ class DerrorConstructor : Dconstructor
         return new Derror(classPrototype, args);
     }
 
-    override DError* Construct(CallContext cc, out Value ret,
+    override DError* Construct(Drealm realm, out Value ret,
                                Value[] arglist)
     {
-        import dmdscript.dglobal : undefined;
+        import dmdscript.drealm: undefined;
         import dmdscript.primitive : Text;
 
         // ECMA 15.7.2
@@ -138,7 +137,7 @@ class DerrorConstructor : Dconstructor
             n = &arglist[1];
             break;
         }
-        o = opCall(cc, m, n);
+        o = opCall(realm, m, n);
         ret.put(o);
         return null;
     }
@@ -151,20 +150,21 @@ private:
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    import dmdscript.dglobal : undefined;
+    import dmdscript.drealm: undefined;
 
     // ECMA v3 15.11.4.3
     // Return implementation defined string
     Value* v;
 
     //writef("Error.prototype.toString()\n");
-    v = othis.Get(Key.message, cc);
+    v = othis.Get(Key.message, realm);
     if(!v)
         v = &undefined;
-    ret.put(othis.Get(Key.name, cc).toString(cc) ~ ": " ~ v.toString(cc));
+    ret.put(othis.Get(Key.name, realm)
+            .toString(realm) ~ ": " ~ v.toString(realm));
     return null;
 }
 

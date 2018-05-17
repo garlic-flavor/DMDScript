@@ -24,30 +24,29 @@ debug import std.stdio;
 ///
 class DdeclaredFunction : Dconstructor
 {
-    import dmdscript.callcontext : CallContext;
-    import dmdscript.dobject : Dobject;
-    import dmdscript.value : DError, Value;
-    import dmdscript.functiondefinition : FunctionDefinition;
+    import dmdscript.dobject: Dobject;
+    import dmdscript.value: DError, Value;
+    import dmdscript.functiondefinition: FunctionDefinition;
+    import dmdscript.drealm: Drealm;
 
     FunctionDefinition fd;
 
 private
     Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
 
-    this(CallContext cc, FunctionDefinition fd, Dobject[] scopex)
+    this(Drealm realm, FunctionDefinition fd, Dobject[] scopex)
     {
         import dmdscript.primitive : Key, PropertyKey;
         import dmdscript.property : Property;
 
-        assert (cc);
-        assert (cc.dglobal);
-        assert (cc.dglobal.functionPrototype);
+        assert (realm);
+        assert (realm.functionPrototype);
         assert (fd !is null);
 
         auto name = fd.name is null ?
             Key.Function : PropertyKey(fd.name.toString);
 
-        super(cc.dglobal.dObject(), cc.dglobal.functionPrototype,
+        super(realm.dObject(), realm.functionPrototype,
               name, cast(uint)fd.parameters.length);
 
         assert(GetPrototypeOf);
@@ -56,7 +55,7 @@ private
         this.scopex = scopex;
 
         // ECMA 3 13.2
-        auto o = cc.dglobal.dObject();        // step 9
+        auto o = realm.dObject();        // step 9
         auto val = Value(o);
         // step 11
         DefineOwnProperty(Key.prototype, val, Property.Attribute.DontEnum);
@@ -66,7 +65,7 @@ private
 
     }
 
-    override DError* Call(CallContext cc, Dobject othis, out Value ret,
+    override DError* Call(Drealm realm, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // 1. Create activation object per ECMA 10.1.6
@@ -76,7 +75,7 @@ private
 
         import core.sys.posix.stdlib : alloca;
         import dmdscript.primitive : Key;
-        import dmdscript.dglobal : undefined;
+        import dmdscript.drealm : undefined;
         import dmdscript.darguments : Darguments;
         import dmdscript.property : Property;
         import dmdscript.primitive : PropertyKey;
@@ -99,13 +98,13 @@ private
 
         // Generate the activation object
         // ECMA v3 10.1.6
-        actobj = cc.dglobal.dObject();
+        actobj = realm.dObject();
 
         Value vtmp;//should not be referenced by the end of func
         if(fd.name)
         {
            vtmp.put(this);
-           actobj.Set(*fd.name, vtmp, Property.Attribute.DontDelete, cc);
+           actobj.Set(*fd.name, vtmp, Property.Attribute.DontDelete, realm);
         }
         // Instantiate the parameters
         {
@@ -113,16 +112,16 @@ private
             foreach(p; fd.parameters)
             {
                 Value* v = (a < arglist.length) ? &arglist[a++] : &undefined;
-                actobj.Set(*p, *v, Property.Attribute.DontDelete, cc);
+                actobj.Set(*p, *v, Property.Attribute.DontDelete, realm);
             }
         }
 
         // Generate the Arguments Object
         // ECMA v3 10.1.8
-        args = new Darguments(cc.dglobal.rootPrototype, cc.caller, this,
-                              actobj, fd.parameters, arglist);
+        args = new Darguments(realm, realm.caller,
+                              this, actobj, fd.parameters, arglist);
         vtmp.put(args);
-        actobj.Set(Key.arguments, vtmp, Property.Attribute.DontDelete, cc);
+        actobj.Set(Key.arguments, vtmp, Property.Attribute.DontDelete, realm);
 
         // The following is not specified by ECMA, but seems to be supported
         // by jscript. The url www.grannymail.com has the following code
@@ -134,15 +133,15 @@ private
         //		  this[i+1] = arguments[i]
         //	    }
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
-        Set(Key.arguments, vtmp, Property.Attribute.DontDelete, cc);
+        Set(Key.arguments, vtmp, Property.Attribute.DontDelete, realm);
         // make grannymail bug work
 
         // auto newCC = CallContext(cc, actobj, this, fd);
-        fd.instantiate(cc, Property.Attribute.DontDelete |
+        fd.instantiate(realm, Property.Attribute.DontDelete |
                        Property.Attribute.DontConfig);
 
         auto dfs = new DefinedFunctionScope(scopex, actobj, this, fd, othis);
-        cc.push(dfs);
+        realm.push(dfs);
 
         Value[] p1;
         Value* v;
@@ -156,15 +155,15 @@ private
             locals = p1;
         }
 
-        result = IR.call(cc, othis, fd.code, ret, locals.ptr);
+        result = IR.call(realm, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace(fd.name !is null ?
-                            "function " ~ fd.name.toString
-                            : "anonymous");
+            result.addTrace (realm.id,
+                             fd.name !is null ?
+                             "function " ~ fd.name.toString : "anonymous");
         }
 
-        cc.pop(dfs);
+        realm.pop(dfs);
 
         p1.destroy; p1 = null;
 
@@ -172,12 +171,12 @@ private
         //Value* v;
         //v=Get(TEXT_arguments);
         vtmp.putVundefined;
-        Set(Key.arguments, vtmp, Property.Attribute.None, cc);
+        Set(Key.arguments, vtmp, Property.Attribute.None, realm);
 
         return result;
     }
 
-    override DError* Construct(CallContext cc, out Value ret,
+    override DError* Construct(Drealm realm, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Key;
@@ -188,13 +187,13 @@ private
         Value* v;
         DError* result;
 
-        v = Get(Key.prototype, cc);
+        v = Get(Key.prototype, realm);
         if(v.isPrimitive())
-            proto = cc.dglobal.rootPrototype;
+            proto = realm.rootPrototype;
         else
-            proto = v.toObject(cc);
+            proto = v.toObject(realm);
         othis = new Dobject(proto);
-        result = Call(cc, othis, ret, arglist);
+        result = Call(realm, othis, ret, arglist);
         if(!result)
         {
             if(ret.isPrimitive())

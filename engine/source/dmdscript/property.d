@@ -24,12 +24,12 @@ debug import std.stdio;
 ///
 final class PropTable
 {
-    import dmdscript.value : Value, DError;
-    import dmdscript.primitive : PropertyKey;
-    import dmdscript.dobject : Dobject;
-    import dmdscript.callcontext : CallContext;
+    import dmdscript.value: Value, DError;
+    import dmdscript.primitive: PropertyKey;
+    import dmdscript.dobject: Dobject;
     import dmdscript.dfunction : Dfunction;
-    import dmdscript.RandAA : RandAA;
+    import dmdscript.RandAA: RandAA;
+    import dmdscript.drealm: Drealm;
 
     ///
     alias Table = RandAA!(PropertyKey, Property, false);
@@ -103,10 +103,10 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    Value* get(in ref PropertyKey key, CallContext cc, Dobject othis)
+    Value* get(in ref PropertyKey key, Drealm realm, Dobject othis)
     {
         if (auto p = getProperty(key))
-            return p.get(cc, othis);
+            return p.get(realm, othis);
         return null;
     }
 
@@ -114,7 +114,7 @@ final class PropTable
     ///
     DError* set(in ref PropertyKey key, ref Value value,
                 in Property.Attribute attributes,
-                CallContext cc, Dobject othis, in bool extensible)
+                Drealm realm, Dobject othis, in bool extensible)
     {
         if      (auto p = _table.findExistingAlt(key, key.hash))
         {
@@ -124,17 +124,17 @@ final class PropTable
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
             if (!_canExtend(key))
             {
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
-            return p.setForce(value, cc, othis);
+            return p.setForce(value, realm, othis);
         }
         else if (auto p = getProperty(SpecialSymbols.opAssign))
         {
@@ -144,9 +144,9 @@ final class PropTable
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError(cc); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(realm); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
-            return p.setForce(value, cc, othis);
+            return p.setForce(value, realm, othis);
         }
         else if (extensible)
         {
@@ -156,7 +156,7 @@ final class PropTable
         }
         else
         {
-            return CannotPutError(cc);
+            return CannotPutError(realm);
         }
     }
 
@@ -416,10 +416,10 @@ package:
 ///                      /6.2.4
 struct Property
 {
-    import dmdscript.value : Value, DError;
-    import dmdscript.dfunction : Dfunction;
-    import dmdscript.dobject : Dobject;
-    import dmdscript.callcontext : CallContext;
+    import dmdscript.value: Value, DError;
+    import dmdscript.dfunction: Dfunction;
+    import dmdscript.dobject: Dobject;
+    import dmdscript.drealm: Drealm;
 
     /// attribute flags
     enum Attribute : uint
@@ -464,14 +464,14 @@ struct Property
     }
 
     // See_Also: Ecma-262-v7/6.2.4.5
-    this(Dobject obj, CallContext cc)
+    this(Dobject obj, Drealm realm)
     {
         bool valueOrWritable = false;
 
         assert(obj);
 
-        _attr = getAttribute(cc, obj);
-        if (auto v = obj.Get(Key.value, cc))
+        _attr = getAttribute(realm, obj);
+        if (auto v = obj.Get(Key.value, realm))
         {
             _value = *v;
             valueOrWritable = true;
@@ -479,31 +479,31 @@ struct Property
         else
             valueOrWritable = 0 == (_attr & Attribute.ReadOnly);
 
-        if (auto v = obj.Get(Key.get, cc))
+        if (auto v = obj.Get(Key.get, realm))
         {
             if (valueOrWritable)
                 throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             _attr |= Attribute.Accessor;
-            _Get = cast(Dfunction)v.toObject(cc);
+            _Get = cast(Dfunction)v.toObject(realm);
             if (_Get is null)
                 throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         }
 
-        if (auto v = obj.Get(Key.set, cc))
+        if (auto v = obj.Get(Key.set, realm))
         {
             if (valueOrWritable)
                 throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             _attr |= Attribute.Accessor;
-            _Set = cast(Dfunction)v.toObject(cc);
+            _Set = cast(Dfunction)v.toObject(realm);
             if (_Set is null)
                 throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         }
     }
 
     // See_Also: Ecma-262-v7/6.2.4.5
-    this(ref Value v, Dobject obj, CallContext cc)
+    this(ref Value v, Dobject obj, Drealm realm)
     {
-        _attr = getAttribute(cc, obj);
+        _attr = getAttribute(realm, obj);
         _value = v;
     }
 
@@ -637,19 +637,19 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    Value* get(CallContext cc, Dobject othis)
+    Value* get(Drealm realm, Dobject othis)
     {
         if (_attr & Attribute.Accessor)
         {
             if (_Get !is null)
             {
                 auto ret = new Value;
-                auto err = _Get.Call(cc, othis, *ret, null);
+                auto err = _Get.Call(realm, othis, *ret, null);
                 if (err is null)
                     return ret;
                 else
                 {
-                    debug throw err.toScriptException(cc);
+                    debug throw err.toScriptException(realm);
                     else return null;
                 }
             }
@@ -688,14 +688,14 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    DError* setForce(ref Value v, CallContext cc, Dobject othis,)
+    DError* setForce(ref Value v, Drealm realm, Dobject othis,)
     {
         if (_attr & Attribute.Accessor)
         {
             if (_Set !is null)
             {
                 Value ret;
-                return _Set.Call(cc, othis, ret, [v]);
+                return _Set.Call(realm, othis, ret, [v]);
             }
         }
         else
@@ -796,12 +796,12 @@ struct Property
 
     //--------------------------------------------------------------------
     /// See_Also: Ecma-262-v7/6.2.4.4
-    Dobject toObject(CallContext cc)
+    Dobject toObject(Drealm realm)
     {
         import std.exception : enforce;
         enum Attr = Attribute.DontConfig;
 
-        auto obj = cc.dglobal.dObject();
+        auto obj = realm.dObject();
         Value tmp;
         bool r;
         if (_attr & Attribute.Accessor)
@@ -854,13 +854,13 @@ public static:
 
 private static:
 
-    Attribute getAttribute(CallContext cc, Dobject obj)
+    Attribute getAttribute(Drealm realm, Dobject obj)
     {
         bool valueOrWritable = false;
         assert(obj !is null);
 
         Attribute attr;
-        if (auto v = obj.Get(Key.enumerable, cc))
+        if (auto v = obj.Get(Key.enumerable, realm))
         {
             if (!v.toBoolean)
                 attr |= Attribute.DontEnum;
@@ -868,7 +868,7 @@ private static:
         else
             attr |= Attribute.DontEnum;
 
-        if (auto v = obj.Get(Key.configurable, cc))
+        if (auto v = obj.Get(Key.configurable, realm))
         {
             if (!v.toBoolean)
                 attr |= Attribute.DontConfig;
@@ -876,7 +876,7 @@ private static:
         else
             attr |= Attribute.DontConfig;
 
-        if (auto v = obj.Get(Key.writable, cc))
+        if (auto v = obj.Get(Key.writable, realm))
         {
             if (!v.toBoolean)
                 attr |= Attribute.ReadOnly;

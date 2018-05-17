@@ -25,7 +25,7 @@ class DboundFunction : Dobject
     import dmdscript.primitive : Text;
     import dmdscript.dfunction : Dfunction;
     import dmdscript.value : Value, DError;
-    import dmdscript.callcontext : CallContext;
+    import dmdscript.drealm: Drealm;
 
     Dfunction BoundTargetFunction;
     Dobject BoundThis;
@@ -37,11 +37,11 @@ class DboundFunction : Dobject
     }
 
     override
-    DError* Call(CallContext cc, Dobject othis, out Value ret,
+    DError* Call(Drealm realm, Dobject othis, out Value ret,
                  Value[] arglist)
     {
         assert(BoundTargetFunction !is null);
-        return BoundTargetFunction.Call(cc, othis, ret, arglist);
+        return BoundTargetFunction.Call(realm, othis, ret, arglist);
     }
 
     override

@@ -21,7 +21,7 @@ import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.value : DError, Value;
-import dmdscript.callcontext : CallContext;
+import dmdscript.drealm: Drealm;
 
 //==============================================================================
 ///
@@ -47,7 +47,7 @@ class DpromiseConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(CallContext cc, out Value ret,
+    override DError* Construct(Drealm realm, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -60,7 +60,7 @@ private:
 //
 @DFD(1, DFD.Type.Static)
 DError* all(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -69,7 +69,7 @@ DError* all(
 //
 @DFD(1, DFD.Type.Static)
 DError* race(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -78,7 +78,7 @@ DError* race(
 //
 @DFD(1, DFD.Type.Static)
 DError* reject(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -87,7 +87,7 @@ DError* reject(
 //
 @DFD(1, DFD.Type.Static)
 DError* resolve(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -99,7 +99,7 @@ DError* resolve(
 //
 @DFD(1, DFD.Type.Prototype, "catch")
 DError* _catch(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -108,7 +108,7 @@ DError* _catch(
 //
 @DFD(2)
 DError* then(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

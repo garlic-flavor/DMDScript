@@ -24,7 +24,7 @@ debug import std.stdio;
 class Parser(Mode MODE) : Lexer!MODE
 {
     import dmdscript.functiondefinition : FunctionDefinition;
-    import dmdscript.primitive : Identifier;
+    import dmdscript.primitive : Identifier, ModulePool;
     import dmdscript.exception : ScriptException;
     import dmdscript.lexer : IdTable, Tok;
     import dmdscript.statement : TopStatement, Statement;
@@ -34,11 +34,14 @@ class Parser(Mode MODE) : Lexer!MODE
     import dmdscript.statement;
 
     FunctionDefinition lastnamedfunc;
+    ModulePool modulePool;
 
-    this(string base, IdTable baseTable = null)
+    this(string realmId, string base, ModulePool modulePool = null,
+         IdTable baseTable = null)
     {
         //writefln("Parser.this(base = '%s')", base);
-        super(base, baseTable);
+        super(realmId, base, baseTable);
+        this.modulePool = modulePool;
 //        nextToken();            // start up the scanner
     }
 
@@ -46,7 +49,7 @@ class Parser(Mode MODE) : Lexer!MODE
     /**********************************************
      */
     static ScriptException parseFunctionDefinition(
-        out FunctionDefinition pfd, string params, string bdy)
+        string realmId, out FunctionDefinition pfd, string params, string bdy)
     {
         import std.array : Appender;
         import dmdscript.primitive : PropertyKey;
@@ -55,7 +58,7 @@ class Parser(Mode MODE) : Lexer!MODE
         Appender!(TopStatement[]) topstatements;
         FunctionDefinition fd = null;
 
-        auto p = new Parser!(Mode.None)(params);
+        auto p = new Parser!(Mode.None)(realmId, params);
         p.nextToken;
 
         // Parse FormalParameterList
@@ -82,7 +85,7 @@ class Parser(Mode MODE) : Lexer!MODE
             goto Lreturn;
 
         // Parse StatementList
-        p = new Parser!(Mode.None)(bdy);
+        p = new Parser!(Mode.None)(realmId, bdy);
         p.nextToken;
         for(;; )
         {
@@ -273,8 +276,8 @@ private:
         topstatements = parseTopStatements();
         check(Tok.Rbrace);
 
-        f = new FunctionDefinition(linnum, 0, name,
-                                   parameters.data, topstatements);
+        f = new FunctionDefinition(linnum, 0, name, parameters.data,
+                                   topstatements);
         static if (flag == FunctionFlag.literal ||
                    flag == FunctionFlag.property)
         {
@@ -712,6 +715,37 @@ private:
             }
             break;
         }
+//##############################################################################
+//#####                      CONSTRUCTION FIELD                            #####
+//##############################################################################
+        case Tok.Import:
+            nextToken;
+            if      (Tok.String == token) // import 'hoge.ds';
+            {
+                assert (0, "Not implemented yet.");
+            }
+            else if (Tok.Identifier == token) // import Fuga from 'hoge.ds'
+            {
+                assert (0, "Not implemented yet.");
+            }
+            else if (Tok.Lbrace == token) // import {A, B} from 'hoge.ds'
+            {
+                assert (0, "Not implemented yet.");
+            }
+            else if (Tok.Multiply == token) // import * as Hage from 'hoge.ds'
+            {
+                assert (0, "Not implemented yet.");
+            }
+            else
+            {
+                assert (0, "Not implemented yet.");
+            }
+            writeln(token.value, " : ", token.toString);
+            assert (0);
+
+//##############################################################################
+//##############################################################################
+//##############################################################################
 
         default:
             error(StatementExpectedError(token.toString));

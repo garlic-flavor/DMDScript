@@ -20,26 +20,23 @@ debug import std.stdio;
 
 class Program
 {
-    import dmdscript.callcontext : CallContext;
-    import dmdscript.functiondefinition : FunctionDefinition;
-    import dmdscript.dglobal : Dglobal;
+    import dmdscript.functiondefinition: FunctionDefinition;
+    import dmdscript.drealm: Drealm;
+    import dmdscript.primitive: ModulePool;
 
-    this()
+    this(string realmId, ModulePool modulePool)
     {
         // import dmdscript.dobject : dobject_init;
-        import dmdscript.dglobal : Dglobal;
+        import dmdscript.drealm : Drealm;
 
+        realm = new Drealm(realmId, modulePool);
 
-        dglobal = new Dglobal(null);
-        // dobject_init();
-        callcontext = new CallContext(dglobal);
-
-        debug callcontext.program = this;
+        debug realm.program = this;
 
         debug
         {
             import dmdscript.ddate : Ddate;
-            // assert(Ddate.getPrototype.proptable.length != 0);
+            // assert (realm.dDate.classPrototype.proptable.length != 0);
         }
     }
 
@@ -50,11 +47,7 @@ class Program
     2. with text representing a function name & body (pfd != null)
     */
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Now, teh argument id is not used temporarily. But I schedule to use it later.
-
-
-    void compile(string id, string srctext, FunctionDefinition* pfd)
+    void compile(string srctext, FunctionDefinition* pfd)
     {
         import dmdscript.statement : TopStatement;
         import dmdscript.lexer : Mode;
@@ -64,7 +57,8 @@ class Program
         TopStatement[] topstatements;
         string msg;
 
-        auto p = new Parser!(Mode.UseStringtable)(srctext);
+        auto p = new Parser!(Mode.UseStringtable)(
+            realm.id, srctext, realm.modulePool);
 
         if(auto exception = p.parseProgram(topstatements))
         {
@@ -160,21 +154,20 @@ class Program
         Value ret;
         DError* result;
         Darray arguments;
-//        Dglobal dglobal = callcontext.global;
-        assert (dglobal !is null);
+        assert (realm !is null);
 
         // Set argv and argc for execute
-        arguments = dglobal.dArray();
+        arguments = realm.dArray();
         auto val = Value(arguments);
-        dglobal.Set(Key.arguments, val,
-                    Property.Attribute.DontDelete |
-                    Property.Attribute.DontEnum, callcontext);
+        realm.Set(Key.arguments, val,
+                  Property.Attribute.DontDelete |
+                  Property.Attribute.DontEnum, realm);
         arguments.length.put(args.length);
         for(int i = 0; i < args.length; i++)
         {
             val.put(args[i]);
             arguments.Set(PropertyKey(i), val,
-                          Property.Attribute.DontEnum, callcontext);
+                          Property.Attribute.DontEnum, realm);
         }
 
         Value[] p1;
@@ -196,21 +189,20 @@ class Program
 
         // Instantiate global variables as properties of global
         // object with 0 attributes
-        globalfunction.instantiate(callcontext,
+        globalfunction.instantiate(realm,
                                    Property.Attribute.DontDelete |
                                    Property.Attribute.DontConfig);
 //	cc.scopex.reserve(globalfunction.withdepth + 1);
         ret.putVundefined();
-        auto dfs = new DefinedFunctionScope(null, dglobal, null, globalfunction,
-                                            dglobal);
-        callcontext.push(dfs);
-        result = IR.call(callcontext, dglobal, globalfunction.code,
-                         ret, locals.ptr);
+        auto dfs = new DefinedFunctionScope(null, realm, null, globalfunction,
+                                            realm);
+        realm.push(dfs);
+        result = IR.call(realm, realm, globalfunction.code, ret, locals.ptr);
 
         if(result !is null)
-            throw result.toScriptException(callcontext);
+            throw result.toScriptException(realm);
 
-        callcontext.pop(dfs);
+        realm.pop(dfs);
         p1.destroy; p1 = null;
     }
 
@@ -224,9 +216,7 @@ class Program
 
     //====================================================================
 private:
-
-    Dglobal dglobal;
-    CallContext callcontext;
+    Drealm realm;
     FunctionDefinition globalfunction;
 
 debug public:

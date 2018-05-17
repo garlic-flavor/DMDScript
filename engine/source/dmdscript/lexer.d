@@ -93,9 +93,8 @@ enum Tok : int
     Switch, This, True,
     Typeof, Var, Void,
     While, With,
-    Yield,
+    Yield, Await,
     Set, Get,
-    Await,
 
     // Reserved for ECMA extensions
     Catch, Class,
@@ -223,7 +222,7 @@ class Lexer(Mode MODE)
     {
         assert(se !is null);
 
-        se.addTrace(currentline, cast(size_t)(token.ptr - base.ptr));
+        se.addTrace(realmId, currentline, cast(size_t)(token.ptr - base.ptr));
 
         assert(base.ptr < end);
         p = end - 1;
@@ -255,6 +254,7 @@ class Lexer(Mode MODE)
 
     //====================================================================
 protected:
+    string realmId;
     uint currentline;
     const string base;             // pointer to start of buffer
     static if (MODE & Mode.UseStringtable)
@@ -262,8 +262,9 @@ protected:
 
     //--------------------------------------------------------------------
     @trusted pure nothrow
-    this(string base, IdTable baseTable = null)
+    this(string realmId, string base, IdTable baseTable = null)
     {
+        this.realmId = realmId;
         if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
             base ~= cast(char)0x1A;
         this.base = base;
@@ -378,8 +379,7 @@ protected:
             }
             else
             {
-                if (Tok.reserved_min < token && token < Tok.reserved_max ||
-                    Tok.Await == token)
+                if (Tok.reserved_min < token && token < Tok.reserved_max)
                 {
                     static if (MODE & Mode.UseStringtable)
                         return idtable.build(token.str);

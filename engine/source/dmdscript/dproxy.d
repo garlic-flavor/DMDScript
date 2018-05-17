@@ -22,9 +22,9 @@ import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.value : DError, Value;
-import dmdscript.callcontext : CallContext;
 import dmdscript.errmsgs;
 import dmdscript.property : Property, PropTable;
+import dmdscript.drealm: Drealm;
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // NOT IMPLEMENTED YET.
@@ -33,13 +33,13 @@ class Dproxy : Dobject
     import dmdscript.dfunction : Dfunction;
 
 private:
-    this(Dobject prototype, CallContext cc, Dobject prop)
+    this(Dobject prototype, Drealm realm, Dobject prop)
     {
         super(prototype, Key.Proxy);
 
-        if (auto ret = prop.Get(Key.set, cc))
+        if (auto ret = prop.Get(Key.set, realm))
         {
-            if (auto func = cast(Dfunction)ret.toObject(cc))
+            if (auto func = cast(Dfunction)ret.toObject(realm))
             {
                 SetSetter(PropTable.SpecialSymbols.opAssign, func,
                           Property.Attribute.DontEnum);
@@ -60,22 +60,22 @@ class DproxyConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(CallContext cc, out Value ret,
+    override DError* Construct(Drealm realm, out Value ret,
                                Value[] arglist)
     {
         Dobject proto, attr;
 
         if (0 < arglist.length)
-            proto = arglist[0].toObject(cc);
+            proto = arglist[0].toObject(realm);
         else
             proto = new Dobject(null);
 
         if (1 < arglist.length)
-            attr = arglist[1].toObject(cc);
+            attr = arglist[1].toObject(realm);
         else
             attr = new Dobject(null);
 
-        ret.put(new Dproxy(proto, cc, attr));
+        ret.put(new Dproxy(proto, realm, attr));
         return null;
     }
 }
@@ -93,7 +93,7 @@ enum Key : PropertyKey
 //
 @DFD(2, DFD.Type.Static)
 DError* revocable(
-    DnativeFunction pthis, CallContext cc, Dobject othis, out Value ret,
+    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

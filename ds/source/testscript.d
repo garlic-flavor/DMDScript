@@ -309,7 +309,6 @@ class SrcFile
     {
         /* DMDScript source files default to a '.ds' extension
          */
-
         srcfile = defaultExtension(srcfilename, "ds");
         this.includes = includes;
     }
@@ -376,14 +375,14 @@ class SrcFile
         /* Create a DMDScript program, and compile our text buffer.
          */
 
-        program = new Program();
+        program = new Program(srcfile, &modulePool);
 
         debug
         {
             program.dumpMode = dumpMode;
         }
 
-        try program.compile (srcfile, buffer.assumeUnique, null);
+        try program.compile (buffer.assumeUnique, null);
         catch (ScriptException e)
         {
             e.setSourceInfo (&getSourceInfo);
@@ -425,6 +424,12 @@ class SrcFile
             sources[i] = new SESource(name, buf.assumeUnique);
         }
         return sources;
+    }
+
+    string modulePool(string moduleSpecifier)
+    {
+        assert(0, "reach with " ~ moduleSpefifier);
+        return "";
     }
 
 debug public:
