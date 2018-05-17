@@ -719,30 +719,30 @@ private:
 //#####                      CONSTRUCTION FIELD                            #####
 //##############################################################################
         case Tok.Import:
+            writeln("reach");
             nextToken;
-            if      (Tok.String == token) // import 'hoge.ds';
+            if      (Tok.String == token.value) // import 'hoge.ds';
             {
-                assert (0, "Not implemented yet.");
+                writeln ("importing ", token.str);
             }
-            else if (Tok.Identifier == token) // import Fuga from 'hoge.ds'
+            else if (Tok.Identifier == token.value) //import Fuga from 'hoge.ds'
             {
-                assert (0, "Not implemented yet.");
+                writeln ("reach");
             }
-            else if (Tok.Lbrace == token) // import {A, B} from 'hoge.ds'
+            else if (Tok.Lbrace == token.value) // import {A, B} from 'hoge.ds'
             {
-                assert (0, "Not implemented yet.");
             }
-            else if (Tok.Multiply == token) // import * as Hage from 'hoge.ds'
+            else if (Tok.Multiply == token.value) // import * as Hage from 'hoge.ds'
             {
-                assert (0, "Not implemented yet.");
             }
             else
             {
-                assert (0, "Not implemented yet.");
             }
-            writeln(token.value, " : ", token.toString);
-            assert (0);
 
+            // writeln(token.value, " : ", token.toString);
+            // assert (0);
+
+            assert(0);
 //##############################################################################
 //##############################################################################
 //##############################################################################

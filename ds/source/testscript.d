@@ -75,7 +75,7 @@ Usage:
 int main(string[] args)
 {
     import std.algorithm : startsWith;
-    import dmdscript.dglobal : banner;
+    import dmdscript.drealm : banner;
 
     uint errors = 0;
     string[] includes;
@@ -428,8 +428,7 @@ class SrcFile
 
     string modulePool(string moduleSpecifier)
     {
-        assert(0, "reach with " ~ moduleSpefifier);
-        return "";
+        assert(0, "reach with " ~ moduleSpecifier);
     }
 
 debug public:
