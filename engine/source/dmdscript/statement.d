@@ -108,7 +108,7 @@ class TopStatement
     }
 
 debug static:
-    string dump(TopStatement[] s)
+    string dump(in TopStatement[] s)
     {
         import std.array : Appender;
         import std.conv : to;

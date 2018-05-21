@@ -1846,23 +1846,53 @@ final class CondExp : BinExp
 //------------------------------------------------------------------------------
 final class ImportExpression : Expression
 {
+    static const PropertyKey Module = Key.CreateRealm;
+    import dmdscript.statement: TopStatement;
     string moduleSpecifier;
+    TopStatement[] topstatements;
+    FunctionDefinition globalfunction;
 
-    this(uint linnum, string moduleSpecifier)
+    this(uint linnum, string moduleSpecifier, TopStatement[] topstatements)
     {
         super(linnum, Tok.Import);
         this.moduleSpecifier = moduleSpecifier;
+        this.topstatements = topstatements;
     }
 
-    override @safe @nogc pure nothrow
-    Expression semantic(Scope* sc)
+    override
+    Expression semantic(Scope* ssc)
     {
+        globalfunction = new FunctionDefinition(0, 1, null, null,
+                                                topstatements);
+
+        Scope sc;
+        sc.ctor(globalfunction);
+        globalfunction = globalfunction.semantic (&sc);
+        if (sc.exception !is null)
+        {
+            sc.exception.setBufferId(moduleSpecifier);
+            ssc.exception = sc.exception;
+        }
+
         return this;
     }
 
     override
     void toIR(IRstate* irs, idx_t ret)
     {
-        assert (0);
+        import dmdscript.value: Value;
+
+        irs.gen!(Opcode.Import)(linnum, ret, new Value(moduleSpecifier),
+                                globalfunction);
+    }
+
+    override
+    void toBuffer(scope void delegate(in char[]) sink) const
+    {
+        sink("import : ");
+        sink(moduleSpecifier);
+        sink("\n{\n");
+        sink(TopStatement.dump(topstatements));
+        sink("}\n");
     }
 }

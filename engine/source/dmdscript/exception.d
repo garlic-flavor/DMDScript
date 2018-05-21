@@ -26,6 +26,14 @@ class ScriptException : Exception
     // int code; // for what?
 
     //--------------------------------------------------------------------
+    @nogc @safe pure nothrow
+    this(string msg, Throwable n,
+         string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, n);
+        typename = "Unknown";
+    }
+
     ///
     @nogc @safe pure nothrow
     this(string type, string msg,
@@ -91,10 +99,10 @@ class ScriptException : Exception
     }
 
     @safe pure
-    void addTrace (string realmId, uint linnum, size_t offset,
+    void addTrace (uint linnum, size_t offset,
                    string f = __FILE__, size_t l = __LINE__)
     {
-        auto sd = TraceDescriptor (realmId, linnum, offset, f, l);
+        auto sd = TraceDescriptor (linnum, offset, f, l);
         if (!alreadyExists(sd))
             trace ~= sd;
     }
@@ -119,10 +127,10 @@ class ScriptException : Exception
     }
     /// ditto
     @safe @nogc pure nothrow
-    void addTrace(string realmId, string funcname)
+    void addTrace(string funcname)
     {
         foreach (ref one; trace)
-            one.addTrace(realmId, funcname);
+            one.addTrace(funcname);
     }
 
     //
@@ -151,6 +159,12 @@ class ScriptException : Exception
     {
         foreach (ref one; trace)
             one.setSourceInfo(callback);
+    }
+
+    void setBufferId(string id)
+    {
+        foreach (ref one; trace)
+            one.setBufferId(id);
     }
 
     //--------------------------------------------------------------------
@@ -235,10 +249,8 @@ private:
 
         //
         @safe @nogc pure nothrow
-        this(string realmId, uint linnum, size_t offset,
-             string dfile, size_t dline)
+        this(uint linnum, size_t offset, string dfile, size_t dline)
         {
-            this.realmId = realmId;
             this.linnum = linnum;
             this.offset = offset;
             this.haveOffset = true;
@@ -248,10 +260,8 @@ private:
 
         //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        void addTrace(string realmId, string funcname)
+        void addTrace(string funcname)
         {
-            if (this.realmId.length == 0)
-                this.realmId = realmId;
             if (this.funcname.length == 0)
                 this.funcname = funcname;
         }
@@ -266,7 +276,7 @@ private:
             if (0 < sourcename.length)
                 return;
 
-            foreach (one; callback(realmId))
+            foreach (one; callback(bufferId))
             {
                 if (linnum <= accLine + one.lineCount)
                 {
@@ -282,6 +292,12 @@ private:
             }
         }
 
+        void setBufferId(string id)
+        {
+            if (0 == bufferId.length)
+                bufferId = id;
+        }
+
         //----------------------------------------------------------
         void scriptNameAndLine(scope void delegate(in char[]) sink) const
         {
@@ -289,10 +305,10 @@ private:
 
             char[20] tmpBuff = void;
 
-            if (0 < realmId.length)
+            if (0 < bufferId.length)
             {
                 sink("(#");
-                sink(realmId);
+                sink(bufferId);
                 sink(")");
             }
             if ((0 < sourcename.length || funcname.length) && 0 < linnum)
@@ -398,7 +414,7 @@ private:
         bool haveOffset;//
         size_t offset; //
 
-        string realmId;
+        string bufferId;
     }
 
     //====================================================================

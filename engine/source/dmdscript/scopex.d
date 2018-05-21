@@ -29,7 +29,7 @@ struct Scope
 {
     Scope*             enclosing;    // enclosing Scope
 
-    Program            program;      // Root module
+    // Program            program;      // Root module
     // deprecated ScopeSymbol*       scopesym;     // current symbol
     FunctionDefinition funcdef;      // what function we're in
     SymbolTable**      plabtab;      // pointer to label symbol table
@@ -47,7 +47,7 @@ struct Scope
     {
         enclosing = null;
 
-        program = null;
+        // program = null;
         // scopesym = null;
         funcdef = null;
         plabtab = null;
@@ -63,21 +63,21 @@ struct Scope
     void ctor(Scope* enclosing)
     {
         zero();
-        this.program = enclosing.program;
+        // this.program = enclosing.program;
         this.funcdef = enclosing.funcdef;
         this.plabtab = enclosing.plabtab;
         this.nestDepth = enclosing.nestDepth;
         this.enclosing = enclosing;
     }
 
-    @safe @nogc pure nothrow
-    void ctor(Program program, FunctionDefinition fd)
-    {   // Create root scope
-        zero();
-        this.program = program;
-        this.funcdef = fd;
-        this.plabtab = &fd.labtab;
-    }
+    // @safe @nogc pure nothrow
+    // void ctor(Program program, FunctionDefinition fd)
+    // {   // Create root scope
+    //     zero();
+    //     this.program = program;
+    //     this.funcdef = fd;
+    //     this.plabtab = &fd.labtab;
+    // }
 
     @safe @nogc pure nothrow
     void ctor(FunctionDefinition fd)

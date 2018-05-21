@@ -222,8 +222,8 @@ class DarrayConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
-                               Value[] arglist)
+    override
+    DError* Construct(Drealm realm, out Value ret, Value[] arglist)
     {
         import dmdscript.primitive : PropertyKey;
         import dmdscript.errmsgs: ArrayLenOutOfBoundsError;

@@ -115,6 +115,9 @@ enum NoThrowExpressionError = syntaxerr!()
 // enum UndefinedObjectSymbolError =
 //     err!typeerror("%s.%s is undefined");
 // }
+
+//------------------------------------------------------------------------------
+
 enum FunctionWantsNumberError = err!(cTypeError, string, string)
     ("Number.prototype.%s() expects a Number not a %s");
 enum FunctionWantsStringError = err!(cTypeError, string, string)

@@ -36,30 +36,26 @@ class Parser(Mode MODE) : Lexer!MODE
     FunctionDefinition lastnamedfunc;
     ModulePool modulePool;
 
-    this(string realmId, string base, ModulePool modulePool = null,
-         IdTable baseTable = null)
+    this(string base, ModulePool modulePool = null, IdTable baseTable = null)
     {
         //writefln("Parser.this(base = '%s')", base);
-        super(realmId, base, baseTable);
+        super(base, baseTable);
         this.modulePool = modulePool;
-//        nextToken();            // start up the scanner
+        nextToken;            // start up the scanner
     }
 
 
     /**********************************************
      */
-    static ScriptException parseFunctionDefinition(
-        string realmId, out FunctionDefinition pfd, string params, string bdy)
+    static FunctionDefinition parseFunctionDefinition(string params, string bdy)
     {
         import std.array : Appender;
         import dmdscript.primitive : PropertyKey;
 
         Appender!(Identifier[]) parameters;
         Appender!(TopStatement[]) topstatements;
-        FunctionDefinition fd = null;
 
-        auto p = new Parser!(Mode.None)(realmId, params);
-        p.nextToken;
+        auto p = new Parser!(Mode.None)(params);
 
         // Parse FormalParameterList
         while(p.token != Tok.Eof)
@@ -67,7 +63,6 @@ class Parser(Mode MODE) : Lexer!MODE
             if(p.token != Tok.Identifier)
             {
                 p.error(FplExpectedIdentifierError(p.token.toString));
-                goto Lreturn;
             }
             parameters.put(p.token.ident);
             p.nextToken();
@@ -78,15 +73,11 @@ class Parser(Mode MODE) : Lexer!MODE
             else
             {
                 p.error(FplExpectedCommaError(p.token.toString));
-                goto Lreturn;
             }
         }
-        if(p.exception !is null)
-            goto Lreturn;
 
         // Parse StatementList
-        p = new Parser!(Mode.None)(realmId, bdy);
-        p.nextToken;
+        p = new Parser!(Mode.None)(bdy);
         for(;; )
         {
             if(p.token == Tok.Eof)
@@ -94,38 +85,17 @@ class Parser(Mode MODE) : Lexer!MODE
             topstatements.put(p.parseStatement());
         }
 
-        fd = new FunctionDefinition(0, 0, null, parameters.data,
-                                    topstatements.data);
-
-        Lreturn:
-        pfd = fd;
-        return p.exception;
+        return new FunctionDefinition(0, 0, null, parameters.data,
+                                      topstatements.data);
     }
 
     /**********************************************
      */
-    nothrow
-    ScriptException parseProgram(out TopStatement[] topstatements)
+    TopStatement[] parseProgram()
     {
-        try
-        {
-            nextToken;
-            topstatements = parseTopStatements();
-            check(Tok.Eof);
-            //writef("parseProgram done\n");
-            //clearstack();
-        }
-        catch(ScriptException se)
-        {
-            exception = se;
-        }
-        catch(Throwable t)
-        {
-            import dmdscript.protoerror : SyntaxError;
-            exception = new ScriptException(SyntaxError.Text,
-                                            "Unexpected exception.", t);
-        }
-        return exception;
+        auto topstatements = parseTopStatements();
+        check(Tok.Eof);
+        return topstatements;
     }
 
 private:
@@ -719,11 +689,23 @@ private:
 //#####                      CONSTRUCTION FIELD                            #####
 //##############################################################################
         case Tok.Import:
-            writeln("reach");
             nextToken;
             if      (Tok.String == token.value) // import 'hoge.ds';
             {
-                writeln ("importing ", token.str);
+                try
+                {
+                    auto bdy = modulePool(token.str);
+                    auto sp = new Parser!(Mode.Module)(
+                        bdy, modulePool);
+                    auto ts = sp.parseProgram;
+                    s = new ExpStatement(
+                        linnum, new ImportExpression(linnum, token.str, ts));
+                }
+                catch (Throwable t)
+                    error(t);
+
+                nextToken;
+                break;
             }
             else if (Tok.Identifier == token.value) //import Fuga from 'hoge.ds'
             {

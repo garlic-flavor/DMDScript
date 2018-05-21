@@ -202,7 +202,7 @@ enum Mode : ubyte
 {
     None           = 0x00,
     UseStringtable = 0x01,
-    Module         = 0x02,
+    Module         = 0x03,
 }
 
 //------------------------------------------------------------------------------
@@ -214,23 +214,27 @@ class Lexer(Mode MODE)
     import dmdscript.errmsgs;
 
     Token token;
-    ScriptException exception;            // syntax error information
+    // ScriptException exception;            // syntax error information
 
     //
     pure
-    void error(ScriptException se)
+    void error(Throwable t)
     {
-        assert(se !is null);
+        assert(t !is null);
 
-        se.addTrace(realmId, currentline, cast(size_t)(token.ptr - base.ptr));
+        auto se = cast(ScriptException)t;
+        if (se is null)
+            se = new ScriptException ("Unkown exception", t);
+
+        se.addTrace(currentline, cast(size_t)(token.ptr - base.ptr));
 
         assert(base.ptr < end);
         p = end - 1;
         token.next = null;
 
-        exception = se;
+        // exception = se;
 
-        debug throw se;
+        /*debug*/ throw se;
     }
 
     //
@@ -254,7 +258,6 @@ class Lexer(Mode MODE)
 
     //====================================================================
 protected:
-    string realmId;
     uint currentline;
     const string base;             // pointer to start of buffer
     static if (MODE & Mode.UseStringtable)
@@ -262,9 +265,8 @@ protected:
 
     //--------------------------------------------------------------------
     @trusted pure nothrow
-    this(string realmId, string base, IdTable baseTable = null)
+    this(string base, IdTable baseTable = null)
     {
-        this.realmId = realmId;
         if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
             base ~= cast(char)0x1A;
         this.base = base;

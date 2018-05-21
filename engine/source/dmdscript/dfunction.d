@@ -267,7 +267,6 @@ class DfunctionConstructor : Dconstructor
         string bdy;
         string P;
         FunctionDefinition fd;
-        ScriptException exception;
 
         // Get parameter list (P) and body from arglist[]
         if(arglist.length)
@@ -284,39 +283,43 @@ class DfunctionConstructor : Dconstructor
             }
         }
 
-        if((exception = Parser!(Mode.None).parseFunctionDefinition(
-                realm.id, fd, P, bdy)) !is null)
-            goto Lsyntaxerror;
-
-        if(fd !is null)
+        try
         {
-            Scope sc;
+            fd = Parser!(Mode.None).parseFunctionDefinition(P, bdy);
 
-            sc.ctor(fd);
-            fd.semantic(&sc);
-            exception = sc.exception;
-            if(exception !is null)
-                goto Lsyntaxerror;
-            fd.toIR(null);
-            auto fobj = new DdeclaredFunction(
-                realm, fd, realm.scopes.dup);
-            // fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
-            // fobj.scopex = cc.scopes.dup;
-            ret.put(fobj);
+            // if((exception = Parser!(Mode.None).parseFunctionDefinition(
+            //         fd, P, bdy)) !is null)
+            //     goto Lsyntaxerror;
+
+            if(fd !is null)
+            {
+                Scope sc;
+
+                sc.ctor(fd);
+                fd.semantic(&sc);
+                if (sc.exception !is null)
+                    throw sc.exception;
+                fd.toIR(null);
+                auto fobj = new DdeclaredFunction(
+                    realm, fd, realm.scopes.dup);
+                // fobj.scopex = cc.scopex[0..cc.scoperoot].dup;
+                // fobj.scopex = cc.scopes.dup;
+                ret.put(fobj);
+            }
+            else
+                ret.putVundefined();
+
+            return null;
         }
-        else
+        catch (Throwable t)
+        {
             ret.putVundefined();
+            auto o = realm.dSyntaxError(t);
+            auto v = new DError;
+            v.put(o);
+            return v;
+        }
 
-        return null;
-
-        Lsyntaxerror:
-        Dobject o;
-
-        ret.putVundefined();
-        o = realm.dSyntaxError(exception);
-        auto v = new DError;
-        v.put(o);
-        return v;
     }
 }
 

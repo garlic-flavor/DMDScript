@@ -26,7 +26,8 @@ import core.memory;
 
 import dmdscript.primitive;
 import dmdscript.callcontext;
-import dmdscript.program;
+// import dmdscript.program;
+import dmdscript.drealm;
 import dmdscript.errmsgs;
 
 enum
@@ -87,7 +88,7 @@ int main(string[] args)
     debug
     {
         bool compileOnly;
-        Program.DumpMode dumpMode;
+        Drealm.DumpMode dumpMode;
     }
 
     if(args.length == 1)
@@ -105,13 +106,13 @@ int main(string[] args)
                 compileOnly = true;
                 break;
             case "-dumpStatement":
-                dumpMode |= Program.DumpMode.Statement;
+                dumpMode |= Drealm.DumpMode.Statement;
                 break;
             case "-dumpIR":
-                dumpMode |= Program.DumpMode.IR;
+                dumpMode |= Drealm.DumpMode.IR;
                 break;
             case "-dump":
-                dumpMode |= Program.DumpMode.All;
+                dumpMode |= Drealm.DumpMode.All;
                 break;
         }
         default:
@@ -302,8 +303,8 @@ class SrcFile
     string srcfile;
     string[] includes;
 
-    Program program;
-    char[] buffer;
+    DscriptRealm realm;
+    string buffer;
 
     this(string srcfilename, string[] includes)
     {
@@ -315,58 +316,7 @@ class SrcFile
 
     void read()
     {
-        /* Read the source file, prepend the include files,
-         * and put it all in buffer[]. Allocate an extra byte
-         * to buffer[] and terminate it with a 0x1A.
-         * (If the 0x1A isn't at the end, the lexer will put
-         * one there, forcing an extra copy to be made of the
-         * source text.)
-         */
-        /*
-          When the include file does not end with line terminator,
-          the line number of the error message is wrong.
-          So, each include files have a sentinel of line terminator.
-         */
-
-        //writef("read file '%s'\n",srcfile);
-
-        // Read the includes[] files
-        size_t i;
-        void[] buf;
-        ulong len;
-
-        len = std.file.getSize(srcfile);
-        foreach (string filename; includes)
-        {
-            len += std.file.getSize(filename);
-            len++; // room for sentinal of line terminator
-        }
-        len++; // leave room for sentinel
-
-        assert(len < uint.max);
-
-        // Prefix the includes[] files
-
-        int sz = cast(int)len;
-        buffer = new char[sz];
-
-        foreach (string filename; includes)
-        {
-            buf = std.file.read(filename);
-            buffer[i .. i + buf.length] = cast(string)buf[];
-            i += buf.length;
-
-            buffer[i] = '\n';
-            ++i;
-        }
-
-        buf = std.file.read(srcfile);
-        buffer[i .. i + buf.length] = cast(string)buf[];
-        i += buf.length;
-
-        buffer[i] = 0x1A; // ending sentinal
-        i++;
-        assert(i == len);
+        buffer = modulePool(srcfile);
     }
 
     void compile()
@@ -375,37 +325,42 @@ class SrcFile
         /* Create a DMDScript program, and compile our text buffer.
          */
 
-        program = new Program(srcfile, &modulePool);
+        realm = new DscriptRealm();
 
         debug
         {
-            program.dumpMode = dumpMode;
+            realm.dumpMode = dumpMode;
         }
 
-        try program.compile (buffer.assumeUnique, null);
+        try realm.compile (srcfile, buffer, &modulePool);
         catch (ScriptException e)
         {
             e.setSourceInfo (&getSourceInfo);
             throw e;
         }
+        finally
+            buffer = null;
     }
 
     void execute()
     {
+        import dmdscript.value: Value;
         import dmdscript.exception;
         /* Execute the resulting program.
          */
 
-        try program.execute(null);
-        catch (ScriptException e)
+        Value ret;
+
+        auto err = realm.execute;
+        if (err !is null)
         {
-            e.setSourceInfo (&getSourceInfo);
-            throw e;
+            err.setSourceInfo (&getSourceInfo);
+            throw err.toScriptException(realm);
         }
     }
 
 
-    auto getSourceInfo(string realmId)
+    auto getSourceInfo(string bufferId)
     {
         import dmdscript.exception : ScriptException;
         alias SESource = ScriptException.Source;
@@ -415,7 +370,7 @@ class SrcFile
 
         auto sources = new SESource[includes.length + 1];
 
-        foreach (i, name; includes ~ srcfile)
+        foreach (i, name; includes ~ bufferId)
         {
             auto size = cast(size_t)std.file.getSize(name);
             auto buf = new char[size+1];
@@ -428,10 +383,66 @@ class SrcFile
 
     string modulePool(string moduleSpecifier)
     {
-        assert(0, "reach with " ~ moduleSpecifier);
+        /* Read the source file, prepend the include files,
+         * and put it all in buffer[]. Allocate an extra byte
+         * to buffer[] and terminate it with a 0x1A.
+         * (If the 0x1A isn't at the end, the lexer will put
+         * one there, forcing an extra copy to be made of the
+         * source text.)
+         */
+        /*
+          When the include file does not end with line terminator,
+          the line number of the error message is wrong.
+          So, each include files have a sentinel of line terminator.
+        */
+
+        //writef("read file '%s'\n",srcfile);
+
+        if (!moduleSpecifier.exists)
+            throw new Exception (moduleSpecifier ~ " is not found.");
+
+        // Read the includes[] files
+        size_t i;
+        void[] buf;
+        ulong len;
+
+        len = std.file.getSize(moduleSpecifier);
+        foreach (string filename; includes)
+        {
+            len += std.file.getSize(filename);
+            len++; // room for sentinal of line terminator
+        }
+        len++; // leave room for sentinel
+
+        assert(len < uint.max);
+
+        // Prefix the includes[] files
+
+        int sz = cast(int)len;
+        auto buffer = new char[sz];
+
+        foreach (string filename; includes)
+        {
+            buf = std.file.read(filename);
+            buffer[i .. i + buf.length] = cast(string)buf[];
+            i += buf.length;
+
+            buffer[i] = '\n';
+            ++i;
+        }
+
+        buf = std.file.read(moduleSpecifier);
+        buffer[i .. i + buf.length] = cast(string)buf[];
+        i += buf.length;
+
+        buffer[i] = 0x1A; // ending sentinal
+        i++;
+        assert(i == len);
+
+        return buffer.assumeUnique;
     }
 
 debug public:
-    Program.DumpMode dumpMode;
+    Drealm.DumpMode dumpMode;
 }
 

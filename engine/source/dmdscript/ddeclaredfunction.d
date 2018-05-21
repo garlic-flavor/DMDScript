@@ -158,8 +158,7 @@ private
         result = IR.call(realm, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace (realm.id,
-                             fd.name !is null ?
+            result.addTrace (fd.name !is null ?
                              "function " ~ fd.name.toString : "anonymous");
         }
 

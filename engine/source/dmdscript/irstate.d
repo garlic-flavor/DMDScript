@@ -61,7 +61,7 @@ struct IRstate
 
     ///
     @safe @nogc pure nothrow
-    void collect(LocalVariables lv)
+    void collect(ref LocalVariables lv)
     {
         lvm.collect(lv);
     }
@@ -70,7 +70,7 @@ struct IRstate
      * Release this block of n locals starting at local.
      */
     @safe @nogc pure nothrow
-    void release(LocalVariables lv)
+    void release(ref LocalVariables lv)
     {
         lvm.release(lv);
     }
@@ -515,7 +515,7 @@ private struct LocalVariablesManager
     }
 
     @safe @nogc pure nothrow
-    void collect(LocalVariables lv)
+    void collect(ref LocalVariables lv)
     {
         if (auto r = lv.r)
             free(r);

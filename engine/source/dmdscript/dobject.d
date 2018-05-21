@@ -177,8 +177,7 @@ class Dobject
         return proptable.keys;
     }
 
-    DError* Call(Drealm realm, Dobject othis, out Value ret,
-                 Value[] arglist)
+    DError* Call(Drealm realm, Dobject othis, out Value ret, Value[] arglist)
     {
         return SNoCallError(realm, _classname);
     }
@@ -501,14 +500,15 @@ class DobjectConstructor : Dconstructor
     }
 
     //
-    override DError* Construct(Drealm realm, out Value ret, Value[] arglist)
+    override
+    DError* Construct(Drealm realm, out Value ret, Value[] arglist)
     {
         Dobject o;
         Value* v;
 
         // ECMA 15.2.2
         if(arglist.length == 0)
-         {
+        {
             o = opCall;
         }
         else

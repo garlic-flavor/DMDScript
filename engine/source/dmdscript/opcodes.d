@@ -31,7 +31,7 @@ import dmdscript.property;
 import dmdscript.ddeclaredfunction;
 import dmdscript.dfunction;
 // import dmdscript.protoerror;
-import dmdscript.drealm : undefined, Drealm;
+import dmdscript.drealm : undefined, Drealm, DmoduleRealm;
 
 debug import std.stdio;
 
@@ -487,7 +487,8 @@ struct IR
                 case Opcode.Object:              // a = object
                 {
                     auto fd = cast(FunctionDefinition)(code+2).fd;
-                    auto fobject = new DdeclaredFunction(realm, fd, realm.scopes.dup);
+                    auto fobject = new DdeclaredFunction(
+                        realm, fd, realm.scopes.dup);
                     (locals + (code + 1).index).put(fobject);
                     code += IRTypes[Opcode.Object].size;
                     break;
@@ -1675,6 +1676,25 @@ struct IR
                         code += IRTypes[Opcode.Assert].size;
                         break;
                     }
+                }
+
+                case Opcode.Import:
+                {
+//##############################################################################
+//######                      CONSTRUCTION FIELD                          ######
+//##############################################################################
+                    // import 'hoge.ds'
+                    assert ((code + 2).value.isString);
+                    auto name = (code + 2).value.text;
+                    auto fd = cast(FunctionDefinition)(code + 3).fd;
+                    auto newrealm = new DmoduleRealm(name, fd);
+                    (locals + (code + 1).index).put(newrealm);
+
+                    code += IRTypes[Opcode.Import].size;
+                    break;
+//##############################################################################
+//##############################################################################
+//##############################################################################
                 }
                 case Opcode.End:
                     code += IRTypes[Opcode.End].size;

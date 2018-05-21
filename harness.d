@@ -168,6 +168,7 @@ struct ArgsInfo
     bool ignoreComplain;
     bool verbose;
     bool inherit;
+    bool nocomplaint;
 }
 
 //==============================================================================
@@ -251,6 +252,7 @@ ArgsInfo getInfo(string[] args)
         "ignore", "Ignore the ignore mark.", &info.ignoreComplain,
         "verbose|v", "Make harness.d verbose.", &info.verbose,
         "inherit", "Inherit results from an existing database.", &info.inherit,
+        "nocomplaint", "Run without any compiants", &info.nocomplaint,
         );
 
     if (0 < info.pattern.length)
@@ -1019,18 +1021,25 @@ void runTest(in ref ArgsInfo info)
             writeln("--------------------------------------------------");
 
             // 言い訳するか
-            stdout.write("complain to this?>");
-            inputs = stdin.readln.to!string.strip;
-
-            if      (0 < inputs.length)
+            if (info.nocomplaint)
             {
-                ++ignoredCount;
-                meta.complaint = inputs;
-            }
-            else if (0 < meta.complaint.length)
-                ++ignoredCount;
-            else
                 ++failedCount;
+            }
+            else
+            {
+                stdout.write("complain to this?>");
+                inputs = stdin.readln.to!string.strip;
+
+                if      (0 < inputs.length)
+                {
+                    ++ignoredCount;
+                    meta.complaint = inputs;
+                }
+                else if (0 < meta.complaint.length)
+                    ++ignoredCount;
+                else
+                    ++failedCount;
+            }
 
             // 続行するかどうか。
             if (meta.complaint.length == 0 && info.type != RunType.full &&

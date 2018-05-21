@@ -97,9 +97,7 @@ class Drealm : Dobject // aka global environment.
 
     Dmath dMath;
 
-    // CallContext callcontext;
-
-    this(string realmId, ModulePool modulePool, in char[][] argv = null)
+    this()
     {
         import dmdscript.primitive: PropertyKey;
         import dmdscript.dnative: install;
@@ -110,10 +108,6 @@ class Drealm : Dobject // aka global environment.
         // Dglobal.prototype is implementation-dependent
         super(rootPrototype, Key.global);
 
-        _id = realmId;
-        _modulePool = modulePool;
-
-        // callcontext = new CallContext(this);
         _current = new DefinedFunctionScope(null, this, null, null, this);
         _scopex.put(_current);
 
@@ -130,8 +124,8 @@ class Drealm : Dobject // aka global environment.
 
         init(dObject, dFunction,
              dArray, dRegexp, dBoolean, dNumber, dString, dSymbol,
-             dSyntaxError, dEvalError, dReferenceError, dRangeError, dTypeError,
-             dUriError);
+             dSyntaxError, dEvalError, dReferenceError, dRangeError,
+             dTypeError, dUriError);
 
         // ECMA 15.1
         // Add in built-in objects which have attribute { DontEnum }
@@ -220,26 +214,6 @@ class Drealm : Dobject // aka global environment.
         // Build an "arguments" property out of argv[],
         // and add it to the global object.
 
-/*
-        CallContext cc;
-
-        Darray arguments;
-
-        arguments = new Darray();
-        val.put(arguments);
-        DefineOwnProperty(Key.arguments, val, Property.Attribute.DontDelete);
-        arguments.length.put(argv.length);
-        for(int i = 0; i < argv.length; i++)
-        {
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Where is this definition?
-            val.put(argv[i].idup);
-            arguments.Set(PropertyKey(i), val, Property.Attribute.DontEnum, cc);
-        }
-        val.put(Value.Type.Null);
-        arguments.DefineOwnProperty(Key.callee, val,
-                                    Property.Attribute.DontEnum);
-*/
 //     debug
 //     {
 //         import dmdscript.primitive : PropertyKey;
@@ -258,39 +232,12 @@ class Drealm : Dobject // aka global environment.
     //--------------------------------------------------------------------
     ///
     @property @safe @nogc pure nothrow
-    ModulePool modulePool()
-    {
-        return _modulePool;
-    }
-
-    //--------------------------------------------------------------------
-    ///
-    @property @safe @nogc pure nothrow
     string id() const
     {
         return _id;
     }
 
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-    //--------------------------------------------------------------------
-    /** Get the current interrupting flag.
-
-    When this is true, dmdscript.opcodes.IR.call will return immediately.
-    */
-    @property @safe @nogc pure nothrow
-    bool isInterrupting() const
-    {
-        return _interrupt;
-    }
-
-    /// Make the interrupting flag to true.
-    @property @safe @nogc pure nothrow
-    void interrupt()
-    {
-        _interrupt = true;
-    }
-
     //--------------------------------------------------------------------
     /** Search a variable in the current scope chain.
 
@@ -353,6 +300,187 @@ class Drealm : Dobject // aka global environment.
     }
 
     //--------------------------------------------------------------------
+    ///
+    string[] searchSimilarWord(string name)
+    {
+        return _current.searchSimilarWord(this, name);
+    }
+    /// ditto
+    string[] searchSimilarWord(Dobject target, string name)
+    {
+        import std.string : soundexer;
+        import dmdscript.callcontext: ssw = searchSimilarWord;
+        auto key = name.soundexer;
+        return ssw(this, target, key);
+    }
+
+
+    //--------------------------------------------------------------------
+    /** Get the current interrupting flag.
+
+    When this is true, dmdscript.opcodes.IR.call will return immediately.
+    */
+    @property @safe @nogc pure nothrow
+    bool isInterrupting() const
+    {
+        return _interrupt;
+    }
+
+    /// Make the interrupting flag to true.
+    @property @safe @nogc pure nothrow
+    void interrupt()
+    {
+        _interrupt = true;
+    }
+
+    debug
+    {
+        enum DumpMode
+        {
+            None       = 0x00,
+            Statement  = 0x01,
+            IR         = 0x02,
+            All        = 0x03,
+        }
+
+        DumpMode dumpMode;
+    }
+
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    protected
+    void semantic()
+    {
+        import dmdscript.scopex: Scope;
+
+        // Any functions parsed in topstatements wind up in the global
+        // object (cc.global), where they are found by normal property lookups.
+        // Any global new top statements only get executed once, and so although
+        // the previous group of topstatements gets lost, it does not matter.
+
+        // In essence, globalfunction encapsulates the *last* group of
+        // topstatements passed to script, and any previous version of
+        // globalfunction, along with previous topstatements, gets discarded.
+
+        // If pfd, it is not really necessary to create a global function just
+        // so we can do the semantic analysis, we could use p.lastnamedfunc
+        // instead if we're careful to insure that p.lastnamedfunc winds up
+        // as a property of the global object.
+
+        assert (_globalfunction !is null);
+        Scope sc;
+        sc.ctor(_globalfunction);  // create global scope
+        _globalfunction.semantic(&sc);
+        if (sc.exception !is null) // if semantic() failed
+        {
+            _globalfunction.topstatements[] = null;
+            _globalfunction.topstatements = null;
+            _globalfunction = null;
+
+            sc.exception.setBufferId(_id);
+
+            throw sc.exception;
+        }
+    }
+
+
+    protected
+    void toIR()
+    {
+        _globalfunction.toIR(null);
+
+        debug
+        {
+            import dmdscript.opcodes : IR;
+            if (dumpMode & DumpMode.IR)
+                IR.toString(_globalfunction.code).writeln;
+        }
+
+        // Don't need parse trees anymore, so null'ing the pointer allows
+        // the garbage collector to find & free them.
+        _globalfunction.topstatements = null;
+    }
+
+    //--------------------------------------------------------------------
+    /**
+    Execute program.
+    */
+    protected
+    DError* execute(out Value ret, Value[] args)
+    {
+        import dmdscript.primitive : Key, PropertyKey;
+        import dmdscript.value : Value, DError;
+        import dmdscript.darray : Darray;
+        import dmdscript.dobject : Dobject;
+        import dmdscript.property : Property;
+        import dmdscript.opcodes : IR;
+        import dmdscript.callcontext : DefinedFunctionScope;
+
+        // ECMA 10.2.1
+
+        Value[] locals;
+        DError* result;
+        Darray arguments;
+
+        // Set argv and argc for execute
+        arguments = dArray();
+        auto val = Value(arguments);
+        Set(Key.arguments, val,
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum, this);
+        arguments.length.put(args.length);
+        for(int i = 0; i < args.length; i++)
+        {
+            arguments.Set(PropertyKey(i), args[i],
+                          Property.Attribute.DontEnum, this);
+        }
+
+        Value[] p1;
+        Value* v;
+        version(Win32)          // eh and alloca() not working under linux
+        {
+            import core.sys.posix.stdlib : alloca, free;
+
+            if(_globalfunction.nlocals < 128)
+                v = cast(Value*)alloca(_globalfunction.nlocals * Value.sizeof);
+        }
+        if(v)
+            locals = v[0 .. _globalfunction.nlocals];
+        else
+        {
+            p1 = new Value[_globalfunction.nlocals];
+            locals = p1;
+        }
+
+        // Instantiate global variables as properties of global
+        // object with 0 attributes
+        _globalfunction.instantiate(this,
+                                    Property.Attribute.DontDelete |
+                                    Property.Attribute.DontConfig);
+        _scopex.reserve(_globalfunction.withdepth + 1);
+        ret.putVundefined();
+        auto dfs = new DefinedFunctionScope(null, this, null, _globalfunction,
+                                            this);
+        push(dfs);
+        result = IR.call(this, this, _globalfunction.code, ret, locals.ptr);
+
+        if(result !is null)
+            result.setBufferId(_id);
+
+        pop(dfs);
+
+        locals = null;
+        p1.destroy; p1 = null;
+
+        if (v !is null)
+            free(v);
+
+        return result;
+    }
+
+
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+package:
+    //--------------------------------------------------------------------
     /** Get the stack of searching fields.
 
     scopex[0] is the outermost searching field (== global).
@@ -371,7 +499,6 @@ class Drealm : Dobject // aka global environment.
     {
         return _current.getNonFakeObject;
     }
-
 
     //--------------------------------------------------------------------
     /**
@@ -405,6 +532,7 @@ class Drealm : Dobject // aka global environment.
         return true;
     }
 
+
     //--------------------------------------------------------------------
     /// Stack the object composing a scope block.
     @safe pure nothrow
@@ -426,7 +554,6 @@ class Drealm : Dobject // aka global environment.
         return _current.pop;
     }
 
-
     //--------------------------------------------------------------------
     /// Add stack tracing information to the DError.
     void addTraceInfoTo(DError* err)
@@ -437,62 +564,33 @@ class Drealm : Dobject // aka global environment.
         {
             if (auto f = one.callerf)
             {
-                err.addTrace (_id,
-                              f.name !is null ?
+                err.addTrace (f.name !is null ?
                               "function " ~ f.name.toString : "");
+                break;
             }
         }
     }
 
-    //--------------------------------------------------------------------
-    ///
-    string[] searchSimilarWord(string name)
-    {
-        return _current.searchSimilarWord(this, name);
-    }
-    /// ditto
-    string[] searchSimilarWord(Dobject target, string name)
-    {
-        import std.string : soundexer;
-        import dmdscript.callcontext: ssw = searchSimilarWord;
-        auto key = name.soundexer;
-        return ssw(this, target, key);
-    }
-
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-package:
+protected:
 
-    debug
-    {
-        import dmdscript.program : Program;
+    @property @safe @nogc pure nothrow
+    void id(string i) { _id = i; }
 
-        //
-        @property @safe @nogc pure nothrow
-            Program.DumpMode dumpMode() const
-        {
-            return _prog !is null ? _prog.dumpMode : Program.DumpMode.None;
-        }
-
-        //
-        @property @safe @nogc pure nothrow
-            void program(Program p)
-        {
-            _prog = p;
-        }
-
-    private:
-        Program _prog;
-    }
+    @property @safe @nogc pure nothrow
+    void globalfunction(FunctionDefinition fd) { _globalfunction = fd; }
 
 private:
     import std.array: Appender;
+    import dmdscript.functiondefinition: FunctionDefinition;
 
-    ModulePool _modulePool;
     string _id;
+    FunctionDefinition _globalfunction;
+
+    bool _interrupt;               // true if cancelled due to interrupt
 
     Appender!(DefinedFunctionScope[]) _scopex;
     DefinedFunctionScope _current; // current scope chain
-    bool _interrupt;               // true if cancelled due to interrupt
 
     invariant
     {
@@ -500,12 +598,120 @@ private:
         assert (0 < _scopex.data.length);
         assert (_scopex.data[$-1] is _current);
     }
+}
 
-    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+//------------------------------------------------------------------------------
+class DscriptRealm: Drealm
+{
+    //--------------------------------------------------------------------
+
+    void compile(string bufferId, string srctext, ModulePool modulePool)
+    {
+        import dmdscript.exception: ScriptException;
+        import dmdscript.statement: TopStatement;
+        import dmdscript.parse: Parser;
+        import dmdscript.lexer : Mode;
+
+        TopStatement[] topstatements;
+
+        id = bufferId;
+
+        try
+        {
+            auto p = new Parser!(Mode.UseStringtable)(srctext, modulePool);
+            topstatements = p.parseProgram;
+        }
+        catch (ScriptException se)
+        {
+            topstatements = null;
+            se.setBufferId(_id);
+            throw se;
+        }
+        catch (Throwable t)
+        {
+            topstatements = null;
+            throw t;
+        }
+
+        debug
+        {
+            if (dumpMode & DumpMode.Statement)
+                TopStatement.dump(topstatements).writeln;
+        }
+
+        // Build empty function definition array
+        // Make globalfunction an anonymous one (by passing in null for name) so
+        // it won't get instantiated as a property
+        globalfunction = new FunctionDefinition(
+            0, 1, null, null, topstatements);
+
+        semantic;
+        toIR;
+    }
+
+    DError* execute(string[] args = null)
+    {
+        Value ret;
+        Value[] vargs;
+
+        vargs = new Value[args.length];
+        for (size_t i = 0; i < args.length; ++i)
+            vargs[i].put(args[i]);
+
+        return super.execute(ret, vargs);
+    }
+}
+
+//------------------------------------------------------------------------------
+class DmoduleRealm: Drealm
+{
+    import dmdscript.functiondefinition: FunctionDefinition;
+
+    this (string id, FunctionDefinition fd)
+    {
+        super();
+
+        this.id = id;
+        this.globalfunction = fd;
+
+        semantic;
+        toIR;
+
+        Value ret;
+        auto err = execute(ret, null);
+        if (err is null)
+        {
+//##############################################################################
+// UNDER CONSTRUCTION
+            // exports to outer realm.
+        }
+    }
 }
 
 //==============================================================================
 private:
+
+@DFD(1, Key.CreateRealm)
+DError* CreateRealm (Drealm realm, out Value ret, Value[] arglist)
+{
+    import dmdscript.ddeclaredfunction: DdeclaredFunction;
+
+    Value* v;
+    string moduleId;
+    Dobject o;
+
+    if (0 < arglist.length)
+    {
+        v = &arglist[0];
+        if (!v.isUndefinedOrNull)
+            moduleId = v.toString(realm);
+    }
+
+    o = new DmoduleRealm(moduleId, null);
+    assert (o !is null);
+    ret.put(o);
+    return null;
+}
 
 //------------------------------------------------------------------------------
 @DFD(1)
@@ -543,17 +749,17 @@ DError* eval(
 
     // Parse program
     TopStatement[] topstatements;
-    auto p = new Parser!(Mode.None)(realm.id, s);
-    if((exception = p.parseProgram(topstatements)) !is null)
+    try
     {
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// solve this.
-    // For eval()'s, use location of caller, not the string
-    // errinfo.linnum = 0;
-        exception.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
+        auto p = new Parser!(Mode.None)(s);
+        topstatements = p.parseProgram;
+    }
+    catch (ScriptException se)
+    {
+        se.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
 
         ret.putVundefined();
-        return new DError(realm.dSyntaxError(exception));
+        return new DError(realm.dSyntaxError(se));
     }
 
     // Analyze, generate code

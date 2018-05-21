@@ -118,12 +118,14 @@ enum Key : PropertyKey
     Reflect = PropertyKey("Reflect"),
     Proxy = PropertyKey("Proxy"),
 
+    CreateRealm = PropertyKey("CreateRealm"),
+
     arguments = PropertyKey("arguments"),
     callee = PropertyKey("callee"),
     caller = PropertyKey("caller"),                  // extension
 
     Function = PropertyKey("Function"),
-    Math = PropertyKey("Math"),
+    Math = PropertyKey("Math"),                      /**/
 
     value = PropertyKey("value"),
 

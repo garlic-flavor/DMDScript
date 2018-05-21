@@ -71,6 +71,25 @@ struct DnativeFunctionDescriptor
     Type type = Type.Prototype; ///
     string realName; ///
     Property.Attribute attr; ///
+
+    this (uint l, Type t = Type.Prototype, string rn = null,
+          Property.Attribute attr = Property.Attribute.None)
+    {
+        length = l;
+        type = t;
+        realName = rn;
+        attr = attr;
+    }
+
+    this (uint l, string rn, Type t = Type.Prototype,
+          Property.Attribute attr = Property.Attribute.None)
+    {
+        length = l;
+        type = t;
+        realName = rn;
+        attr = attr;
+    }
+
 }
 
 //------------------------------------------------------------------------------

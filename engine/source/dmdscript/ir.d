@@ -41,6 +41,15 @@ module dmdscript.ir;
 |e|n|   |                       |
 | |g|   | idx_t |    d_number   |
 |-+-+---|-------|-------|-------|---- --- -- -  -
+            \
+             \
+              \
+               \
+                V
+ - -- --- ----+-------+-------+-------+---- --- -- -
+              |Value* |       |       |
+ - -- --- ----+-------+-------+-------+---- --- -- -
+            An array of local variables.
 
 
 ## about IRadd.
@@ -204,6 +213,8 @@ enum Opcode : ubyte
 
     PutThisLocal,
     PutThisLocalConst,
+
+    Import,
 }
 
 // this holds an index value that points a Value* in the local variable array.
@@ -868,6 +879,8 @@ alias IRTypes = AliasSeq!(
 
     IR2!(Opcode.PutThisLocal, Identifier), // let identifier = exp
     IR2!(Opcode.PutThisLocalConst, Identifier), // const identifier = exp
+
+    IR3!(Opcode.Import, Value*, FunctionDefinition), // import 'hoge.ds'
     );
 
 unittest
@@ -1112,6 +1125,9 @@ auto IRTypeDispatcher(alias PROC, ARGS...)(Opcode op, ARGS args)
         return PROC!(IRTypes[Opcode.PutThisLocal])(args);
     case Opcode.PutThisLocalConst:
         return PROC!(IRTypes[Opcode.PutThisLocalConst])(args);
+
+    case Opcode.Import:
+        return PROC!(IRTypes[Opcode.Import])(args);
     }
 }
 
@@ -1147,7 +1163,9 @@ private template isGet(Opcode CODE)
             Opcode.Throw, Opcode.TryCatch, Opcode.TryFinally,
             Opcode.FinallyRet, Opcode.CheckRef,
 
-            Opcode.PutThisLocal, Opcode.PutThisLocalConst:
+            Opcode.PutThisLocal, Opcode.PutThisLocalConst,
+
+            Opcode.Import:
             return false;
 
         case Opcode.String, Opcode.ThisGet, Opcode.Number, Opcode.Object,

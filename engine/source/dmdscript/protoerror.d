@@ -40,9 +40,14 @@ class D0(alias Text) : D0base
     }
 
 
-    this(Dobject prototype, ScriptException exception)
+    this(Dobject prototype, Throwable t)
     {
-        super(prototype, exception);
+        if (auto se = cast(ScriptException)t)
+            super(prototype, se);
+        else
+            super(prototype,
+                  new ScriptException("Unexpected exception", t));
+
         assert (GetPrototypeOf !is null);
     }
 

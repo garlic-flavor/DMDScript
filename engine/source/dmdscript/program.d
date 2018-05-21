@@ -24,14 +24,14 @@ class Program
     import dmdscript.drealm: Drealm;
     import dmdscript.primitive: ModulePool;
 
-    this(string realmId, ModulePool modulePool)
+    this(string realmId)
     {
         // import dmdscript.dobject : dobject_init;
         import dmdscript.drealm : Drealm;
 
-        realm = new Drealm(realmId, modulePool);
+        realm = new Drealm();
 
-        debug realm.program = this;
+        // debug realm.program = this;
 
         debug
         {
@@ -47,7 +47,7 @@ class Program
     2. with text representing a function name & body (pfd != null)
     */
 
-    void compile(string srctext, FunctionDefinition* pfd)
+    void compile(string srctext, FunctionDefinition* pfd, ModulePool modulePool)
     {
         import dmdscript.statement : TopStatement;
         import dmdscript.lexer : Mode;
@@ -56,14 +56,18 @@ class Program
 
         TopStatement[] topstatements;
         string msg;
+        Parser!(Mode.UseStringtable) p;
 
-        auto p = new Parser!(Mode.UseStringtable)(
-            realm.id, srctext, realm.modulePool);
+        try
+        {
+            p = new Parser!(Mode.UseStringtable)(srctext, modulePool);
 
-        if(auto exception = p.parseProgram(topstatements))
+            topstatements = p.parseProgram;
+        }
+        catch (Throwable t)
         {
             topstatements = null;
-            throw exception;
+            throw t;
         }
 
         debug
@@ -99,7 +103,7 @@ class Program
         // as a property of the global object.
 
         Scope sc;
-        sc.ctor(this, globalfunction);  // create global scope
+        sc.ctor(/*this,*/ globalfunction);  // create global scope
         globalfunction.semantic(&sc);
 
         if (sc.exception !is null)

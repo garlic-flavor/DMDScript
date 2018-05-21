@@ -1588,16 +1588,16 @@ struct DError
         }
     }
 
-    // ///
+    ///
     @safe @nogc pure nothrow
-    void addTrace(string realmId, string funcname)
+    void addTrace(string funcname)
     {
         import dmdscript.protoerror: D0base;
 
         if (auto d0 = cast(D0base)entity.object)
         {
             assert(d0.exception);
-            d0.exception.addTrace(realmId, funcname);
+            d0.exception.addTrace(funcname);
         }
     }
 
@@ -1620,6 +1620,15 @@ struct DError
         {
             assert(d0.exception);
             d0.exception.setSourceInfo(callback);
+        }
+    }
+
+    void setBufferId(string id)
+    {
+        if (auto d0 = cast(D0base)entity.object)
+        {
+            assert (d0.exception);
+            d0.exception.setBufferId(id);
         }
     }
 
