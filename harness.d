@@ -14,7 +14,7 @@ Licensed under CC0 2018. Some rights reserved written by KUMA.
 EOS";
 
 enum helpMessage = q"EOS
-This program run test262 with dmdscript.
+This program runs test262 with dmdscript.
 
 Usage:
 >./harness.exe [init|run|check|retry|full|status] (options)
@@ -58,6 +58,8 @@ Options:
                   default value is './dmdscript'
 
   --inherit    -- Inherit results from an existing test262.json
+
+  --tmp        -- Specify temporary filename. default value is 'tmp.ds'
 EOS";
 
 enum helpAboutRun = q"EOS
@@ -94,6 +96,8 @@ Options:
                   No wild card can be used.
 
   --ignore     -- With this switch, Scripts that marked to be ignored will run.
+
+  --tmp        -- Specify temporary filename. default value is 'tmp.ds'
 EOS";
 
 enum helpAboutRetry = q"EOS
@@ -112,6 +116,8 @@ Options:
                   No wild card can be used.
 
   --ignore     -- With this switch, Scripts that marked to be ignored will run.
+
+  --tmp        -- Specify temporary filename. default value is 'tmp.ds'
 EOS";
 
 enum helpAboutFull = q"EOS
@@ -126,6 +132,8 @@ Options:
                   No wild card can be used.
 
   --ignore     -- With this switch, Scripts that marked to be ignored will run.
+
+  --tmp        -- Specify temporary filename. default value is 'tmp.ds'
 EOS";
 
 enum helpAboutStatus = q"EOS
@@ -138,6 +146,9 @@ enum DEFAULT_TEST262_ROOT = "test";
 enum DEFAULT_DATABASE_FILE = "test262.json";
 enum DEFAULT_HARNESS = "harness";
 enum DEFAULT_INCLUDES = ["sta.js", "assert.js"];
+
+enum MODULE_TEMPLATE = "import '%s';";
+enum TMP_FILENAME = "tmp.ds";
 
 enum RunType
 {
@@ -169,6 +180,7 @@ struct ArgsInfo
     bool verbose;
     bool inherit;
     bool nocomplaint;
+    string tmp = TMP_FILENAME;
 }
 
 //==============================================================================
@@ -253,6 +265,7 @@ ArgsInfo getInfo(string[] args)
         "verbose|v", "Make harness.d verbose.", &info.verbose,
         "inherit", "Inherit results from an existing database.", &info.inherit,
         "nocomplaint", "Run without any compiants", &info.nocomplaint,
+        "tmp", "Temporary filename.", &info.tmp,
         );
 
     if (0 < info.pattern.length)
@@ -831,15 +844,16 @@ void toMetaData(YAML[] yamls, ref MetaData meta)
 //==============================================================================
 void runTest(in ref ArgsInfo info)
 {
-    import std.stdio : stdout, stdin;
-    import std.file : exists, isFile, read, write;
-    import std.conv : to;
-    import std.json : JSONValue, parseJSON, toJSON;
-    import std.algorithm : filter, map, find;
-    import std.range : empty;
-    import std.process : pipeProcess, Redirect, wait;
-    import std.string : strip;
-    import std.array : array, Appender, join;
+    import std.stdio: stdout, stdin;
+    import std.file: exists, isFile, read, write;
+    import std.conv: to;
+    import std.json: JSONValue, parseJSON, toJSON;
+    import std.algorithm: filter, map, find;
+    import std.range: empty;
+    import std.process: pipeProcess, Redirect, wait;
+    import std.string: strip;
+    import std.array: array, Appender, join, replace;
+    import std.format: format;
 
     if (!info.database.exists)
         doInit(info);
@@ -917,9 +931,18 @@ void runTest(in ref ArgsInfo info)
 
             // スクリプトの実行
             ++ranCount;
+
+            // モジュールとして実行すべきファイル
+            string path = meta.path;
+            if (meta.flags.moduleCode)
+            {
+                info.tmp.write (MODULE_TEMPLATE.format (
+                                    path.replace("\\", "\\\\")));
+                path = info.tmp;
+            }
             if (info.verbose)
                 writeln ((baseCommand ~ meta.path).join(" "));
-            auto pipes = pipeProcess(baseCommand ~ meta.path,
+            auto pipes = pipeProcess(baseCommand ~ path,
                                      Redirect.stdout | Redirect.stderr);
 
             // 出力を収集

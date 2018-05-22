@@ -368,7 +368,7 @@ protected:
 
             // Future-reserved-words are allowed
         default:
-            static if (MODE & Mode.Module)
+            static if (MODE == Mode.Module)
             {
                 if (Tok.reserved_min < token && token < Tok.reserved_max)
                 {
@@ -381,7 +381,8 @@ protected:
             }
             else
             {
-                if (Tok.reserved_min < token && token < Tok.reserved_max)
+                if ((Tok.reserved_min < token && token < Tok.reserved_max) ||
+                    token == Tok.Await)
                 {
                     static if (MODE & Mode.UseStringtable)
                         return idtable.build(token.str);

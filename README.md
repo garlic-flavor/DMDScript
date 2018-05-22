@@ -34,7 +34,7 @@ An implementation of the ECMA 262 (Javascript) programming language
 ### about harness.d
 This aims to alternate test262-harness-py.
 
-#### expected directory layout.
+#### expected layout of directories.
 
 	--+-- DMDScript --+   cwd
 	  |               +-- dmdscript.exe
@@ -63,15 +63,15 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(125/30833)
-    + [x] language/comments/*
-    + [x] language/line-terminators/*
-    + [x] language/white-space/*
-    + [ ] language/reserved-word/* (see below.)
-    + [ ] language/identifiers/*
-    + [ ] language/asi/*
-    + [ ] language/future-reserved-words/*
-    + [ ] language/types/boolean/*
+* [ ] Run test262.(154/30833)
+    + [x] language/comments
+    + [x] language/line-terminators
+    + [x] language/white-space
+    + [x] language/reserved-word
+    + [ ] language/identifiers
+    + [ ] language/asi
+    + [ ] language/future-reserved-words
+    + [ ] language/types/boolean
     + [ ] ~~language/types/* (see below)~~
     + [ ] ~~language/literals/boolean/*~~
     + [ ] ~~language/literals/null/*~~
@@ -80,12 +80,10 @@ This aims to alternate test262-harness-py.
     + [ ] annexB/language/comments
 * [ ] Implement test262-harness-d.
     + [x] The first compile.
+    + [x] Run a script marked with 'module' as module.
     + [ ] Implement very useful functionalities. 
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
-
-### the next to do.
-Implement CreateRealm.
 
 ### failed tests.
 * ..\test262\test\annexB\language\comments\multi-line-html-close.js
@@ -121,9 +119,10 @@ Implement CreateRealm.
   ~~so, this feature may be changed.~~
   I change my mind.
 
-* __language/reserved-words/await-script.js and await-module.js__
-  The former one means that "Parse this script as a script.", The latter one means that "Parse this script as a module.".
-  But, test262-harness-py doesn't enforce that.
+* ~~__language/reserved-words/await-script.js and await-module.js__~~
+  ~~The former one means that "Parse this script as a script.", The latter one means that "Parse this script as a module.".~~
+  ~~But, test262-harness-py doesn't enforce that.~~
+  test262-harness-d do this.(2018/05/22)
 
 * __language/types/number/S8.5_A2.1.js and S8.5_A2.2.js__
   D's double type doesn't suit for this. How could I solve?
