@@ -84,6 +84,7 @@ int main(string[] args)
     int result;
 
     bool verbose;
+    bool strictMode;
 
     debug
     {
@@ -99,6 +100,9 @@ int main(string[] args)
         {
         case "-v":
             verbose = true;
+            break;
+        case "-s":
+            strictMode = true;
             break;
         debug
         {
@@ -127,7 +131,7 @@ int main(string[] args)
             }
             else
             {
-                srcfiles ~= new SrcFile(args[i], includes);
+                srcfiles ~= new SrcFile(args[i], includes, strictMode);
                 includes = null;
             }
         }
@@ -137,7 +141,7 @@ int main(string[] args)
 
     if (srcfiles.length == 0)
     {
-        srcfiles ~= new SrcFile("test", null);
+        srcfiles ~= new SrcFile("test", null, strictMode);
     }
 
 //    stderr.writefln("%d source files", srcfiles.length);
@@ -305,13 +309,15 @@ class SrcFile
 
     DscriptRealm realm;
     string buffer;
+    bool strictMode;
 
-    this(string srcfilename, string[] includes)
+    this(string srcfilename, string[] includes, bool strictMode = false)
     {
         /* DMDScript source files default to a '.ds' extension
          */
         srcfile = defaultExtension(srcfilename, "ds");
         this.includes = includes;
+        this.strictMode = strictMode;
     }
 
     void read()
@@ -332,7 +338,7 @@ class SrcFile
             realm.dumpMode = dumpMode;
         }
 
-        try realm.compile (srcfile, buffer, &modulePool);
+        try realm.compile (srcfile, buffer, &modulePool, strictMode);
         catch (ScriptException e)
         {
             e.setSourceInfo (&getSourceInfo);

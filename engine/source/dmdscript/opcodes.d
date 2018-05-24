@@ -62,7 +62,7 @@ struct IR
      * This is the main interpreter loop.
      */
     static DError* call(Drealm realm, Dobject othis, const(IR)* code,
-                        out Value ret, Value* locals)
+                        out Value ret, Value* locals, bool strictMode = false)
     {
         import std.array : join;
         import std.conv : to;

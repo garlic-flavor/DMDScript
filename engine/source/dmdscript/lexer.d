@@ -1508,10 +1508,10 @@ private:
         return Tok.Eof;
     }
 
-    static @safe @nogc pure nothrow
+   static @safe @nogc pure nothrow
     Tok isKeyword(const(char)[] s)
     {
-        if(0 < s.length && s[0] >= 'a' && s[0] <= 'w')
+        if(0 < s.length && s[0] >= 'a' && s[0] <= 'y')
             switch(s.length)
             {
             case 2:

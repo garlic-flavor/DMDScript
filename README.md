@@ -63,12 +63,12 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(154/30833)
+* [ ] Run test262.(591/59240)
     + [x] language/comments
     + [x] language/line-terminators
     + [x] language/white-space
     + [x] language/reserved-word
-    + [ ] language/identifiers
+    + [x] language/identifiers
     + [ ] language/asi
     + [ ] language/future-reserved-words
     + [ ] language/types/boolean
@@ -81,22 +81,30 @@ This aims to alternate test262-harness-py.
 * [ ] Implement test262-harness-d.
     + [x] The first compile.
     + [x] Run a script marked with 'module' as module.
+    + [x] Run a script with strict mode.
     + [ ] Implement very useful functionalities. 
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
+### next to do
+implement strict mode.
+
 ### failed tests.
-* ..\test262\test\annexB\language\comments\multi-line-html-close.js
+* ..\test262\test\annexB\language\comments\multi-line-html-close.js on non strict mode.
   failed.
-* ..\test262\test\annexB\language\comments\single-line-html-close-asi.js
+* ..\test262\test\annexB\language\comments\single-line-html-close-asi.js on non strict mode.
   failed.
-* ..\test262\test\annexB\language\comments\single-line-html-close.js
+* ..\test262\test\annexB\language\comments\single-line-html-close.js on non strict mode.
   failed.
-* ..\test262\test\language\comments\S7.4_A5.js
+* ..\test262\test\language\comments\S7.4_A5.js on non strict mode.
   A invalid Unicode sequence is not allowed.
-* ..\test262\test\language\comments\S7.4_A6.js
+* ..\test262\test\language\comments\S7.4_A5.js on strict mode.
   A invalid Unicode sequence is not allowed.
-* ..\test262\test\language\expressions\delete\white-space-line-terminator-between-delete-unaryexpression-allowed.js
+* ..\test262\test\language\comments\S7.4_A6.js on non strict mode.
+  A invalid Unicode sequence is not allowed.
+* ..\test262\test\language\comments\S7.4_A6.js on strict mode.
+  A invalid Unicode sequence is not allowed.
+* ..\test262\test\language\expressions\delete\white-space-line-terminator-between-delete-unaryexpression-allowed.js on non strict mode.
   failed.
 
 ### problems.
@@ -128,7 +136,7 @@ This aims to alternate test262-harness-py.
   D's double type doesn't suit for this. How could I solve?
 
 * __language/literals/string/7.8.4-1-s.js__
-  DMDScript has no 'strict mode', now.
+  ~~DMDScript has no 'strict mode', now.~~(2018/05/24)
 
 * __language/literals/regexp/u-invalid-identity-escape.js__
   What does this mean? I'll do this later. XD

@@ -58,8 +58,24 @@ Options:
                   default value is './dmdscript'
 
   --inherit    -- Inherit results from an existing test262.json
+EOS";
+
+enum helpAboutRunningOptions = q"EOS
+Options:
+  --json -j    -- Specify the file path to a database.
+                  default value is 'test262.json'
+
+  --pattern -p -- Specify a part of the path to target scripts.
+                  This value is not a regular expression.
+                  No wild card can be used.
+
+  --ignore     -- With this switch, Scripts that marked to be ignored will run.
 
   --tmp        -- Specify temporary filename. default value is 'tmp.ds'
+
+  --nostrict   -- Run with no strict mode only.
+
+  --strict     -- Run with strict mode only.
 EOS";
 
 enum helpAboutRun = q"EOS
@@ -68,17 +84,7 @@ Do tests until first failure.
 
 Usage:
 >./harness.exe run (-p 'a part of path of targeted tests.') (-j test262.json)
-
-Options:
-  --json -j    -- Specify the file path to a database.
-                  default value is 'test262.json'
-
-  --pattern -p -- Specify a part of the path to target scripts.
-                  This value is not a regular expression.
-                  No wild card can be used.
-
-  --ignore     -- With this switch, Scripts that marked to be ignored will run.
-EOS";
+EOS" ~ helpAboutRunningOptions;
 
 enum helpAboutCheck = q"EOS
 About check command:
@@ -86,19 +92,7 @@ Do tests that already passed only.
 
 Usage:
 >./harness.exe check
-
-Options:
-  --json -j    -- Specify the file path to a database.
-                  default value is 'test262.json'
-
-  --pattern -p -- Specify a part of the path to target scripts.
-                  This value is not a regular expression.
-                  No wild card can be used.
-
-  --ignore     -- With this switch, Scripts that marked to be ignored will run.
-
-  --tmp        -- Specify temporary filename. default value is 'tmp.ds'
-EOS";
+EOS" ~ helpAboutRunningOptions;
 
 enum helpAboutRetry = q"EOS
 About retry command:
@@ -106,35 +100,11 @@ Do tests that failed only.
 
 Usage:
 >./harness.exe retry
-
-Options:
-  --json -j    -- Specify the file path to a database.
-                  default value is 'test262.json'
-
-  --pattern -p -- Specify a part of the path to target scripts.
-                  This value is not a regular expression.
-                  No wild card can be used.
-
-  --ignore     -- With this switch, Scripts that marked to be ignored will run.
-
-  --tmp        -- Specify temporary filename. default value is 'tmp.ds'
-EOS";
+EOS" ~ helpAboutRunningOptions;
 
 enum helpAboutFull = q"EOS
 About full command:
-
-Options:
-  --json -j    -- Specify the file path to a database.
-                  default value is 'test262.json'
-
-  --pattern -p -- Specify a part of the path to target scripts.
-                  This value is not a regular expression.
-                  No wild card can be used.
-
-  --ignore     -- With this switch, Scripts that marked to be ignored will run.
-
-  --tmp        -- Specify temporary filename. default value is 'tmp.ds'
-EOS";
+EOS" ~ helpAboutRunningOptions;
 
 enum helpAboutStatus = q"EOS
 Show current progress.
@@ -181,6 +151,8 @@ struct ArgsInfo
     bool inherit;
     bool nocomplaint;
     string tmp = TMP_FILENAME;
+    bool noStrict;
+    bool onlyStrict;
 }
 
 //==============================================================================
@@ -266,6 +238,8 @@ ArgsInfo getInfo(string[] args)
         "inherit", "Inherit results from an existing database.", &info.inherit,
         "nocomplaint", "Run without any compiants", &info.nocomplaint,
         "tmp", "Temporary filename.", &info.tmp,
+        "nostrict", "Run with no strict mode only.", &info.noStrict,
+        "strict", "Run with strict mode only.", &info.onlyStrict,
         );
 
     if (0 < info.pattern.length)
@@ -461,6 +435,7 @@ struct MetaData
     string es6id;
     string[] features;
     Result result;
+    Result resultOfStrict;
     bool ignore;
     string complaint;
 
@@ -503,6 +478,8 @@ struct MetaData
             v["features"] = JSONValue(features);
         if (Result.none != result)
             v["result"] = JSONValue(result == Result.passed);
+        if (Result.none != resultOfStrict)
+            v["resultOfStrict"] = JSONValue(resultOfStrict == Result.passed);
         if (0 < complaint.length)
             v["complaint"] = complaint.JSONValue;
 
@@ -576,6 +553,10 @@ struct MetaData
                 break;
             case "result":
                 result = (val.type == JSON_TYPE.TRUE) ?
+                    Result.passed : Result.failed;
+                break;
+            case "resultOfStrict":
+                resultOfStrict = (val.type == JSON_TYPE.TRUE) ?
                     Result.passed : Result.failed;
                 break;
             case "ignore":
@@ -892,6 +873,9 @@ void runTest(in ref ArgsInfo info)
 
     table["tests"] = table["tests"].array.map!( // リストを巡回する。
         (jv){
+            if (aborting) // このグループで失敗が出たからやめたい。
+                return jv;
+
             // コマンドラインから与えたパターンでフィルタする。
             if (0 < info.pattern.length &&
                 jv["path"].str.find(info.pattern).empty)
@@ -900,36 +884,87 @@ void runTest(in ref ArgsInfo info)
             //
             auto meta = jv.MetaData;
 
+            // strictモードが合わない
+            if ((info.noStrict && meta.flags.onlyStrict) ||
+                (info.onlyStrict && meta.flags.noStrict))
+            {
+                return jv;
+            }
+
+            // スクリプトを実行する。
+            auto strictMode = info.onlyStrict || meta.flags.onlyStrict;
+        execute:
+
             // 以前に失敗してたやつだけ
             if      (info.type == RunType.failedOnly)
             {
-                if (meta.result != MetaData.Result.failed)
-                    return jv;
+                if (strictMode)
+                {
+                    if (meta.resultOfStrict != MetaData.Result.failed)
+                        return jv;
+                }
+                else
+                {
+                    if (meta.result != MetaData.Result.failed)
+                        return jv;
+                }
             }
             // 以前に成功してるやつだけに絞る。
             else if (info.type == RunType.passedOnly)
             {
-                if (meta.result != MetaData.Result.passed)
-                    return jv;
+                if (strictMode)
+                {
+                    if (meta.resultOfStrict != MetaData.Result.passed)
+                        return jv;
+                }
+                else
+                {
+                    if (meta.result != MetaData.Result.passed)
+                        return jv;
+                }
             }
-            // 以前に成功したやつはもういい。
-            else if (meta.result == MetaData.Result.passed)
+            else if (info.type != RunType.full)
             {
-                ++passedCount;
-                return jv;
-            }
-            // 無視するとマークされてるから飛ばす。
-            else if (meta.result == MetaData.Result.failed &&
-                     0 < meta.complaint.length && !info.ignoreComplain)
-            {
-                ++ignoredCount;
-                return jv;
+                // 以前に成功したやつはもういい。
+                if (strictMode)
+                {
+                    if (meta.resultOfStrict == MetaData.Result.passed)
+                    {
+                        ++passedCount;
+                        return jv;
+                    }
+                }
+                else
+                {
+                    if (meta.result == MetaData.Result.passed)
+                    {
+                        ++passedCount;
+                        return jv;
+                    }
+
+                }
+
+                // 無視するとマークされてるから飛ばす。
+                if (strictMode)
+                {
+                    if (meta.resultOfStrict == MetaData.Result.failed &&
+                        0 < meta.complaint.length && !info.ignoreComplain)
+                    {
+                        ++ignoredCount;
+                        return jv;
+                    }
+                }
+                else
+                {
+                    if (meta.result == MetaData.Result.failed &&
+                        0 < meta.complaint.length && !info.ignoreComplain)
+                    {
+                        ++ignoredCount;
+                        return jv;
+                    }
+                }
             }
 
-            if (aborting) // このグループで失敗が出たからやめたい。
-                return jv;
-
-            // スクリプトの実行
             ++ranCount;
 
             // モジュールとして実行すべきファイル
@@ -940,9 +975,16 @@ void runTest(in ref ArgsInfo info)
                                     path.replace("\\", "\\\\")));
                 path = info.tmp;
             }
+
+            // 実行
+            string[] command;
+            if (strictMode)
+                command = baseCommand ~ "-s" ~ path;
+            else
+                command = baseCommand ~ path;
             if (info.verbose)
-                writeln ((baseCommand ~ meta.path).join(" "));
-            auto pipes = pipeProcess(baseCommand ~ path,
+                writeln (command.join(" "));
+            auto pipes = pipeProcess(command,
                                      Redirect.stdout | Redirect.stderr);
 
             // 出力を収集
@@ -963,10 +1005,12 @@ void runTest(in ref ArgsInfo info)
                 if (meta.negative.yes) // 異常終了すべきだった。
                 {
                     writeln(meta.path, " should failure with ",
-                            meta.negative.type, ", but success.");
+                            meta.negative.type, ", but success on ",
+                            strictMode ? "" : "non ", "strict mode.");
                     goto failed;
                 }
-                writeln (meta.path, " passed.");
+                writeln (meta.path, " passed on ",
+                         strictMode ? "" : "non ", "strict mode.");
                 goto succeeded;
             }
             else // スクリプトが異常終了した。
@@ -978,16 +1022,19 @@ void runTest(in ref ArgsInfo info)
                     if (0 < errouts.data.length &&
                         !errouts.data[0].find(meta.negative.type).empty)
                     {
-                        writeln(meta.path, " failed as expected.");
+                        writeln(meta.path, " failed as expected on ",
+                                strictMode ? "" : "non ", "strict mode.");
                         goto succeeded;
                     }
 
                     // 出てなかった。
                     writeln(meta.path, " should failure with ",
-                            meta.negative.type, ".");
+                            meta.negative.type, ", on ",
+                            strictMode ? "" : "non ", "strict mode.");
                     goto failed;
                 }
-                writeln(meta.path, " failed.");
+                writeln(meta.path, " failed on ",
+                        strictMode ? "" : "non ", "strict mode.");
                 goto failed;
             }
 
@@ -1009,21 +1056,36 @@ void runTest(in ref ArgsInfo info)
             }
 
         succeeded:
-            meta.result = MetaData.Result.passed;
-            ++passedCount;
+            if (strictMode)
+                meta.resultOfStrict = MetaData.Result.passed;
+            else
+                meta.result = MetaData.Result.passed;
 
             if (info.verbose)
                 printOutputs;
 
+            ++passedCount;
+
+            if (!strictMode && !info.noStrict && !meta.flags.noStrict)
+            {
+                strictMode = true;
+                goto execute;
+            }
+
             return meta.toJSONValue;
 
         failed:
-            meta.result = MetaData.Result.failed;
+            if (strictMode)
+                meta.resultOfStrict = MetaData.Result.failed;
+            else
+                meta.result = MetaData.Result.failed;
 
             printOutputs;
 
             writeln;
             writeln("-- MetaInfo --------------------------------------");
+
+            writeln (strictMode ? "STRICT MODE" : "NON STRICT MODE");
 
             // スクリプトのメタ情報の表示
             foreach (one; meta.path.read.to!string
@@ -1068,6 +1130,11 @@ void runTest(in ref ArgsInfo info)
             if (meta.complaint.length == 0 && info.type != RunType.full &&
                 info.type != RunType.failedOnly)
                 aborting = true;
+            else if (!strictMode && !info.noStrict && !meta.flags.noStrict)
+            {
+                strictMode = true;
+                goto execute;
+            }
 
             return meta.toJSONValue;
         }).array.JSONValue;
@@ -1098,51 +1165,87 @@ void showStatus(in ref ArgsInfo info)
 
     writeln("Target engine: ", table["engine"].str);
 
-    size_t allCount, passedCount, failedCount, ignoredCount;
+    size_t allCount, passedCount, failedCount, ignoredCount,
+        passedCountStrict, failedCountStrict, ignoredCountStrict;
     Appender!(string[]) buf;
     bool[string] passedDir;
 
     foreach (one; table["tests"].array)
     {
-        ++allCount;
-
         auto t = one.object;
         auto path = t["path"].str;
         auto dir = path.dirName;
 
-        if (auto p = "result" in t)
+        allCount += ("onlyStrict" in t || "noStrict" in t) ? 1 : 2;
+
+        if ("onlyStrict" !in t)
         {
-            if      ((*p).type == JSON_TYPE.TRUE)
+            if (auto p = "result" in t)
             {
-                ++passedCount;
-                passedDir[dir] = passedDir.get(dir, true);
-            }
-            else if (auto p2 = "complaint" in t)
-            {
-                ++ignoredCount;
-                buf.put("* " ~ path);
-                buf.put("  " ~ (*p2).str);
-                passedDir[dir] = passedDir.get(dir, true);
+                if      ((*p).type == JSON_TYPE.TRUE)
+                {
+                    ++passedCount;
+                    passedDir[dir] = passedDir.get(dir, true);
+                }
+                else if (auto p2 = "complaint" in t)
+                {
+                    ++ignoredCount;
+                    buf.put("* " ~ path ~ " on non strict mode.");
+                    buf.put("  " ~ (*p2).str);
+                    passedDir[dir] = passedDir.get(dir, true);
+                }
+                else
+                {
+                    ++failedCount;
+                    buf.put("* " ~ path ~ " on non strict mode.");
+                    buf.put("  failed.");
+                    passedDir[dir] = false;
+                }
             }
             else
-            {
-                ++failedCount;
-                buf.put("* " ~ path);
-                buf.put("  failed.");
                 passedDir[dir] = false;
-            }
         }
-        else
-            passedDir[dir] = false;
+        if ("noStrict" !in t)
+        {
+            if (auto p = "resultOfStrict" in t)
+            {
+                if      ((*p).type == JSON_TYPE.TRUE)
+                {
+                    ++passedCountStrict;
+                    passedDir[dir] = passedDir.get(dir, true);
+                }
+                else if (auto p2 = "complaint" in t)
+                {
+                    ++ignoredCountStrict;
+                    buf.put("* " ~ path ~ " on strict mode.");
+                    buf.put("  " ~ (*p2).str);
+                    passedDir[dir] = passedDir.get(dir, true);
+                }
+                else
+                {
+                    ++failedCountStrict;
+                    buf.put("* " ~ path ~ " on strict mode.");
+                    buf.put("  failed.");
+                    passedDir[dir] = false;
+                }
+            }
+            else
+                passedDir[dir] = false;
+        }
     }
 
-    writeln("In ", allCount, " tests, ");
-    writeln(passedCount, " passed,");
-    writeln(failedCount, " failed,");
-    writeln(ignoredCount, " ignored.");
+    writeln ("In ", allCount, " tests, ");
+    writeln (passedCount, " passed on non strict mode,");
+    writeln (failedCount, " failed on non strict mode,");
+    writeln (ignoredCount, " ignored on non strict mode.");
+    writeln (passedCountStrict, " passed on strict mode");
+    writeln (failedCountStrict, " failed on strict mode,");
+    writeln (ignoredCountStrict, " ignored on strict mode.");
     writeln("Current progress is ",
-            (passedCount + ignoredCount) * 100 / allCount, "%(",
-            passedCount + ignoredCount, "/", allCount, ")");
+            (passedCount + ignoredCount +
+             passedCountStrict + ignoredCountStrict) * 100 / allCount, "%(",
+            passedCount + ignoredCount + passedCountStrict + ignoredCountStrict,
+            "/", allCount, ")");
     writeln;
 
     writeln("Passed directories:");

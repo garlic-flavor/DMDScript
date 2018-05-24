@@ -347,138 +347,6 @@ class Drealm : Dobject // aka global environment.
     }
 
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    protected
-    void semantic()
-    {
-        import dmdscript.scopex: Scope;
-
-        // Any functions parsed in topstatements wind up in the global
-        // object (cc.global), where they are found by normal property lookups.
-        // Any global new top statements only get executed once, and so although
-        // the previous group of topstatements gets lost, it does not matter.
-
-        // In essence, globalfunction encapsulates the *last* group of
-        // topstatements passed to script, and any previous version of
-        // globalfunction, along with previous topstatements, gets discarded.
-
-        // If pfd, it is not really necessary to create a global function just
-        // so we can do the semantic analysis, we could use p.lastnamedfunc
-        // instead if we're careful to insure that p.lastnamedfunc winds up
-        // as a property of the global object.
-
-        assert (_globalfunction !is null);
-        Scope sc;
-        sc.ctor(_globalfunction);  // create global scope
-        _globalfunction.semantic(&sc);
-        if (sc.exception !is null) // if semantic() failed
-        {
-            _globalfunction.topstatements[] = null;
-            _globalfunction.topstatements = null;
-            _globalfunction = null;
-
-            sc.exception.setBufferId(_id);
-
-            throw sc.exception;
-        }
-    }
-
-
-    protected
-    void toIR()
-    {
-        _globalfunction.toIR(null);
-
-        debug
-        {
-            import dmdscript.opcodes : IR;
-            if (dumpMode & DumpMode.IR)
-                IR.toString(_globalfunction.code).writeln;
-        }
-
-        // Don't need parse trees anymore, so null'ing the pointer allows
-        // the garbage collector to find & free them.
-        _globalfunction.topstatements = null;
-    }
-
-    //--------------------------------------------------------------------
-    /**
-    Execute program.
-    */
-    protected
-    DError* execute(out Value ret, Value[] args)
-    {
-        import dmdscript.primitive : Key, PropertyKey;
-        import dmdscript.value : Value, DError;
-        import dmdscript.darray : Darray;
-        import dmdscript.dobject : Dobject;
-        import dmdscript.property : Property;
-        import dmdscript.opcodes : IR;
-        import dmdscript.callcontext : DefinedFunctionScope;
-
-        // ECMA 10.2.1
-
-        Value[] locals;
-        DError* result;
-        Darray arguments;
-
-        // Set argv and argc for execute
-        arguments = dArray();
-        auto val = Value(arguments);
-        Set(Key.arguments, val,
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, this);
-        arguments.length.put(args.length);
-        for(int i = 0; i < args.length; i++)
-        {
-            arguments.Set(PropertyKey(i), args[i],
-                          Property.Attribute.DontEnum, this);
-        }
-
-        Value[] p1;
-        Value* v;
-        version(Win32)          // eh and alloca() not working under linux
-        {
-            import core.sys.posix.stdlib : alloca, free;
-
-            if(_globalfunction.nlocals < 128)
-                v = cast(Value*)alloca(_globalfunction.nlocals * Value.sizeof);
-        }
-        if(v)
-            locals = v[0 .. _globalfunction.nlocals];
-        else
-        {
-            p1 = new Value[_globalfunction.nlocals];
-            locals = p1;
-        }
-
-        // Instantiate global variables as properties of global
-        // object with 0 attributes
-        _globalfunction.instantiate(this,
-                                    Property.Attribute.DontDelete |
-                                    Property.Attribute.DontConfig);
-        _scopex.reserve(_globalfunction.withdepth + 1);
-        ret.putVundefined();
-        auto dfs = new DefinedFunctionScope(null, this, null, _globalfunction,
-                                            this);
-        push(dfs);
-        result = IR.call(this, this, _globalfunction.code, ret, locals.ptr);
-
-        if(result !is null)
-            result.setBufferId(_id);
-
-        pop(dfs);
-
-        locals = null;
-        p1.destroy; p1 = null;
-
-        if (v !is null)
-            free(v);
-
-        return result;
-    }
-
-
-    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 package:
     //--------------------------------------------------------------------
     /** Get the stack of searching fields.
@@ -580,6 +448,134 @@ protected:
     @property @safe @nogc pure nothrow
     void globalfunction(FunctionDefinition fd) { _globalfunction = fd; }
 
+    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    void semantic()
+    {
+        import dmdscript.scopex: Scope;
+
+        // Any functions parsed in topstatements wind up in the global
+        // object (cc.global), where they are found by normal property lookups.
+        // Any global new top statements only get executed once, and so although
+        // the previous group of topstatements gets lost, it does not matter.
+
+        // In essence, globalfunction encapsulates the *last* group of
+        // topstatements passed to script, and any previous version of
+        // globalfunction, along with previous topstatements, gets discarded.
+
+        // If pfd, it is not really necessary to create a global function just
+        // so we can do the semantic analysis, we could use p.lastnamedfunc
+        // instead if we're careful to insure that p.lastnamedfunc winds up
+        // as a property of the global object.
+
+        assert (_globalfunction !is null);
+        Scope sc;
+        sc.ctor(_globalfunction);  // create global scope
+        _globalfunction.semantic(&sc);
+        if (sc.exception !is null) // if semantic() failed
+        {
+            _globalfunction.topstatements[] = null;
+            _globalfunction.topstatements = null;
+            _globalfunction = null;
+
+            sc.exception.setBufferId(_id);
+
+            throw sc.exception;
+        }
+    }
+
+    void toIR()
+    {
+        _globalfunction.toIR(null);
+
+        debug
+        {
+            import dmdscript.opcodes : IR;
+            if (dumpMode & DumpMode.IR)
+                IR.toString(_globalfunction.code).writeln;
+        }
+
+        // Don't need parse trees anymore, so null'ing the pointer allows
+        // the garbage collector to find & free them.
+        _globalfunction.topstatements = null;
+    }
+
+    //--------------------------------------------------------------------
+    /**
+    Execute program.
+    */
+    DError* execute(out Value ret, Value[] args)
+    {
+        import dmdscript.primitive : Key, PropertyKey;
+        import dmdscript.value : Value, DError;
+        import dmdscript.darray : Darray;
+        import dmdscript.dobject : Dobject;
+        import dmdscript.property : Property;
+        import dmdscript.opcodes : IR;
+        import dmdscript.callcontext : DefinedFunctionScope;
+
+        // ECMA 10.2.1
+
+        Value[] locals;
+        DError* result;
+        Darray arguments;
+
+        // Set argv and argc for execute
+        arguments = dArray();
+        auto val = Value(arguments);
+        Set(Key.arguments, val,
+            Property.Attribute.DontDelete |
+            Property.Attribute.DontEnum, this);
+        arguments.length.put(args.length);
+        for(int i = 0; i < args.length; i++)
+        {
+            arguments.Set(PropertyKey(i), args[i],
+                          Property.Attribute.DontEnum, this);
+        }
+
+        Value[] p1;
+        Value* v;
+        version(Win32)          // eh and alloca() not working under linux
+        {
+            import core.sys.posix.stdlib : alloca, free;
+
+            if(_globalfunction.nlocals < 128)
+                v = cast(Value*)alloca(_globalfunction.nlocals * Value.sizeof);
+        }
+        if(v)
+            locals = v[0 .. _globalfunction.nlocals];
+        else
+        {
+            p1 = new Value[_globalfunction.nlocals];
+            locals = p1;
+        }
+
+        // Instantiate global variables as properties of global
+        // object with 0 attributes
+        _globalfunction.instantiate(this,
+                                    Property.Attribute.DontDelete |
+                                    Property.Attribute.DontConfig);
+        _scopex.reserve(_globalfunction.withdepth + 1);
+        ret.putVundefined();
+        auto dfs = new DefinedFunctionScope(null, this, null, _globalfunction,
+                                            this);
+        push(dfs);
+        result = IR.call(this, this, _globalfunction.code, ret, locals.ptr,
+                         _globalfunction.strictMode);
+
+        if(result !is null)
+            result.setBufferId(_id);
+
+        pop(dfs);
+
+        locals = null;
+        p1.destroy; p1 = null;
+
+        if (v !is null)
+            free(v);
+
+        return result;
+    }
+
 private:
     import std.array: Appender;
     import dmdscript.functiondefinition: FunctionDefinition;
@@ -605,7 +601,8 @@ class DscriptRealm: Drealm
 {
     //--------------------------------------------------------------------
 
-    void compile(string bufferId, string srctext, ModulePool modulePool)
+    void compile(string bufferId, string srctext, ModulePool modulePool,
+                 bool strictMode = false)
     {
         import dmdscript.exception: ScriptException;
         import dmdscript.statement: TopStatement;
@@ -619,7 +616,7 @@ class DscriptRealm: Drealm
         try
         {
             auto p = new Parser!(Mode.UseStringtable)(srctext, modulePool);
-            topstatements = p.parseProgram;
+            topstatements = p.parseProgram(strictMode);
         }
         catch (ScriptException se)
         {
@@ -643,7 +640,7 @@ class DscriptRealm: Drealm
         // Make globalfunction an anonymous one (by passing in null for name) so
         // it won't get instantiated as a property
         globalfunction = new FunctionDefinition(
-            0, 1, null, null, topstatements);
+            0, 1, null, null, topstatements, strictMode);
 
         semantic;
         toIR;

@@ -47,7 +47,8 @@ class Parser(Mode MODE) : Lexer!MODE
 
     /**********************************************
      */
-    static FunctionDefinition parseFunctionDefinition(string params, string bdy)
+    static FunctionDefinition parseFunctionDefinition(
+        string params, string bdy, bool strictMode = false)
     {
         import std.array : Appender;
         import dmdscript.primitive : PropertyKey;
@@ -82,18 +83,18 @@ class Parser(Mode MODE) : Lexer!MODE
         {
             if(p.token == Tok.Eof)
                 break;
-            topstatements.put(p.parseStatement());
+            topstatements.put(p.parseStatement(strictMode));
         }
 
         return new FunctionDefinition(0, 0, null, parameters.data,
-                                      topstatements.data);
+                                      topstatements.data, strictMode);
     }
 
     /**********************************************
      */
-    TopStatement[] parseProgram()
+    TopStatement[] parseProgram(bool strictMode = false)
     {
-        auto topstatements = parseTopStatements();
+        auto topstatements = parseTopStatements(strictMode);
         check(Tok.Eof);
         return topstatements;
     }
@@ -116,7 +117,7 @@ private:
     }
     Flag flags;
 
-    TopStatement[] parseTopStatements()
+    TopStatement[] parseTopStatements(bool strictMode = false)
     {
         import std.array : Appender;
         Appender!(TopStatement[]) topstatements;
@@ -136,8 +137,12 @@ private:
             case Tok.Rbrace:
                 return topstatements.data;
 
+            case Tok.String:
+                if (token.str == "use strict")
+                    strictMode = true;
+                goto default;
             default:
-                topstatements.put(parseStatement());
+                topstatements.put(parseStatement(strictMode));
                 break;
             }
         }
@@ -157,7 +162,7 @@ private:
         property  = 2,
     }
 
-    auto parseFunction(FunctionFlag flag)()
+    auto parseFunction(FunctionFlag flag)(bool strictMode = false)
     {
         import std.array : Appender;
         import dmdscript.primitive : PropertyKey;
@@ -243,11 +248,11 @@ private:
         }
 
         check(Tok.Lbrace);
-        topstatements = parseTopStatements();
+        topstatements = parseTopStatements(strictMode);
         check(Tok.Rbrace);
 
         f = new FunctionDefinition(linnum, 0, name, parameters.data,
-                                   topstatements);
+                                   topstatements, strictMode);
         static if (flag == FunctionFlag.literal ||
                    flag == FunctionFlag.property)
         {
@@ -280,7 +285,7 @@ private:
     /*****************************************
      */
 
-    Statement parseStatement()
+    Statement parseStatement(bool strictMode = false)
     {
         import dmdscript.primitive : PropertyKey;
         import dmdscript.lexer : Token;

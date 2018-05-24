@@ -155,7 +155,7 @@ private
             locals = p1;
         }
 
-        result = IR.call(realm, othis, fd.code, ret, locals.ptr);
+        result = IR.call(realm, othis, fd.code, ret, locals.ptr, fd.strictMode);
         if (result !is null)
         {
             result.addTrace (fd.name !is null ?

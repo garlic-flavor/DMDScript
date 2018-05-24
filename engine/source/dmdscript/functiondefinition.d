@@ -50,6 +50,7 @@ class FunctionDefinition : TopStatement
     Identifier name;             // null for anonymous function
     Identifier[] parameters;      // array of Identifier's
     TopStatement[] topstatements; // array of TopStatement's
+    bool strictMode;
 
     Identifier[] varnames;       // array of Identifier's
     private FunctionDefinition[] functiondefinitions;
@@ -71,14 +72,15 @@ class FunctionDefinition : TopStatement
     }
 
     @safe @nogc pure nothrow
-    this(uint linnum, bool isglobal, Identifier name,
-         Identifier[] parameters, TopStatement[] topstatements)
+    this(uint linnum, bool isglobal, Identifier name, Identifier[] parameters,
+         TopStatement[] topstatements, bool strictMode = false)
     {
         super(linnum);
         this.isglobal = isglobal;
         this.name = name;
         this.parameters = parameters;
         this.topstatements = topstatements;
+        this.strictMode = strictMode;
     }
 
     final @safe @nogc pure nothrow
