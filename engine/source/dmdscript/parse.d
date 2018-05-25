@@ -36,11 +36,14 @@ class Parser(Mode MODE) : Lexer!MODE
     FunctionDefinition lastnamedfunc;
     ModulePool modulePool;
 
-    this(string base, ModulePool modulePool = null, IdTable baseTable = null)
+    this(string base, ModulePool modulePool, bool strictMode,
+         IdTable baseTable = null)
     {
         //writefln("Parser.this(base = '%s')", base);
         super(base, baseTable);
         this.modulePool = modulePool;
+        _strictMode = strictMode;
+
         nextToken;            // start up the scanner
     }
 
@@ -48,7 +51,7 @@ class Parser(Mode MODE) : Lexer!MODE
     /**********************************************
      */
     static FunctionDefinition parseFunctionDefinition(
-        string params, string bdy, bool strictMode = false)
+        string params, string bdy, ModulePool modulePool, bool strictMode)
     {
         import std.array : Appender;
         import dmdscript.primitive : PropertyKey;
@@ -56,7 +59,7 @@ class Parser(Mode MODE) : Lexer!MODE
         Appender!(Identifier[]) parameters;
         Appender!(TopStatement[]) topstatements;
 
-        auto p = new Parser!(Mode.None)(params);
+        auto p = new Parser!(Mode.None)(params, modulePool, strictMode);
 
         // Parse FormalParameterList
         while(p.token != Tok.Eof)
@@ -78,25 +81,33 @@ class Parser(Mode MODE) : Lexer!MODE
         }
 
         // Parse StatementList
-        p = new Parser!(Mode.None)(bdy);
+        p = new Parser!(Mode.None)(bdy, modulePool, strictMode);
         for(;; )
         {
             if(p.token == Tok.Eof)
                 break;
-            topstatements.put(p.parseStatement(strictMode));
+            topstatements.put(p.parseStatement);
         }
 
         return new FunctionDefinition(0, 0, null, parameters.data,
-                                      topstatements.data, strictMode);
+                                      topstatements.data, p.strictMode);
     }
 
     /**********************************************
      */
-    TopStatement[] parseProgram(bool strictMode = false)
+    TopStatement[] parseProgram()
     {
-        auto topstatements = parseTopStatements(strictMode);
+        auto topstatements = parseTopStatements;
         check(Tok.Eof);
         return topstatements;
+    }
+
+
+    ///
+    @property @nogc pure nothrow
+    bool strictMode() const
+    {
+        return _strictMode;
     }
 
 private:
@@ -111,13 +122,11 @@ private:
         // Flag if we're in the for statement header, as
         // automatic semicolon insertion is suppressed inside it.
         inForHeader     = 0x04,
-
-        isModule        = 0x08,
-        strictMode      = 0x10,
     }
     Flag flags;
+    bool _strictMode;
 
-    TopStatement[] parseTopStatements(bool strictMode = false)
+    TopStatement[] parseTopStatements()
     {
         import std.array : Appender;
         Appender!(TopStatement[]) topstatements;
@@ -139,10 +148,10 @@ private:
 
             case Tok.String:
                 if (token.str == "use strict")
-                    strictMode = true;
+                    _strictMode = true;
                 goto default;
             default:
-                topstatements.put(parseStatement(strictMode));
+                topstatements.put(parseStatement);
                 break;
             }
         }
@@ -162,7 +171,7 @@ private:
         property  = 2,
     }
 
-    auto parseFunction(FunctionFlag flag)(bool strictMode = false)
+    auto parseFunction(FunctionFlag flag)()
     {
         import std.array : Appender;
         import dmdscript.primitive : PropertyKey;
@@ -173,6 +182,9 @@ private:
         FunctionDefinition f;
         Expression e = null;
         uint linnum;
+
+        auto strict_save = _strictMode;
+        scope(exit) _strictMode = strict_save;
 
         linnum = currentline;
         nextToken();
@@ -248,7 +260,7 @@ private:
         }
 
         check(Tok.Lbrace);
-        topstatements = parseTopStatements(strictMode);
+        topstatements = parseTopStatements;
         check(Tok.Rbrace);
 
         f = new FunctionDefinition(linnum, 0, name, parameters.data,
@@ -285,7 +297,7 @@ private:
     /*****************************************
      */
 
-    Statement parseStatement(bool strictMode = false)
+    Statement parseStatement()
     {
         import dmdscript.primitive : PropertyKey;
         import dmdscript.lexer : Token;
@@ -365,7 +377,7 @@ private:
             {
                 linnum = currentline;
 
-                ident = getIdentifierName;
+                ident = getIdentifierName(strictMode);
                 if(ident is null)
                 {
                     error(ExpectedIdentifierParamError(token.toString));
@@ -701,7 +713,7 @@ private:
                 {
                     auto bdy = modulePool(token.str);
                     auto sp = new Parser!(Mode.Module)(
-                        bdy, modulePool);
+                        bdy, modulePool, strictMode);
                     auto ts = sp.parseProgram;
                     s = new ExpStatement(
                         linnum, new ImportExpression(linnum, token.str, ts));
@@ -1036,7 +1048,7 @@ private:
         uint linnum;
 
         linnum = currentline;
-        f = parseFunction!FLAG;
+        f = parseFunction!FLAG();
         assert (f !is null);
         return new FunctionLiteral(linnum, f);
     }

@@ -155,11 +155,12 @@ private
             locals = p1;
         }
 
-        result = IR.call(realm, othis, fd.code, ret, locals.ptr, fd.strictMode);
+        result = IR.call(realm, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addTrace (fd.name !is null ?
-                             "function " ~ fd.name.toString : "anonymous");
+            result.addInfo (realm.id, fd.name !is null ?
+                            "function " ~ fd.name.toString : "anonymous",
+                            fd.strictMode);
         }
 
         realm.pop(dfs);

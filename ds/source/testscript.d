@@ -75,8 +75,9 @@ Usage:
 
 int main(string[] args)
 {
-    import std.algorithm : startsWith;
-    import dmdscript.drealm : banner;
+    import std.algorithm: startsWith;
+    import std.string: strip;
+    import dmdscript.drealm: banner;
 
     uint errors = 0;
     string[] includes;
@@ -129,7 +130,7 @@ int main(string[] args)
                 BadSwitchError(args[i]).toString.writefln;
                 errors++;
             }
-            else
+            else if (0 < args[i].strip.length)
             {
                 srcfiles ~= new SrcFile(args[i], includes, strictMode);
                 includes = null;

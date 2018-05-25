@@ -285,7 +285,8 @@ class DfunctionConstructor : Dconstructor
 
         try
         {
-            fd = Parser!(Mode.None).parseFunctionDefinition(P, bdy);
+            fd = Parser!(Mode.None).parseFunctionDefinition(
+                P, bdy, realm.modulePool, realm.strictMode);
 
             // if((exception = Parser!(Mode.None).parseFunctionDefinition(
             //         fd, P, bdy)) !is null)

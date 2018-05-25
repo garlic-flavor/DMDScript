@@ -233,6 +233,7 @@ enum CantBreakInternalError = syntaxerr!(string)
 //     err!cTypeError("Unexpected");
 // }
 
+
 enum NoDefaultValueError = err!cTypeError
     ("No [[DefaultValue]]");
 
@@ -258,6 +259,12 @@ enum CantDeleteError = err!(cTypeError, string)
 
 enum PreventExtensionsFailureError = err!(cTypeError, string)
     ("[%s].PreventExtensions() failed.");
+
+
+//==============================================================================
+// for STRICT MODE
+enum CannotAssignToBeforeDeclarationError = err!(cReferenceError, string)
+    ("Cannot assign to %s before declaration on strict mode.");
 
 //==============================================================================
 private:

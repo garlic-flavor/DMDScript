@@ -64,11 +64,12 @@ class FunctionDefinition : TopStatement
     uint nlocals;
 
     @safe @nogc pure nothrow
-    this(TopStatement[] topstatements)
+    this(TopStatement[] topstatements, bool strictMode = false)
     {
         super(0);
         this.isglobal = 1;
         this.topstatements = topstatements;
+        this.strictMode = strictMode;
     }
 
     @safe @nogc pure nothrow

@@ -38,6 +38,7 @@ class DefinedFunctionScope
          FunctionDefinition callerf, Dobject callerothis)
     {
         assert (callerothis !is null);
+        assert (callerf !is null);
 
         _stack = Stack(superScopes, actobj);
         _caller = caller;
@@ -64,6 +65,13 @@ class DefinedFunctionScope
         inout(Dobject) callerothis() inout
         {
             return _callerothis;
+        }
+
+        ///
+        bool strictMode() const
+        {
+            assert (_callerf !is null);
+            return _callerf.strictMode;
         }
     }
 
@@ -216,7 +224,8 @@ struct Stack
     DError* set(Drealm realm, in ref PropertyKey key, ref Value value,
                    Property.Attribute attr = Property.Attribute.None)
     {
-        import dmdscript.property : Property;
+        import dmdscript.property: Property;
+        import dmdscript.errmsgs: CannotAssignToBeforeDeclarationError;
 
         auto stack = _stack.data;
         assert (0 < stack.length);
@@ -233,6 +242,11 @@ struct Stack
                     else
                         return o.Set(key, value, attr, realm);
                 }
+            }
+            else if (realm.strictMode)
+            {
+                return CannotAssignToBeforeDeclarationError(
+                    realm, key.toString);
             }
             else
             {

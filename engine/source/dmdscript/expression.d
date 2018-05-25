@@ -1870,7 +1870,7 @@ final class ImportExpression : Expression
         globalfunction = globalfunction.semantic (&sc);
         if (sc.exception !is null)
         {
-            sc.exception.setBufferId(moduleSpecifier);
+            sc.exception.addInfo(moduleSpecifier);
             ssc.exception = sc.exception;
         }
 

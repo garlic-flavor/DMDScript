@@ -108,9 +108,6 @@ class Drealm : Dobject // aka global environment.
         // Dglobal.prototype is implementation-dependent
         super(rootPrototype, Key.global);
 
-        _current = new DefinedFunctionScope(null, this, null, null, this);
-        _scopex.put(_current);
-
         void init(T...)(ref T args)
         {
             Value val;
@@ -237,6 +234,13 @@ class Drealm : Dobject // aka global environment.
         return _id;
     }
 
+    ///
+    @property @safe @nogc pure nothrow
+    ModulePool modulePool()
+    {
+        return _modulePool;
+    }
+
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     //--------------------------------------------------------------------
     /** Search a variable in the current scope chain.
@@ -247,12 +251,14 @@ class Drealm : Dobject // aka global environment.
     */
     Value* get(in ref PropertyKey key, out Dobject pthis)
     {
+        assert (_current !is null);
         return _current.get(this, key, pthis);
     }
 
     /// ditto
     Value* get(in ref PropertyKey key)
     {
+        assert (_current !is null);
         return _current.get(this, key);
     }
 
@@ -264,6 +270,7 @@ class Drealm : Dobject // aka global environment.
     DError* set(in ref PropertyKey key, ref Value value,
                 Property.Attribute attr = Property.Attribute.None)
     {
+        assert (_current !is null);
         return _current.set(this, key, value, attr);
     }
 
@@ -272,6 +279,7 @@ class Drealm : Dobject // aka global environment.
     DError* setThis(in ref PropertyKey key, ref Value value,
                        Property.Attribute attr)
     {
+        assert (_current !is null);
         return _current.setThis(this, key, value, attr);
     }
 
@@ -280,6 +288,7 @@ class Drealm : Dobject // aka global environment.
     @property @safe @nogc pure nothrow
     inout(Dobject) variable() inout
     {
+        assert (_current !is null);
         return _current.rootScope;
     }
 
@@ -288,6 +297,7 @@ class Drealm : Dobject // aka global environment.
     @property @safe @nogc pure nothrow
     inout(Dfunction) caller() inout
     {
+        assert (_current !is null);
         return _current.caller;
     }
 
@@ -296,13 +306,23 @@ class Drealm : Dobject // aka global environment.
     @property @safe @nogc pure nothrow
     inout(Dobject) callerothis() inout
     {
+        assert (_current !is null);
         return _current.callerothis;
+    }
+
+    //--------------------------------------------------------------------
+    @property @safe @nogc pure nothrow
+    bool strictMode() const
+    {
+        assert (_current !is null);
+        return _current.strictMode;
     }
 
     //--------------------------------------------------------------------
     ///
     string[] searchSimilarWord(string name)
     {
+        assert (_current !is null);
         return _current.searchSimilarWord(this, name);
     }
     /// ditto
@@ -432,8 +452,9 @@ package:
         {
             if (auto f = one.callerf)
             {
-                err.addTrace (f.name !is null ?
-                              "function " ~ f.name.toString : "");
+                err.addInfo (_id, f.name !is null ?
+                             "function " ~ f.name.toString : "",
+                             f.strictMode);
                 break;
             }
         }
@@ -445,13 +466,24 @@ protected:
     @property @safe @nogc pure nothrow
     void id(string i) { _id = i; }
 
+    @property @safe
+    void globalfunction(FunctionDefinition fd)
+    {
+        _globalfunction = fd;
+        push(new DefinedFunctionScope(null, this, null, fd, this));
+    }
+
     @property @safe @nogc pure nothrow
-    void globalfunction(FunctionDefinition fd) { _globalfunction = fd; }
+    void modulePool(ModulePool p)
+    {
+        _modulePool = p;
+    }
 
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     void semantic()
     {
         import dmdscript.scopex: Scope;
+        import dmdscript.exception: ScriptException;
 
         // Any functions parsed in topstatements wind up in the global
         // object (cc.global), where they are found by normal property lookups.
@@ -468,18 +500,27 @@ protected:
         // as a property of the global object.
 
         assert (_globalfunction !is null);
-        Scope sc;
-        sc.ctor(_globalfunction);  // create global scope
-        _globalfunction.semantic(&sc);
-        if (sc.exception !is null) // if semantic() failed
+        try
         {
-            _globalfunction.topstatements[] = null;
-            _globalfunction.topstatements = null;
-            _globalfunction = null;
+            Scope sc;
+            sc.ctor(_globalfunction);  // create global scope
+            _globalfunction.semantic(&sc);
+            if (sc.exception !is null) // if semantic() failed
+            {
+                _globalfunction.topstatements[] = null;
+                _globalfunction.topstatements = null;
+                _globalfunction = null;
 
-            sc.exception.setBufferId(_id);
-
-            throw sc.exception;
+                throw sc.exception;
+            }
+        }
+        catch (Throwable t)
+        {
+            auto se = cast(ScriptException)t;
+            if (se is null)
+                se = new ScriptException ("Unknown exception at semantic", t);
+            se.addInfo(_id, "[global]", _globalfunction.strictMode);
+            throw se;
         }
     }
 
@@ -559,11 +600,10 @@ protected:
         auto dfs = new DefinedFunctionScope(null, this, null, _globalfunction,
                                             this);
         push(dfs);
-        result = IR.call(this, this, _globalfunction.code, ret, locals.ptr,
-                         _globalfunction.strictMode);
+        result = IR.call(this, this, _globalfunction.code, ret, locals.ptr);
 
         if(result !is null)
-            result.setBufferId(_id);
+            result.addInfo(_id, "[global]", _globalfunction.strictMode);
 
         pop(dfs);
 
@@ -582,18 +622,19 @@ private:
 
     string _id;
     FunctionDefinition _globalfunction;
+    ModulePool _modulePool;
 
     bool _interrupt;               // true if cancelled due to interrupt
 
     Appender!(DefinedFunctionScope[]) _scopex;
     DefinedFunctionScope _current; // current scope chain
 
-    invariant
-    {
-        assert (_current !is null);
-        assert (0 < _scopex.data.length);
-        assert (_scopex.data[$-1] is _current);
-    }
+    // invariant
+    // {
+    //     assert (_current !is null);
+    //     assert (0 < _scopex.data.length);
+    //     assert (_scopex.data[$-1] is _current);
+    // }
 }
 
 //------------------------------------------------------------------------------
@@ -612,16 +653,36 @@ class DscriptRealm: Drealm
         TopStatement[] topstatements;
 
         id = bufferId;
+        this.modulePool = modulePool;
+
+        Parser!(Mode.UseStringtable) p;
 
         try
         {
-            auto p = new Parser!(Mode.UseStringtable)(srctext, modulePool);
-            topstatements = p.parseProgram(strictMode);
+            p = new Parser!(Mode.UseStringtable)(
+                srctext, modulePool, strictMode);
+            topstatements = p.parseProgram;
+
+            debug
+            {
+                if (dumpMode & DumpMode.Statement)
+                    TopStatement.dump(topstatements).writeln;
+            }
+
+            // Build empty function definition array
+            // Make globalfunction an anonymous one
+            //   (by passing in null for name) so
+            // it won't get instantiated as a property
+            globalfunction = new FunctionDefinition(
+                0, 1, null, null, topstatements, p.strictMode);
+
+            semantic;
+            toIR;
         }
         catch (ScriptException se)
         {
             topstatements = null;
-            se.setBufferId(_id);
+            se.addInfo(_id, "global", p is null ? strictMode : p.strictMode);
             throw se;
         }
         catch (Throwable t)
@@ -629,21 +690,6 @@ class DscriptRealm: Drealm
             topstatements = null;
             throw t;
         }
-
-        debug
-        {
-            if (dumpMode & DumpMode.Statement)
-                TopStatement.dump(topstatements).writeln;
-        }
-
-        // Build empty function definition array
-        // Make globalfunction an anonymous one (by passing in null for name) so
-        // it won't get instantiated as a property
-        globalfunction = new FunctionDefinition(
-            0, 1, null, null, topstatements, strictMode);
-
-        semantic;
-        toIR;
     }
 
     DError* execute(string[] args = null)
@@ -664,12 +710,13 @@ class DmoduleRealm: Drealm
 {
     import dmdscript.functiondefinition: FunctionDefinition;
 
-    this (string id, FunctionDefinition fd)
+    this (string id, ModulePool modulePool, FunctionDefinition fd)
     {
         super();
 
         this.id = id;
         this.globalfunction = fd;
+        this.modulePool = modulePool;
 
         semantic;
         toIR;
@@ -704,7 +751,7 @@ DError* CreateRealm (Drealm realm, out Value ret, Value[] arglist)
             moduleId = v.toString(realm);
     }
 
-    o = new DmoduleRealm(moduleId, null);
+    o = new DmoduleRealm(moduleId, realm.modulePool, null);
     assert (o !is null);
     ret.put(o);
     return null;
@@ -748,7 +795,7 @@ DError* eval(
     TopStatement[] topstatements;
     try
     {
-        auto p = new Parser!(Mode.None)(s);
+        auto p = new Parser!(Mode.None)(s, realm.modulePool, realm.strictMode);
         topstatements = p.parseProgram;
     }
     catch (ScriptException se)
@@ -760,7 +807,7 @@ DError* eval(
     }
 
     // Analyze, generate code
-    fd = new FunctionDefinition(topstatements);
+    fd = new FunctionDefinition(topstatements, realm.strictMode);
     fd.iseval = 1;
     {
         Scope sc;

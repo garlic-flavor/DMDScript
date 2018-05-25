@@ -60,7 +60,7 @@ class Program
 
         try
         {
-            p = new Parser!(Mode.UseStringtable)(srctext, modulePool);
+            p = new Parser!(Mode.UseStringtable)(srctext, modulePool, false);
 
             topstatements = p.parseProgram;
         }

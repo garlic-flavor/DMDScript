@@ -63,16 +63,22 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(591/59240)
-    + [x] language/comments
+* [ ] Run test262.(1079/59240)
+    + [x] language/comments <-- Some tests ware failed
     + [x] language/line-terminators
     + [x] language/white-space
     + [x] language/reserved-word
     + [x] language/identifiers
-    + [ ] language/asi
-    + [ ] language/future-reserved-words
-    + [ ] language/types/boolean
-    + [ ] ~~language/types/* (see below)~~
+    + [x] language/asi
+    + [x] language/future-reserved-words
+    + [x] language/types/boolean
+    + [x] language/types/list
+    + [x] language/types/null
+    + [ ] language/types/number <-- Some tests ware failed.
+    + [x] language/types/object
+    + [x] language/types/string
+    + [x] language/types/undefined
+    + [ ] language/types/reference <-- Some tests ware failed.
     + [ ] ~~language/literals/boolean/*~~
     + [ ] ~~language/literals/null/*~~
     + [ ] ~~language/literals/numeric/*~~
@@ -82,12 +88,12 @@ This aims to alternate test262-harness-py.
     + [x] The first compile.
     + [x] Run a script marked with 'module' as module.
     + [x] Run a script with strict mode.
-    + [ ] Implement very useful functionalities. 
+    + [ ] Implement very useful functionalities.
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
 ### next to do
-implement strict mode.
+implement $262 object.
 
 ### failed tests.
 * ..\test262\test\annexB\language\comments\multi-line-html-close.js on non strict mode.
@@ -105,6 +111,26 @@ implement strict mode.
 * ..\test262\test\language\comments\S7.4_A6.js on strict mode.
   A invalid Unicode sequence is not allowed.
 * ..\test262\test\language\expressions\delete\white-space-line-terminator-between-delete-unaryexpression-allowed.js on non strict mode.
+  failed.
+* ..\test262\test\language\types\number\S8.5_A2.1.js on non strict mode.
+  failed.
+* ..\test262\test\language\types\number\S8.5_A2.1.js on strict mode.
+  failed.
+* ..\test262\test\language\types\number\S8.5_A2.2.js on non strict mode.
+  failed.
+* ..\test262\test\language\types\number\S8.5_A2.2.js on strict mode.
+  failed.
+* ..\test262\test\language\types\reference\get-value-prop-base-primitive-realm.js on non strict mode.
+  failed.
+* ..\test262\test\language\types\reference\get-value-prop-base-primitive-realm.js on strict mode.
+  failed.
+* ..\test262\test\language\types\reference\put-value-prop-base-primitive-realm.js on non strict mode.
+  failed.
+* ..\test262\test\language\types\reference\put-value-prop-base-primitive-realm.js on strict mode.
+  failed.
+* ..\test262\test\language\types\reference\put-value-prop-base-primitive.js on non strict mode.
+  failed.
+* ..\test262\test\language\types\reference\put-value-prop-base-primitive.js on strict mode.
   failed.
 
 ### problems.

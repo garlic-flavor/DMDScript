@@ -93,7 +93,7 @@ enum Tok : int
     Switch, This, True,
     Typeof, Var, Void,
     While, With,
-    Yield, Await,
+    Await,
     Set, Get,
 
     // Reserved for ECMA extensions
@@ -102,23 +102,34 @@ enum Tok : int
     Enum, Extends,
     Finally, Super,
     Throw, Try,
-    Let, Instanceof,
+    Instanceof,
 
     keywords_max,
     //--------------------------------------------------------------------
     reserved_min = keywords_max,
 
     // Java keywords reserved for unknown reasons
+    Implements,
+    Interface,
+    Let,
+    Package,
+    Private,
+    Protected,
+    Public,
+    Static,
+    Yield,
+
+    keywords_max_strict,
+    //--------------------------------------------------------------------
+    reserved_min_strict = keywords_max_strict,
+
     Abstract, Boolean,
     Byte, Char,
     Double, Final,
     Float, Goto,
-    Implements,
-    Int, Interface,
+    Int,
     Long, Native,
-    Package, Private,
-    Protected, Public,
-    Short, Static,
+    Short,
     Synchronized,
     Transient,
 
@@ -357,7 +368,7 @@ protected:
 
     //--------------------------------------------------------------------
     //
-    Identifier getIdentifierName()
+    Identifier getIdentifierName(bool strictMode)
     {
         switch (token)
         {
@@ -368,9 +379,11 @@ protected:
 
             // Future-reserved-words are allowed
         default:
+            auto minborder =
+                strictMode ? Tok.reserved_min_strict : Tok.reserved_min;
             static if (MODE == Mode.Module)
             {
-                if (Tok.reserved_min < token && token < Tok.reserved_max)
+                if (minborder < token && token < Tok.reserved_max)
                 {
                     static if (MODE & Mode.UseStringtable)
                         return idtable.build(token.str);
@@ -381,7 +394,7 @@ protected:
             }
             else
             {
-                if ((Tok.reserved_min < token && token < Tok.reserved_max) ||
+                if ((minborder < token && token < Tok.reserved_max) ||
                     token == Tok.Await)
                 {
                     static if (MODE & Mode.UseStringtable)

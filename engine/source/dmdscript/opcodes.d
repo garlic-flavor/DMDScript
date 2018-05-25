@@ -62,7 +62,7 @@ struct IR
      * This is the main interpreter loop.
      */
     static DError* call(Drealm realm, Dobject othis, const(IR)* code,
-                        out Value ret, Value* locals, bool strictMode = false)
+                        out Value ret, Value* locals)
     {
         import std.array : join;
         import std.conv : to;
@@ -264,8 +264,15 @@ struct IR
                     v = realm.get(*id);
                     if(v is null)
                     {
+                        // if (realm.strictMode)
+                        // {
+                        //     sta = CannotAssignToError(realm, id.toString);
+                        //     goto Lthrow;
+                        // }
+
+                        realm.set(*id, undefined);
                         v = signalingUndefined(id.toString);
-                        realm.set(*id, *v);
+                        // realm.set(*id, *v);
                     }
                     else
                     {
@@ -432,7 +439,9 @@ struct IR
                     sta = a.checkReference(realm);
                     if (sta !is null)
                         goto Lthrow;
-                    realm.set(*(code + 2).id, *a);
+                    sta = realm.set(*(code + 2).id, *a);
+                    if (sta !is null)
+                        goto Lthrow;
                     code += IRTypes[Opcode.PutScope].size;
                     break;
 
@@ -1687,7 +1696,8 @@ struct IR
                     assert ((code + 2).value.isString);
                     auto name = (code + 2).value.text;
                     auto fd = cast(FunctionDefinition)(code + 3).fd;
-                    auto newrealm = new DmoduleRealm(name, fd);
+                    auto newrealm = new DmoduleRealm(
+                        name, realm.modulePool, fd);
                     (locals + (code + 1).index).put(newrealm);
 
                     code += IRTypes[Opcode.Import].size;

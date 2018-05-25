@@ -892,6 +892,7 @@ void runTest(in ref ArgsInfo info)
             }
 
             // スクリプトを実行する。
+            bool editedJv = false;
             auto strictMode = info.onlyStrict || meta.flags.onlyStrict;
         execute:
 
@@ -901,12 +902,12 @@ void runTest(in ref ArgsInfo info)
                 if (strictMode)
                 {
                     if (meta.resultOfStrict != MetaData.Result.failed)
-                        return jv;
+                        return editedJv ? meta.toJSONValue : jv;
                 }
                 else
                 {
                     if (meta.result != MetaData.Result.failed)
-                        return jv;
+                        return editedJv ? meta.toJSONValue : jv;
                 }
             }
             // 以前に成功してるやつだけに絞る。
@@ -915,12 +916,12 @@ void runTest(in ref ArgsInfo info)
                 if (strictMode)
                 {
                     if (meta.resultOfStrict != MetaData.Result.passed)
-                        return jv;
+                        return editedJv ? meta.toJSONValue : jv;
                 }
                 else
                 {
                     if (meta.result != MetaData.Result.passed)
-                        return jv;
+                        return editedJv ? meta.toJSONValue : jv;
                 }
             }
             else if (info.type != RunType.full)
@@ -931,7 +932,7 @@ void runTest(in ref ArgsInfo info)
                     if (meta.resultOfStrict == MetaData.Result.passed)
                     {
                         ++passedCount;
-                        return jv;
+                        return editedJv ? meta.toJSONValue : jv;
                     }
                 }
                 else
@@ -939,7 +940,7 @@ void runTest(in ref ArgsInfo info)
                     if (meta.result == MetaData.Result.passed)
                     {
                         ++passedCount;
-                        return jv;
+                        return editedJv ? meta.toJSONValue : jv;
                     }
 
                 }
@@ -951,7 +952,7 @@ void runTest(in ref ArgsInfo info)
                         0 < meta.complaint.length && !info.ignoreComplain)
                     {
                         ++ignoredCount;
-                        return jv;
+                        return editedJv ? meta.toJSONValue : jv;
                     }
                 }
                 else
@@ -960,12 +961,13 @@ void runTest(in ref ArgsInfo info)
                         0 < meta.complaint.length && !info.ignoreComplain)
                     {
                         ++ignoredCount;
-                        return jv;
+                        return editedJv ? meta.toJSONValue : jv;
                     }
                 }
             }
 
             ++ranCount;
+            editedJv = true;
 
             // モジュールとして実行すべきファイル
             string path = meta.path;
@@ -1168,7 +1170,16 @@ void showStatus(in ref ArgsInfo info)
     size_t allCount, passedCount, failedCount, ignoredCount,
         passedCountStrict, failedCountStrict, ignoredCountStrict;
     Appender!(string[]) buf;
-    bool[string] passedDir;
+
+    enum DirStatus
+    {
+        None,
+        Progressing,
+        Failed,
+        Passed,
+    }
+    alias S = DirStatus;
+    S[string] passedDir;
 
     foreach (one; table["tests"].array)
     {
@@ -1185,25 +1196,25 @@ void showStatus(in ref ArgsInfo info)
                 if      ((*p).type == JSON_TYPE.TRUE)
                 {
                     ++passedCount;
-                    passedDir[dir] = passedDir.get(dir, true);
+                    passedDir[dir] = passedDir.get(dir, S.Passed);
                 }
                 else if (auto p2 = "complaint" in t)
                 {
                     ++ignoredCount;
                     buf.put("* " ~ path ~ " on non strict mode.");
                     buf.put("  " ~ (*p2).str);
-                    passedDir[dir] = passedDir.get(dir, true);
+                    passedDir[dir] = passedDir.get(dir, S.Passed);
                 }
                 else
                 {
                     ++failedCount;
                     buf.put("* " ~ path ~ " on non strict mode.");
                     buf.put("  failed.");
-                    passedDir[dir] = false;
+                    passedDir[dir] = S.Failed;
                 }
             }
-            else
-                passedDir[dir] = false;
+            else if (S.None != passedDir.get(dir, S.None))
+                passedDir[dir] = S.Progressing;
         }
         if ("noStrict" !in t)
         {
@@ -1212,25 +1223,25 @@ void showStatus(in ref ArgsInfo info)
                 if      ((*p).type == JSON_TYPE.TRUE)
                 {
                     ++passedCountStrict;
-                    passedDir[dir] = passedDir.get(dir, true);
+                    passedDir[dir] = passedDir.get(dir, S.Passed);
                 }
                 else if (auto p2 = "complaint" in t)
                 {
                     ++ignoredCountStrict;
                     buf.put("* " ~ path ~ " on strict mode.");
                     buf.put("  " ~ (*p2).str);
-                    passedDir[dir] = passedDir.get(dir, true);
+                    passedDir[dir] = passedDir.get(dir, S.Passed);
                 }
                 else
                 {
                     ++failedCountStrict;
                     buf.put("* " ~ path ~ " on strict mode.");
                     buf.put("  failed.");
-                    passedDir[dir] = false;
+                    passedDir[dir] = S.Failed;
                 }
             }
-            else
-                passedDir[dir] = false;
+            else if (S.None != passedDir.get(dir, S.None))
+                passedDir[dir] = S.Progressing;
         }
     }
 
@@ -1248,9 +1259,19 @@ void showStatus(in ref ArgsInfo info)
             "/", allCount, ")");
     writeln;
 
-    writeln("Passed directories:");
+    writeln ("Passed directories:");
     foreach (key, val; passedDir)
-        if (val) writeln(key);
+        if (val == S.Passed) writeln(key);
+    writeln;
+
+    writeln ("Failed directories:");
+    foreach (key, val; passedDir)
+        if (val == S.Failed) writeln(key);
+    writeln;
+
+    writeln ("Progressing directories:");
+    foreach (key, val; passedDir)
+        if (val == S.Progressing) writeln(key);
     writeln;
 
     writeln("Complaints:");

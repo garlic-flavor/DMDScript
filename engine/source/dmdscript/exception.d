@@ -107,7 +107,6 @@ class ScriptException : Exception
             trace ~= sd;
     }
 
-
     /// ditto
     @safe pure
     void addTrace(uint linnum, string f = __FILE__, size_t l = __LINE__)
@@ -125,12 +124,13 @@ class ScriptException : Exception
         if (!alreadyExists(sd))
             trace ~= sd;
     }
-    /// ditto
+
+    ///
     @safe @nogc pure nothrow
-    void addTrace(string funcname)
+    void addInfo(string bufferId, string funcname = "", bool strictMode = false)
     {
         foreach (ref one; trace)
-            one.addTrace(funcname);
+            one.addInfo(bufferId, funcname, strictMode);
     }
 
     //
@@ -159,12 +159,6 @@ class ScriptException : Exception
     {
         foreach (ref one; trace)
             one.setSourceInfo(callback);
-    }
-
-    void setBufferId(string id)
-    {
-        foreach (ref one; trace)
-            one.setBufferId(id);
     }
 
     //--------------------------------------------------------------------
@@ -260,10 +254,15 @@ private:
 
         //----------------------------------------------------------
         @trusted @nogc pure nothrow
-        void addTrace(string funcname)
+        void addInfo(string bufferId, string funcname, bool strictMode)
         {
+            if (this.bufferId.length == 0)
+                this.bufferId = bufferId;
             if (this.funcname.length == 0)
+            {
                 this.funcname = funcname;
+                this.strictMode = strictMode;
+            }
         }
 
         //----------------------------------------------------------
@@ -276,6 +275,8 @@ private:
             if (0 < sourcename.length)
                 return;
 
+            if (0 == bufferId.length)
+                return;
             foreach (one; callback(bufferId))
             {
                 if (linnum <= accLine + one.lineCount)
@@ -290,12 +291,6 @@ private:
                 accLine += one.lineCount;
                 accOffset += one.buffer.length;
             }
-        }
-
-        void setBufferId(string id)
-        {
-            if (0 == bufferId.length)
-                bufferId = id;
         }
 
         //----------------------------------------------------------
@@ -326,6 +321,10 @@ private:
                 sink("(");
                 sink(unsignedToTempString(linnum, tmpBuff, 10));
                 sink(")");
+            }
+            if (strictMode)
+            {
+                sink("[STRICT MODE]");
             }
         }
 
@@ -415,6 +414,7 @@ private:
         size_t offset; //
 
         string bufferId;
+        bool strictMode;
     }
 
     //====================================================================

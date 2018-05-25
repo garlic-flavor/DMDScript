@@ -134,7 +134,9 @@ struct Value
     DError* checkReference(Drealm realm) const
     {
         if(_type == Type.RefError)
+        {
             return UndefinedVarError(realm, _text);
+        }
         return null;
     }
 
@@ -1590,14 +1592,14 @@ struct DError
 
     ///
     @safe @nogc pure nothrow
-    void addTrace(string funcname)
+    void addInfo(string bufferId, string funcname = "", bool strictMode = false)
     {
         import dmdscript.protoerror: D0base;
 
         if (auto d0 = cast(D0base)entity.object)
         {
             assert(d0.exception);
-            d0.exception.addTrace(funcname);
+            d0.exception.addInfo(bufferId, funcname, strictMode);
         }
     }
 
@@ -1620,15 +1622,6 @@ struct DError
         {
             assert(d0.exception);
             d0.exception.setSourceInfo(callback);
-        }
-    }
-
-    void setBufferId(string id)
-    {
-        if (auto d0 = cast(D0base)entity.object)
-        {
-            assert (d0.exception);
-            d0.exception.setBufferId(id);
         }
     }
 
