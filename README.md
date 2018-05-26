@@ -63,7 +63,7 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(1079/59240)
+* [ ] Run test262.(1081/59240)
     + [x] language/comments <-- Some tests ware failed
     + [x] language/line-terminators
     + [x] language/white-space
@@ -93,7 +93,7 @@ This aims to alternate test262-harness-py.
 * [ ] Make pull requests?(0/???)
 
 ### next to do
-implement $262 object.
+implement Proxy class.
 
 ### failed tests.
 * ..\test262\test\annexB\language\comments\multi-line-html-close.js on non strict mode.
@@ -120,10 +120,6 @@ implement $262 object.
   failed.
 * ..\test262\test\language\types\number\S8.5_A2.2.js on strict mode.
   failed.
-* ..\test262\test\language\types\reference\get-value-prop-base-primitive-realm.js on non strict mode.
-  failed.
-* ..\test262\test\language\types\reference\get-value-prop-base-primitive-realm.js on strict mode.
-  failed.
 * ..\test262\test\language\types\reference\put-value-prop-base-primitive-realm.js on non strict mode.
   failed.
 * ..\test262\test\language\types\reference\put-value-prop-base-primitive-realm.js on strict mode.
@@ -142,7 +138,8 @@ implement $262 object.
   test262 assumes that the encoding is UTF16. And illegal Unicode sequences are permitted sometimes.
   Otherwise, DMDScript choose UTF8 and any illegal Unicode sequences are not permitted as dmd is.
   So, some codes are not compatible with another implementation of ECMAScript.
-  For Example, the length of a surrogate pair is not 2 but 1.
+  For example, the length of a surrogate pair is not 2 but 1.
+  this may change.
 
 * ~~__CESU8__~~
   ~~I introduced CESU-8 as an internal representation of a string.~~
@@ -156,7 +153,7 @@ implement $262 object.
 * ~~__language/reserved-words/await-script.js and await-module.js__~~
   ~~The former one means that "Parse this script as a script.", The latter one means that "Parse this script as a module.".~~
   ~~But, test262-harness-py doesn't enforce that.~~
-  test262-harness-d do this.(2018/05/22)
+  test262-harness-d does this.(2018/05/22)
 
 * __language/types/number/S8.5_A2.1.js and S8.5_A2.2.js__
   D's double type doesn't suit for this. How could I solve?

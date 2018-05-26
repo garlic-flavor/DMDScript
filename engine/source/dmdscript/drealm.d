@@ -641,7 +641,6 @@ private:
 class DscriptRealm: Drealm
 {
     //--------------------------------------------------------------------
-
     void compile(string bufferId, string srctext, ModulePool modulePool,
                  bool strictMode = false)
     {
@@ -733,7 +732,6 @@ class DmoduleRealm: Drealm
 }
 
 //==============================================================================
-private:
 
 @DFD(1, Key.CreateRealm)
 DError* CreateRealm (Drealm realm, out Value ret, Value[] arglist)
@@ -800,6 +798,7 @@ DError* eval(
     }
     catch (ScriptException se)
     {
+        se.addInfo("string", "eval", realm.strictMode);
         se.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
 
         ret.putVundefined();
@@ -911,7 +910,11 @@ DError* eval(
         realm.push(dfs);
         result = IR.call(realm, realm.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
+        {
+            writeln("reach");
+            result.addInfo("string", "anonymous", realm.strictMode);
             result.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
+        }
 
         realm.pop(dfs);
 

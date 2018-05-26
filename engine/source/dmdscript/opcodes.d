@@ -163,14 +163,14 @@ struct IR
         assert(code);
         assert(othis);
 
-        loop: for(;; )
+        try
         {
-            // Lnext:
-            if(realm.isInterrupting) // see if script was interrupted
-                break loop;
-
-            try
+        loop: for(;!realm.isInterrupting; )
             {
+            // Lnext:
+                // if(realm.isInterrupting) // see if script was interrupted
+                //     break loop;
+
                 assert(code.opcode <= Opcode.max,
                        "Unrecognized IR instruction " ~ code.opcode.to!string);
 
@@ -1710,17 +1710,17 @@ struct IR
                     code += IRTypes[Opcode.End].size;
                     break loop;
                 } // the end of the final switch.
-            }
-            catch (Throwable t)
+            } // the end of the loop:for(;;).
+        }
+        catch (Throwable t)
+        {
+            sta = unwindStack(t.toDError(realm));
+            if (sta !is null)
             {
-                sta = unwindStack(t.toDError(realm));
-                if (sta !is null)
-                {
-                    sta.addTrace(codestart, code);
-                    return sta;
-                }
+                sta.addTrace(codestart, code);
+                return sta;
             }
-        } // the end of the loop:for(;;).
+        }
 
         ret.putVundefined();
         return null;

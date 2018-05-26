@@ -135,7 +135,6 @@ void install(alias M, T)(
     Dfunction f;
     Value val;
 
-    //
     template selectFunc(alias F)
     {
         template _impl(T...)
@@ -153,6 +152,7 @@ void install(alias M, T)(
         else
             enum selectFunc = false;
     }
+
 
     foreach(one; __traits(derivedMembers, M))
     {
@@ -187,6 +187,16 @@ void install(alias M, T)(
             }
         }
     }
-
 }
 
+void install(Dobject o, string key, Dobject p,
+             Property.Attribute attr = Property.Attribute.DontEnum)
+{
+    import dmdscript.primitive: PropertyKey;
+
+    PropertyKey k;
+    Value val;
+    val.put(p);
+    k = key.PropertyKey;
+    o.DefineOwnProperty(k, val, attr);
+}

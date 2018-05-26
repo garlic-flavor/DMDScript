@@ -835,6 +835,7 @@ void runTest(in ref ArgsInfo info)
     import std.string: strip;
     import std.array: array, Appender, join, replace;
     import std.format: format;
+    import std.datetime: Clock;
 
     if (!info.database.exists)
         doInit(info);
@@ -871,6 +872,7 @@ void runTest(in ref ArgsInfo info)
     if (info.verbose)
         writeln ("protocol start...");
 
+    auto startTime = Clock.currTime;
     table["tests"] = table["tests"].array.map!( // リストを巡回する。
         (jv){
             if (aborting) // このグループで失敗が出たからやめたい。
@@ -894,6 +896,7 @@ void runTest(in ref ArgsInfo info)
             // スクリプトを実行する。
             bool editedJv = false;
             auto strictMode = info.onlyStrict || meta.flags.onlyStrict;
+            int exitcode = 0;
         execute:
 
             // 以前に失敗してたやつだけ
@@ -902,12 +905,12 @@ void runTest(in ref ArgsInfo info)
                 if (strictMode)
                 {
                     if (meta.resultOfStrict != MetaData.Result.failed)
-                        return editedJv ? meta.toJSONValue : jv;
+                        goto next;
                 }
                 else
                 {
                     if (meta.result != MetaData.Result.failed)
-                        return editedJv ? meta.toJSONValue : jv;
+                        goto next;
                 }
             }
             // 以前に成功してるやつだけに絞る。
@@ -916,12 +919,12 @@ void runTest(in ref ArgsInfo info)
                 if (strictMode)
                 {
                     if (meta.resultOfStrict != MetaData.Result.passed)
-                        return editedJv ? meta.toJSONValue : jv;
+                        goto next;
                 }
                 else
                 {
                     if (meta.result != MetaData.Result.passed)
-                        return editedJv ? meta.toJSONValue : jv;
+                        goto next;
                 }
             }
             else if (info.type != RunType.full)
@@ -932,7 +935,7 @@ void runTest(in ref ArgsInfo info)
                     if (meta.resultOfStrict == MetaData.Result.passed)
                     {
                         ++passedCount;
-                        return editedJv ? meta.toJSONValue : jv;
+                        goto next;
                     }
                 }
                 else
@@ -940,7 +943,7 @@ void runTest(in ref ArgsInfo info)
                     if (meta.result == MetaData.Result.passed)
                     {
                         ++passedCount;
-                        return editedJv ? meta.toJSONValue : jv;
+                        goto next;
                     }
 
                 }
@@ -952,7 +955,7 @@ void runTest(in ref ArgsInfo info)
                         0 < meta.complaint.length && !info.ignoreComplain)
                     {
                         ++ignoredCount;
-                        return editedJv ? meta.toJSONValue : jv;
+                        goto next;
                     }
                 }
                 else
@@ -961,7 +964,7 @@ void runTest(in ref ArgsInfo info)
                         0 < meta.complaint.length && !info.ignoreComplain)
                     {
                         ++ignoredCount;
-                        return editedJv ? meta.toJSONValue : jv;
+                        goto next;
                     }
                 }
             }
@@ -969,36 +972,39 @@ void runTest(in ref ArgsInfo info)
             ++ranCount;
             editedJv = true;
 
-            // モジュールとして実行すべきファイル
-            string path = meta.path;
-            if (meta.flags.moduleCode)
             {
-                info.tmp.write (MODULE_TEMPLATE.format (
-                                    path.replace("\\", "\\\\")));
-                path = info.tmp;
+                // モジュールとして実行すべきファイル
+                string path = meta.path;
+                if (meta.flags.moduleCode)
+                {
+                    info.tmp.write (MODULE_TEMPLATE.format (
+                                        path.replace("\\", "\\\\")));
+                    path = info.tmp;
+                }
+
+                // 実行
+                string[] command;
+                if (strictMode)
+                    command = baseCommand ~ "-s" ~ path;
+                else
+                    command = baseCommand ~ path;
+                if (info.verbose)
+                    writeln (command.join(" "));
+                auto pipes = pipeProcess(command,
+                                         Redirect.stdout | Redirect.stderr);
+
+                // 出力を収集
+                errouts.shrinkTo(0);
+                foreach (one; pipes.stderr.byLine)
+                    errouts.put(one.idup);
+
+                outputs.shrinkTo(0);
+                foreach (one; pipes.stdout.byLine)
+                    outputs.put(one.idup);
+
+                exitcode = wait(pipes.pid);
             }
 
-            // 実行
-            string[] command;
-            if (strictMode)
-                command = baseCommand ~ "-s" ~ path;
-            else
-                command = baseCommand ~ path;
-            if (info.verbose)
-                writeln (command.join(" "));
-            auto pipes = pipeProcess(command,
-                                     Redirect.stdout | Redirect.stderr);
-
-            // 出力を収集
-            errouts.shrinkTo(0);
-            foreach (one; pipes.stderr.byLine)
-                errouts.put(one.idup);
-
-            outputs.shrinkTo(0);
-            foreach (one; pipes.stdout.byLine)
-                outputs.put(one.idup);
-
-            auto exitcode = wait(pipes.pid);
             if (info.verbose)
                 writeln ("exit code: ", exitcode);
 
@@ -1068,13 +1074,7 @@ void runTest(in ref ArgsInfo info)
 
             ++passedCount;
 
-            if (!strictMode && !info.noStrict && !meta.flags.noStrict)
-            {
-                strictMode = true;
-                goto execute;
-            }
-
-            return meta.toJSONValue;
+            goto next;
 
         failed:
             if (strictMode)
@@ -1085,17 +1085,21 @@ void runTest(in ref ArgsInfo info)
             printOutputs;
 
             writeln;
-            writeln("-- MetaInfo --------------------------------------");
-
             writeln (strictMode ? "STRICT MODE" : "NON STRICT MODE");
+            writeln("-- Source ----------------------------------------");
+
 
             // スクリプトのメタ情報の表示
-            foreach (one; meta.path.read.to!string
-                     .takeMetaSection.parseYAML)
-            {
-                writeln("[", one.key, "]:");
-                writeln(one.value);
-            }
+            // foreach (one; meta.path.read.to!string
+            //          .takeMetaSection.parseYAML)
+            // {
+            //     writeln("[", one.key, "]:");
+            //     writeln(one.value);
+            // }
+            import std.string: splitLines;
+            import std.format: format;
+            foreach (i, one; meta.path.read.to!string.splitLines)
+                writefln("%4d:%s", i+1, one);
 
             if (0 < meta.complaint.length)
             {
@@ -1132,20 +1136,29 @@ void runTest(in ref ArgsInfo info)
             if (meta.complaint.length == 0 && info.type != RunType.full &&
                 info.type != RunType.failedOnly)
                 aborting = true;
-            else if (!strictMode && !info.noStrict && !meta.flags.noStrict)
+
+        next:
+            if (!strictMode && !info.noStrict && !meta.flags.noStrict &&
+                !aborting)
             {
                 strictMode = true;
                 goto execute;
             }
 
-            return meta.toJSONValue;
+            return editedJv ? meta.toJSONValue : jv;
+
         }).array.JSONValue;
 
     auto cont = table.JSONValue;
 
     info.database.write(cont.toJSON(true));
 
-    writeln("Ran ", ranCount, " tests.");
+    auto endTime = Clock.currTime;
+    int m, s;
+    (endTime - startTime).split!("minutes", "seconds")(m, s);
+
+    writeln ("Ran ", ranCount, " tests, took ",
+             format("%02d:%02d", m, s), ".");
     writeln("Passed ", passedCount);
     writeln("Failed ", failedCount);
     writeln("Ignored ", ignoredCount);
@@ -1154,11 +1167,11 @@ void runTest(in ref ArgsInfo info)
 //==============================================================================
 void showStatus(in ref ArgsInfo info)
 {
-    import std.file : exists, isFile, read;
-    import std.conv : to;
-    import std.array : Appender;
-    import std.json : parseJSON, JSON_TYPE;
-    import std.path : dirName;
+    import std.file: exists, isFile, read;
+    import std.conv: to;
+    import std.array: Appender;
+    import std.json: parseJSON, JSON_TYPE;
+    import std.path: dirName;
 
     if (!info.database.exists || !info.database.isFile)
         throw new Exception (info.database ~ " is not found.");
@@ -1244,7 +1257,6 @@ void showStatus(in ref ArgsInfo info)
                 passedDir[dir] = S.Progressing;
         }
     }
-
     writeln ("In ", allCount, " tests, ");
     writeln (passedCount, " passed on non strict mode,");
     writeln (failedCount, " failed on non strict mode,");

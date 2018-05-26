@@ -147,6 +147,8 @@ class ScriptException : Exception
             this.buffer = buffer;
 
             this.lineCount = cast(size_t)buffer.count('\n');
+            if (0 < buffer.length && buffer[$-1] != '\n')
+                ++this.lineCount;
         }
 
     private:
@@ -277,6 +279,7 @@ private:
 
             if (0 == bufferId.length)
                 return;
+
             foreach (one; callback(bufferId))
             {
                 if (linnum <= accLine + one.lineCount)

@@ -329,10 +329,16 @@ class SrcFile
     void compile()
     {
         import dmdscript.exception;
+        import dmdscript.value: Value;
+        import dmdscript.primitive: PropertyKey;
+        import dmdscript.property: Property;
+        import dmdscript.dnative: install;
         /* Create a DMDScript program, and compile our text buffer.
          */
 
         realm = new DscriptRealm();
+        realm.install(
+            "$262", new Test262(realm.rootPrototype, realm.functionPrototype));
 
         debug
         {
@@ -453,3 +459,77 @@ debug public:
     Drealm.DumpMode dumpMode;
 }
 
+//------------------------------------------------------------------------------
+class Test262 : Dobject
+{
+    import dmdscript.dnative: DFD = DnativeFunctionDescriptor,
+        DnativeFunction, install;
+    import dmdscript.value: DError, Value;
+
+    this (Dobject superPrototype, Dobject functionPrototype)
+    {
+        super (new Dobject(superPrototype));
+
+        install!Test262(this, functionPrototype);
+    }
+
+static:
+
+    @DFD(0)
+    DError* createRealm(
+        DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+        Value[] arglist)
+    {
+        Value* v;
+        string moduleId = "anonymous";
+        Dobject o;
+
+        if (0 < arglist.length)
+        {
+            v = &arglist[0];
+            if (!v.isUndefinedOrNull)
+                moduleId = v.toString(realm);
+        }
+
+        o = new DemptyRealm(moduleId, realm.modulePool, realm.strictMode);
+        assert (o !is null);
+
+        o.install("global", o);
+
+        ret.put(o);
+        return null;
+    }
+
+}
+
+//------------------------------------------------------------------------------
+class DemptyRealm: Drealm
+{
+    import dmdscript.value: Value, DError;
+    import dmdscript.primitive: ModulePool;
+    import dmdscript.functiondefinition: FunctionDefinition;
+    import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+
+    this(string scriptId, ModulePool modulePool, bool strictMode)
+    {
+        import dmdscript.dnative: install;
+        super();
+
+        id = scriptId;
+        this.modulePool = modulePool;
+        this.globalfunction = new FunctionDefinition(null, strictMode);
+
+        install!DemptyRealm(this, functionPrototype);
+    }
+
+static:
+    @DFD(1)
+    DError* eval(
+        DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+        Value[] arglist)
+    {
+        import dmdscript.drealm: superEval = eval;
+        assert (cast(Drealm)othis !is null);
+        return superEval(pthis, cast(Drealm)othis, othis, ret, arglist);
+    }
+}

@@ -131,11 +131,12 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted
-    DError* checkReference(Drealm realm) const
+    DError* checkReference(
+        Drealm realm, string file = __FILE__, size_t line = __LINE__) const
     {
         if(_type == Type.RefError)
         {
-            return UndefinedVarError(realm, _text);
+            return UndefinedVarError(realm, _text, file, line);
         }
         return null;
     }
