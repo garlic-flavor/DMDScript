@@ -38,7 +38,7 @@ class Darray : Dobject
     import dmdscript.property: Property;
 
     Value length;               // length property
-    uint ulength;
+    size_t ulength;
 
     override
     DError* Set(in PropertyKey key, ref Value v,
@@ -79,17 +79,17 @@ class Darray : Dobject
                     if(i < ulength)
                     {
                         // delete all properties with keys >= i
-                        uint[] todelete;
+                        size_t[] todelete;
 
                         foreach(PropertyKey key, ref Property p; proptable)
                         {
-                            uint j;
+                            size_t j;
 
                             if(key.isArrayIndex(j) && j >= i)
                                 todelete ~= j;
                         }
                         PropertyKey k;
-                        foreach(uint j; todelete)
+                        foreach(size_t j; todelete)
                         {
                             k.put(j);
                             proptable.del(k);
@@ -441,7 +441,7 @@ DError* concat(
     {
         if(!v.isPrimitive() && (E = (cast(Darray)v.object)) !is null)
         {
-            uint len;
+            size_t len;
 
             len = E.ulength;
             for(k = 0; k != len; k++)
@@ -936,8 +936,8 @@ DError* sort(
 
     // ECMA v3 15.4.4.11
     Value* v;
-    uint len;
-    uint u;
+    size_t len;
+    size_t u;
 
     //writef("Array.prototype.sort()\n");
     v = othis.Get(Key.length, realm);
@@ -949,9 +949,9 @@ DError* sort(
 
     Property* p;
     Value[] pvalues;
-    uint[] pindices;
-    uint parraydim;
-    uint nprops;
+    size_t[] pindices;
+    size_t parraydim;
+    size_t nprops;
 
     // First, size & alloc our temp array
     if(len < 100)
@@ -986,8 +986,8 @@ DError* sort(
         pvalues = p1;
     }
 
-    uint[] p2 = null;
-    uint* p3;
+    size_t[] p2 = null;
+    size_t* p3;
     version(Win32)
     {
         if(parraydim < 128)
@@ -997,7 +997,7 @@ DError* sort(
         pindices = p3[0 .. parraydim];
     else
     {
-        p2 = new uint[parraydim];
+        p2 = new size_t[parraydim];
         pindices = p2;
     }
 
@@ -1005,7 +1005,7 @@ DError* sort(
     nprops = 0;
     foreach(ref PropertyKey key, ref Property p; othis.proptable)
     {
-        uint index;
+        size_t index;
 
         if(p.isNoneAttribute && key.isArrayIndex(index))
         {
@@ -1035,7 +1035,7 @@ DError* sort(
     // Stuff the sorted value's back into the array
     for(u = 0; u < nprops; u++)
     {
-        uint index;
+        size_t index;
 
         othis.Set(PropertyKey(u), pvalues[u], Property.Attribute.None, realm);
         index = pindices[u];

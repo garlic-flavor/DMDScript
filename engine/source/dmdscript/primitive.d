@@ -284,15 +284,14 @@ static public:
 ///
 alias Identifier = const(PropertyKey)*;
 
+//------------------------------------------------------------------------------
+alias ModulePool = string delegate(string moduleSpecifier);
+
 //==============================================================================
 package:
 
 //------------------------------------------------------------------------------
 enum Cmask = 0xdf; // ('a' & Cmask) == 'A'
-
-
-//------------------------------------------------------------------------------
-alias ModulePool = string delegate(string moduleSpecifier);
 
 //------------------------------------------------------------------------------
 /*
@@ -302,13 +301,13 @@ Returns:
     false   it's not an index
  */
 @safe @nogc pure nothrow
-bool StringToIndex(string name, out uint index)
+bool StringToIndex(string name, out size_t index)
 {
     if(name.length)
     {
-        uint i = 0;
+        size_t i = 0;
 
-        for(uint j = 0; j < name.length; j++)
+        for(size_t j = 0; j < name.length; j++)
         {
             char c = name[j];
 
@@ -581,7 +580,7 @@ size_t calcHash(in string s)
 
         default:
         {
-            uint len = s.length;
+            auto len = s.length;
             ubyte* str = cast(ubyte*)s.ptr;
 
             hash = 0;
@@ -646,14 +645,14 @@ int stringcmp(in string s1, in string s2)
 {
     import core.stdc.string : memcmp;
 
-    int c = s1.length - s2.length;
+    auto c = s1.length - s2.length;
     if(c == 0)
     {
         if(s1.ptr == s2.ptr)
             return 0;
         c = memcmp(s1.ptr, s2.ptr, s1.length);
     }
-    return c;
+    return cast(int)c;
 }
 
 //------------------------------------------------------------------------------

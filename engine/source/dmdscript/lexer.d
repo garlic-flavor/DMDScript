@@ -267,6 +267,12 @@ class Lexer(Mode MODE)
         return token.value;
     }
 
+    @property @nogc pure nothrow
+    bool strictMode() const
+    {
+        return _strictMode;
+    }
+
     //====================================================================
 protected:
     uint currentline;
@@ -276,7 +282,7 @@ protected:
 
     //--------------------------------------------------------------------
     @trusted pure nothrow
-    this(string base, IdTable baseTable = null)
+    this(string base, bool strictMode, IdTable baseTable = null)
     {
         if(base.length == 0 || (base[$ - 1] != '\0' && base[$ - 1] != 0x1A))
             base ~= cast(char)0x1A;
@@ -285,6 +291,7 @@ protected:
         p = base.ptr;
         currentline = 1;
         freelist = null;
+        _strictMode = strictMode;
 
         static if (MODE & Mode.UseStringtable)
         {
@@ -293,6 +300,12 @@ protected:
             else
                 idtable = new IdTable;
         }
+    }
+
+    @property @nogc pure nothrow
+    void strictMode(bool b)
+    {
+        _strictMode = b;
     }
 
     //--------------------------------------------------------------------
@@ -368,7 +381,7 @@ protected:
 
     //--------------------------------------------------------------------
     //
-    Identifier getIdentifierName(bool strictMode)
+    Identifier getIdentifierName()
     {
         switch (token)
         {
@@ -380,7 +393,7 @@ protected:
             // Future-reserved-words are allowed
         default:
             auto minborder =
-                strictMode ? Tok.reserved_min_strict : Tok.reserved_min;
+                _strictMode ? Tok.reserved_min_strict : Tok.reserved_min;
             static if (MODE == Mode.Module)
             {
                 if (minborder < token && token < Tok.reserved_max)
@@ -412,6 +425,7 @@ private:
     Token* freelist;
     immutable(char)* end;      // past end of buffer
     immutable(char)* p;        // current character
+    bool _strictMode;
 
     invariant
     {
@@ -1386,6 +1400,7 @@ private:
         import std.ascii : isDigit, isHexDigit, isOctalDigit;
         import std.string : toStringz;
         import core.sys.posix.stdlib : strtod;
+        // import std.conv: to;
         import dmdscript.primitive : number_t;
 
         immutable(char)* start;
@@ -1393,6 +1408,10 @@ private:
         real realvalue;
         int base = 10;
         char c;
+        bool illegalOctal = false;
+
+        bool prevIs_ = false;
+        bool saw_ = false;
 
         start = p;
         for(;; )
@@ -1404,15 +1423,31 @@ private:
             case '0':
                 // ECMA grammar implies that numbers with leading 0
                 // like 015 are illegal. But other scripts allow them.
-                if(p - start == 1)              // if leading 0
+                if(p - start == 1)         // if leading 0
+                {
                     base = 8;
-                goto case;
+                    illegalOctal = _strictMode;
+                }
+                else if (illegalOctal)
+                    goto Lerr;
+                break;
+            case '_':
+                if (base == 8)
+                    goto Lerr;
+                break;
             case '1', '2', '3', '4', '5', '6', '7':
+                if (illegalOctal)
+                    goto Lerr;
+
                 break;
 
             case '8', '9':                         // decimal digits
                 if(base == 8)                      // and octal base
+                {
+                    if (illegalOctal)
+                        goto Lerr;
                     base = 10;                     // means back to decimal base
+                }
                 break;
 
             default:
@@ -1421,14 +1456,32 @@ private:
                 if(base == 0)
                     base = 10;
                 intvalue = 0;
+                prevIs_ = false;
                 foreach(char v; start[0 .. p - start])
                 {
                     if('0' <= v && v <= '9')
+                    {
                         v -= '0';
+                        prevIs_ = false;
+                    }
                     else if('a' <= v && v <= 'f')
+                    {
                         v -= ('a' - 10);
+                        prevIs_ = false;
+                    }
                     else if('A' <= v && v <= 'F')
+                    {
                         v -= ('A' - 10);
+                        prevIs_ = false;
+                    }
+                    else if ('_' == v)
+                    {
+                        if (prevIs_)
+                            goto Lerr;
+
+                        prevIs_ = true;
+                        continue;
+                    }
                     else
                         assert(0);
                     assert(v < base);
@@ -1438,11 +1491,27 @@ private:
                         foreach(char w; start[0 .. p - start])
                         {
                             if('0' <= w && w <= '9')
+                            {
                                 w -= '0';
-                             else if('a' <= w && w <= 'f')
+                                prevIs_ = false;
+                            }
+                            else if('a' <= w && w <= 'f')
+                            {
                                 w -= ('a' - 10);
+                                prevIs_ = false;
+                            }
                             else if('A' <= w && w <= 'F')
+                            {
                                 w -= ('A' - 10);
+                                prevIs_ = false;
+                            }
+                            else if ('_' == w)
+                            {
+                                if (prevIs_)
+                                    goto Lerr;
+                                prevIs_ = true;
+                                continue;
+                            }
                             else
                                 assert(0);
                             realvalue *= base;
@@ -1454,6 +1523,9 @@ private:
                     intvalue *= base;
                     intvalue += v;
                 }
+                if (prevIs_)
+                    goto Lerr;
+
                 t.realvalue = cast(double)intvalue;
                 return Tok.Real;
 
@@ -1462,7 +1534,7 @@ private:
                     goto Lerr;
                 do
                     p++;
-                while(isHexDigit(*p));
+                while(isHexDigit(*p) || '_' == *p);
                 start += 2;
                 base = 16;
                 goto Lnumber;
@@ -1472,7 +1544,7 @@ private:
                     goto Lerr;
                 do
                     p++;
-                while(isBinDigit(*p));
+                while(isBinDigit(*p) || '_' == *p);
                 start += 2;
                 base = 2;
                 goto Lnumber;
@@ -1482,35 +1554,68 @@ private:
                     goto Lerr;
                 do
                     p++;
-                while(isOctalDigit(*p));
+                while(isOctalDigit(*p) || '_' == *p);
                 start += 2;
                 base = 8;
                 goto Lnumber;
 
             case '.':
                 while(isDigit(*p))
+                {
                     p++;
+                    if ('_' == *p)
+                    {
+                        p++;
+                        prevIs_ = true;
+                        saw_ = true;
+                    }
+                    else
+                        prevIs_ = false;
+                }
+
                 if(*p == 'e' || *p == 'E')
                 {
+                    if (prevIs_)
+                        goto Lerr;
                     p++;
                     goto Lexponent;
                 }
                 goto Ldouble;
 
             case 'e', 'E':
+
                 Lexponent:
+
                 if(*p == '+' || *p == '-')
                     p++;
                 if(!isDigit(*p))
                     goto Lerr;
+
                 do
+                {
                     p++;
+                    if ('_' == *p)
+                    {
+                        if ('_' == *(p+1) || !isDigit(*(p+1)))
+                            goto Lerr;
+                        saw_ = true;
+                        p++;
+                    }
+                }
                 while(isDigit(*p));
                 goto Ldouble;
 
                 Ldouble:
                 // convert double
-                realvalue = strtod(toStringz(start[0 .. p - start]), null);
+                if (saw_)
+                {
+                    import std.algorithm: filter;
+                    import std.conv: to;
+                    realvalue = start[0..p-start].filter!"a!='_'".to!string
+                        .toStringz.strtod(null);
+                }
+                else
+                    realvalue = strtod(toStringz(start[0 .. p - start]), null);
                 t.realvalue = realvalue;
                 return Tok.Real;
             }

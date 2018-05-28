@@ -619,7 +619,7 @@ DError* replace(
     RegExp re;
     string replacement;
     string result;
-    int m;
+    sizediff_t m;
     int i;
     int lasti;
     string[1] pmatch;

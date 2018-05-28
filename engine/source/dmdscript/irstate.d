@@ -239,7 +239,7 @@ struct IRstate
         // Optimize
         for(c = code; c.opcode != Opcode.End; c += IR.size(c.opcode))
         {
-            uint offset = (c - code);
+            auto offset = (c - code);
 
             if(b[offset])       // if target of jump
             {

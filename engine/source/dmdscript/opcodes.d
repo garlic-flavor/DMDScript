@@ -139,7 +139,7 @@ struct IR
                 Identifier id;
                 Value*   v;     // never null, and never from a Dcomobject
             }
-            int si;
+            size_t si;
             ScopeCache[16] scopecache;
             version(SCOPECACHE_LOG)
                 int scopecache_cnt = 0;
@@ -1853,10 +1853,10 @@ class Catch : Dobject
         return null;
     }
 
-    uint offset;        // offset of CatchBlock
+    size_t offset;        // offset of CatchBlock
     Identifier name;      // catch identifier
 
-    this(uint offset, Identifier name)
+    this(size_t offset, Identifier name)
     {
         super(null);
         this.offset = offset;

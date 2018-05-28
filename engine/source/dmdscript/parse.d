@@ -40,9 +40,8 @@ class Parser(Mode MODE) : Lexer!MODE
          IdTable baseTable = null)
     {
         //writefln("Parser.this(base = '%s')", base);
-        super(base, baseTable);
+        super(base, strictMode, baseTable);
         this.modulePool = modulePool;
-        _strictMode = strictMode;
 
         nextToken;            // start up the scanner
     }
@@ -103,13 +102,6 @@ class Parser(Mode MODE) : Lexer!MODE
     }
 
 
-    ///
-    @property @nogc pure nothrow
-    bool strictMode() const
-    {
-        return _strictMode;
-    }
-
 private:
     enum Flag : uint
     {
@@ -124,7 +116,6 @@ private:
         inForHeader     = 0x04,
     }
     Flag flags;
-    bool _strictMode;
 
     TopStatement[] parseTopStatements()
     {
@@ -148,7 +139,7 @@ private:
 
             case Tok.String:
                 if (token.str == "use strict")
-                    _strictMode = true;
+                    strictMode = true;
                 goto default;
             default:
                 topstatements.put(parseStatement);
@@ -183,8 +174,8 @@ private:
         Expression e = null;
         uint linnum;
 
-        auto strict_save = _strictMode;
-        scope(exit) _strictMode = strict_save;
+        auto strict_save = strictMode;
+        scope(exit) strictMode = strict_save;
 
         linnum = currentline;
         nextToken();
@@ -377,7 +368,7 @@ private:
             {
                 linnum = currentline;
 
-                ident = getIdentifierName(strictMode);
+                ident = getIdentifierName();
                 if(ident is null)
                 {
                     error(ExpectedIdentifierParamError(token.toString));

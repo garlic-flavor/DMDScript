@@ -653,7 +653,7 @@ YAML[] parseYAML(string[] lines, in int baseIndent, ref size_t i)
             ++i;
             continue;
         }
-        auto indent = lines[i].countUntil!(a=>!a.isWhite);
+        auto indent = cast(int)lines[i].countUntil!(a=>!a.isWhite);
         if (indent <= baseIndent)
             break;
 
@@ -1271,22 +1271,22 @@ void showStatus(in ref ArgsInfo info)
             "/", allCount, ")");
     writeln;
 
-    writeln ("Passed directories:");
+    writeln ("### Passed directories.");
     foreach (key, val; passedDir)
-        if (val == S.Passed) writeln(key);
+        if (val == S.Passed) writeln("* ", key);
     writeln;
 
-    writeln ("Failed directories:");
+    writeln ("### Failed directories.");
     foreach (key, val; passedDir)
-        if (val == S.Failed) writeln(key);
+        if (val == S.Failed) writeln("* ", key);
     writeln;
 
-    writeln ("Progressing directories:");
+    writeln ("### Progressing directories.");
     foreach (key, val; passedDir)
-        if (val == S.Progressing) writeln(key);
+        if (val == S.Progressing) writeln("* ", key);
     writeln;
 
-    writeln("Complaints:");
+    writeln("### Failed tests.");
     foreach (one; buf.data)
         one.writeln;
 }

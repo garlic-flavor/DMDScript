@@ -76,7 +76,7 @@ class Darguments : Dobject
     {
         import dmdscript.primitive : StringToIndex;
 
-        uint index;
+        size_t index;
         return (PropertyName.isArrayIndex(index) && index < parameters.length)
             ? actobj.Get(PropertyKey(index), realm)
             : super.Get(PropertyName, realm);
@@ -88,7 +88,7 @@ class Darguments : Dobject
     {
         import dmdscript.primitive : StringToIndex;
 
-        uint index;
+        size_t index;
 
         if(PropertyName.isArrayIndex(index) && index < parameters.length)
             return actobj.Set(PropertyKey(index), value, attributes, realm);
@@ -100,7 +100,7 @@ class Darguments : Dobject
     {
         import dmdscript.primitive : StringToIndex;
 
-        uint index;
+        size_t index;
 
         return (StringToIndex(PropertyName, index) && index < parameters.length)
             ? actobj.CanPut(PropertyKey(index))
@@ -111,7 +111,7 @@ class Darguments : Dobject
     {
         import dmdscript.primitive : StringToIndex;
 
-        uint index;
+        size_t index;
 
         return (PropertyName.isArrayIndex(index) && index < parameters.length)
             ? actobj.HasProperty(PropertyKey(index))
@@ -122,7 +122,7 @@ class Darguments : Dobject
     {
         import dmdscript.primitive : StringToIndex;
 
-        uint index;
+        size_t index;
 
         return (PropertyName.isArrayIndex(index) && index < parameters.length)
             ? actobj.Delete(PropertyKey(index))

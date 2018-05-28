@@ -71,7 +71,7 @@ class Drealm : Dobject // aka global environment.
     // import dmdscript.derror;
     import dmdscript.dmath: Dmath;
     import dmdscript.dsymbol: DsymbolConstructor;
-    // import dmdscript.dproxy;
+    import dmdscript.dproxy: DproxyConstructor;
     import dmdscript.protoerror: SyntaxError, EvalError, ReferenceError,
         RangeError, TypeError, UriError;
 
@@ -87,6 +87,7 @@ class Drealm : Dobject // aka global environment.
     DnumberConstructor dNumber;
     DstringConstructor dString;
     DsymbolConstructor dSymbol;
+    DproxyConstructor dProxy;
 
     SyntaxError dSyntaxError;
     EvalError dEvalError;
@@ -120,7 +121,7 @@ class Drealm : Dobject // aka global environment.
         }
 
         init(dObject, dFunction,
-             dArray, dRegexp, dBoolean, dNumber, dString, dSymbol,
+             dArray, dRegexp, dBoolean, dNumber, dString, dSymbol, dProxy,
              dSyntaxError, dEvalError, dReferenceError, dRangeError,
              dTypeError, dUriError);
 
@@ -610,8 +611,11 @@ protected:
         locals = null;
         p1.destroy; p1 = null;
 
-        if (v !is null)
-            free(v);
+        version (Windows)
+        {
+            if (v !is null)
+                free(v);
+        }
 
         return result;
     }
@@ -911,7 +915,6 @@ DError* eval(
         result = IR.call(realm, realm.callerothis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            writeln("reach");
             result.addInfo("string", "anonymous", realm.strictMode);
             result.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
         }

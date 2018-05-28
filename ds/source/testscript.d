@@ -188,11 +188,12 @@ void errout(Throwable t) nothrow
     import dmdscript.exception : ScriptException;
     import std.stdio : stderr, stdout;
 
-    version (Windows)
+    //
+    static void setConsoleColorRed(void delegate() proc)
     {
-        //
-        static void setConsoleColorRed(void delegate() proc)
+        version (Windows)
         {
+
             import core.sys.windows.windows;
 
             auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -204,12 +205,14 @@ void errout(Throwable t) nothrow
 
             scope (exit)
                 SetConsoleTextAttribute(hConsole, saved_attributes);
-
-            proc();
         }
+        proc();
+    }
 
-        //
-        static void setConsoleColorIntensity(void delegate() proc)
+    //
+    static void setConsoleColorIntensity(void delegate() proc)
+    {
+        version (Windows)
         {
             import core.sys.windows.windows;
 
@@ -222,9 +225,8 @@ void errout(Throwable t) nothrow
 
             scope (exit)
                 SetConsoleTextAttribute(hConsole, saved_attributes);
-
-            proc();
         }
+        proc();
     }
 
     try

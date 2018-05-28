@@ -681,8 +681,8 @@ final class IfStatement : Statement
     override void toIR(IRstate* irs)
     {
         LocalVariables c;
-        uint u1;
-        uint u2;
+        size_t u1;
+        size_t u2;
 
         assert(condition);
         c = irs.alloc(1);
@@ -757,7 +757,7 @@ final class SwitchStatement : Statement
 
     override void toIR(IRstate* irs)
     {
-        uint udefault;
+        size_t udefault;
 
         //writef("SwitchStatement.toIR()\n");
         auto marksave = irs.mark();
@@ -933,7 +933,7 @@ final class DefaultStatement : Statement
     }
 
 private:
-    uint defaultIP;
+    size_t defaultIP;
 }
 
 /******************************** DoStatement ***************************/
@@ -979,7 +979,7 @@ final class DoStatement : Statement
     override void toIR(IRstate* irs)
     {
         LocalVariables c;
-        uint u1;
+        size_t u1;
         Statement continueSave = irs.continueTarget;
         Statement breakSave = irs.breakTarget;
 
@@ -1082,8 +1082,8 @@ final class WhileStatement : Statement
     override void toIR(IRstate* irs)
     {
         LocalVariables c;
-        uint u1;
-        uint u2;
+        size_t u1;
+        size_t u2;
 
         Statement continueSave = irs.continueTarget;
         Statement breakSave = irs.breakTarget;
@@ -1192,8 +1192,8 @@ final class ForStatement : Statement
     {
         import std.math : isNaN;
 
-        uint u1;
-        uint u2 = 0;    // unneeded initialization keeps lint happy
+        size_t u1;
+        size_t u2 = 0;    // unneeded initialization keeps lint happy
 
         Statement continueSave = irs.continueTarget;
         Statement breakSave = irs.breakTarget;
@@ -1592,7 +1592,7 @@ final class ContinueStatement : Statement
     }
 
     override @safe @nogc pure nothrow
-    uint getTarget() const
+    size_t getTarget() const
     {
         assert(target);
         return target.getContinue;
@@ -1669,7 +1669,7 @@ final class BreakStatement : Statement
         irs.gen!IRJmpToStatement(linnum, this);
     }
 
-    override uint getTarget() const
+    override size_t getTarget() const
     {
         assert(target);
         return target.getBreak;
@@ -1732,7 +1732,7 @@ final class GotoStatement : Statement
     }
 
     override @safe @nogc pure nothrow
-    uint getTarget() const
+    size_t getTarget() const
     {
         return label.statement.getGoto;
     }

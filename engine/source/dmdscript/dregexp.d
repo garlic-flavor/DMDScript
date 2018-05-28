@@ -544,7 +544,7 @@ static:
             if(r.test(s, lasti))
             {   // Successful match
                 Value* lastv;
-                uint nmatches;
+                size_t nmatches;
 
                 if(r.global && rettype != EXEC_INDEX)
                 {

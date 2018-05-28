@@ -621,7 +621,7 @@ private static:
     size_t getNextP2(size_t n)
     {
         // get the powerof 2 > n
-        assert (n < (1 << (size_t.sizeof * 8 - 1)));
+        assert (n < ((cast(size_t)1) << (size_t.sizeof * 8 - 1)));
         size_t result = 16;
         while(n >= result)
         {

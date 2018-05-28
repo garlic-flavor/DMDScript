@@ -1521,7 +1521,7 @@ final class AddAssignExp : BinExp
         return this;
     }
 
-    override void toIR(IRstate* irs, uint ret)
+    override void toIR(IRstate* irs, idx_t ret)
     {
         /*if(ret == 0 && e2.op == TOKreal &&
            (cast(RealExpression)e2).value == 1)//disabled for better standard conformance

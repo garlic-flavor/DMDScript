@@ -61,7 +61,7 @@ class FunctionDefinition : TopStatement
     SymbolTable* labtab;        // symbol table for LabelSymbol's
 
     IR* code;
-    uint nlocals;
+    size_t nlocals;
 
     @safe @nogc pure nothrow
     this(TopStatement[] topstatements, bool strictMode = false)

@@ -63,27 +63,7 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(1081/59240)
-    + [x] language/comments <-- Some tests ware failed
-    + [x] language/line-terminators
-    + [x] language/white-space
-    + [x] language/reserved-word
-    + [x] language/identifiers
-    + [x] language/asi
-    + [x] language/future-reserved-words
-    + [x] language/types/boolean
-    + [x] language/types/list
-    + [x] language/types/null
-    + [ ] language/types/number <-- Some tests ware failed.
-    + [x] language/types/object
-    + [x] language/types/string
-    + [x] language/types/undefined
-    + [ ] language/types/reference <-- Some tests ware failed.
-    + [ ] ~~language/literals/boolean/*~~
-    + [ ] ~~language/literals/null/*~~
-    + [ ] ~~language/literals/numeric/*~~
-    + [ ] ~~language/literals/string/* (see below.)~~
-    + [ ] annexB/language/comments
+* [ ] Run test262.(1371/59240)
 * [ ] Implement test262-harness-d.
     + [x] The first compile.
     + [x] Run a script marked with 'module' as module.
@@ -92,10 +72,35 @@ This aims to alternate test262-harness-py.
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
-### next to do
-implement Proxy class.
+### Passed directories.
+* ..\test262\test\language\types\list
+* ..\test262\test\language\comments
+* ..\test262\test\language\identifiers
+* ..\test262\test\language\types\reference
+* ..\test262\test\annexB\language\literals\numeric
+* ..\test262\test\language\literals\numeric
+* ..\test262\test\language\white-space
+* ..\test262\test\language\types\string
+* ..\test262\test\language\literals\boolean
+* ..\test262\test\language\literals\null
+* ..\test262\test\language\asi
+* ..\test262\test\language\types\object
+* ..\test262\test\language\types\boolean
+* ..\test262\test\language\types\null
+* ..\test262\test\language\future-reserved-words
+* ..\test262\test\language\line-terminators
+* ..\test262\test\language\types\undefined
+* ..\test262\test\language\reserved-words
 
-### failed tests.
+### Failed directories.
+* ..\test262\test\language\types\number
+
+### Progressing directories.
+* ..\test262\test\language\expressions\delete
+* ..\test262\test\language\expressions\assignment
+* ..\test262\test\annexB\language\comments
+
+### Failed tests.
 * ..\test262\test\annexB\language\comments\multi-line-html-close.js on non strict mode.
   failed.
 * ..\test262\test\annexB\language\comments\single-line-html-close-asi.js on non strict mode.
@@ -119,14 +124,6 @@ implement Proxy class.
 * ..\test262\test\language\types\number\S8.5_A2.2.js on non strict mode.
   failed.
 * ..\test262\test\language\types\number\S8.5_A2.2.js on strict mode.
-  failed.
-* ..\test262\test\language\types\reference\put-value-prop-base-primitive-realm.js on non strict mode.
-  failed.
-* ..\test262\test\language\types\reference\put-value-prop-base-primitive-realm.js on strict mode.
-  failed.
-* ..\test262\test\language\types\reference\put-value-prop-base-primitive.js on non strict mode.
-  failed.
-* ..\test262\test\language\types\reference\put-value-prop-base-primitive.js on strict mode.
   failed.
 
 ### problems.
