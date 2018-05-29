@@ -1216,7 +1216,7 @@ void showStatus(in ref ArgsInfo info)
                     ++ignoredCount;
                     buf.put("* " ~ path ~ " on non strict mode.");
                     buf.put("  " ~ (*p2).str);
-                    passedDir[dir] = passedDir.get(dir, S.Passed);
+                    passedDir[dir] = S.Failed;
                 }
                 else
                 {
@@ -1243,7 +1243,7 @@ void showStatus(in ref ArgsInfo info)
                     ++ignoredCountStrict;
                     buf.put("* " ~ path ~ " on strict mode.");
                     buf.put("  " ~ (*p2).str);
-                    passedDir[dir] = passedDir.get(dir, S.Passed);
+                    passedDir[dir] = S.Failed;
                 }
                 else
                 {

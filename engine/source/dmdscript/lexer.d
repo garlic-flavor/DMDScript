@@ -484,6 +484,8 @@ private:
         string id;
         char[] buf;
         bool useEscaped;
+        immutable(char)[] r;
+        uint j;
 
         t.sawLineTerminator = null;
         for(;; )
@@ -629,6 +631,12 @@ private:
                             if(c == '/')
                             {
                                 p++;
+
+                                if (*p == '-' && *(p+1) == '-' && *(p+2) == '>')
+                                {
+                                    p += 3;
+                                    goto skipLine;
+                                }
                                 break;
                             }
                             goto Lcomment;
@@ -659,28 +667,30 @@ private:
                 }
                 else if(c == '/') // one line comment.
                 {
-                    auto r = p[0..end-p];
-                    uint j;
-                    do{
-                        r.popFront();
-                        j = startsWith(r,'\n','\r','\0',0x1A,'\u2028','\u2029');
-                    }while(!j);
-                    p = &r[0];
-                    switch(j){
-                        case 1:
-                            currentline++;
-                            goto case;
-                        case 2: case 5: case 6:
-                            t.sawLineTerminator = p;
-                            break;
-                        case 3: case 4:
-                            t.value = Tok.Eof;
-                            return;
-                        default:
-                            assert(0);
-                    }
-                    p = inc(p);
-                    continue;
+                    ++p;
+                    goto skipLine;
+                    // auto r = p[0..end-p];
+                    // uint j;
+                    // do{
+                    //     r.popFront();
+                    //     j = startsWith(r,'\n','\r','\0',0x1A,'\u2028','\u2029');
+                    // }while(!j);
+                    // p = &r[0];
+                    // switch(j){
+                    //     case 1:
+                    //         currentline++;
+                    //         goto case;
+                    //     case 2: case 5: case 6:
+                    //         t.sawLineTerminator = p;
+                    //         break;
+                    //     case 3: case 4:
+                    //         t.value = Tok.Eof;
+                    //         return;
+                    //     default:
+                    //         assert(0);
+                    // }
+                    // p = inc(p);
+                    // continue;
                     /*for(;; )
                     {
                         p++;
@@ -787,30 +797,39 @@ private:
                     // with a // comment.
                     if(*p == '>')
                     {
-                        version (TEST262)
+                        if (t.sawLineTerminator !is null)
                         {
-                            error(HTMLEndCommentError);
+                            ++p;
+                            goto skipLine;
                         }
                         else
                         {
-                            // Scan ahead to see if it's the last token
-                            immutable(char) * q;
-
-                            q = p;
-                            for(;; )
+                            version (TEST262)
                             {
-                                switch(*++q)
+                                error(HTMLEndCommentError);
+                            }
+                            else
+                            {
+                                // Scan ahead to see if it's the last token
+                                immutable(char) * q;
+
+                                q = p;
+                                for(;; )
                                 {
-                                case 0, 0x1A:
-                                    t.value = Tok.Eof;
-                                    p = q;
-                                    return;
+                                    switch(*++q)
+                                    {
+                                    case 0, 0x1A:
+                                        t.value = Tok.Eof;
+                                        p = q;
+                                        return;
 
-                                case ' ', '\t', '\v', '\f', '\n', '\r', 0xA0:
-                                    continue;
+                                    case ' ', '\t', '\v', '\f', '\n', '\r',
+                                        0xA0:
+                                        continue;
 
-                                default:
-                                    assert(0);
+                                    default:
+                                        assert(0);
+                                    }
                                 }
                             }
                         }
@@ -1046,6 +1065,36 @@ private:
                 }
                 continue;
             }
+
+            assert (0);
+        skipLine:
+            r = p[0 .. end - p];
+            j = 0;
+            for (;;)
+            {
+                j = r.startsWith('\n', '\r', '\0', 0x1A, '\u2028', '\u2029');
+                if (0 == j)
+                    r.popFront;
+                else
+                    break;
+            }
+            p = r.ptr;
+            switch (j)
+            {
+            case 1:
+                currentline++;
+                goto case;
+            case 2, 5, 6:
+                t.sawLineTerminator = p;
+                break;
+            case 3, 4:
+                t.value = Tok.Eof;
+                return;
+            default:
+                assert (0);
+            }
+            p = inc(p);
+            continue;
         }
     }
 
