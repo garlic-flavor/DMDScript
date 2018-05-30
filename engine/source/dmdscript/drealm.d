@@ -506,21 +506,16 @@ protected:
             Scope sc;
             sc.ctor(_globalfunction);  // create global scope
             _globalfunction.semantic(&sc);
-            if (sc.exception !is null) // if semantic() failed
-            {
-                _globalfunction.topstatements[] = null;
-                _globalfunction.topstatements = null;
-                _globalfunction = null;
-
-                throw sc.exception;
-            }
         }
-        catch (Throwable t)
+        catch (Throwable t) // if semantic() failed
         {
-            auto se = cast(ScriptException)t;
-            if (se is null)
-                se = new ScriptException ("Unknown exception at semantic", t);
+            auto se = t.ScriptException ("at semantic");
             se.addInfo(_id, "[global]", _globalfunction.strictMode);
+
+            _globalfunction.topstatements[] = null;
+            _globalfunction.topstatements = null;
+            _globalfunction = null;
+
             throw se;
         }
     }
@@ -780,7 +775,7 @@ DError* eval(
     Value* v;
     string s;
     FunctionDefinition fd;
-    ScriptException exception;
+    // ScriptException exception;
     DError* result;
     Dobject callerothis;
     Dobject[] scopes;
@@ -812,23 +807,15 @@ DError* eval(
     // Analyze, generate code
     fd = new FunctionDefinition(topstatements, realm.strictMode);
     fd.iseval = 1;
+    try
     {
         Scope sc;
         sc.ctor(fd);
         fd.semantic(&sc);
-        exception = sc.exception;
+        // exception = sc.exception;
         sc.dtor();
     }
-
-    debug
-    {
-        import dmdscript.program : Program;
-        if (realm.dumpMode & Program.DumpMode.Statement)
-            TopStatement.dump(topstatements).writeln;
-    }
-
-
-    if(exception !is null)
+    catch (Throwable t)
     {
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -836,14 +823,21 @@ DError* eval(
     // For eval()'s, use location of caller, not the string
     // errinfo.linnum = 0;
         ret.putVundefined();
-        return new DError(realm.dSyntaxError(exception));
+        return new DError(realm.dSyntaxError(t));
     }
+
+    debug
+    {
+        if (realm.dumpMode & Drealm.DumpMode.Statement)
+            TopStatement.dump(topstatements).writeln;
+    }
+
+
     fd.toIR(null);
 
     debug
     {
-        import dmdscript.opcodes : IR;
-        if (realm.dumpMode & Program.DumpMode.IR)
+        if (realm.dumpMode & Drealm.DumpMode.IR)
             IR.toString(fd.code).writeln;
     }
 

@@ -63,12 +63,15 @@ class Expression
         return this;
     }
 
-    void checkLvalue(Scope* sc)
+    enum FailThen { Throw, ReturnFalse }
+    bool checkLvalue(Scope* sc, FailThen failThen = FailThen.Throw)
     {
-        import std.format : format;
         string funcname;
 
         assert(sc !is null);
+        if (failThen == FailThen.ReturnFalse)
+            return false;
+
         if(sc.funcdef)
         {
             if(sc.funcdef.isAnonymous)
@@ -77,16 +80,18 @@ class Expression
                 funcname = sc.funcdef.name.toString;
         }
 
-        if (sc.exception is null)
-        {
-            sc.exception = CannotAssignToError.toThrow(
-                toString, linnum, funcname);
-        }
-        assert(sc.exception !is null);
+        throw CannotAssignToError.toThrow(toString, linnum, funcname);
 
-/*        version (TEST262) {}
-          else*/
-            debug throw sc.exception;
+//         if (sc.exception is null)
+//         {
+//             sc.exception = CannotAssignToError.toThrow(
+//                 toString, linnum, funcname);
+//         }
+//         assert(sc.exception !is null);
+
+// /*        version (TEST262) {}
+//           else*/
+//         debug throw sc.exception;
     }
 
     // Do we match for purposes of optimization?
@@ -183,8 +188,9 @@ final class IdentifierExpression : Expression
     }
 
     override @safe @nogc pure nothrow
-    void checkLvalue(Scope* sc) const
+    bool checkLvalue(Scope* sc, FailThen = FailThen.Throw) const
     {
+        return true;
     }
 
     override bool match(Expression e) const
@@ -934,7 +940,7 @@ final class DotExp : UnaExp
     }
 
     override @safe @nogc pure nothrow
-    void checkLvalue(Scope* sc) {}
+    bool checkLvalue(Scope* sc, FailThen = FailThen.Throw) { return true; }
 
     override void toIR(IRstate* irs, idx_t ret)
     {
@@ -1237,6 +1243,9 @@ final class DeleteExp : UnaExp
 
     override Expression semantic(Scope* sc)
     {
+        lval = e1.checkLvalue(sc, FailThen.ReturnFalse);
+
+/*
         e1.checkLvalue(sc);
         lval = sc.exception is null;
         //delete don't have to operate on Lvalue, while slightly stupid but perfectly by the standard
@@ -1246,6 +1255,7 @@ final class DeleteExp : UnaExp
 
         if(!lval)
                sc.exception = null;
+*/
         return this;
     }
 
@@ -1292,9 +1302,10 @@ final class CommaExp : BinExp
         super(linnum, Tok.Comma, e1, e2);
     }
 
-    override void checkLvalue(Scope* sc)
+    override
+    bool checkLvalue(Scope* sc, FailThen failThen = FailThen.Throw)
     {
-        e2.checkLvalue(sc);
+        return e2.checkLvalue(sc, failThen);
     }
 
     override void toIR(IRstate* irs, idx_t ret)
@@ -1321,7 +1332,10 @@ final class ArrayExp : BinExp
     }
 
     override @safe @nogc pure nothrow
-    void checkLvalue(Scope* sc) const {}
+    bool checkLvalue(Scope* sc, FailThen = FailThen.Throw) const
+    {
+        return true;
+    }
 
     override void toIR(IRstate* irs, idx_t ret)
     {
@@ -1862,17 +1876,27 @@ final class ImportExpression : Expression
     override
     Expression semantic(Scope* ssc)
     {
+        import dmdscript.exception: ScriptException;
+
         globalfunction = new FunctionDefinition(0, 1, null, null,
                                                 topstatements);
-
-        Scope sc;
-        sc.ctor(globalfunction);
-        globalfunction = globalfunction.semantic (&sc);
-        if (sc.exception !is null)
+        try
         {
-            sc.exception.addInfo(moduleSpecifier);
-            ssc.exception = sc.exception;
+            Scope sc;
+            sc.ctor(globalfunction);
+            globalfunction = globalfunction.semantic (&sc);
         }
+        catch (Throwable t)
+        {
+            auto se = t.ScriptException ("at semantic");
+            se.addInfo(moduleSpecifier);
+            throw se;
+        }
+        // if (sc.exception !is null)
+        // {
+        //     sc.exception.addInfo(moduleSpecifier);
+        //     ssc.exception = sc.exception;
+        // }
 
         return this;
     }

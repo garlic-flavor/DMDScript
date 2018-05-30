@@ -904,13 +904,23 @@ void runTest(in ref ArgsInfo info)
             {
                 if (strictMode)
                 {
-                    if (meta.resultOfStrict != MetaData.Result.failed)
+                    if      (meta.resultOfStrict != MetaData.Result.failed)
                         goto next;
+                    else if (0 < meta.complaint.length && !info.ignoreComplain)
+                    {
+                        ++ignoredCount;
+                        goto next;
+                    }
                 }
                 else
                 {
-                    if (meta.result != MetaData.Result.failed)
+                    if      (meta.result != MetaData.Result.failed)
                         goto next;
+                    else if (0 < meta.complaint.length && !info.ignoreComplain)
+                    {
+                        ++ignoredCount;
+                        goto next;
+                    }
                 }
             }
             // 以前に成功してるやつだけに絞る。
@@ -1184,15 +1194,16 @@ void showStatus(in ref ArgsInfo info)
         passedCountStrict, failedCountStrict, ignoredCountStrict;
     Appender!(string[]) buf;
 
-    enum DirStatus
+    class DirInfo
     {
-        None,
-        Progressing,
-        Failed,
-        Passed,
+        size_t all;
+        size_t passed;
+        size_t failed;
+        size_t ignored;
+        size_t never;
     }
-    alias S = DirStatus;
-    S[string] passedDir;
+
+    DirInfo[string] dirs;
 
     foreach (one; table["tests"].array)
     {
@@ -1200,7 +1211,13 @@ void showStatus(in ref ArgsInfo info)
         auto path = t["path"].str;
         auto dir = path.dirName;
 
-        allCount += ("onlyStrict" in t || "noStrict" in t) ? 1 : 2;
+        auto di = dirs.get(dir, new DirInfo);
+        if (0 == di.all)
+            dirs[dir] = di;
+
+        auto c = ("onlyStrict" in t || "noStrict" in t) ? 1 : 2;
+        allCount += c;
+        di.all += c;
 
         if ("onlyStrict" !in t)
         {
@@ -1209,25 +1226,25 @@ void showStatus(in ref ArgsInfo info)
                 if      ((*p).type == JSON_TYPE.TRUE)
                 {
                     ++passedCount;
-                    passedDir[dir] = passedDir.get(dir, S.Passed);
+                    ++di.passed;
                 }
                 else if (auto p2 = "complaint" in t)
                 {
                     ++ignoredCount;
+                    ++di.ignored;
                     buf.put("* " ~ path ~ " on non strict mode.");
                     buf.put("  " ~ (*p2).str);
-                    passedDir[dir] = S.Failed;
                 }
                 else
                 {
                     ++failedCount;
+                    ++di.failed;
                     buf.put("* " ~ path ~ " on non strict mode.");
                     buf.put("  failed.");
-                    passedDir[dir] = S.Failed;
                 }
             }
-            else if (S.None != passedDir.get(dir, S.None))
-                passedDir[dir] = S.Progressing;
+            else
+                ++di.never;
         }
         if ("noStrict" !in t)
         {
@@ -1236,25 +1253,25 @@ void showStatus(in ref ArgsInfo info)
                 if      ((*p).type == JSON_TYPE.TRUE)
                 {
                     ++passedCountStrict;
-                    passedDir[dir] = passedDir.get(dir, S.Passed);
+                    ++di.passed;
                 }
                 else if (auto p2 = "complaint" in t)
                 {
                     ++ignoredCountStrict;
+                    ++di.ignored;
                     buf.put("* " ~ path ~ " on strict mode.");
                     buf.put("  " ~ (*p2).str);
-                    passedDir[dir] = S.Failed;
                 }
                 else
                 {
                     ++failedCountStrict;
+                    ++di.failed;
                     buf.put("* " ~ path ~ " on strict mode.");
                     buf.put("  failed.");
-                    passedDir[dir] = S.Failed;
                 }
             }
-            else if (S.None != passedDir.get(dir, S.None))
-                passedDir[dir] = S.Progressing;
+            else
+                ++di.never;
         }
     }
     writeln ("In ", allCount, " tests, ");
@@ -1272,18 +1289,18 @@ void showStatus(in ref ArgsInfo info)
     writeln;
 
     writeln ("### Passed directories.");
-    foreach (key, val; passedDir)
-        if (val == S.Passed) writeln("* ", key);
+    foreach (key, val; dirs)
+        if (val.all == val.passed) writeln("* ", key);
     writeln;
 
     writeln ("### Failed directories.");
-    foreach (key, val; passedDir)
-        if (val == S.Failed) writeln("* ", key);
+    foreach (key, val; dirs)
+        if (0 < val.failed) writeln("* ", key);
     writeln;
 
     writeln ("### Progressing directories.");
-    foreach (key, val; passedDir)
-        if (val == S.Progressing) writeln("* ", key);
+    foreach (key, val; dirs)
+        if (0 < val.never && val.never < val.all) writeln("* ", key);
     writeln;
 
     writeln("### Failed tests.");

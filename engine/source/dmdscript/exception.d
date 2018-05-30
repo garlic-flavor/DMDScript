@@ -25,6 +25,15 @@ class ScriptException : Exception
 
     // int code; // for what?
 
+    static
+    auto opCall(Throwable t, string msg = null)
+    {
+        auto se = cast(ScriptException)t;
+        if (se is null)
+            se = new ScriptException ("Unknown exception " ~ msg, t);
+        return se;
+    }
+
     //--------------------------------------------------------------------
     @nogc @safe pure nothrow
     this(string msg, Throwable n,

@@ -18,6 +18,8 @@ module dmdscript.program;
 
 debug import std.stdio;
 
+/+ This module is going to remove.
+
 class Program
 {
     import dmdscript.functiondefinition: FunctionDefinition;
@@ -234,3 +236,4 @@ debug public:
     DumpMode dumpMode;
 }
 
++/

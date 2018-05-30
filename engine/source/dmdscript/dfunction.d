@@ -298,8 +298,8 @@ class DfunctionConstructor : Dconstructor
 
                 sc.ctor(fd);
                 fd.semantic(&sc);
-                if (sc.exception !is null)
-                    throw sc.exception;
+                // if (sc.exception !is null)
+                //     throw sc.exception;
                 fd.toIR(null);
                 auto fobj = new DdeclaredFunction(
                     realm, fd, realm.scopes.dup);

@@ -63,7 +63,7 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(1382/59240)
+* [ ] Run test262.(1384/59240)
 * [ ] Implement test262-harness-d.
     + [x] The first compile.
     + [x] Run a script marked with 'module' as module.
@@ -73,28 +73,26 @@ This aims to alternate test262-harness-py.
 * [ ] Make pull requests?(0/???)
 
 ### Passed directories.
-* ..\test262\test\language\types\list
-* ..\test262\test\language\identifiers
-* ..\test262\test\language\types\reference
-* ..\test262\test\annexB\language\literals\numeric
-* ..\test262\test\language\literals\numeric
-* ..\test262\test\language\white-space
-* ..\test262\test\language\types\string
-* ..\test262\test\language\literals\boolean
-* ..\test262\test\language\literals\null
-* ..\test262\test\language\asi
-* ..\test262\test\language\types\object
 * ..\test262\test\language\types\boolean
-* ..\test262\test\language\types\null
-* ..\test262\test\language\future-reserved-words
-* ..\test262\test\language\line-terminators
-* ..\test262\test\language\types\undefined
+* ..\test262\test\language\white-space
+* ..\test262\test\language\identifiers
 * ..\test262\test\annexB\language\comments
+* ..\test262\test\language\types\list
+* ..\test262\test\language\literals\numeric
+* ..\test262\test\annexB\language\literals\numeric
+* ..\test262\test\language\types\string
+* ..\test262\test\language\line-terminators
+* ..\test262\test\language\asi
+* ..\test262\test\language\types\null
+* ..\test262\test\language\literals\null
 * ..\test262\test\language\reserved-words
+* ..\test262\test\language\types\reference
+* ..\test262\test\language\future-reserved-words
+* ..\test262\test\language\types\undefined
+* ..\test262\test\language\literals\boolean
+* ..\test262\test\language\types\object
 
 ### Failed directories.
-* ..\test262\test\language\comments
-* ..\test262\test\language\types\number
 
 ### Progressing directories.
 * ..\test262\test\language\expressions\delete
@@ -109,8 +107,6 @@ This aims to alternate test262-harness-py.
   A invalid Unicode sequence is not allowed.
 * ..\test262\test\language\comments\S7.4_A6.js on strict mode.
   A invalid Unicode sequence is not allowed.
-* ..\test262\test\language\expressions\delete\white-space-line-terminator-between-delete-unaryexpression-allowed.js on non strict mode.
-  failed.
 * ..\test262\test\language\types\number\S8.5_A2.1.js on non strict mode.
   do this later.
 * ..\test262\test\language\types\number\S8.5_A2.1.js on strict mode.
@@ -119,6 +115,7 @@ This aims to alternate test262-harness-py.
   do this later.
 * ..\test262\test\language\types\number\S8.5_A2.2.js on strict mode.
   do this later.
+
 
 ### problems.
 * __test262-harness-py seems to be outdated.__

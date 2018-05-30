@@ -357,7 +357,7 @@ DError* toLocaleString(
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey, Key;
-    import dmdscript.program: Program;
+    // import dmdscript.program: Program;
     import dmdscript.locale: Locale;
     import dmdscript.errmsgs: TlsNotTransferrableError;
 

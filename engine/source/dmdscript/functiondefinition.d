@@ -132,8 +132,8 @@ class FunctionDefinition : TopStatement
                 if(ts.done < Progress.Semantic)
                 {
                     ts = ts.semantic(sc);
-                    if(sc.exception !is null)
-                        break;
+                    // if(sc.exception !is null)
+                    //     break;
 
                     if(iseval)
                     {

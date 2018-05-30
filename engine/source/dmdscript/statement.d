@@ -89,21 +89,32 @@ class TopStatement
         assert(sc !is null);
         assert(se !is null);
 
-        if (sc.exception is null)
+        string funcname;
+        if (sc.funcdef !is null)
         {
-            string funcname;
-            if (sc.funcdef !is null)
-            {
-                if      (sc.funcdef.isAnonymous)
-                    funcname = "anonymous";
-                else if (sc.funcdef.name)
-                    funcname = sc.funcdef.name.toString;
-            }
-
-            se.addTrace(funcname, linnum);
-            sc.exception = se;
+            if      (sc.funcdef.isAnonymous)
+                funcname = "anonymous";
+            else if (sc.funcdef.name)
+                funcname = sc.funcdef.name.toString;
         }
-        assert(se !is null);
+
+        se.addTrace(funcname, linnum);
+
+        // if (sc.exception is null)
+        // {
+        //     string funcname;
+        //     if (sc.funcdef !is null)
+        //     {
+        //         if      (sc.funcdef.isAnonymous)
+        //             funcname = "anonymous";
+        //         else if (sc.funcdef.name)
+        //             funcname = sc.funcdef.name.toString;
+        //     }
+
+        //     se.addTrace(funcname, linnum);
+        //     sc.exception = se;
+        // }
+        // assert(se !is null);
         debug throw se;
     }
 

@@ -27,7 +27,7 @@ import dmdscript.statement;
 import dmdscript.exception;
 struct Scope
 {
-    Scope*             enclosing;    // enclosing Scope
+    // Scope*             enclosing;    // enclosing Scope
 
     // Program            program;      // Root module
     // deprecated ScopeSymbol*       scopesym;     // current symbol
@@ -40,12 +40,12 @@ struct Scope
     Statement          breakTarget;
     SwitchStatement    switchTarget;
 
-    ScriptException exception; // semantic() puts error messages here
+    // ScriptException exception; // semantic() puts error messages here
 
     @safe @nogc pure nothrow
     void zero()
     {
-        enclosing = null;
+        // enclosing = null;
 
         // program = null;
         // scopesym = null;
@@ -67,7 +67,7 @@ struct Scope
         this.funcdef = enclosing.funcdef;
         this.plabtab = enclosing.plabtab;
         this.nestDepth = enclosing.nestDepth;
-        this.enclosing = enclosing;
+        // this.enclosing = enclosing;
     }
 
     // @safe @nogc pure nothrow
@@ -117,8 +117,8 @@ struct Scope
     @safe @nogc pure nothrow
     void pop()
     {
-        if(enclosing !is null && enclosing.exception is null)
-            enclosing.exception = exception;
+        // if(enclosing !is null && enclosing.exception is null)
+        //     enclosing.exception = exception;
         zero();                 // aid GC
     }
 
