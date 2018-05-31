@@ -1023,11 +1023,11 @@ void runTest(in ref ArgsInfo info)
                 if (meta.negative.yes) // 異常終了すべきだった。
                 {
                     writeln(meta.path, " should failure with ",
-                            meta.negative.type, ", but success on ",
+                            meta.negative.type, ", but success in ",
                             strictMode ? "" : "non ", "strict mode.");
                     goto failed;
                 }
-                writeln (meta.path, " passed on ",
+                writeln (meta.path, " passed in ",
                          strictMode ? "" : "non ", "strict mode.");
                 goto succeeded;
             }
@@ -1040,18 +1040,18 @@ void runTest(in ref ArgsInfo info)
                     if (0 < errouts.data.length &&
                         !errouts.data[0].find(meta.negative.type).empty)
                     {
-                        writeln(meta.path, " failed as expected on ",
+                        writeln(meta.path, " failed as expected in ",
                                 strictMode ? "" : "non ", "strict mode.");
                         goto succeeded;
                     }
 
                     // 出てなかった。
                     writeln(meta.path, " should failure with ",
-                            meta.negative.type, ", on ",
+                            meta.negative.type, ", in ",
                             strictMode ? "" : "non ", "strict mode.");
                     goto failed;
                 }
-                writeln(meta.path, " failed on ",
+                writeln(meta.path, " failed in ",
                         strictMode ? "" : "non ", "strict mode.");
                 goto failed;
             }
@@ -1201,6 +1201,15 @@ void showStatus(in ref ArgsInfo info)
         size_t failed;
         size_t ignored;
         size_t never;
+
+        void opOpAssign(string OP = "+")(in ref DirInfo r)
+        {
+            all += r.all;
+            passed += r.passed;
+            failed += r.failed;
+            ignored += r.ignored;
+            never += r.never;
+        }
     }
 
     DirInfo[string] dirs;
@@ -1231,15 +1240,15 @@ void showStatus(in ref ArgsInfo info)
                 else if (auto p2 = "complaint" in t)
                 {
                     ++ignoredCount;
-                    ++di.ignored;
-                    buf.put("* " ~ path ~ " on non strict mode.");
+                    ++di.passed;
+                    buf.put("* " ~ path ~ " in non strict mode.");
                     buf.put("  " ~ (*p2).str);
                 }
                 else
                 {
                     ++failedCount;
                     ++di.failed;
-                    buf.put("* " ~ path ~ " on non strict mode.");
+                    buf.put("* " ~ path ~ " in non strict mode.");
                     buf.put("  failed.");
                 }
             }
@@ -1258,15 +1267,15 @@ void showStatus(in ref ArgsInfo info)
                 else if (auto p2 = "complaint" in t)
                 {
                     ++ignoredCountStrict;
-                    ++di.ignored;
-                    buf.put("* " ~ path ~ " on strict mode.");
+                    ++di.passed;
+                    buf.put("* " ~ path ~ " in strict mode.");
                     buf.put("  " ~ (*p2).str);
                 }
                 else
                 {
                     ++failedCountStrict;
                     ++di.failed;
-                    buf.put("* " ~ path ~ " on strict mode.");
+                    buf.put("* " ~ path ~ " in strict mode.");
                     buf.put("  failed.");
                 }
             }
@@ -1274,13 +1283,26 @@ void showStatus(in ref ArgsInfo info)
                 ++di.never;
         }
     }
+
+    DirInfo[string] pdirs;
+    foreach (key, val; dirs)
+    {
+        for (auto d = key.dirName; d != "."; d = d.dirName)
+        {
+            auto di = pdirs.get(d, new DirInfo);
+            if (0 == di.all)
+                pdirs[d] = di;
+            di += val;
+        }
+    }
+
     writeln ("In ", allCount, " tests, ");
-    writeln (passedCount, " passed on non strict mode,");
-    writeln (failedCount, " failed on non strict mode,");
-    writeln (ignoredCount, " ignored on non strict mode.");
-    writeln (passedCountStrict, " passed on strict mode");
-    writeln (failedCountStrict, " failed on strict mode,");
-    writeln (ignoredCountStrict, " ignored on strict mode.");
+    writeln (passedCount, " passed in non strict mode,");
+    writeln (failedCount, " failed in non strict mode,");
+    writeln (ignoredCount, " ignored in non strict mode.");
+    writeln (passedCountStrict, " passed in strict mode");
+    writeln (failedCountStrict, " failed in strict mode,");
+    writeln (ignoredCountStrict, " ignored in strict mode.");
     writeln("Current progress is ",
             (passedCount + ignoredCount +
              passedCountStrict + ignoredCountStrict) * 100 / allCount, "%(",
@@ -1289,8 +1311,28 @@ void showStatus(in ref ArgsInfo info)
     writeln;
 
     writeln ("### Passed directories.");
+    foreach (key, val; pdirs)
+    {
+        if (val.all == val.passed)
+        {
+            if (auto ppdir = key.dirName in pdirs)
+                if (ppdir.all == ppdir.passed)
+                    continue;
+            writeln("* ", key);
+        }
+    }
+    writeln;
+
     foreach (key, val; dirs)
-        if (val.all == val.passed) writeln("* ", key);
+    {
+        if (val.all == val.passed)
+        {
+            if (auto ppdir = key.dirName in pdirs)
+                if (ppdir.all == ppdir.passed)
+                    continue;
+            writeln("* ", key);
+        }
+    }
     writeln;
 
     writeln ("### Failed directories.");

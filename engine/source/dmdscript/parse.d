@@ -139,7 +139,17 @@ private:
 
             case Tok.String:
                 if (token.str == "use strict")
-                    strictMode = true;
+                {
+                    if (!strictMode && 0 < topstatements.data.length)
+                    {
+                        strictMode = true;
+                        topstatements.shrinkTo(0);
+                        backToHead;
+                        nextToken;
+                    }
+                    else
+                        strictMode = true;
+                }
                 goto default;
             default:
                 topstatements.put(parseStatement);

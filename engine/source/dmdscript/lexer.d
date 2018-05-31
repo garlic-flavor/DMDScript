@@ -302,6 +302,14 @@ protected:
         }
     }
 
+    @trusted pure nothrow
+    void backToHead()
+    {
+        p = base.ptr;
+        currentline = 1;
+        token = Token();
+    }
+
     @property @nogc pure nothrow
     void strictMode(bool b)
     {
@@ -1101,7 +1109,7 @@ private:
     /*******************************************
      * Parse escape sequence.
      */
-    @trusted pure
+//    @trusted pure
     dchar escapeSequence()
     {
         import std.ascii : isDigit, isLower, isHexDigit, isOctalDigit;
@@ -1149,7 +1157,6 @@ private:
                 c = 11;
             }
             break;
-
         case 'x':
             c = *p;
             p++;
@@ -1190,6 +1197,7 @@ private:
             }
             if(isOctalDigit(c))
             {
+                uint octalLength = '4' <= c ? 2 : 3;
                 uint v;
 
                 n = 0;
@@ -1198,10 +1206,19 @@ private:
                 {
                     v = v * 8 + (c - '0');
                     c = *p;
-                    if(++n >= 3 || !isOctalDigit(c))
+                    if(++n >= octalLength || !isOctalDigit(c))
                         break;
                     p++;
                 }
+
+                if (_strictMode)
+                {
+                    if      (1 < n || v != 0)
+                        error(OctalEscapeSequencesForbiddenError);
+                    else if (n < 3 && v == 0 && !isOctalDigit(c) && isDigit(c))
+                        error(OctalEscapeSequencesForbiddenError);
+                }
+
                 c = v;
             }
             // Don't throw error, just accept it

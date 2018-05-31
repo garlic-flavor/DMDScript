@@ -264,7 +264,10 @@ enum PreventExtensionsFailureError = err!(cTypeError, string)
 //==============================================================================
 // for STRICT MODE
 enum CannotAssignToBeforeDeclarationError = err!(cReferenceError, string)
-    ("Cannot assign to %s before declaration on strict mode.");
+    ("Cannot assign to %s before declaration in strict mode.");
+
+enum OctalEscapeSequencesForbiddenError = syntaxerr!()
+    ("Octal escape sequences forbidden in strict mode.");
 
 //==============================================================================
 private:
