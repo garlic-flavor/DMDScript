@@ -1177,6 +1177,7 @@ void runTest(in ref ArgsInfo info)
 //==============================================================================
 void showStatus(in ref ArgsInfo info)
 {
+    import std.algorithm: sort;
     import std.file: exists, isFile, read;
     import std.conv: to;
     import std.array: Appender;
@@ -1241,14 +1242,14 @@ void showStatus(in ref ArgsInfo info)
                 {
                     ++ignoredCount;
                     ++di.passed;
-                    buf.put("* " ~ path ~ " in non strict mode.");
+                    buf.put("* " ~ path);
                     buf.put("  " ~ (*p2).str);
                 }
                 else
                 {
                     ++failedCount;
                     ++di.failed;
-                    buf.put("* " ~ path ~ " in non strict mode.");
+                    buf.put("* " ~ path);
                     buf.put("  failed.");
                 }
             }
@@ -1268,8 +1269,11 @@ void showStatus(in ref ArgsInfo info)
                 {
                     ++ignoredCountStrict;
                     ++di.passed;
-                    buf.put("* " ~ path ~ " in strict mode.");
-                    buf.put("  " ~ (*p2).str);
+                    if ("onlyStrict" in t)
+                    {
+                        buf.put("* " ~ path ~ " in strict mode.");
+                        buf.put("  " ~ (*p2).str);
+                    }
                 }
                 else
                 {
@@ -1295,6 +1299,11 @@ void showStatus(in ref ArgsInfo info)
             di += val;
         }
     }
+    foreach (key, val; pdirs)
+    {
+        if (val.all == val.passed)
+            dirs[key] = val;
+    }
 
     writeln ("In ", allCount, " tests, ");
     writeln (passedCount, " passed in non strict mode,");
@@ -1311,20 +1320,9 @@ void showStatus(in ref ArgsInfo info)
     writeln;
 
     writeln ("### Passed directories.");
-    foreach (key, val; pdirs)
+    foreach (key; dirs.keys.sort)
     {
-        if (val.all == val.passed)
-        {
-            if (auto ppdir = key.dirName in pdirs)
-                if (ppdir.all == ppdir.passed)
-                    continue;
-            writeln("* ", key);
-        }
-    }
-    writeln;
-
-    foreach (key, val; dirs)
-    {
+        auto val = dirs[key];
         if (val.all == val.passed)
         {
             if (auto ppdir = key.dirName in pdirs)

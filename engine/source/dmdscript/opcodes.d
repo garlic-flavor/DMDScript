@@ -1758,25 +1758,27 @@ struct IR
         sink(IRTypeDispatcher!proc(code.opcode, address, code,));
     }
 
-    debug static string toString(const(IR)* code)
+    debug static
+    void dump(const(IR)* code, scope void delegate(in char[]) sink,
+              uint indent = 0)
     {
-        import std.format : format;
-        import std.array : Appender;
+        import std.format: format;
+        import std.range: take, repeat;
+        import std.conv: to;
 
-        Appender!string buf;
         auto codestart = code;
 
         for(;; )
         {
-            buf.put(format("%04d", cast(size_t)(code - codestart)));
-            buf.put(":");
-            toBuffer(code - codestart, code, b=>buf.put(b));
-            buf.put("\n");
+            sink(' '.repeat.take(indent).to!string);
+            sink(format("%04d", cast(size_t)(code - codestart)));
+            sink(":");
+            toBuffer(code - codestart, code, sink);
+            sink("\n");
             if(code.opcode == Opcode.End)
                 break;
             code += size(code.opcode);
         }
-        return buf.data;
     }
 
     /***************************************

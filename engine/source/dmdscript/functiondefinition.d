@@ -53,7 +53,7 @@ class FunctionDefinition : TopStatement
     bool strictMode;
 
     Identifier[] varnames;       // array of Identifier's
-    private FunctionDefinition[] functiondefinitions;
+    /*    private*/ FunctionDefinition[] functiondefinitions;
 //    private FunctionDefinition enclosingFunction;
     private int nestDepth;
     int withdepth;              // max nesting of ScopeStatement's
@@ -262,6 +262,32 @@ class FunctionDefinition : TopStatement
         if(!isglobal)
         {
             sink("}\n");
+        }
+    }
+
+    debug static
+    void dump (FunctionDefinition f, scope void delegate(in char[]) sink,
+               size_t indent = 0)
+    {
+        import std.range: take, repeat;
+        import std.conv: to;
+        import dmdscript.opcodes: IR;
+
+        assert (f !is null);
+        if (f.name !is null)
+        {
+            sink(' '.repeat.take(indent).to!string);
+            sink("function ");
+            sink(f.name.toString);
+        }
+        sink("\n");
+        IR.dump(f.code, sink, indent);
+
+        for (size_t i = 0; i < f.functiondefinitions.length; ++i)
+        {
+            if (f.functiondefinitions[i] is f)
+                continue;
+            dump(f.functiondefinitions[i], sink, indent + 2);
         }
     }
 }

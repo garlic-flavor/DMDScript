@@ -126,24 +126,12 @@ class Drealm : Dobject // aka global environment.
              dTypeError, dUriError);
 
         // ECMA 15.1
-        // Add in built-in objects which have attribute { DontEnum }
-
-        version (TEST262)
-        {
-            installConstants!(
-                "NaN", double.nan,
-                "Infinity", double.infinity,
-                "undefined", vundefined)(this,
-                                         Property.Attribute.DontEnum |
-                                         Property.Attribute.DontDelete);
-        }
-        else
-        {
-            installConstants!(
-                "NaN", double.nan,
-                "Infinity", double.infinity,
-                "undefined", vundefined)(this);
-        }
+        installConstants!(
+            "NaN", double.nan,
+            "Infinity", double.infinity,
+            "undefined", vundefined)(this,
+                                     Property.Attribute.DontEnum |
+                                     Property.Attribute.DontDelete);
 
         debug
         {
@@ -526,9 +514,13 @@ protected:
 
         debug
         {
-            import dmdscript.opcodes : IR;
+            import std.array: Appender;
             if (dumpMode & DumpMode.IR)
-                IR.toString(_globalfunction.code).writeln;
+            {
+                Appender!string buf;
+                FunctionDefinition.dump(_globalfunction, b=>buf.put(b));
+                buf.data.writeln;
+            }
         }
 
         // Don't need parse trees anymore, so null'ing the pointer allows
@@ -837,8 +829,12 @@ DError* eval(
 
     debug
     {
+        import std.array: Appender;
         if (realm.dumpMode & Drealm.DumpMode.IR)
-            IR.toString(fd.code).writeln;
+        {
+            Appender!string buf;
+            FunctionDefinition.dump(fd, b=>buf.put(b));
+        }
     }
 
     // Execute code

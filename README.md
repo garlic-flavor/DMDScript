@@ -63,7 +63,7 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(1527/59240)
+* [ ] Run test262.(1598/59240)
 * [ ] Implement test262-harness-d.
     + [x] The first compile.
     + [x] Run a script marked with 'module' as module.
@@ -73,23 +73,25 @@ This aims to alternate test262-harness-py.
 * [ ] Make pull requests?(0/???)
 
 ### Passed directories.
-* ..\test262\test\language\types
-
-* ..\test262\test\language\literals\bigint
-* ..\test262\test\language\white-space
-* ..\test262\test\language\identifiers
 * ..\test262\test\annexB\language\comments
-* ..\test262\test\language\literals\numeric
 * ..\test262\test\annexB\language\literals\numeric
-* ..\test262\test\language\literals\string
-* ..\test262\test\language\line-terminators
-* ..\test262\test\language\comments
-* ..\test262\test\language\asi
 * ..\test262\test\annexB\language\literals\string
-* ..\test262\test\language\literals\null
-* ..\test262\test\language\reserved-words
+* ..\test262\test\language\asi
+* ..\test262\test\language\comments
 * ..\test262\test\language\future-reserved-words
+* ..\test262\test\language\identifier-resolution
+* ..\test262\test\language\identifiers
+* ..\test262\test\language\keywords
+* ..\test262\test\language\line-terminators
+* ..\test262\test\language\literals\bigint
 * ..\test262\test\language\literals\boolean
+* ..\test262\test\language\literals\null
+* ..\test262\test\language\literals\numeric
+* ..\test262\test\language\literals\string
+* ..\test262\test\language\reserved-words
+* ..\test262\test\language\source-text
+* ..\test262\test\language\types
+* ..\test262\test\language\white-space
 
 ### Failed directories.
 
@@ -98,24 +100,20 @@ This aims to alternate test262-harness-py.
 * ..\test262\test\language\expressions\assignment
 
 ### Failed tests.
-* ..\test262\test\language\comments\S7.4_A5.js in non strict mode.
+* ..\test262\test\language\comments\S7.4_A5.js
   A invalid Unicode sequence is not allowed.
-* ..\test262\test\language\comments\S7.4_A5.js in strict mode.
+* ..\test262\test\language\comments\S7.4_A6.js
   A invalid Unicode sequence is not allowed.
-* ..\test262\test\language\comments\S7.4_A6.js in non strict mode.
-  A invalid Unicode sequence is not allowed.
-* ..\test262\test\language\comments\S7.4_A6.js in strict mode.
-  A invalid Unicode sequence is not allowed.
-* ..\test262\test\language\types\number\S8.5_A2.1.js in non strict mode.
+* ..\test262\test\language\source-text\6.1.js
+  An invalid escape sequence is not allowed.
+* ..\test262\test\language\types\number\S8.5_A2.1.js
   do this later.
-* ..\test262\test\language\types\number\S8.5_A2.1.js in strict mode.
-  do this later.
-* ..\test262\test\language\types\number\S8.5_A2.2.js in non strict mode.
-  do this later.
-* ..\test262\test\language\types\number\S8.5_A2.2.js in strict mode.
+* ..\test262\test\language\types\number\S8.5_A2.2.js
   do this later.
 
 ### problems.
+* The Regular expression of ECMAScript differ from dmd's std.regex.
+
 * __test262-harness-py seems to be outdated.__
   ~~This is a problem.~~
   Introduce test262-harness-d.(2018/05/07)

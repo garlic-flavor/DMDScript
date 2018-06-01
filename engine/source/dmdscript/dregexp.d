@@ -708,7 +708,7 @@ package
 {
     class RegExp
     {
-        import std.regex : Regex, RegexMatch;
+        import std.regex : Regex, RegexMatch, regex;
         import std.bitmanip : bitfields;
         string pattern, flags;
         mixin (bitfields!(
@@ -990,6 +990,7 @@ enum Key : PropertyKey
     exec = PropertyKey("exec"),
 }
 
+/+
 //------------------------------------------------------------------------------
 auto regex(const(char)[] pattern, const(char)[] flags = "")
 {
@@ -1083,6 +1084,7 @@ struct Parser(Generator)
         import std.ascii : isAlpha, isDigit;
         import std.exception : enforce;
         import std.regex.internal.ir : IR;
+
         uint fix;//fixup pointer
 
         while (!p.empty)
@@ -1244,3 +1246,4 @@ struct Parser(Generator)
             p.parseAtom;
     }
 }
+// +/

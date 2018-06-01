@@ -333,8 +333,12 @@ align(size_t.sizeof):
         else static if (is(T : Value*))
             auto opName = text("\"", operand.text, "\"");
         else static if (is(T : FunctionDefinition))
-            auto opName = text("function\n{\n", IR.toString(operand.code),
-                               "}");
+        {
+            import std.array: Appender;
+            Appender!string buf;
+            IR.dump(operand.code, b=>buf.put(b));
+            auto opName = text("function\n{\n", buf.data, "}");
+        }
         else static if (is(T : double))
             auto opName = text(operand);
         else

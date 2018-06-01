@@ -136,12 +136,12 @@ private
         Set(Key.arguments, vtmp, Property.Attribute.DontDelete, realm);
         // make grannymail bug work
 
+        auto dfs = new DefinedFunctionScope(scopex, actobj, this, fd, othis);
+        realm.push(dfs);
+
         // auto newCC = CallContext(cc, actobj, this, fd);
         fd.instantiate(realm, Property.Attribute.DontDelete |
                        Property.Attribute.DontConfig);
-
-        auto dfs = new DefinedFunctionScope(scopex, actobj, this, fd, othis);
-        realm.push(dfs);
 
         Value[] p1;
         Value* v;
