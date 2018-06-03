@@ -30,7 +30,9 @@ class ScriptException : Exception
     {
         auto se = cast(ScriptException)t;
         if (se is null)
-            se = new ScriptException ("Unknown exception " ~ msg, t);
+            se = new ScriptException ("Unknown exception", t);
+        if (0 < msg.length)
+            se.addMessage(" " ~ msg);
         return se;
     }
 

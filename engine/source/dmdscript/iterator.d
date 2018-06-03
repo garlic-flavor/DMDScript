@@ -25,6 +25,7 @@ struct Iterator
     import dmdscript.primitive: PropertyKey;
     import dmdscript.value: Value, DError;
     import dmdscript.drealm: Drealm;
+    import dmdscript.callcontext: CallContext;
 
     PropertyKey[] keys;
     size_t  keyindex;
@@ -104,9 +105,9 @@ struct Iterator
 
     // Ecma-262-v7/7.4.2
     @disable
-    DError* IteratorNext(Drealm realm, out Value ret, Value[] args = null)
+    DError* IteratorNext(CallContext* cc, out Value ret, Value[] args = null)
     {
-        auto err = o.value.Invoke(Key.next, realm, ret, args);
+        auto err = o.value.Invoke(Key.next, cc, ret, args);
         if (ret.type != Value.Type.Object)
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // use errmsgs
@@ -116,26 +117,26 @@ struct Iterator
 
     // Ecma-262-v7/7.4.3
     @disable
-    bool IteratorComplete(Drealm realm)
+    bool IteratorComplete(CallContext* cc)
     {
-        if (auto ret = o.Get(Key.done, realm))
+        if (auto ret = o.Get(Key.done, cc))
             return ret.toBoolean;
         return false;
     }
 
     // Ecma-262-v7/7.4.4
     @disable
-    Value* IteratorValue(Drealm realm)
+    Value* IteratorValue(CallContext* cc)
     {
-        return o.Get(Key.value, realm);
+        return o.Get(Key.value, cc);
     }
 
     // Ecma-262-v7/7.4.5
     @disable
-    bool IteratorStep(Drealm realm, out Value ret)
+    bool IteratorStep(CallContext* cc, out Value ret)
     {
-        auto err = IteratorNext(realm, ret);
-        return IteratorComplete(realm);
+        auto err = IteratorNext(cc, ret);
+        return IteratorComplete(cc);
     }
 
     // Ecma-262-v7/7.4.6
@@ -145,9 +146,9 @@ struct Iterator
 static:
 
     @disable
-    Dobject CreateIterResultObject(Drealm realm, Value value, bool done)
+    Dobject CreateIterResultObject(CallContext* cc, Value value, bool done)
     {
-        auto obj = realm.dObject();
+        auto obj = cc.realm.dObject();
         obj.CreateDataProperty(Key.value, value);
         auto val = Value(done);
         obj.CreateDataProperty(Key.done, val);

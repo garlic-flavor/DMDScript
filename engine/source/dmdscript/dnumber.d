@@ -27,6 +27,7 @@ import dmdscript.errmsgs;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor,
     installConstants;
 import dmdscript.drealm: Drealm;
+import dmdscript.callcontext: CallContext;
 
 //==============================================================================
 ///
@@ -97,26 +98,26 @@ class DnumberConstructor : Dconstructor
         return new Dnumber(classPrototype, n);
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
+    override DError* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.7.2
         double n;
         Dobject o;
 
-        n = (arglist.length) ? arglist[0].toNumber(realm) : 0;
+        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
         o = opCall(n);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(Drealm realm, Dobject othis, out Value ret,
+    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 15.7.1
         double n;
 
-        n = (arglist.length) ? arglist[0].toNumber(realm) : 0;
+        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
         ret.put(n);
         return null;
     }
@@ -151,7 +152,7 @@ enum Key : PropertyKey
 //
 @DFD(1, DFD.Type.Static)
 DError* isFinite(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -160,7 +161,7 @@ DError* isFinite(
 //
 @DFD(1, DFD.Type.Static)
 DError* isInteger(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -169,7 +170,7 @@ DError* isInteger(
 //
 @DFD(1, DFD.Type.Static)
 DError* isNaN(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -178,7 +179,7 @@ DError* isNaN(
 //
 @DFD(1, DFD.Type.Static)
 DError* isSafeInteger(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -187,7 +188,7 @@ DError* isSafeInteger(
 //
 @DFD(1, DFD.Type.Static)
 DError* parseFloat(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -196,7 +197,7 @@ DError* parseFloat(
 //
 @DFD(1, DFD.Type.Static)
 DError* parseInt(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -207,7 +208,7 @@ DError* parseInt(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.2
@@ -224,9 +225,9 @@ DError* toString(
         {
             double radix;
 
-            radix = arglist[0].toNumber(realm);
+            radix = arglist[0].toNumber(cc);
             if(radix == 10.0 || arglist[0].isUndefined())
-                s = v.toString(realm);
+                s = v.toString(cc);
             else
             {
                 int r;
@@ -234,19 +235,20 @@ DError* toString(
                 r = cast(int)radix;
                 // radix must be an integer 2..36
                 if(r == radix && r >= 2 && r <= 36)
-                    s = v.toString(realm, r);
+                    s = v.toString(cc, r);
                 else
-                    s = v.toString(realm);
+                    s = v.toString(cc);
             }
         }
         else
-            s = v.toString(realm);
+            s = v.toString(cc);
         ret.put(s);
     }
     else
     {
         ret.putVundefined();
-        return FunctionWantsNumberError(realm, Key.toString, othis.classname);
+        return FunctionWantsNumberError(cc.realm, Key.toString,
+                                        othis.classname);
     }
     return null;
 }
@@ -254,7 +256,7 @@ DError* toString(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toLocaleString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.3
@@ -262,13 +264,13 @@ DError* toLocaleString(
     // othis must be a Number
     if (auto dn = cast(Dnumber)othis)
     {
-        ret.put(dn.value.toLocaleString(realm));
+        ret.put(dn.value.toLocaleString(cc));
     }
     else
     {
         ret.putVundefined();
         return FunctionWantsNumberError(
-            realm, Key.toLocaleString, othis.classname);
+            cc.realm, Key.toLocaleString, othis.classname);
     }
     return null;
 }
@@ -276,7 +278,7 @@ DError* toLocaleString(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a Number
@@ -287,7 +289,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined();
-        return FunctionWantsNumberError(realm, Key.valueOf, othis.classname);
+        return FunctionWantsNumberError(cc.realm, Key.valueOf, othis.classname);
     }
     return null;
 }
@@ -336,7 +338,7 @@ number_t deconstruct_real(double x, int f, out int pe)
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toFixed(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -354,17 +356,17 @@ DError* toFixed(
     if(arglist.length)
     {
         v = &arglist[0];
-        fractionDigits =  v.toInteger(realm);
+        fractionDigits =  v.toInteger(cc);
     }
     else
         fractionDigits = 0;
     if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
     {
         ret.putVundefined();
-        return ValueOutOfRangeError(realm, Key.toFixed, "fractonDigits");
+        return ValueOutOfRangeError(cc.realm, Key.toFixed, "fractonDigits");
     }
     v = &othis.value;
-    x = v.toNumber(realm);
+    x = v.toNumber(cc);
     if(std.math.isNaN(x))
     {
         result = Key.NaN;              // return "NaN"
@@ -384,7 +386,7 @@ DError* toFixed(
         {
             Value vn;
             vn.put(x);
-            ret.put(vn.toString(realm));
+            ret.put(vn.toString(cc));
             return null;
         }
         else
@@ -461,7 +463,7 @@ DError* toFixed(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toExponential(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -478,11 +480,11 @@ DError* toExponential(
     if(arglist.length)
     {
         varg = &arglist[0];
-        fractionDigits = varg.toInteger(realm);
+        fractionDigits = varg.toInteger(cc);
     }else
         fractionDigits = FIXED_DIGITS;
     v = &othis.value;
-    x = v.toNumber(realm);
+    x = v.toNumber(cc);
     if(std.math.isNaN(x))
     {
         result = Key.NaN;              // return "NaN"
@@ -513,7 +515,7 @@ DError* toExponential(
             if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
             {
                 ret.putVundefined();
-                return ValueOutOfRangeError(realm, Key.toExponential,
+                return ValueOutOfRangeError(cc.realm, Key.toExponential,
                                             "fractionDigits");
             }
 
@@ -600,7 +602,7 @@ DError* toExponential(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* toPrecision(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -616,7 +618,7 @@ DError* toPrecision(
     string result;
 
     v = &othis.value;
-    x = v.toNumber(realm);
+    x = v.toNumber(cc);
 
     varg = (arglist.length == 0) ? &undefined : &arglist[0];
 
@@ -625,7 +627,7 @@ DError* toPrecision(
         Value vn;
 
         vn.put(x);
-        result = vn.toString(realm);
+        result = vn.toString(cc);
     }
     else
     {
@@ -654,11 +656,12 @@ DError* toPrecision(
                 goto Ldone;
             }
 
-            precision = varg.toInteger(realm);
+            precision = varg.toInteger(cc);
             if(precision < 1 || precision > 21)
             {
                 ret.putVundefined();
-                return ValueOutOfRangeError(realm, Key.toPrecision, "precision");
+                return ValueOutOfRangeError(cc.realm, Key.toPrecision,
+                                            "precision");
             }
 
             p = cast(int)precision;

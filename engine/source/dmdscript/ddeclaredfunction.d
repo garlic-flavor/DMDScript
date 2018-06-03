@@ -28,13 +28,14 @@ class DdeclaredFunction : Dconstructor
     import dmdscript.value: DError, Value;
     import dmdscript.functiondefinition: FunctionDefinition;
     import dmdscript.drealm: Drealm;
+    import dmdscript.callcontext: CallContext;
 
     FunctionDefinition fd;
 
 private
-    Dobject[] scopex;     // Function object's scope chain per 13.2 step 7
+    CallContext.Scope* scopex; // Function object's scope chain per 13.2 step 7
 
-    this(Drealm realm, FunctionDefinition fd, Dobject[] scopex)
+    this(Drealm realm, FunctionDefinition fd, CallContext.Scope* scopex)
     {
         import dmdscript.primitive : Key, PropertyKey;
         import dmdscript.property : Property;
@@ -62,10 +63,9 @@ private
         // step 10
         val.put(this);
         o.DefineOwnProperty(Key.constructor, val, Property.Attribute.DontEnum);
-
     }
 
-    override DError* Call(Drealm realm, Dobject othis, out Value ret,
+    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // 1. Create activation object per ECMA 10.1.6
@@ -82,7 +82,7 @@ private
         import dmdscript.ir : Opcode;
         import dmdscript.opcodes : IR;
         import dmdscript.value : vundefined;
-        import dmdscript.callcontext : DefinedFunctionScope;
+        // import dmdscript.callcontext : DefinedFunctionScope;
 
         Dobject actobj;         // activation object
         Darguments args;
@@ -98,13 +98,13 @@ private
 
         // Generate the activation object
         // ECMA v3 10.1.6
-        actobj = realm.dObject();
+        actobj = cc.realm.dObject();
 
         Value vtmp;//should not be referenced by the end of func
         if(fd.name)
         {
            vtmp.put(this);
-           actobj.Set(*fd.name, vtmp, Property.Attribute.DontDelete, realm);
+           actobj.Set(*fd.name, vtmp, Property.Attribute.DontDelete, cc);
         }
         // Instantiate the parameters
         {
@@ -112,16 +112,16 @@ private
             foreach(p; fd.parameters)
             {
                 Value* v = (a < arglist.length) ? &arglist[a++] : &undefined;
-                actobj.Set(*p, *v, Property.Attribute.DontDelete, realm);
+                actobj.Set(*p, *v, Property.Attribute.DontDelete, cc);
             }
         }
 
         // Generate the Arguments Object
         // ECMA v3 10.1.8
-        args = new Darguments(realm, realm.caller,
+        args = new Darguments(cc.realm, cc.caller,
                               this, actobj, fd.parameters, arglist);
         vtmp.put(args);
-        actobj.Set(Key.arguments, vtmp, Property.Attribute.DontDelete, realm);
+        actobj.Set(Key.arguments, vtmp, Property.Attribute.DontDelete, cc);
 
         // The following is not specified by ECMA, but seems to be supported
         // by jscript. The url www.grannymail.com has the following code
@@ -133,14 +133,15 @@ private
         //		  this[i+1] = arguments[i]
         //	    }
         //	    var cardpic = new MakeArray("LL","AP","BA","MB","FH","AW","CW","CV","DZ");
-        Set(Key.arguments, vtmp, Property.Attribute.DontDelete, realm);
+        Set(Key.arguments, vtmp, Property.Attribute.DontDelete, cc);
         // make grannymail bug work
 
-        auto dfs = new DefinedFunctionScope(scopex, actobj, this, fd, othis);
-        realm.push(dfs);
+        auto ncc = CallContext.push(cc, scopex, actobj, this, fd, othis);
+        // auto dfs = new DefinedFunctionScope(scopex, actobj, this, fd, othis);
+        // realm.push(dfs);
 
         // auto newCC = CallContext(cc, actobj, this, fd);
-        fd.instantiate(realm, Property.Attribute.DontDelete |
+        fd.instantiate(ncc, Property.Attribute.DontDelete |
                        Property.Attribute.DontConfig);
 
         Value[] p1;
@@ -155,15 +156,15 @@ private
             locals = p1;
         }
 
-        result = IR.call(realm, othis, fd.code, ret, locals.ptr);
+        result = IR.call(ncc, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addInfo (realm.id, fd.name !is null ?
+            result.addInfo (cc.realm.id, fd.name !is null ?
                             "function " ~ fd.name.toString : "anonymous",
                             fd.strictMode);
         }
 
-        realm.pop(dfs);
+        CallContext.pop(ncc);
 
         p1.destroy; p1 = null;
 
@@ -171,12 +172,12 @@ private
         //Value* v;
         //v=Get(TEXT_arguments);
         vtmp.putVundefined;
-        Set(Key.arguments, vtmp, Property.Attribute.None, realm);
+        Set(Key.arguments, vtmp, Property.Attribute.None, cc);
 
         return result;
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
+    override DError* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Key;
@@ -187,13 +188,13 @@ private
         Value* v;
         DError* result;
 
-        v = Get(Key.prototype, realm);
+        v = Get(Key.prototype, cc);
         if(v.isPrimitive())
-            proto = realm.rootPrototype;
+            proto = cc.realm.rootPrototype;
         else
-            proto = v.toObject(realm);
+            proto = v.toObject(cc.realm);
         othis = new Dobject(proto);
-        result = Call(realm, othis, ret, arglist);
+        result = Call(cc, othis, ret, arglist);
         if(!result)
         {
             if(ret.isPrimitive())

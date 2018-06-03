@@ -24,6 +24,7 @@ import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.value: DError, Value;
 import dmdscript.exception: ScriptException;
 import dmdscript.drealm: Drealm;
+import dmdscript.callcontext: CallContext;
 
 debug import std.stdio;
 
@@ -88,7 +89,7 @@ class D0_constructor(alias TEXT_D1) : Dconstructor
         // cp.DefineOwnProperty(Key.number, val, Property.Attribute.None);
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
+    override DError* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.11.7.2
@@ -101,17 +102,17 @@ class D0_constructor(alias TEXT_D1) : Dconstructor
         if(m.isUndefined())
             s = classname;
         else
-            s = m.toString(realm);
+            s = m.toString(cc);
         o = opCall(s);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(Drealm realm, Dobject othis, out Value ret,
+    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA v3 15.11.7.1
-        return Construct(realm, ret, arglist);
+        return Construct(cc, ret, arglist);
     }
 
     Type opCall(ARGS...)(ARGS args)
@@ -233,24 +234,24 @@ private:
 //
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Key;
     if (auto d0 = cast(D0base)othis)
         ret.put(d0.exception.toString);
     else
-        ret.put(othis.Get(Key.message, realm));
+        ret.put(othis.Get(Key.message, cc));
     return null;
 }
 
 //
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Key;
-    ret.put(othis.Get(Key.number, realm));
+    ret.put(othis.Get(Key.number, cc));
     return null;
 }

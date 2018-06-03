@@ -22,6 +22,7 @@ import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.value : DError, Value;
 import dmdscript.drealm: Drealm;
+import dmdscript.callcontext: CallContext;
 
 //==============================================================================
 ///
@@ -49,7 +50,7 @@ class DdataViewConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
+    override DError* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -63,7 +64,7 @@ private:
 //
 @DFD()
 DError* buffer(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -72,7 +73,7 @@ DError* buffer(
 //
 @DFD
 DError* byteLength(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -81,7 +82,7 @@ DError* byteLength(
 //
 @DFD
 DError* byteOffset(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -90,7 +91,7 @@ DError* byteOffset(
 //
 @DFD
 DError* getFloat32(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -99,7 +100,7 @@ DError* getFloat32(
 //
 @DFD
 DError* getFloat64(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -108,7 +109,7 @@ DError* getFloat64(
 //
 @DFD
 DError* getInt8(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -117,7 +118,7 @@ DError* getInt8(
 //
 @DFD
 DError* getInt16(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -126,7 +127,7 @@ DError* getInt16(
 //
 @DFD
 DError* getInt32(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -135,7 +136,7 @@ DError* getInt32(
 //
 @DFD
 DError* getUint8(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -144,7 +145,7 @@ DError* getUint8(
 //
 @DFD
 DError* getUint16(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -153,7 +154,7 @@ DError* getUint16(
 //
 @DFD
 DError* getUint32(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -162,7 +163,7 @@ DError* getUint32(
 //
 @DFD
 DError* setFloat32(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -171,7 +172,7 @@ DError* setFloat32(
 //
 @DFD
 DError* setFloat64(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -180,7 +181,7 @@ DError* setFloat64(
 //
 @DFD
 DError* setInt8(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -189,7 +190,7 @@ DError* setInt8(
 //
 @DFD
 DError* setInt16(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -198,7 +199,7 @@ DError* setInt16(
 //
 @DFD
 DError* setInt32(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -207,7 +208,7 @@ DError* setInt32(
 //
 @DFD
 DError* setUint8(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -216,7 +217,7 @@ DError* setUint8(
 //
 @DFD
 DError* setUint16(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -225,7 +226,7 @@ DError* setUint16(
 //
 @DFD
 DError* setUint32(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

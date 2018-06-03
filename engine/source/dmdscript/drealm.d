@@ -23,6 +23,7 @@ import dmdscript.value : Value, DError, vundefined;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
     installConstants;
 import dmdscript.property : Property;
+import dmdscript.callcontext: CallContext;
 
 debug import std.stdio;
 
@@ -76,7 +77,7 @@ class Drealm : Dobject // aka global environment.
         RangeError, TypeError, UriError;
 
     import dmdscript.primitive: PropertyKey, ModulePool;
-    import dmdscript.callcontext: DefinedFunctionScope;
+    import dmdscript.callcontext: CallContext;
 
     Dobject rootPrototype, functionPrototype;
     DobjectConstructor dObject;
@@ -133,13 +134,13 @@ class Drealm : Dobject // aka global environment.
                                      Property.Attribute.DontEnum |
                                      Property.Attribute.DontDelete);
 
-        debug
-        {
-            auto v = Get(PropertyKey("Infinity"), this);
-            assert (!v.isUndefined);
-            assert (v.type == Value.Type.Number);
-            assert (v.number is double.infinity);
-        }
+        // debug
+        // {
+        //     auto v = Get(PropertyKey("Infinity"), this);
+        //     assert (!v.isUndefined);
+        //     assert (v.type == Value.Type.Number);
+        //     assert (v.number is double.infinity);
+        // }
 
         install!(dmdscript.drealm)(this, functionPrototype);
 
@@ -231,97 +232,97 @@ class Drealm : Dobject // aka global environment.
     }
 
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    //--------------------------------------------------------------------
-    /** Search a variable in the current scope chain.
+    // //--------------------------------------------------------------------
+    // /** Search a variable in the current scope chain.
 
-    Params:
-        key   = The name of the variable.
-        pthis = The field that contains the searched variable.
-    */
-    Value* get(in ref PropertyKey key, out Dobject pthis)
-    {
-        assert (_current !is null);
-        return _current.get(this, key, pthis);
-    }
+    // Params:
+    //     key   = The name of the variable.
+    //     pthis = The field that contains the searched variable.
+    // */
+    // Value* get(in ref PropertyKey key, out Dobject pthis)
+    // {
+    //     assert (_current !is null);
+    //     return _current.get(this, key, pthis);
+    // }
 
-    /// ditto
-    Value* get(in ref PropertyKey key)
-    {
-        assert (_current !is null);
-        return _current.get(this, key);
-    }
+    // /// ditto
+    // Value* get(in ref PropertyKey key)
+    // {
+    //     assert (_current !is null);
+    //     return _current.get(this, key);
+    // }
 
-    //--------------------------------------------------------------------
-    /** Assign to a variable in the current scope chain.
+    // //--------------------------------------------------------------------
+    // /** Assign to a variable in the current scope chain.
 
-    Or, define the variable in global field.
-    */
-    DError* set(in ref PropertyKey key, ref Value value,
-                Property.Attribute attr = Property.Attribute.None)
-    {
-        assert (_current !is null);
-        return _current.set(this, key, value, attr);
-    }
+    // Or, define the variable in global field.
+    // */
+    // DError* set(in ref PropertyKey key, ref Value value,
+    //             Property.Attribute attr = Property.Attribute.None)
+    // {
+    //     assert (_current !is null);
+    //     return _current.set(this, key, value, attr);
+    // }
 
-    //--------------------------------------------------------------------
-    /// Define/Assign a variable in the current innermost field.
-    DError* setThis(in ref PropertyKey key, ref Value value,
-                       Property.Attribute attr)
-    {
-        assert (_current !is null);
-        return _current.setThis(this, key, value, attr);
-    }
+    // //--------------------------------------------------------------------
+    // /// Define/Assign a variable in the current innermost field.
+    // DError* setThis(in ref PropertyKey key, ref Value value,
+    //                    Property.Attribute attr)
+    // {
+    //     assert (_current !is null);
+    //     return _current.setThis(this, key, value, attr);
+    // }
 
-    //--------------------------------------------------------------------
-    /// Get the current innermost field that compose a function.
-    @property @safe @nogc pure nothrow
-    inout(Dobject) variable() inout
-    {
-        assert (_current !is null);
-        return _current.rootScope;
-    }
+    // //--------------------------------------------------------------------
+    // /// Get the current innermost field that compose a function.
+    // @property @safe @nogc pure nothrow
+    // inout(Dobject) variable() inout
+    // {
+    //     assert (_current !is null);
+    //     return _current.rootScope;
+    // }
 
-    //--------------------------------------------------------------------
-    /// Get the object who calls the current function.
-    @property @safe @nogc pure nothrow
-    inout(Dfunction) caller() inout
-    {
-        assert (_current !is null);
-        return _current.caller;
-    }
+    // //--------------------------------------------------------------------
+    // /// Get the object who calls the current function.
+    // @property @safe @nogc pure nothrow
+    // inout(Dfunction) caller() inout
+    // {
+    //     assert (_current !is null);
+    //     return _current.caller;
+    // }
 
-    //--------------------------------------------------------------------
-    ///
-    @property @safe @nogc pure nothrow
-    inout(Dobject) callerothis() inout
-    {
-        assert (_current !is null);
-        return _current.callerothis;
-    }
+    // //--------------------------------------------------------------------
+    // ///
+    // @property @safe @nogc pure nothrow
+    // inout(Dobject) callerothis() inout
+    // {
+    //     assert (_current !is null);
+    //     return _current.callerothis;
+    // }
 
-    //--------------------------------------------------------------------
-    @property @safe @nogc pure nothrow
-    bool strictMode() const
-    {
-        assert (_current !is null);
-        return _current.strictMode;
-    }
+    // //--------------------------------------------------------------------
+    // @property @safe @nogc pure nothrow
+    // bool strictMode() const
+    // {
+    //     assert (_current !is null);
+    //     return _current.strictMode;
+    // }
 
-    //--------------------------------------------------------------------
-    ///
-    string[] searchSimilarWord(string name)
-    {
-        assert (_current !is null);
-        return _current.searchSimilarWord(this, name);
-    }
-    /// ditto
-    string[] searchSimilarWord(Dobject target, string name)
-    {
-        import std.string : soundexer;
-        import dmdscript.callcontext: ssw = searchSimilarWord;
-        auto key = name.soundexer;
-        return ssw(this, target, key);
-    }
+    // //--------------------------------------------------------------------
+    // ///
+    // string[] searchSimilarWord(string name)
+    // {
+    //     assert (_current !is null);
+    //     return _current.searchSimilarWord(this, name);
+    // }
+    // /// ditto
+    // string[] searchSimilarWord(Dobject target, string name)
+    // {
+    //     import std.string : soundexer;
+    //     import dmdscript.callcontext: ssw = searchSimilarWord;
+    //     auto key = name.soundexer;
+    //     return ssw(this, target, key);
+    // }
 
 
     //--------------------------------------------------------------------
@@ -342,112 +343,112 @@ class Drealm : Dobject // aka global environment.
         _interrupt = true;
     }
 
-    debug
-    {
-        enum DumpMode
-        {
-            None       = 0x00,
-            Statement  = 0x01,
-            IR         = 0x02,
-            All        = 0x03,
-        }
+    // debug
+    // {
+    //     enum DumpMode
+    //     {
+    //         None       = 0x00,
+    //         Statement  = 0x01,
+    //         IR         = 0x02,
+    //         All        = 0x03,
+    //     }
 
-        DumpMode dumpMode;
-    }
+    //     DumpMode dumpMode;
+    // }
 
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 package:
-    //--------------------------------------------------------------------
-    /** Get the stack of searching fields.
+    // //--------------------------------------------------------------------
+    // /** Get the stack of searching fields.
 
-    scopex[0] is the outermost searching field (== global).
-    scopex[$-1] is the innermost searching field.
-    */
-    @property @safe @nogc pure nothrow
-    inout(Dobject)[] scopes() inout
-    {
-        return _current.stack;
-    }
+    // scopex[0] is the outermost searching field (== global).
+    // scopex[$-1] is the innermost searching field.
+    // */
+    // @property @safe @nogc pure nothrow
+    // inout(Dobject)[] scopes() inout
+    // {
+    //     return _current.stack;
+    // }
 
-    //--------------------------------------------------------------------
-    ///
-    @safe @nogc pure nothrow
-    inout(Dobject) getNonFakeObject() inout
-    {
-        return _current.getNonFakeObject;
-    }
+    // //--------------------------------------------------------------------
+    // ///
+    // @safe @nogc pure nothrow
+    // inout(Dobject) getNonFakeObject() inout
+    // {
+    //     return _current.getNonFakeObject;
+    // }
 
-    //--------------------------------------------------------------------
-    /**
-    Calling this followed by calling IR.call, provides an ordinary function
-    calling.
+    // //--------------------------------------------------------------------
+    // /**
+    // Calling this followed by calling IR.call, provides an ordinary function
+    // calling.
 
-    A parameter s can be on the stack, not on the heap.
-    */
-    @trusted pure nothrow
-    void push(DefinedFunctionScope s)
-    {
-        _current = s;
-        _scopex.put(_current);
-    }
+    // A parameter s can be on the stack, not on the heap.
+    // */
+    // @trusted pure nothrow
+    // void push(DefinedFunctionScope s)
+    // {
+    //     _current = s;
+    //     _scopex.put(_current);
+    // }
 
-    //--------------------------------------------------------------------
-    /*
-    Following the IR.call, this should be called by the parameter that same with
-    the one for the prior pushFunctionScope/pushEvalScope calling.
-    */
-    @trusted pure
-    bool pop(DefinedFunctionScope s)
-    {
-        if (_current !is s)
-            return false;
+    // //--------------------------------------------------------------------
+    // /*
+    // Following the IR.call, this should be called by the parameter that same with
+    // the one for the prior pushFunctionScope/pushEvalScope calling.
+    // */
+    // @trusted pure
+    // bool pop(DefinedFunctionScope s)
+    // {
+    //     if (_current !is s)
+    //         return false;
 
-        assert (1 < _scopex.data.length);
+    //     assert (1 < _scopex.data.length);
 
-        _scopex.shrinkTo(_scopex.data.length - 1);
-        _current = _scopex.data[$-1];
-        return true;
-    }
+    //     _scopex.shrinkTo(_scopex.data.length - 1);
+    //     _current = _scopex.data[$-1];
+    //     return true;
+    // }
 
 
-    //--------------------------------------------------------------------
-    /// Stack the object composing a scope block.
-    @safe pure nothrow
-    void push(Dobject obj)
-    {
-        _current.push(obj);
-    }
+    // //--------------------------------------------------------------------
+    // /// Stack the object composing a scope block.
+    // @safe pure nothrow
+    // void push(Dobject obj)
+    // {
+    //     _current.push(obj);
+    // }
 
-    //--------------------------------------------------------------------
-    /** Remove the innermost searching field composing a scope block.
-    And returns that object.
+    // //--------------------------------------------------------------------
+    // /** Remove the innermost searching field composing a scope block.
+    // And returns that object.
 
-    When the innermost field is composing a function or an eval, no object will
-    be removed form the stack, and a null will be returned.
-    */
-    // @safe pure
-    Dobject popScope()
-    {
-        return _current.pop;
-    }
+    // When the innermost field is composing a function or an eval, no object will
+    // be removed form the stack, and a null will be returned.
+    // */
+    // // @safe pure
+    // Dobject popScope()
+    // {
+    //     return _current.pop;
+    // }
 
-    //--------------------------------------------------------------------
-    /// Add stack tracing information to the DError.
-    void addTraceInfoTo(DError* err)
-    {
-        assert (err !is null);
+    // //--------------------------------------------------------------------
+    // /// Add stack tracing information to the DError.
+    // void addTraceInfoTo(DError* err)
+    // {
+    //     assert (err !is null);
 
-        foreach_reverse(ref one; _scopex.data)
-        {
-            if (auto f = one.callerf)
-            {
-                err.addInfo (_id, f.name !is null ?
-                             "function " ~ f.name.toString : "",
-                             f.strictMode);
-                break;
-            }
-        }
-    }
+    //     foreach_reverse(ref one; _scopex.data)
+    //     {
+    //         if (auto f = one.callerf)
+    //         {
+    //             err.addInfo (_id, f.name !is null ?
+    //                          "function " ~ f.name.toString : "",
+    //                          f.strictMode);
+    //             break;
+    //         }
+    //     }
+    // }
 
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 protected:
@@ -455,12 +456,12 @@ protected:
     @property @safe @nogc pure nothrow
     void id(string i) { _id = i; }
 
-    @property @safe
-    void globalfunction(FunctionDefinition fd)
-    {
-        _globalfunction = fd;
-        push(new DefinedFunctionScope(null, this, null, fd, this));
-    }
+    // @property @safe
+    // void globalfunction(FunctionDefinition fd)
+    // {
+    //     _globalfunction = fd;
+    //     push(new DefinedFunctionScope(null, this, null, fd, this));
+    // }
 
     @property @safe @nogc pure nothrow
     void modulePool(ModulePool p)
@@ -469,156 +470,156 @@ protected:
     }
 
     //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    void semantic()
-    {
-        import dmdscript.scopex: Scope;
-        import dmdscript.exception: ScriptException;
+    // void semantic()
+    // {
+    //     import dmdscript.scopex: Scope;
+    //     import dmdscript.exception: ScriptException;
 
-        // Any functions parsed in topstatements wind up in the global
-        // object (cc.global), where they are found by normal property lookups.
-        // Any global new top statements only get executed once, and so although
-        // the previous group of topstatements gets lost, it does not matter.
+    //     // Any functions parsed in topstatements wind up in the global
+    //     // object (cc.global), where they are found by normal property lookups.
+    //     // Any global new top statements only get executed once, and so although
+    //     // the previous group of topstatements gets lost, it does not matter.
 
-        // In essence, globalfunction encapsulates the *last* group of
-        // topstatements passed to script, and any previous version of
-        // globalfunction, along with previous topstatements, gets discarded.
+    //     // In essence, globalfunction encapsulates the *last* group of
+    //     // topstatements passed to script, and any previous version of
+    //     // globalfunction, along with previous topstatements, gets discarded.
 
-        // If pfd, it is not really necessary to create a global function just
-        // so we can do the semantic analysis, we could use p.lastnamedfunc
-        // instead if we're careful to insure that p.lastnamedfunc winds up
-        // as a property of the global object.
+    //     // If pfd, it is not really necessary to create a global function just
+    //     // so we can do the semantic analysis, we could use p.lastnamedfunc
+    //     // instead if we're careful to insure that p.lastnamedfunc winds up
+    //     // as a property of the global object.
 
-        assert (_globalfunction !is null);
-        try
-        {
-            Scope sc;
-            sc.ctor(_globalfunction);  // create global scope
-            _globalfunction.semantic(&sc);
-        }
-        catch (Throwable t) // if semantic() failed
-        {
-            auto se = t.ScriptException ("at semantic");
-            se.addInfo(_id, "[global]", _globalfunction.strictMode);
+    //     assert (_globalfunction !is null);
+    //     try
+    //     {
+    //         Scope sc;
+    //         sc.ctor(_globalfunction);  // create global scope
+    //         _globalfunction.semantic(&sc);
+    //     }
+    //     catch (Throwable t) // if semantic() failed
+    //     {
+    //         auto se = t.ScriptException ("at semantic");
+    //         se.addInfo(_id, "[global]", _globalfunction.strictMode);
 
-            _globalfunction.topstatements[] = null;
-            _globalfunction.topstatements = null;
-            _globalfunction = null;
+    //         _globalfunction.topstatements[] = null;
+    //         _globalfunction.topstatements = null;
+    //         _globalfunction = null;
 
-            throw se;
-        }
-    }
+    //         throw se;
+    //     }
+    // }
 
-    void toIR()
-    {
-        _globalfunction.toIR(null);
+    // void toIR()
+    // {
+    //     _globalfunction.toIR(null);
 
-        debug
-        {
-            import std.array: Appender;
-            if (dumpMode & DumpMode.IR)
-            {
-                Appender!string buf;
-                FunctionDefinition.dump(_globalfunction, b=>buf.put(b));
-                buf.data.writeln;
-            }
-        }
+    //     debug
+    //     {
+    //         import std.array: Appender;
+    //         if (dumpMode & DumpMode.IR)
+    //         {
+    //             Appender!string buf;
+    //             FunctionDefinition.dump(_globalfunction, b=>buf.put(b));
+    //             buf.data.writeln;
+    //         }
+    //     }
 
-        // Don't need parse trees anymore, so null'ing the pointer allows
-        // the garbage collector to find & free them.
-        _globalfunction.topstatements = null;
-    }
+    //     // Don't need parse trees anymore, so null'ing the pointer allows
+    //     // the garbage collector to find & free them.
+    //     _globalfunction.topstatements = null;
+    // }
 
     //--------------------------------------------------------------------
     /**
     Execute program.
     */
-    DError* execute(out Value ret, Value[] args)
-    {
-        import dmdscript.primitive : Key, PropertyKey;
-        import dmdscript.value : Value, DError;
-        import dmdscript.darray : Darray;
-        import dmdscript.dobject : Dobject;
-        import dmdscript.property : Property;
-        import dmdscript.opcodes : IR;
-        import dmdscript.callcontext : DefinedFunctionScope;
+    // DError* execute(out Value ret, Value[] args)
+    // {
+    //     import dmdscript.primitive : Key, PropertyKey;
+    //     import dmdscript.value : Value, DError;
+    //     import dmdscript.darray : Darray;
+    //     import dmdscript.dobject : Dobject;
+    //     import dmdscript.property : Property;
+    //     import dmdscript.opcodes : IR;
+    //     // import dmdscript.callcontext : DefinedFunctionScope;
 
-        // ECMA 10.2.1
+    //     // ECMA 10.2.1
 
-        Value[] locals;
-        DError* result;
-        Darray arguments;
+    //     Value[] locals;
+    //     DError* result;
+    //     Darray arguments;
 
-        // Set argv and argc for execute
-        arguments = dArray();
-        auto val = Value(arguments);
-        Set(Key.arguments, val,
-            Property.Attribute.DontDelete |
-            Property.Attribute.DontEnum, this);
-        arguments.length.put(args.length);
-        for(int i = 0; i < args.length; i++)
-        {
-            arguments.Set(PropertyKey(i), args[i],
-                          Property.Attribute.DontEnum, this);
-        }
+    //     // Set argv and argc for execute
+    //     arguments = dArray();
+    //     auto val = Value(arguments);
+    //     Set(Key.arguments, val,
+    //         Property.Attribute.DontDelete |
+    //         Property.Attribute.DontEnum, this);
+    //     arguments.length.put(args.length);
+    //     for(int i = 0; i < args.length; i++)
+    //     {
+    //         arguments.Set(PropertyKey(i), args[i],
+    //                       Property.Attribute.DontEnum, this);
+    //     }
 
-        Value[] p1;
-        Value* v;
-        version(Win32)          // eh and alloca() not working under linux
-        {
-            import core.sys.posix.stdlib : alloca, free;
+    //     Value[] p1;
+    //     Value* v;
+    //     version(Win32)          // eh and alloca() not working under linux
+    //     {
+    //         import core.sys.posix.stdlib : alloca, free;
 
-            if(_globalfunction.nlocals < 128)
-                v = cast(Value*)alloca(_globalfunction.nlocals * Value.sizeof);
-        }
-        if(v)
-            locals = v[0 .. _globalfunction.nlocals];
-        else
-        {
-            p1 = new Value[_globalfunction.nlocals];
-            locals = p1;
-        }
+    //         if(_globalfunction.nlocals < 128)
+    //             v = cast(Value*)alloca(_globalfunction.nlocals * Value.sizeof);
+    //     }
+    //     if(v)
+    //         locals = v[0 .. _globalfunction.nlocals];
+    //     else
+    //     {
+    //         p1 = new Value[_globalfunction.nlocals];
+    //         locals = p1;
+    //     }
 
-        // Instantiate global variables as properties of global
-        // object with 0 attributes
-        _globalfunction.instantiate(this,
-                                    Property.Attribute.DontDelete |
-                                    Property.Attribute.DontConfig);
-        _scopex.reserve(_globalfunction.withdepth + 1);
-        ret.putVundefined();
-        auto dfs = new DefinedFunctionScope(null, this, null, _globalfunction,
-                                            this);
-        push(dfs);
-        result = IR.call(this, this, _globalfunction.code, ret, locals.ptr);
+    //     // Instantiate global variables as properties of global
+    //     // object with 0 attributes
+    //     _globalfunction.instantiate(this,
+    //                                 Property.Attribute.DontDelete |
+    //                                 Property.Attribute.DontConfig);
+    //     _scopex.reserve(_globalfunction.withdepth + 1);
+    //     ret.putVundefined();
+    //     auto dfs = new DefinedFunctionScope(null, this, null, _globalfunction,
+    //                                         this);
+    //     push(dfs);
+    //     result = IR.call(this, this, _globalfunction.code, ret, locals.ptr);
 
-        if(result !is null)
-            result.addInfo(_id, "[global]", _globalfunction.strictMode);
+    //     if(result !is null)
+    //         result.addInfo(_id, "[global]", _globalfunction.strictMode);
 
-        pop(dfs);
+    //     pop(dfs);
 
-        locals = null;
-        p1.destroy; p1 = null;
+    //     locals = null;
+    //     p1.destroy; p1 = null;
 
-        version (Windows)
-        {
-            if (v !is null)
-                free(v);
-        }
+    //     version (Windows)
+    //     {
+    //         if (v !is null)
+    //             free(v);
+    //     }
 
-        return result;
-    }
+    //     return result;
+    // }
 
 private:
-    import std.array: Appender;
-    import dmdscript.functiondefinition: FunctionDefinition;
+    // import std.array: Appender;
+    // import dmdscript.functiondefinition: FunctionDefinition;
 
     string _id;
-    FunctionDefinition _globalfunction;
+    // FunctionDefinition _globalfunction;
     ModulePool _modulePool;
 
     bool _interrupt;               // true if cancelled due to interrupt
 
-    Appender!(DefinedFunctionScope[]) _scopex;
-    DefinedFunctionScope _current; // current scope chain
+    // Appender!(DefinedFunctionScope[]) _scopex;
+    // DefinedFunctionScope _current; // current scope chain
 
     // invariant
     // {
@@ -629,71 +630,71 @@ private:
 }
 
 //------------------------------------------------------------------------------
-class DscriptRealm: Drealm
-{
+// class DscriptRealm: Drealm
+// {
     //--------------------------------------------------------------------
-    void compile(string bufferId, string srctext, ModulePool modulePool,
-                 bool strictMode = false)
-    {
-        import dmdscript.exception: ScriptException;
-        import dmdscript.statement: TopStatement;
-        import dmdscript.parse: Parser;
-        import dmdscript.lexer : Mode;
+    // void compile(string bufferId, string srctext, ModulePool modulePool,
+    //              bool strictMode = false)
+    // {
+    //     import dmdscript.exception: ScriptException;
+    //     import dmdscript.statement: TopStatement;
+    //     import dmdscript.parse: Parser;
+    //     import dmdscript.lexer : Mode;
 
-        TopStatement[] topstatements;
+    //     TopStatement[] topstatements;
 
-        id = bufferId;
-        this.modulePool = modulePool;
+    //     id = bufferId;
+    //     this.modulePool = modulePool;
 
-        Parser!(Mode.UseStringtable) p;
+    //     Parser!(Mode.UseStringtable) p;
 
-        try
-        {
-            p = new Parser!(Mode.UseStringtable)(
-                srctext, modulePool, strictMode);
-            topstatements = p.parseProgram;
+    //     try
+    //     {
+    //         p = new Parser!(Mode.UseStringtable)(
+    //             srctext, modulePool, strictMode);
+    //         topstatements = p.parseProgram;
 
-            debug
-            {
-                if (dumpMode & DumpMode.Statement)
-                    TopStatement.dump(topstatements).writeln;
-            }
+    //         debug
+    //         {
+    //             if (dumpMode & DumpMode.Statement)
+    //                 TopStatement.dump(topstatements).writeln;
+    //         }
 
-            // Build empty function definition array
-            // Make globalfunction an anonymous one
-            //   (by passing in null for name) so
-            // it won't get instantiated as a property
-            globalfunction = new FunctionDefinition(
-                0, 1, null, null, topstatements, p.strictMode);
+    //         // Build empty function definition array
+    //         // Make globalfunction an anonymous one
+    //         //   (by passing in null for name) so
+    //         // it won't get instantiated as a property
+    //         globalfunction = new FunctionDefinition(
+    //             0, 1, null, null, topstatements, p.strictMode);
 
-            semantic;
-            toIR;
-        }
-        catch (ScriptException se)
-        {
-            topstatements = null;
-            se.addInfo(_id, "global", p is null ? strictMode : p.strictMode);
-            throw se;
-        }
-        catch (Throwable t)
-        {
-            topstatements = null;
-            throw t;
-        }
-    }
+    //         semantic;
+    //         toIR;
+    //     }
+    //     catch (ScriptException se)
+    //     {
+    //         topstatements = null;
+    //         se.addInfo(_id, "global", p is null ? strictMode : p.strictMode);
+    //         throw se;
+    //     }
+    //     catch (Throwable t)
+    //     {
+    //         topstatements = null;
+    //         throw t;
+    //     }
+    // }
 
-    DError* execute(string[] args = null)
-    {
-        Value ret;
-        Value[] vargs;
+    // DError* execute(string[] args = null)
+    // {
+    //     Value ret;
+    //     Value[] vargs;
 
-        vargs = new Value[args.length];
-        for (size_t i = 0; i < args.length; ++i)
-            vargs[i].put(args[i]);
+    //     vargs = new Value[args.length];
+    //     for (size_t i = 0; i < args.length; ++i)
+    //         vargs[i].put(args[i]);
 
-        return super.execute(ret, vargs);
-    }
-}
+    //     return super.execute(ret, vargs);
+    // }
+// }
 
 //------------------------------------------------------------------------------
 class DmoduleRealm: Drealm
@@ -702,30 +703,40 @@ class DmoduleRealm: Drealm
 
     this (string id, ModulePool modulePool, FunctionDefinition fd)
     {
+        import dmdscript.program: sem = semantic, compile, execute;
         super();
 
         this.id = id;
-        this.globalfunction = fd;
         this.modulePool = modulePool;
 
-        semantic;
-        toIR;
-
         Value ret;
-        auto err = execute(ret, null);
-        if (err is null)
+        DError* err;
+        if (fd !is null)
         {
+            try fd.sem.compile.execute (this, ret);
+            catch (Throwable t)
+            {
 //##############################################################################
 // UNDER CONSTRUCTION
             // exports to outer realm.
+            }
         }
+        // this.globalfunction = fd;
+
+        // semantic;
+        // toIR;
+
+        // Value ret;
+        // auto err = execute(ret, null);
     }
 }
 
 //==============================================================================
 
 @DFD(1, Key.CreateRealm)
-DError* CreateRealm (Drealm realm, out Value ret, Value[] arglist)
+DError* CreateRealm (
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
+    Value[] arglist)
 {
     import dmdscript.ddeclaredfunction: DdeclaredFunction;
 
@@ -737,10 +748,10 @@ DError* CreateRealm (Drealm realm, out Value ret, Value[] arglist)
     {
         v = &arglist[0];
         if (!v.isUndefinedOrNull)
-            moduleId = v.toString(realm);
+            moduleId = v.toString(cc);
     }
 
-    o = new DmoduleRealm(moduleId, realm.modulePool, null);
+    o = new DmoduleRealm(moduleId, cc.realm.modulePool, null);
     assert (o !is null);
     ret.put(o);
     return null;
@@ -749,7 +760,7 @@ DError* CreateRealm (Drealm realm, out Value ret, Value[] arglist)
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* eval(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -761,7 +772,6 @@ DError* eval(
     import dmdscript.lexer : Mode;
     import dmdscript.property : Property;
     import dmdscript.opcodes : IR;
-    import dmdscript.callcontext : DefinedFunctionScope;
 
     // ECMA 15.1.2.1
     Value* v;
@@ -778,26 +788,26 @@ DError* eval(
         ret = *v;
         return null;
     }
-    s = v.toString(realm);
+    s = v.toString(cc);
 
     // Parse program
     TopStatement[] topstatements;
     try
     {
-        auto p = new Parser!(Mode.None)(s, realm.modulePool, realm.strictMode);
+        auto p = new Parser!(Mode.None)(s, cc.realm.modulePool, cc.strictMode);
         topstatements = p.parseProgram;
     }
     catch (ScriptException se)
     {
-        se.addInfo("string", "eval", realm.strictMode);
+        se.addInfo("string", "eval", cc.strictMode);
         se.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
 
         ret.putVundefined();
-        return new DError(realm.dSyntaxError(se));
+        return new DError(cc.realm.dSyntaxError(se));
     }
 
     // Analyze, generate code
-    fd = new FunctionDefinition(topstatements, realm.strictMode);
+    fd = new FunctionDefinition(topstatements, cc.strictMode);
     fd.iseval = 1;
     try
     {
@@ -815,27 +825,27 @@ DError* eval(
     // For eval()'s, use location of caller, not the string
     // errinfo.linnum = 0;
         ret.putVundefined();
-        return new DError(realm.dSyntaxError(t));
+        return new DError(cc.realm.dSyntaxError(t));
     }
 
-    debug
-    {
-        if (realm.dumpMode & Drealm.DumpMode.Statement)
-            TopStatement.dump(topstatements).writeln;
-    }
+    // debug
+    // {
+    //     if (cc.realm.dumpMode & Drealm.DumpMode.Statement)
+    //         TopStatement.dump(topstatements).writeln;
+    // }
 
 
     fd.toIR(null);
 
-    debug
-    {
-        import std.array: Appender;
-        if (realm.dumpMode & Drealm.DumpMode.IR)
-        {
-            Appender!string buf;
-            FunctionDefinition.dump(fd, b=>buf.put(b));
-        }
-    }
+    // debug
+    // {
+    //     import std.array: Appender;
+    //     if (realm.dumpMode & Drealm.DumpMode.IR)
+    //     {
+    //         Appender!string buf;
+    //         FunctionDefinition.dump(fd, b=>buf.put(b));
+    //     }
+    // }
 
     // Execute code
     Value[] locals;
@@ -886,30 +896,33 @@ DError* eval(
         // scope chain by WithStatement.
 //    cc.scopex.reserve(fd.withdepth);
 
+        // The this value is the same as the this value of the
+        // calling context.
+        // scopes = realm.scopes;
+        // assert (0 < scopes.length);
+        // assert (realm.callerothis);
+        // auto dfs = new DefinedFunctionScope(scopes[0..$-1], scopes[$-1],
+        //                                     pthis, fd, realm.callerothis);
+        Dobject actobj = cc.realm.dObject();
+        auto ncc = CallContext.push(cc, actobj, pthis, fd, cc.callerothis);
+
         // Variable instantiation is performed using the calling
         // context's variable object and using empty
         // property attributes
-        fd.instantiate(realm, Property.Attribute.None);
+        fd.instantiate(ncc, Property.Attribute.None);
         // fd.instantiate(cc.scopex, cc.variable, Property.Attribute.None);
 
 
-        // The this value is the same as the this value of the
-        // calling context.
-        scopes = realm.scopes;
-        assert (0 < scopes.length);
-        assert (realm.callerothis);
-        auto dfs = new DefinedFunctionScope(scopes[0..$-1], scopes[$-1],
-                                            pthis, fd, realm.callerothis);
-
-        realm.push(dfs);
-        result = IR.call(realm, realm.callerothis, fd.code, ret, locals.ptr);
+        // realm.push(dfs);
+        result = IR.call(ncc, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addInfo("string", "anonymous", realm.strictMode);
+            result.addInfo("string", "anonymous", cc.strictMode);
             result.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
         }
 
-        realm.pop(dfs);
+        // realm.pop(dfs);
+        CallContext.pop(ncc);
 
         if(p1)
         {
@@ -926,7 +939,7 @@ DError* eval(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* parseInt(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : decode;
@@ -942,7 +955,7 @@ DError* parseInt(
     size_t i;
     string str;
 
-    str = arg0string(realm, arglist);
+    str = arg0string(cc, arglist);
 
     //writefln("Dglobal_parseInt('%s')", string);
 
@@ -976,7 +989,7 @@ DError* parseInt(
     if(arglist.length >= 2)
     {
         v2 = &arglist[1];
-        radix = v2.toInt32(realm);
+        radix = v2.toInt32(cc);
     }
 
     if(radix)
@@ -1054,7 +1067,7 @@ DError* parseInt(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* parseFloat(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : StringNumericLiteral;
@@ -1063,7 +1076,7 @@ DError* parseFloat(
     double n;
     size_t endidx;
 
-    string str = arg0string(realm, arglist);
+    string str = arg0string(cc, arglist);
     n = StringNumericLiteral(str, endidx, 1);
 
     ret.put(n);
@@ -1082,7 +1095,7 @@ char[16 + 1] TOHEX = "0123456789ABCDEF";
 
 @DFD(1)
 DError* escape(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -1094,7 +1107,7 @@ DError* escape(
     uint unicodes;
     size_t slen;
 
-    s = arg0string(realm, arglist);
+    s = arg0string(cc, arglist);
     escapes = 0;
     unicodes = 0;
     foreach(dchar c; s)
@@ -1150,7 +1163,7 @@ DError* escape(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* unescape(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -1163,7 +1176,7 @@ DError* unescape(
     char[4] tmp;
     size_t len;
 
-    s = arg0string(realm, arglist);
+    s = arg0string(cc, arglist);
     //writefln("Dglobal.unescape(s = '%s')", s);
     for(size_t k = 0; k < s.length; k++)
     {
@@ -1240,7 +1253,7 @@ DError* unescape(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* isNaN(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isNaN;
@@ -1254,7 +1267,7 @@ DError* isNaN(
         v = &arglist[0];
     else
         v = &undefined;
-    n = v.toNumber(realm);
+    n = v.toNumber(cc);
     b = isNaN(n) ? true : false;
     ret.put(b);
     return null;
@@ -1263,7 +1276,7 @@ DError* isNaN(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* isFinite(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isFinite;
@@ -1277,7 +1290,7 @@ DError* isFinite(
         v = &arglist[0];
     else
         v = &undefined;
-    n = v.toNumber(realm);
+    n = v.toNumber(cc);
     b = isFinite(n) ? true : false;
     ret.put(b);
     return null;
@@ -1293,14 +1306,14 @@ DError* URI_error(Drealm realm, string s)
 }
 @DFD(1)
 DError* decodeURI(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decode, URIException;
     // ECMA v3 15.1.3.1
     string s;
 
-    s = arg0string(realm, arglist);
+    s = arg0string(cc, arglist);
     try
     {
         s = decode(s);
@@ -1308,7 +1321,7 @@ DError* decodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(realm, __FUNCTION__);
+        return URI_error(cc.realm, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -1317,7 +1330,7 @@ DError* decodeURI(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* decodeURIComponent(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : decodeComponent, URIException;
@@ -1325,7 +1338,7 @@ DError* decodeURIComponent(
     // ECMA v3 15.1.3.2
     string s;
 
-    s = arg0string(realm, arglist);
+    s = arg0string(cc, arglist);
     try
     {
         s = decodeComponent(s);
@@ -1333,7 +1346,7 @@ DError* decodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(realm, __FUNCTION__);
+        return URI_error(cc.realm, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -1342,7 +1355,7 @@ DError* decodeURIComponent(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* encodeURI(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encode, URIException;
@@ -1350,7 +1363,7 @@ DError* encodeURI(
     // ECMA v3 15.1.3.3
     string s;
 
-    s = arg0string(realm, arglist);
+    s = arg0string(cc, arglist);
     try
     {
         s = encode(s);
@@ -1358,7 +1371,7 @@ DError* encodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(realm, __FUNCTION__);
+        return URI_error(cc.realm, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -1367,14 +1380,14 @@ DError* encodeURI(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* encodeURIComponent(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.uri : encodeComponent, URIException;
     // ECMA v3 15.1.3.4
     string s;
 
-    s = arg0string(realm, arglist);
+    s = arg0string(cc, arglist);
     try
     {
         s = encodeComponent(s);
@@ -1382,7 +1395,7 @@ DError* encodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(realm, __FUNCTION__);
+        return URI_error(cc.realm, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -1390,7 +1403,7 @@ DError* encodeURIComponent(
 
 //------------------------------------------------------------------------------
 void dglobal_print(
-    Drealm realm, Dobject othis, out Value ret, Value[] arglist)
+    CallContext* cc, Dobject othis, out Value ret, Value[] arglist)
 {
     import std.stdio : writef;
     // Our own extension
@@ -1414,11 +1427,11 @@ void dglobal_print(
                     }
                 }
 
-                printf("%s", arglist[i].toString(realm).toMBSz);
+                printf("%s", arglist[i].toString(cc).toMBSz);
             }
             else
             {
-                string s = arglist[i].toString(realm);
+                string s = arglist[i].toString(cc);
 
                 writef("%s", s);
             }
@@ -1431,24 +1444,24 @@ void dglobal_print(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* print(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Our own extension
-    dglobal_print(realm, othis, ret, arglist);
+    dglobal_print(cc, othis, ret, arglist);
     return null;
 }
 
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* println(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.stdio : writef;
 
     // Our own extension
-    dglobal_print(realm, othis, ret, arglist);
+    dglobal_print(cc, othis, ret, arglist);
     writef("\n");
     return null;
 }
@@ -1456,7 +1469,7 @@ DError* println(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* readln(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.exception : assumeUnique;
@@ -1513,7 +1526,7 @@ DError* readln(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* getenv(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.string : toStringz;
@@ -1524,7 +1537,7 @@ DError* getenv(
     ret.putVundefined();
     if(arglist.length)
     {
-        string s = arglist[0].toString(realm);
+        string s = arglist[0].toString(cc);
         char* p = getenv(toStringz(s));
         if(p)
             ret.put(p[0 .. strlen(p)].idup);
@@ -1538,7 +1551,7 @@ DError* getenv(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngine(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Text;
@@ -1550,7 +1563,7 @@ DError* ScriptEngine(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineBuildVersion(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(BUILD_VERSION);
@@ -1560,7 +1573,7 @@ DError* ScriptEngineBuildVersion(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineMajorVersion(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(MAJOR_VERSION);
@@ -1570,7 +1583,7 @@ DError* ScriptEngineMajorVersion(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* ScriptEngineMinorVersion(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(MINOR_VERSION);
@@ -1580,10 +1593,10 @@ DError* ScriptEngineMinorVersion(
 //------------------------------------------------------------------------------
 
 //
-string arg0string(Drealm realm, Value[] arglist)
+string arg0string(CallContext* cc, Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &undefined;
-    return v.toString(realm);
+    return v.toString(cc);
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -19,7 +19,6 @@ module dmdscript.statement;
 
 import dmdscript.primitive;
 import dmdscript.exception;
-import dmdscript.callcontext;
 import dmdscript.value;
 import dmdscript.scopex;
 import dmdscript.expression;

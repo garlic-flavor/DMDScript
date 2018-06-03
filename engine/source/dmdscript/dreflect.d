@@ -22,6 +22,7 @@ import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.value : DError, Value;
 import dmdscript.drealm: Drealm;
+import dmdscript.callcontext: CallContext;
 
 //==============================================================================
 ///
@@ -46,7 +47,7 @@ class DreflectConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
+    override DError* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -60,7 +61,7 @@ private:
 //
 @DFD(1, DFD.Type.Static)
 DError* apply(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -69,7 +70,7 @@ DError* apply(
 //
 @DFD(3, DFD.Type.Static)
 DError* defineProperty(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -78,7 +79,7 @@ DError* defineProperty(
 //
 @DFD(2, DFD.Type.Static)
 DError* deleteProperty(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -87,7 +88,7 @@ DError* deleteProperty(
 //
 @DFD(2, DFD.Type.Static)
 DError* get(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -96,7 +97,7 @@ DError* get(
 //
 @DFD(2, DFD.Type.Static)
 DError* getOwnPropertyDescriptor(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -105,7 +106,7 @@ DError* getOwnPropertyDescriptor(
 //
 @DFD(2, DFD.Type.Static)
 DError* getPrototypeOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -114,7 +115,7 @@ DError* getPrototypeOf(
 //
 @DFD(1, DFD.Type.Static)
 DError* has(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -123,7 +124,7 @@ DError* has(
 //
 @DFD(1, DFD.Type.Static)
 DError* isExtensible(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -132,7 +133,7 @@ DError* isExtensible(
 //
 @DFD(1, DFD.Type.Static)
 DError* ownKeys(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -141,7 +142,7 @@ DError* ownKeys(
 //
 @DFD(1, DFD.Type.Static)
 DError* preventExtensions(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -150,7 +151,7 @@ DError* preventExtensions(
 //
 @DFD(3, DFD.Type.Static)
 DError* set(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -159,7 +160,7 @@ DError* set(
 //
 @DFD(2, DFD.Type.Static)
 DError* setPrototypeOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -169,7 +170,7 @@ DError* setPrototypeOf(
 //
 @DFD(1, DFD.Type.Prototype, "catch")
 DError* _catch(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -178,7 +179,7 @@ DError* _catch(
 //
 @DFD(2)
 DError* then(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

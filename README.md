@@ -63,7 +63,7 @@ This aims to alternate test262-harness-py.
     + [x] Add manual stack tracing.
     + [x] Use local importing.
 * [x] Read the ECMA262 v7 specification (roughly).
-* [ ] Run test262.(1598/59240)
+* [ ] Run test262.
 * [ ] Implement test262-harness-d.
     + [x] The first compile.
     + [x] Run a script marked with 'module' as module.
@@ -71,6 +71,8 @@ This aims to alternate test262-harness-py.
     + [ ] Implement very useful functionalities.
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
+
+### Current progress is 2%(1620/59240)
 
 ### Passed directories.
 * ..\test262\test\annexB\language\comments
@@ -88,6 +90,7 @@ This aims to alternate test262-harness-py.
 * ..\test262\test\language\literals\null
 * ..\test262\test\language\literals\numeric
 * ..\test262\test\language\literals\string
+* ..\test262\test\language\punctuators
 * ..\test262\test\language\reserved-words
 * ..\test262\test\language\source-text
 * ..\test262\test\language\types

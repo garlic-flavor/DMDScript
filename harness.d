@@ -1312,7 +1312,7 @@ void showStatus(in ref ArgsInfo info)
     writeln (passedCountStrict, " passed in strict mode");
     writeln (failedCountStrict, " failed in strict mode,");
     writeln (ignoredCountStrict, " ignored in strict mode.");
-    writeln("Current progress is ",
+    writeln("### Current progress is ",
             (passedCount + ignoredCount +
              passedCountStrict + ignoredCountStrict) * 100 / allCount, "%(",
             passedCount + ignoredCount + passedCountStrict + ignoredCountStrict,

@@ -25,6 +25,7 @@ import dmdscript.dfunction : Dconstructor;
 import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.drealm : undefined, Drealm;
+import dmdscript.callcontext: CallContext;
 
 debug import std.stdio;
 
@@ -35,7 +36,7 @@ class Dstring : Dobject
     import dmdscript.property : Property;
     import dmdscript.primitive : PropertyKey;
 
-    override Value* Get(in PropertyKey key, Drealm realm)
+    override Value* Get(in PropertyKey key, CallContext* cc)
     {
         size_t index;
         if (key.isArrayIndex(index) && index < value.text.length)
@@ -49,7 +50,7 @@ class Dstring : Dobject
             else static*/ assert (0);
         }
         else
-            return super.Get(key, realm);
+            return super.Get(key, cc);
     }
 
 private:
@@ -100,7 +101,7 @@ class DstringConstructor : Dconstructor
         return new Dstring(classPrototype, s);
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
+    override DError* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Text;
@@ -109,13 +110,13 @@ class DstringConstructor : Dconstructor
         string s;
         Dobject o;
 
-        s = (arglist.length) ? arglist[0].toString(realm) : Text.Empty;
+        s = (arglist.length) ? arglist[0].toString(cc) : Text.Empty;
         o = opCall(s);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(Drealm realm, Dobject othis, out Value ret,
+    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         import dmdscript.primitive : Text;
@@ -123,7 +124,7 @@ class DstringConstructor : Dconstructor
         // ECMA 15.5.1
         string s;
 
-        s = (arglist.length) ? arglist[0].toString(realm) : Text.Empty;
+        s = (arglist.length) ? arglist[0].toString(cc) : Text.Empty;
         ret.put(s);
         return null;
     }
@@ -183,7 +184,7 @@ inout(char)[] _stringAt(inout char[] src, in size_t index)
 //------------------------------------------------------------------------------
 @DFD(1, DFD.Type.Static)
 DError* fromCharCode(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.array : Appender;
@@ -200,12 +201,12 @@ DError* fromCharCode(
         uint u;
 
         v = &arglist[i];
-        u = v.toUint16(realm);
+        u = v.toUint16(cc);
 
         if(!isValidDchar(u))
         {
             ret.putVundefined();
-            return NotValidUTFError(realm, "String", "fromCharCode()", u);
+            return NotValidUTFError(cc.realm, "String", "fromCharCode()", u);
         }
 
         l = encode(buf, u);
@@ -218,7 +219,7 @@ DError* fromCharCode(
 //
 @DFD(1, DFD.Type.Static)
 DError* fromCodePoint(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -227,7 +228,7 @@ DError* fromCodePoint(
 //
 @DFD(1, DFD.Type.Static)
 DError* raw(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -237,7 +238,7 @@ DError* raw(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     //writef("Dstring.prototype.toString()\n");
@@ -249,7 +250,8 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return FunctionWantsStringError(realm, Key.toString, othis.classname);
+        return FunctionWantsStringError(cc.realm, Key.toString,
+                                        othis.classname);
     }
     return null;
 }
@@ -257,7 +259,7 @@ DError* toString(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Does same thing as String.prototype.toString()
@@ -271,7 +273,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined();
-        return FunctionWantsStringError(realm, Key.valueOf, othis.classname);
+        return FunctionWantsStringError(cc.realm, Key.valueOf, othis.classname);
     }
     return null;
 }
@@ -279,7 +281,7 @@ DError* valueOf(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* charAt(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : Text;
@@ -293,9 +295,9 @@ DError* charAt(
     string result;
 
     v = &othis.value;
-    s = v.toString(realm);
+    s = v.toString(cc);
     v = arglist.length ? &arglist[0] : &undefined;
-    pos = cast(int)v.toInteger(realm);
+    pos = cast(int)v.toInteger(cc);
 
     result = Text.Empty;
 
@@ -324,7 +326,7 @@ DError* charAt(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* charCodeAt(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : decode, stride, encode;
@@ -339,9 +341,9 @@ DError* charCodeAt(
     double result;
 
     v = &othis.value;
-    s = v.toString(realm);
+    s = v.toString(cc);
     v = arglist.length ? &arglist[0] : &undefined;
-    pos = cast(int)v.toInteger(realm);
+    pos = cast(int)v.toInteger(cc);
 
     result = _charCodeAt(s, pos);
 
@@ -352,7 +354,7 @@ DError* charCodeAt(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* concat(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.6
@@ -360,9 +362,9 @@ DError* concat(
 
     //writefln("Dstring.prototype.concat()");
 
-    s = othis.value.toString(realm);
+    s = othis.value.toString(cc);
     for(size_t a = 0; a < arglist.length; a++)
-        s ~= arglist[a].toString(realm);
+        s ~= arglist[a].toString(cc);
 
     ret.put(s);
     return null;
@@ -371,7 +373,7 @@ DError* concat(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* indexOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : stride, toUTFindex;
@@ -392,14 +394,14 @@ DError* indexOf(
 
     Value xx;
     xx.put(othis);
-    s = xx.toString(realm);
+    s = xx.toString(cc);
     sUCSdim = s.stride;
 
     v1 = arglist.length ? &arglist[0] : &undefined;
     v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
 
-    searchString = v1.toString(realm);
-    pos = cast(int)v2.toInteger(realm);
+    searchString = v1.toString(cc);
+    pos = cast(int)v2.toInteger(cc);
 
     if(pos < 0)
         pos = 0;
@@ -423,7 +425,7 @@ DError* indexOf(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* lastIndexOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.string : lastIndexOf;
@@ -449,11 +451,11 @@ DError* lastIndexOf(
             // This is the 'transferable' version
             Value* v;
             DError* a;
-            v = othis.Get(Key.toString, realm);
-            a = v.Call(realm, othis, ret, null);
+            v = othis.Get(Key.toString, cc);
+            a = v.Call(cc, othis, ret, null);
             if(a)                       // if exception was thrown
                 return a;
-            s = ret.toString(realm);
+            s = ret.toString(cc);
         }
     }
     else
@@ -464,13 +466,13 @@ DError* lastIndexOf(
     sUCSdim = stride(s);
 
     v1 = arglist.length ? &arglist[0] : &undefined;
-    searchString = v1.toString(realm);
+    searchString = v1.toString(cc);
     if(arglist.length >= 2)
     {
         double n;
         Value* v = &arglist[1];
 
-        n = v.toNumber(realm);
+        n = v.toNumber(cc);
         if(isNaN(n) || n > sUCSdim)
             pos = sUCSdim;
         else if(n < 0)
@@ -508,7 +510,7 @@ DError* lastIndexOf(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* localeCompare(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.9
@@ -518,16 +520,16 @@ DError* localeCompare(
     Value* v;
 
     v = &othis.value;
-    s1 = v.toString(realm);
-    s2 = arglist.length ? arglist[0].toString(realm) :
-        undefined.toString(realm);
-    n = localeCompare(realm, s1, s2);
+    s1 = v.toString(cc);
+    s2 = arglist.length ? arglist[0].toString(cc) :
+        undefined.toString(cc);
+    n = localeCompare(cc, s1, s2);
     ret.put(n);
     return null;
 }
 
 @safe @nogc pure nothrow
-int localeCompare(Drealm realm, string s1, string s2)
+int localeCompare(CallContext* cc, string s1, string s2)
 {   // no locale support here
     import std.string : cmp;
     return cmp(s1, s2);
@@ -536,7 +538,7 @@ int localeCompare(Drealm realm, string s1, string s2)
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* match(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.dregexp : Dregexp, EXEC_STRING, EXEC_ARRAY;
@@ -548,20 +550,20 @@ DError* match(
     Dregexp r;
 
     if (0 < arglist.length && !arglist[0].isPrimitive)
-        r = cast(Dregexp)arglist[0].toObject(realm);
+        r = cast(Dregexp)arglist[0].toObject(cc.realm);
 
     if (r is null)
     {
         Value regret;
 
         regret.put(cast(Dobject)null);
-        realm.dRegexp.Construct(realm, regret, arglist);
+        cc.realm.dRegexp.Construct(cc, regret, arglist);
         r = cast(Dregexp)regret.object;
     }
 
     if(r.global.dbool)
     {
-        Darray a = realm.dArray();
+        Darray a = cc.realm.dArray();
         int n;
         int i;
         int lasti;
@@ -571,26 +573,26 @@ DError* match(
         for(n = 0;; n++)
         {
             r.lastIndex.put(cast(double)i);
-            Dregexp.exec(r, realm, ret, (&othis.value)[0 .. 1], EXEC_STRING);
+            Dregexp.exec(r, cc, ret, (&othis.value)[0 .. 1], EXEC_STRING);
             if(!ret.text)             // if match failed
             {
                 r.lastIndex.put(cast(double)i);
                 break;
             }
             lasti = i;
-            i = cast(int)r.lastIndex.toInt32(realm);
+            i = cast(int)r.lastIndex.toInt32(cc);
             if(i == lasti)              // if no source was consumed
                 i++;                    // consume a character
 
             // a[n] = ret;
-            a.Set(PropertyKey(n), ret, Property.Attribute.None, realm);
+            a.Set(PropertyKey(n), ret, Property.Attribute.None, cc);
 
         }
         ret.put(a);
     }
     else
     {
-        Dregexp.exec(r, realm, ret, (&othis.value)[0 .. 1], EXEC_ARRAY);
+        Dregexp.exec(r, cc, ret, (&othis.value)[0 .. 1], EXEC_ARRAY);
     }
     return null;
 }
@@ -598,7 +600,7 @@ DError* match(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* replace(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
@@ -627,11 +629,11 @@ DError* replace(
     Value* v;
 
     v = &othis.value;
-    str = v.toString(realm);
+    str = v.toString(cc);
     searchValue = (arglist.length >= 1) ? &arglist[0] : &undefined;
     replaceValue = (arglist.length >= 2) ? &arglist[1] : &undefined;
-    r = Dregexp.isRegExp(realm, searchValue);
-    f = Dfunction.isFunction(realm, replaceValue);
+    r = Dregexp.isRegExp(cc, searchValue);
+    f = Dfunction.isFunction(cc, replaceValue);
     if(r)
     {
         int offset = 0;
@@ -643,7 +645,7 @@ DError* replace(
         r.lastIndex.put(cast(double)0);
         for(;; )
         {
-            Dregexp.exec(r, realm, ret, (&othis.value)[0 .. 1], EXEC_STRING);
+            Dregexp.exec(r, cc, ret, (&othis.value)[0 .. 1], EXEC_STRING);
             if(!ret.text)             // if match failed
                 break;
 
@@ -661,12 +663,12 @@ DError* replace(
                 }
                 alist[m + 1].put(re.index);
                 alist[m + 2].put(str);
-                f.Call(realm, f, ret, alist[0 .. m + 3]);
-                replacement = ret.toString(realm);
+                f.Call(cc, f, ret, alist[0 .. m + 3]);
+                replacement = ret.toString(cc);
             }
             else
             {
-                newstring = replaceValue.toString(realm);
+                newstring = replaceValue.toString(cc);
                 replacement = re.replace(newstring);
             }
             ptrdiff_t starti = re.index;
@@ -681,7 +683,7 @@ DError* replace(
 
                 // If no source was consumed, consume a character
                 lasti = i;
-                i = cast(int)r.lastIndex.toInt32(realm);
+                i = cast(int)r.lastIndex.toInt32(cc);
                 if(i == lasti)
                 {
                     i++;
@@ -694,7 +696,7 @@ DError* replace(
     }
     else
     {
-        searchString = searchValue.toString(realm);
+        searchString = searchValue.toString(cc);
         ptrdiff_t match = countUntil(str, searchString);
         if(match >= 0)
         {
@@ -706,12 +708,12 @@ DError* replace(
                 alist[0].put(searchString);
                 alist[1].put(match);
                 alist[2].put(str);
-                f.Call(realm, f, ret, alist);
-                replacement = ret.toString(realm);
+                f.Call(cc, f, ret, alist);
+                replacement = ret.toString(cc);
             }
             else
             {
-                newstring = replaceValue.toString(realm);
+                newstring = replaceValue.toString(cc);
                 replacement = RegExp.replace3(newstring, str, pmatch[]);
             }
             result = str[0 .. match] ~
@@ -731,7 +733,7 @@ DError* replace(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* search(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.dregexp : Dregexp, EXEC_INDEX;
@@ -741,25 +743,25 @@ DError* search(
 
     //writef("String.prototype.search()\n");
     if (0 < arglist.length && !arglist[0].isPrimitive)
-        r = cast(Dregexp)arglist[0].toObject(realm);
+        r = cast(Dregexp)arglist[0].toObject(cc.realm);
 
     if (r is null)
     {
         Value regret;
 
         regret.put(cast(Dobject)null);
-        realm.dRegexp.Construct(realm, regret, arglist);
+        cc.realm.dRegexp.Construct(cc, regret, arglist);
         r = cast(Dregexp)regret.object;
     }
 
-    Dregexp.exec(r, realm, ret, (&othis.value)[0 .. 1], EXEC_INDEX);
+    Dregexp.exec(r, cc, ret, (&othis.value)[0 .. 1], EXEC_INDEX);
     return null;
 }
 
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* slice(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : stride, toUTFindex;
@@ -773,7 +775,7 @@ DError* slice(
     Value* v;
 
     v = &othis.value;
-    s = v.toString(realm);
+    s = v.toString(cc);
     sUCSdim = stride(s);
     switch(arglist.length)
     {
@@ -783,13 +785,13 @@ DError* slice(
         break;
 
     case 1:
-        start = arglist[0].toInt32(realm);
+        start = arglist[0].toInt32(cc);
         end = sUCSdim;
         break;
 
     default:
-        start = arglist[0].toInt32(realm);
-        end = arglist[1].toInt32(realm);
+        start = arglist[0].toInt32(cc);
+        end = arglist[1].toInt32(cc);
         break;
     }
 
@@ -826,7 +828,7 @@ DError* slice(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* split(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.stdc.string : memcmp;
@@ -867,14 +869,14 @@ DError* split(
 
     Value* v;
     v = &othis.value;
-    S = v.toString(realm);
-    A = realm.dArray();
+    S = v.toString(cc);
+    A = cc.realm.dArray();
     if(limit.isUndefined())
         lim = ~0u;
     else
-        lim = limit.toUint32(realm);
+        lim = limit.toUint32(cc);
     p = 0;
-    R = Dregexp.isRegExp(realm, separator);
+    R = Dregexp.isRegExp(cc, separator);
     if(R)       // regular expression
     {
         re = R.re;
@@ -885,7 +887,7 @@ DError* split(
     else        // string
     {
         re = null;
-        rs = separator.toString(realm);
+        rs = separator.toString(cc);
         str = 1;
     }
     if(lim == 0)
@@ -916,7 +918,7 @@ DError* split(
                             T = S[p .. q];
                             val.put(T);
                             A.Set(PropertyKey(cast(uint)A.length.number), val,
-                                  Property.Attribute.None, realm);
+                                  Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
                             p = e;
@@ -936,7 +938,7 @@ DError* split(
                             //writefln("S = '%s', T = '%s', p = %d, q = %d, e = %d\n", S, T, p, q, e);
                             val.put(T);
                             A.Set(PropertyKey(cast(size_t)A.length.number), val,
-                                  Property.Attribute.None, realm);
+                                  Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
                             p = e;
@@ -952,7 +954,7 @@ DError* split(
                                     T = null;
                                 val.put(T);
                                 A.Set(PropertyKey(cast(size_t)A.length.number),
-                                      val, Property.Attribute.None, realm);
+                                      val, Property.Attribute.None, cc);
                                 if(A.length.number == lim)
                                     goto Lret;
                             }
@@ -964,7 +966,7 @@ DError* split(
             T = S[p .. S.length];
             val.put(T);
             A.Set(PropertyKey(cast(uint)A.length.number), val,
-                  Property.Attribute.None, realm);
+                  Property.Attribute.None, cc);
             goto Lret;
         }
         if(str)                 // string
@@ -980,7 +982,7 @@ DError* split(
     }
 
     val.put(S);
-    A.Set(PropertyKey(0u), val, Property.Attribute.None, realm);
+    A.Set(PropertyKey(0u), val, Property.Attribute.None, cc);
     Lret:
     ret.put(A);
     return null;
@@ -1030,7 +1032,7 @@ DError* dstring_substring(string s, size_t sUCSdim, double start,
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* substr(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.math : isNaN;
@@ -1042,18 +1044,18 @@ DError* substr(
     double length;
     string s;
 
-    s = othis.value.toString(realm);
+    s = othis.value.toString(cc);
     size_t sUCSdim = stride(s);
     start = 0;
     length = 0;
     if(arglist.length >= 1)
     {
-        start = arglist[0].toInteger(realm);
+        start = arglist[0].toInteger(cc);
         if(start < 0)
             start = sUCSdim + start;
         if(arglist.length >= 2)
         {
-            length = arglist[1].toInteger(realm);
+            length = arglist[1].toInteger(cc);
             if(isNaN(length) || length < 0)
                 length = 0;
         }
@@ -1067,7 +1069,7 @@ DError* substr(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* substring(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.utf : stride;
@@ -1080,15 +1082,15 @@ DError* substring(
     string s;
 
     //writefln("String.prototype.substring()");
-    s = othis.value.toString(realm);
+    s = othis.value.toString(cc);
     size_t sUCSdim = stride(s);
     start = 0;
     end = sUCSdim;
     if(arglist.length >= 1)
     {
-        start = arglist[0].toInteger(realm);
+        start = arglist[0].toInteger(cc);
         if(arglist.length >= 2)
-            end = arglist[1].toInteger(realm);
+            end = arglist[1].toInteger(cc);
         //writef("s = '%ls', start = %d, end = %d\n", s, start, end);
     }
 
@@ -1104,13 +1106,13 @@ enum CASE
     LocaleUpper
 };
 
-DError* tocase(Drealm realm, Dobject othis, out Value ret, CASE caseflag)
+DError* tocase(CallContext* cc, Dobject othis, out Value ret, CASE caseflag)
 {
     import std.string : toLower, toUpper;
 
     string s;
 
-    s = othis.value.toString(realm);
+    s = othis.value.toString(cc);
     switch(caseflag)
     {
     case CASE.Lower:
@@ -1136,54 +1138,54 @@ DError* tocase(Drealm realm, Dobject othis, out Value ret, CASE caseflag)
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toLowerCase(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.5.4.11
     // String.prototype.toLowerCase()
 
     //writef("Dstring_prototype_toLowerCase()\n");
-    return tocase(realm, othis, ret, CASE.Lower);
+    return tocase(cc, othis, ret, CASE.Lower);
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toLocaleLowerCase(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.17
 
     //writef("Dstring_prototype_toLocaleLowerCase()\n");
-    return tocase(realm, othis, ret, CASE.LocaleLower);
+    return tocase(cc, othis, ret, CASE.LocaleLower);
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toUpperCase(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.5.4.12
     // String.prototype.toUpperCase()
 
-    return tocase(realm, othis, ret, CASE.Upper);
+    return tocase(cc, othis, ret, CASE.Upper);
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toLocaleUpperCase(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.5.4.18
 
-    return tocase(realm, othis, ret, CASE.LocaleUpper);
+    return tocase(cc, othis, ret, CASE.LocaleUpper);
 }
 
 //------------------------------------------------------------------------------
 DError* dstring_anchor(
-    Drealm realm, Dobject othis, out Value ret, string tag,
+    CallContext* cc, Dobject othis, out Value ret, string tag,
     string name, Value[] arglist)
 {
     // For example:
@@ -1191,9 +1193,9 @@ DError* dstring_anchor(
     // produces:
     //	<tag name="bar">foo</tag>
 
-    string foo = othis.value.toString(realm);
+    string foo = othis.value.toString(cc);
     Value* va = arglist.length ? &arglist[0] : &undefined;
-    string bar = va.toString(realm);
+    string bar = va.toString(cc);
 
     string s;
 
@@ -1216,7 +1218,7 @@ DError* dstring_anchor(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* anchor(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Non-standard extension
@@ -1226,34 +1228,34 @@ DError* anchor(
     // produces:
     //	<A NAME="bar">foo</A>
 
-    return dstring_anchor(realm, othis, ret, "A", "NAME", arglist);
+    return dstring_anchor(cc, othis, ret, "A", "NAME", arglist);
 }
 
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* fontcolor(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_anchor(realm, othis, ret, "FONT", "COLOR", arglist);
+    return dstring_anchor(cc, othis, ret, "FONT", "COLOR", arglist);
 }
 
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* fontsize(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_anchor(realm, othis, ret, "FONT", "SIZE", arglist);
+    return dstring_anchor(cc, othis, ret, "FONT", "SIZE", arglist);
 }
 
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* link(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_anchor(realm, othis, ret, "A", "HREF", arglist);
+    return dstring_anchor(cc, othis, ret, "A", "HREF", arglist);
 }
 
 
@@ -1261,10 +1263,10 @@ DError* link(
 /*
 Produce <tag>othis</tag>
 */
-DError* dstring_bracket(Drealm realm, Dobject othis, out Value ret,
+DError* dstring_bracket(CallContext* cc, Dobject othis, out Value ret,
                         string tag)
 {
-    string foo = othis.value.toString(realm);
+    string foo = othis.value.toString(cc);
     string s;
 
     s = "<"     ~
@@ -1282,7 +1284,7 @@ DError* dstring_bracket(Drealm realm, Dobject othis, out Value ret,
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* big(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // Non-standard extension
@@ -1292,85 +1294,85 @@ DError* big(
     // produces:
     //	<BIG>foo</BIG>
 
-    return dstring_bracket(realm, othis, ret, "BIG");
+    return dstring_bracket(cc, othis, ret, "BIG");
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* blink(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(realm, othis, ret, "BLINK");
+    return dstring_bracket(cc, othis, ret, "BLINK");
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* bold(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(realm, othis, ret, "B");
+    return dstring_bracket(cc, othis, ret, "B");
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* fixed(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(realm, othis, ret, "TT");
+    return dstring_bracket(cc, othis, ret, "TT");
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* italics(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(realm, othis, ret, "I");
+    return dstring_bracket(cc, othis, ret, "I");
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* small(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(realm, othis, ret, "SMALL");
+    return dstring_bracket(cc, othis, ret, "SMALL");
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* strike(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(realm, othis, ret, "STRIKE");
+    return dstring_bracket(cc, othis, ret, "STRIKE");
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* sub(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(realm, othis, ret, "SUB");
+    return dstring_bracket(cc, othis, ret, "SUB");
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* sup(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return dstring_bracket(realm, othis, ret, "SUP");
+    return dstring_bracket(cc, othis, ret, "SUP");
 }
 
 //
 @DFD(1)
 DError* codePointAt(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1379,7 +1381,7 @@ DError* codePointAt(
 //
 @DFD(1)
 DError* endsWith(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1388,7 +1390,7 @@ DError* endsWith(
 //
 @DFD(1)
 DError* includes(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1397,7 +1399,7 @@ DError* includes(
 //
 @DFD(1)
 DError* normalize(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1406,7 +1408,7 @@ DError* normalize(
 //
 @DFD(1)
 DError* repeat(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1415,7 +1417,7 @@ DError* repeat(
 //
 @DFD(1)
 DError* startsWith(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1424,7 +1426,7 @@ DError* startsWith(
 //
 @DFD(1)
 DError* trim(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

@@ -27,6 +27,7 @@ import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.drealm: Drealm;
+import dmdscript.callcontext: CallContext;
 
 version = DATETOSTRING;                 // use DateToString
 
@@ -41,12 +42,12 @@ enum TIMEFORMAT
     UTCString,
 }
 
-d_time parseDateString(Drealm realm, string s)
+d_time parseDateString(CallContext* cc, string s)
 {
     return s.parse;
 }
 
-string dateToString(Drealm realm, d_time t, TIMEFORMAT tf)
+string dateToString(CallContext* cc, d_time t, TIMEFORMAT tf)
 {
     string p;
 
@@ -102,7 +103,7 @@ string dateToString(Drealm realm, d_time t, TIMEFORMAT tf)
 /* ===================== Ddate.constructor functions ==================== */
 @DFD(1, DFD.Type.Static)
 DError* parse(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.4.2
@@ -113,8 +114,8 @@ DError* parse(
         n = d_time_nan;
     else
     {
-        s = arglist[0].toString(realm);
-        n = parseDateString(realm, s);
+        s = arglist[0].toString(cc);
+        n = parseDateString(cc, s);
     }
 
     ret.putVtime(n);
@@ -123,7 +124,7 @@ DError* parse(
 
 @DFD(7, DFD.Type.Static)
 DError* UTC(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.4.3 - 15.9.4.10
@@ -145,26 +146,26 @@ DError* UTC(
     {
     default:
     case 7:
-        ms = arglist[6].toDtime(realm);
+        ms = arglist[6].toDtime(cc);
         goto case;
     case 6:
-        seconds = arglist[5].toDtime(realm);
+        seconds = arglist[5].toDtime(cc);
         goto case;
     case 5:
-        minutes = arglist[4].toDtime(realm);
+        minutes = arglist[4].toDtime(cc);
         goto case;
     case 4:
-        hours = arglist[3].toDtime(realm);
+        hours = arglist[3].toDtime(cc);
         time = makeTime(hours, minutes, seconds, ms);
         goto case;
     case 3:
-        date = arglist[2].toDtime(realm);
+        date = arglist[2].toDtime(cc);
         goto case;
     case 2:
-        month = arglist[1].toDtime(realm);
+        month = arglist[1].toDtime(cc);
         goto case;
     case 1:
-        year = arglist[0].toDtime(realm);
+        year = arglist[0].toDtime(cc);
 
         if(year != d_time_nan && year >= 0 && year <= 99)
             year += 1900;
@@ -183,7 +184,7 @@ DError* UTC(
 //
 @DFD(1, DFD.Type.Static)
 DError* now(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -206,7 +207,7 @@ class DdateConstructor : Dconstructor
         return new Ddate(classPrototype, args);
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
+    override DError* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.9.3
@@ -236,28 +237,28 @@ class DdateConstructor : Dconstructor
         {
         default:
         case 7:
-            ms = arglist[6].toDtime(realm);
+            ms = arglist[6].toDtime(cc);
             mixin (breakOnNan("ms"));
             goto case;
         case 6:
-            seconds = arglist[5].toDtime(realm);
+            seconds = arglist[5].toDtime(cc);
             mixin (breakOnNan("seconds"));
             goto case;
         case 5:
-            minutes = arglist[4].toDtime(realm);
+            minutes = arglist[4].toDtime(cc);
             mixin (breakOnNan("minutes"));
             goto case;
         case 4:
-            hours = arglist[3].toDtime(realm);
+            hours = arglist[3].toDtime(cc);
             mixin (breakOnNan("hours"));
             time = makeTime(hours, minutes, seconds, ms);
             goto case;
         case 3:
-            date = arglist[2].toDtime(realm);
+            date = arglist[2].toDtime(cc);
             goto case;
         case 2:
-            month = arglist[1].toDtime(realm);
-            year = arglist[0].toDtime(realm);
+            month = arglist[1].toDtime(cc);
+            year = arglist[0].toDtime(cc);
 
             if(year != d_time_nan && year >= 0 && year <= 99)
                 year += 1900;
@@ -266,14 +267,14 @@ class DdateConstructor : Dconstructor
             break;
 
         case 1:
-            arglist[0].toPrimitive(realm, ret);
+            arglist[0].toPrimitive(cc, ret);
             if(ret.type == Value.Type.String)
             {
-                n = parseDateString(realm, ret.text);
+                n = parseDateString(cc, ret.text);
             }
             else
             {
-                n = ret.toDtime(realm);
+                n = ret.toDtime(cc);
                 n = timeClip(n);
             }
             break;
@@ -288,7 +289,7 @@ class DdateConstructor : Dconstructor
         return null;
     }
 
-    override DError* Call(Drealm realm, Dobject othis, out Value ret,
+    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
 
@@ -301,7 +302,7 @@ class DdateConstructor : Dconstructor
         {
             t = getUTCtime();
             t = UTCtoLocalTime(t);
-            s = dateToString(realm, t, TIMEFORMAT.String);
+            s = dateToString(cc, t, TIMEFORMAT.String);
         }
         else
         {
@@ -346,7 +347,7 @@ int getThisLocalTime(out Value ret, Dobject othis, out d_time n)
 }
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.2
@@ -355,12 +356,12 @@ DError* toString(
 
     //writefln("Ddate_prototype_toString()");
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.toString, othis);
+        return checkdate(cc.realm, ret, Key.toString, othis);
 
     version(DATETOSTRING)
     {
         getThisLocalTime(ret, othis, n);
-        s = dateToString(realm, n, TIMEFORMAT.String);
+        s = dateToString(cc, n, TIMEFORMAT.String);
     }
     else
     {
@@ -372,7 +373,7 @@ DError* toString(
 }
 @DFD(0)
 DError* toDateString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.3
@@ -380,12 +381,12 @@ DError* toDateString(
     string s;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.toDateString, othis);
+        return checkdate(cc.realm, ret, Key.toDateString, othis);
 
     version(DATETOSTRING)
     {
         getThisLocalTime(ret, othis, n);
-        s = dateToString(realm, n, TIMEFORMAT.DateString);
+        s = dateToString(cc, n, TIMEFORMAT.DateString);
     }
     else
     {
@@ -397,7 +398,7 @@ DError* toDateString(
 }
 @DFD(0)
 DError* toTimeString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.4
@@ -405,12 +406,12 @@ DError* toTimeString(
     string s;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.toTimeString, othis);
+        return checkdate(cc.realm, ret, Key.toTimeString, othis);
 
     version(DATETOSTRING)
     {
         getThisLocalTime(ret, othis, n);
-        s = dateToString(realm, n, TIMEFORMAT.TimeString);
+        s = dateToString(cc, n, TIMEFORMAT.TimeString);
     }
     else
     {
@@ -423,40 +424,40 @@ DError* toTimeString(
 }
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.3
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.valueOf, othis);
+        return checkdate(cc.realm, ret, Key.valueOf, othis);
     getThisTime(ret, othis, n);
     return null;
 }
 @DFD(0)
 DError* getTime(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.4
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getTime, othis);
+        return checkdate(cc.realm, ret, Key.getTime, othis);
     getThisTime(ret, othis, n);
     return null;
 }
 @DFD(0)
 DError* getYear(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.5
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(realm, ret, Key.getYear, othis);
+        return checkdate(cc.realm, ret, Key.getYear, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -476,14 +477,14 @@ DError* getYear(
 }
 @DFD(0)
 DError* getFullYear(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.6
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getFullYear, othis);
+        return checkdate(cc.realm, ret, Key.getFullYear, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -494,14 +495,14 @@ DError* getFullYear(
 }
 @DFD(0)
 DError* getUTCFullYear(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.7
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(realm, ret, Key.getUTCFullYear, othis);
+        return checkdate(cc.realm, ret, Key.getUTCFullYear, othis);
     if(getThisTime(ret, othis, n) == 0)
     {
         n = yearFromTime(n);
@@ -511,14 +512,14 @@ DError* getUTCFullYear(
 }
 @DFD(0)
 DError* getMonth(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.8
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(realm, ret, Key.getMonth, othis);
+        return checkdate(cc.realm, ret, Key.getMonth, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -529,14 +530,14 @@ DError* getMonth(
 }
 @DFD(0)
 DError* getUTCMonth(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.9
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(realm, ret, Key.getUTCMonth, othis);
+        return checkdate(cc.realm, ret, Key.getUTCMonth, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -547,14 +548,14 @@ DError* getUTCMonth(
 }
 @DFD(0)
 DError* getDate(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.10
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(realm, ret, Key.getDate, othis);
+        return checkdate(cc.realm, ret, Key.getDate, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -567,14 +568,14 @@ DError* getDate(
 }
 @DFD(0)
 DError* getUTCDate(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.11
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(realm, ret, Key.getUTCDate, othis);
+        return checkdate(cc.realm, ret, Key.getUTCDate, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -585,14 +586,14 @@ DError* getUTCDate(
 }
 @DFD(0)
 DError* getDay(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.12
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(realm, ret, Key.getDay, othis);
+        return checkdate(cc.realm, ret, Key.getDay, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -603,14 +604,14 @@ DError* getDay(
 }
 @DFD(0)
 DError* getUTCDay(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.13
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getUTCDay, othis);
+        return checkdate(cc.realm, ret, Key.getUTCDay, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -621,14 +622,14 @@ DError* getUTCDay(
 }
 @DFD(0)
 DError* getHours(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.14
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getHours, othis);
+        return checkdate(cc.realm, ret, Key.getHours, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -639,14 +640,14 @@ DError* getHours(
 }
 @DFD(0)
 DError* getUTCHours(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.15
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getUTCHours, othis);
+        return checkdate(cc.realm, ret, Key.getUTCHours, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -657,14 +658,14 @@ DError* getUTCHours(
 }
 @DFD(0)
 DError* getMinutes(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.16
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getMinutes, othis);
+        return checkdate(cc.realm, ret, Key.getMinutes, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -675,14 +676,14 @@ DError* getMinutes(
 }
 @DFD(0)
 DError* getUTCMinutes(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.17
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getUTCMinutes, othis);
+        return checkdate(cc.realm, ret, Key.getUTCMinutes, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -693,14 +694,14 @@ DError* getUTCMinutes(
 }
 @DFD(0)
 DError* getSeconds(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.18
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getSeconds, othis);
+        return checkdate(cc.realm, ret, Key.getSeconds, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -711,14 +712,14 @@ DError* getSeconds(
 }
 @DFD(0)
 DError* getUTCSeconds(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.19
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getUTCSeconds, othis);
+        return checkdate(cc.realm, ret, Key.getUTCSeconds, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -729,14 +730,14 @@ DError* getUTCSeconds(
 }
 @DFD(0)
 DError* getMilliseconds(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.20
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getMilliseconds, othis);
+        return checkdate(cc.realm, ret, Key.getMilliseconds, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -747,14 +748,14 @@ DError* getMilliseconds(
 }
 @DFD(0)
 DError* getUTCMilliseconds(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.21
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getUTCMilliseconds, othis);
+        return checkdate(cc.realm, ret, Key.getUTCMilliseconds, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -765,14 +766,14 @@ DError* getUTCMilliseconds(
 }
 @DFD(0)
 DError* getTimezoneOffset(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.22
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.getTimezoneOffset, othis);
+        return checkdate(cc.realm, ret, Key.getTimezoneOffset, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -783,19 +784,19 @@ DError* getTimezoneOffset(
 }
 @DFD(1)
 DError* setTime(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.23
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setTime, othis);
+        return checkdate(cc.realm, ret, Key.setTime, othis);
 
     if(!arglist.length)
         n = d_time_nan;
     else
-        n = arglist[0].toDtime(realm);
+        n = arglist[0].toDtime(cc);
     n = timeClip(n);
     othis.value.putVtime(n);
     ret.putVtime(n);
@@ -803,7 +804,7 @@ DError* setTime(
 }
 @DFD(1)
 DError* setMilliseconds(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.24
@@ -814,14 +815,14 @@ DError* setMilliseconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setMilliseconds, othis);
+        return checkdate(cc.realm, ret, Key.setMilliseconds, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
         if(!arglist.length)
             ms = d_time_nan;
         else
-            ms = arglist[0].toDtime(realm);
+            ms = arglist[0].toDtime(cc);
         time = makeTime(hourFromTime(t), minFromTime(t), secFromTime(t), ms);
         n = timeClip(localTimetoUTC(makeDate(day(t), time)));
         othis.value.putVtime(n);
@@ -831,7 +832,7 @@ DError* setMilliseconds(
 }
 @DFD(1)
 DError* setUTCMilliseconds(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.25
@@ -841,14 +842,14 @@ DError* setUTCMilliseconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setUTCMilliseconds, othis);
+        return checkdate(cc.realm, ret, Key.setUTCMilliseconds, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
         if(!arglist.length)
             ms = d_time_nan;
         else
-            ms = arglist[0].toDtime(realm);
+            ms = arglist[0].toDtime(cc);
         time = makeTime(hourFromTime(t), minFromTime(t), secFromTime(t), ms);
         n = timeClip(makeDate(day(t), time));
         othis.value.putVtime(n);
@@ -858,7 +859,7 @@ DError* setUTCMilliseconds(
 }
 @DFD(2)
 DError* setSeconds(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.26
@@ -869,7 +870,7 @@ DError* setSeconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setSeconds, othis);
+        return checkdate(cc.realm, ret, Key.setSeconds, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -877,13 +878,13 @@ DError* setSeconds(
         {
         default:
         case 2:
-            ms = arglist[1].toDtime(realm);
-            seconds = arglist[0].toDtime(realm);
+            ms = arglist[1].toDtime(cc);
+            seconds = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
-            seconds = arglist[0].toDtime(realm);
+            seconds = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -900,7 +901,7 @@ DError* setSeconds(
 }
 @DFD(2)
 DError* setUTCSeconds(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.27
@@ -911,7 +912,7 @@ DError* setUTCSeconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setUTCSeconds, othis);
+        return checkdate(cc.realm, ret, Key.setUTCSeconds, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -919,13 +920,13 @@ DError* setUTCSeconds(
         {
         default:
         case 2:
-            ms = arglist[1].toDtime(realm);
-            seconds = arglist[0].toDtime(realm);
+            ms = arglist[1].toDtime(cc);
+            seconds = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
-            seconds = arglist[0].toDtime(realm);
+            seconds = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -942,7 +943,7 @@ DError* setUTCSeconds(
 }
 @DFD(3)
 DError* setMinutes(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.28
@@ -954,7 +955,7 @@ DError* setMinutes(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setMinutes, othis);
+        return checkdate(cc.realm, ret, Key.setMinutes, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -962,21 +963,21 @@ DError* setMinutes(
         {
         default:
         case 3:
-            ms = arglist[2].toDtime(realm);
-            seconds = arglist[1].toDtime(realm);
-            minutes = arglist[0].toDtime(realm);
+            ms = arglist[2].toDtime(cc);
+            seconds = arglist[1].toDtime(cc);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 2:
             ms = msFromTime(t);
-            seconds = arglist[1].toDtime(realm);
-            minutes = arglist[0].toDtime(realm);
+            seconds = arglist[1].toDtime(cc);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[0].toDtime(realm);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -994,7 +995,7 @@ DError* setMinutes(
 }
 @DFD(3)
 DError* setUTCMinutes(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.29
@@ -1006,7 +1007,7 @@ DError* setUTCMinutes(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setUTCMinutes, othis);
+        return checkdate(cc.realm, ret, Key.setUTCMinutes, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1014,21 +1015,21 @@ DError* setUTCMinutes(
         {
         default:
         case 3:
-            ms = arglist[2].toDtime(realm);
-            seconds = arglist[1].toDtime(realm);
-            minutes = arglist[0].toDtime(realm);
+            ms = arglist[2].toDtime(cc);
+            seconds = arglist[1].toDtime(cc);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 2:
             ms = msFromTime(t);
-            seconds = arglist[1].toDtime(realm);
-            minutes = arglist[0].toDtime(realm);
+            seconds = arglist[1].toDtime(cc);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[0].toDtime(realm);
+            minutes = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -1046,7 +1047,7 @@ DError* setUTCMinutes(
 }
 @DFD(4)
 DError* setHours(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.30
@@ -1059,7 +1060,7 @@ DError* setHours(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setHours, othis);
+        return checkdate(cc.realm, ret, Key.setHours, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1067,31 +1068,31 @@ DError* setHours(
         {
         default:
         case 4:
-            ms = arglist[3].toDtime(realm);
-            seconds = arglist[2].toDtime(realm);
-            minutes = arglist[1].toDtime(realm);
-            hours = arglist[0].toDtime(realm);
+            ms = arglist[3].toDtime(cc);
+            seconds = arglist[2].toDtime(cc);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 3:
             ms = msFromTime(t);
-            seconds = arglist[2].toDtime(realm);
-            minutes = arglist[1].toDtime(realm);
-            hours = arglist[0].toDtime(realm);
+            seconds = arglist[2].toDtime(cc);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 2:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[1].toDtime(realm);
-            hours = arglist[0].toDtime(realm);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
             minutes = minFromTime(t);
-            hours = arglist[0].toDtime(realm);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -1110,7 +1111,7 @@ DError* setHours(
 }
 @DFD(4)
 DError* setUTCHours(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.31
@@ -1123,7 +1124,7 @@ DError* setUTCHours(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setUTCHours, othis);
+        return checkdate(cc.realm, ret, Key.setUTCHours, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1131,31 +1132,31 @@ DError* setUTCHours(
         {
         default:
         case 4:
-            ms = arglist[3].toDtime(realm);
-            seconds = arglist[2].toDtime(realm);
-            minutes = arglist[1].toDtime(realm);
-            hours = arglist[0].toDtime(realm);
+            ms = arglist[3].toDtime(cc);
+            seconds = arglist[2].toDtime(cc);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 3:
             ms = msFromTime(t);
-            seconds = arglist[2].toDtime(realm);
-            minutes = arglist[1].toDtime(realm);
-            hours = arglist[0].toDtime(realm);
+            seconds = arglist[2].toDtime(cc);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 2:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[1].toDtime(realm);
-            hours = arglist[0].toDtime(realm);
+            minutes = arglist[1].toDtime(cc);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
             minutes = minFromTime(t);
-            hours = arglist[0].toDtime(realm);
+            hours = arglist[0].toDtime(cc);
             break;
 
         case 0:
@@ -1174,7 +1175,7 @@ DError* setUTCHours(
 }
 @DFD(1)
 DError* setDate(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.32
@@ -1184,14 +1185,14 @@ DError* setDate(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setDate, othis);
+        return checkdate(cc.realm, ret, Key.setDate, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
         if(!arglist.length)
             date = d_time_nan;
         else
-            date = arglist[0].toDtime(realm);
+            date = arglist[0].toDtime(cc);
         day = makeDay(yearFromTime(t), monthFromTime(t), date);
         n = timeClip(localTimetoUTC(makeDate(day, timeWithinDay(t))));
         othis.value.putVtime(n);
@@ -1201,7 +1202,7 @@ DError* setDate(
 }
 @DFD(1)
 DError* setUTCDate(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.33
@@ -1211,14 +1212,14 @@ DError* setUTCDate(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setUTCDate, othis);
+        return checkdate(cc.realm, ret, Key.setUTCDate, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
         if(!arglist.length)
             date = d_time_nan;
         else
-            date = arglist[0].toDtime(realm);
+            date = arglist[0].toDtime(cc);
         day = makeDay(yearFromTime(t), monthFromTime(t), date);
         n = timeClip(makeDate(day, timeWithinDay(t)));
         othis.value.putVtime(n);
@@ -1228,7 +1229,7 @@ DError* setUTCDate(
 }
 @DFD(2)
 DError* setMonth(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.34
@@ -1239,7 +1240,7 @@ DError* setMonth(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setMonth, othis);
+        return checkdate(cc.realm, ret, Key.setMonth, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1247,12 +1248,12 @@ DError* setMonth(
         {
         default:
         case 2:
-            month = arglist[0].toDtime(realm);
-            date = arglist[1].toDtime(realm);
+            month = arglist[0].toDtime(cc);
+            date = arglist[1].toDtime(cc);
             break;
 
         case 1:
-            month = arglist[0].toDtime(realm);
+            month = arglist[0].toDtime(cc);
             date = dateFromTime(t);
             break;
 
@@ -1270,7 +1271,7 @@ DError* setMonth(
 }
 @DFD(2)
 DError* setUTCMonth(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.35
@@ -1281,7 +1282,7 @@ DError* setUTCMonth(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setUTCMonth, othis);
+        return checkdate(cc.realm, ret, Key.setUTCMonth, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1289,12 +1290,12 @@ DError* setUTCMonth(
         {
         default:
         case 2:
-            month = arglist[0].toDtime(realm);
-            date = arglist[1].toDtime(realm);
+            month = arglist[0].toDtime(cc);
+            date = arglist[1].toDtime(cc);
             break;
 
         case 1:
-            month = arglist[0].toDtime(realm);
+            month = arglist[0].toDtime(cc);
             date = dateFromTime(t);
             break;
 
@@ -1312,7 +1313,7 @@ DError* setUTCMonth(
 }
 @DFD(3)
 DError* setFullYear(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.36
@@ -1324,7 +1325,7 @@ DError* setFullYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setFullYear, othis);
+        return checkdate(cc.realm, ret, Key.setFullYear, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1333,21 +1334,21 @@ DError* setFullYear(
     {
     default:
     case 3:
-        date = arglist[2].toDtime(realm);
-        month = arglist[1].toDtime(realm);
-        year = arglist[0].toDtime(realm);
+        date = arglist[2].toDtime(cc);
+        month = arglist[1].toDtime(cc);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 2:
         date = dateFromTime(t);
-        month = arglist[1].toDtime(realm);
-        year = arglist[0].toDtime(realm);
+        month = arglist[1].toDtime(cc);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 1:
         date = dateFromTime(t);
         month = monthFromTime(t);
-        year = arglist[0].toDtime(realm);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 0:
@@ -1364,7 +1365,7 @@ DError* setFullYear(
 }
 @DFD(3)
 DError* setUTCFullYear(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.37
@@ -1376,7 +1377,7 @@ DError* setUTCFullYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setUTCFullYear, othis);
+        return checkdate(cc.realm, ret, Key.setUTCFullYear, othis);
 
     getThisTime(ret, othis, t);
     if(t == d_time_nan)
@@ -1385,21 +1386,21 @@ DError* setUTCFullYear(
     {
     default:
     case 3:
-        month = arglist[2].toDtime(realm);
-        date = arglist[1].toDtime(realm);
-        year = arglist[0].toDtime(realm);
+        month = arglist[2].toDtime(cc);
+        date = arglist[1].toDtime(cc);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 2:
         month = monthFromTime(t);
-        date = arglist[1].toDtime(realm);
-        year = arglist[0].toDtime(realm);
+        date = arglist[1].toDtime(cc);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 1:
         month = monthFromTime(t);
         date = dateFromTime(t);
-        year = arglist[0].toDtime(realm);
+        year = arglist[0].toDtime(cc);
         break;
 
     case 0:
@@ -1416,7 +1417,7 @@ DError* setUTCFullYear(
 }
 @DFD(1)
 DError* setYear(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.38
@@ -1428,7 +1429,7 @@ DError* setYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.setYear, othis);
+        return checkdate(cc.realm, ret, Key.setYear, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1438,7 +1439,7 @@ DError* setYear(
     case 1:
         month = monthFromTime(t);
         date = dateFromTime(t);
-        year = arglist[0].toDtime(realm);
+        year = arglist[0].toDtime(cc);
         if(0 <= year && year <= 99)
             year += 1900;
         day = makeDay(year, month, date);
@@ -1455,7 +1456,7 @@ DError* setYear(
 }
 @DFD(0)
 DError* toLocaleString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.39
@@ -1463,18 +1464,18 @@ DError* toLocaleString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.toLocaleString, othis);
+        return checkdate(cc.realm, ret, Key.toLocaleString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
 
-    s = dateToString(realm, t, TIMEFORMAT.LocaleString);
+    s = dateToString(cc, t, TIMEFORMAT.LocaleString);
     ret.put(s);
     return null;
 }
 @DFD(0)
 DError* toLocaleDateString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.6
@@ -1482,18 +1483,18 @@ DError* toLocaleDateString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.toLocaleDateString, othis);
+        return checkdate(cc.realm, ret, Key.toLocaleDateString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
 
-    s = dateToString(realm, t, TIMEFORMAT.LocaleDateString);
+    s = dateToString(cc, t, TIMEFORMAT.LocaleDateString);
     ret.put(s);
     return null;
 }
 @DFD(0)
 DError* toLocaleTimeString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.7
@@ -1501,17 +1502,17 @@ DError* toLocaleTimeString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.toLocaleTimeString, othis);
+        return checkdate(cc.realm, ret, Key.toLocaleTimeString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
-    s = dateToString(realm, t, TIMEFORMAT.LocaleTimeString);
+    s = dateToString(cc, t, TIMEFORMAT.LocaleTimeString);
     ret.put(s);
     return null;
 }
 @DFD(0)
 DError* toUTCString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA 15.9.5.40
@@ -1519,11 +1520,11 @@ DError* toUTCString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(realm, ret, Key.toUTCString, othis);
+        return checkdate(cc.realm, ret, Key.toUTCString, othis);
 
     if(getThisTime(ret, othis, t))
         t = 0;
-    s = dateToString(realm, t, TIMEFORMAT.UTCString);
+    s = dateToString(cc, t, TIMEFORMAT.UTCString);
     ret.put(s);
     return null;
 }
@@ -1531,7 +1532,7 @@ DError* toUTCString(
 //
 @DFD(1)
 DError* toJSON(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

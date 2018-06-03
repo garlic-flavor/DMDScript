@@ -90,7 +90,7 @@ int main(string[] args)
     debug
     {
         bool compileOnly;
-        Drealm.DumpMode dumpMode;
+        SrcFile.DumpMode dumpMode;
     }
 
     if(args.length == 1)
@@ -111,13 +111,13 @@ int main(string[] args)
                 compileOnly = true;
                 break;
             case "-dumpStatement":
-                dumpMode |= Drealm.DumpMode.Statement;
+                dumpMode |= SrcFile.DumpMode.Statement;
                 break;
             case "-dumpIR":
-                dumpMode |= Drealm.DumpMode.IR;
+                dumpMode |= SrcFile.DumpMode.IR;
                 break;
             case "-dump":
-                dumpMode |= Drealm.DumpMode.All;
+                dumpMode |= SrcFile.DumpMode.All;
                 break;
         }
         default:
@@ -307,12 +307,14 @@ void errout(Throwable t) nothrow
 
 class SrcFile
 {
+    import dmdscript.functiondefinition: FunctionDefinition;
     string srcfile;
     string[] includes;
 
-    DscriptRealm realm;
+    // DscriptRealm realm;
     string buffer;
     bool strictMode;
+    FunctionDefinition fd;
 
     this(string srcfilename, string[] includes, bool strictMode = false)
     {
@@ -335,19 +337,37 @@ class SrcFile
         import dmdscript.primitive: PropertyKey;
         import dmdscript.property: Property;
         import dmdscript.dnative: install;
+        import dmdscript.program: parse, sem = semantic, compile;
+        import dmdscript.statement: TopStatement;
         /* Create a DMDScript program, and compile our text buffer.
          */
 
-        realm = new DscriptRealm();
-        realm.install(
-            "$262", new Test262(realm.rootPrototype, realm.functionPrototype));
 
-        debug
+        // debug
+        // {
+        //     realm.dumpMode = dumpMode;
+        // }
+
+        try
         {
-            realm.dumpMode = dumpMode;
-        }
+            fd = srcfile.parse(buffer, &modulePool, strictMode);
 
-        try realm.compile (srcfile, buffer, &modulePool, strictMode);
+            debug
+            {
+                if (dumpMode & DumpMode.Statement)
+                    TopStatement.dump(fd.topstatements);
+            }
+
+            fd = fd.sem.compile;
+
+            debug
+            {
+                if (dumpMode & DumpMode.IR)
+                    FunctionDefinition.dump(fd, b=>b.writeln);
+            }
+
+            // realm.compile (srcfile, buffer, &modulePool, strictMode);
+        }
         catch (ScriptException e)
         {
             e.setSourceInfo (&getSourceInfo);
@@ -361,16 +381,23 @@ class SrcFile
     {
         import dmdscript.value: Value;
         import dmdscript.exception;
+        import dmdscript.program: execute;
+        import dmdscript.dnative: install;
         /* Execute the resulting program.
          */
 
         Value ret;
 
-        auto err = realm.execute;
-        if (err !is null)
+        auto realm = new Drealm();
+        realm.install(
+            "$262", new Test262(realm.rootPrototype, realm.functionPrototype));
+
+        try fd.execute(realm, ret);
+        catch (Throwable t)
         {
-            err.setSourceInfo (&getSourceInfo);
-            throw err.toScriptException(realm);
+            auto se = t.ScriptException ("at execution.");
+            se.setSourceInfo (&getSourceInfo);
+            throw se;
         }
     }
 
@@ -458,7 +485,17 @@ class SrcFile
     }
 
 debug public:
-    Drealm.DumpMode dumpMode;
+
+    enum DumpMode
+    {
+        None       = 0x00,
+        Statement  = 0x01,
+        IR         = 0x02,
+        All        = 0x03,
+    }
+
+    DumpMode dumpMode;
+
 }
 
 //------------------------------------------------------------------------------
@@ -479,7 +516,7 @@ static:
 
     @DFD(0)
     DError* createRealm(
-        DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+        DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
         Value[] arglist)
     {
         Value* v;
@@ -490,10 +527,10 @@ static:
         {
             v = &arglist[0];
             if (!v.isUndefinedOrNull)
-                moduleId = v.toString(realm);
+                moduleId = v.toString(cc);
         }
 
-        o = new DemptyRealm(moduleId, realm.modulePool, realm.strictMode);
+        o = new DemptyRealm(moduleId, cc.realm.modulePool);
         assert (o !is null);
 
         o.install("global", o);
@@ -512,14 +549,14 @@ class DemptyRealm: Drealm
     import dmdscript.functiondefinition: FunctionDefinition;
     import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
 
-    this(string scriptId, ModulePool modulePool, bool strictMode)
+    this(string scriptId, ModulePool modulePool/*, bool strictMode*/)
     {
         import dmdscript.dnative: install;
         super();
 
         id = scriptId;
         this.modulePool = modulePool;
-        this.globalfunction = new FunctionDefinition(null, strictMode);
+        // this.globalfunction = new FunctionDefinition(null, strictMode);
 
         install!DemptyRealm(this, functionPrototype);
     }
@@ -527,11 +564,15 @@ class DemptyRealm: Drealm
 static:
     @DFD(1)
     DError* eval(
-        DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+        DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
         Value[] arglist)
     {
         import dmdscript.drealm: superEval = eval;
         assert (cast(Drealm)othis !is null);
-        return superEval(pthis, cast(Drealm)othis, othis, ret, arglist);
+
+        auto ncc = CallContext.push(cast(Drealm)othis, cc.strictMode);
+        auto r = superEval(pthis, ncc, othis, ret, arglist);
+        CallContext.pop(ncc);
+        return r;
     }
 }

@@ -32,6 +32,7 @@ class Darguments : Dobject
     import dmdscript.value : Value, DError;
     import dmdscript.property : Property;
     import dmdscript.drealm: Drealm;
+    import dmdscript.callcontext: CallContext;
 
     Dobject actobj;             // activation object
     Identifier[] parameters;
@@ -51,49 +52,49 @@ class Darguments : Dobject
         if(caller)
         {
             v.put(caller);
-            Set(Key.caller, v, Property.Attribute.DontEnum, realm);
+            DefineOwnProperty(Key.caller, v, Property.Attribute.DontEnum);
         }
         else
         {
             v.put(Value.Type.Null);
-            Set(Key.caller, v, Property.Attribute.DontEnum, realm);
+            DefineOwnProperty(Key.caller, v, Property.Attribute.DontEnum);
         }
 
         v.put(callee);
-        Set(Key.callee, v, Property.Attribute.DontEnum, realm);
+        DefineOwnProperty(Key.callee, v, Property.Attribute.DontEnum);
         v.put(arglist.length);
-        Set(Key.length, v, Property.Attribute.DontEnum, realm);
+        DefineOwnProperty(Key.length, v, Property.Attribute.DontEnum);
 
         for(uint a = 0; a < arglist.length; a++)
         {
             v.put(arglist[a]);
-            Set(PropertyKey(a), v, Property.Attribute.DontEnum, realm);
+            DefineOwnProperty(PropertyKey(a), v, Property.Attribute.DontEnum);
         }
     }
 
     override protected
-    Value* Get(in PropertyKey PropertyName, Drealm realm)
+    Value* Get(in PropertyKey PropertyName, CallContext* cc)
     {
         import dmdscript.primitive : StringToIndex;
 
         size_t index;
         return (PropertyName.isArrayIndex(index) && index < parameters.length)
-            ? actobj.Get(PropertyKey(index), realm)
-            : super.Get(PropertyName, realm);
+            ? actobj.Get(PropertyKey(index), cc)
+            : super.Get(PropertyName, cc);
     }
 
     override
     DError* Set(in PropertyKey PropertyName, ref Value value,
-                in Property.Attribute attributes, Drealm realm)
+                in Property.Attribute attributes, CallContext* cc)
     {
         import dmdscript.primitive : StringToIndex;
 
         size_t index;
 
         if(PropertyName.isArrayIndex(index) && index < parameters.length)
-            return actobj.Set(PropertyKey(index), value, attributes, realm);
+            return actobj.Set(PropertyKey(index), value, attributes, cc);
         else
-            return Dobject.Set(PropertyName, value, attributes, realm);
+            return Dobject.Set(PropertyName, value, attributes, cc);
     }
 
     override int CanPut(in string PropertyName)

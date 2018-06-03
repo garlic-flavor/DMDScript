@@ -28,6 +28,7 @@ import dmdscript.dobject: Dobject;
 import dmdscript.value: Value, DError;
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.callcontext: CallContext;
 import dmdscript.drealm: Drealm;
 
 //==============================================================================
@@ -42,7 +43,7 @@ class Darray : Dobject
 
     override
     DError* Set(in PropertyKey key, ref Value v,
-                in Property.Attribute attributes, Drealm realm)
+                in Property.Attribute attributes, CallContext* cc)
     {
         import dmdscript.errmsgs: LengthIntError;
 
@@ -56,7 +57,7 @@ class Darray : Dobject
             }
 
             auto pk = PropertyKey(index);
-            proptable.set(pk, v, attributes, realm, this, IsExtensible);
+            proptable.set(pk, v, attributes, cc, this, IsExtensible);
             return null;
         }
         else
@@ -66,15 +67,15 @@ class Darray : Dobject
             DError* result;
 
             // ECMA 15.4.5.1
-            result = proptable.set(key, v, attributes, realm, this, IsExtensible);
+            result = proptable.set(key, v, attributes, cc, this, IsExtensible);
             if(!result)
             {
                 if(key == Key.length)
                 {
-                    i = v.toUint32(realm);
-                    if(i != v.toInteger(realm))
+                    i = v.toUint32(cc);
+                    if(i != v.toInteger(cc))
                     {
-                        return LengthIntError(realm);
+                        return LengthIntError(cc.realm);
                     }
                     if(i < ulength)
                     {
@@ -98,7 +99,7 @@ class Darray : Dobject
                     ulength = i;
                     length.number = i;
                     proptable.set(key, v, attributes |
-                                  Property.Attribute.DontEnum, realm, this,
+                                  Property.Attribute.DontEnum, cc, this,
                                   IsExtensible);
                 }
 
@@ -135,7 +136,7 @@ class Darray : Dobject
         }
     }
 
-    override Value* Get(in PropertyKey PropertyName, Drealm realm)
+    override Value* Get(in PropertyKey PropertyName, CallContext* cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(PropertyName == Key.length)
@@ -145,7 +146,7 @@ class Darray : Dobject
         }
         else
         {
-            return Dobject.Get(PropertyName, realm);
+            return Dobject.Get(PropertyName, cc);
         }
     }
 
@@ -223,7 +224,7 @@ class DarrayConstructor : Dconstructor
     }
 
     override
-    DError* Construct(Drealm realm, out Value ret, Value[] arglist)
+    DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         import dmdscript.primitive : PropertyKey;
         import dmdscript.errmsgs: ArrayLenOutOfBoundsError;
@@ -246,11 +247,11 @@ class DarrayConstructor : Dconstructor
             {
                 uint len;
 
-                len = v.toUint32(realm);
+                len = v.toUint32(cc);
                 if(cast(double)len != v.number)
                 {
                     ret.putVundefined;
-                    return ArrayLenOutOfBoundsError(realm, v.number);
+                    return ArrayLenOutOfBoundsError(cc.realm, v.number);
                 }
                 else
                 {
@@ -272,7 +273,7 @@ class DarrayConstructor : Dconstructor
             {
                 a.ulength = 1;
                 a.length.number = 1;
-                a.Set(PropertyKey(0), *v, Property.Attribute.None, realm);
+                a.Set(PropertyKey(0), *v, Property.Attribute.None, cc);
             }
         }
         else
@@ -289,7 +290,7 @@ class DarrayConstructor : Dconstructor
             a.length.number = arglist.length;
             for(uint k = 0; k < arglist.length; k++)
             {
-                a.Set(PropertyKey(k), arglist[k], Property.Attribute.None, realm);
+                a.Set(PropertyKey(k), arglist[k], Property.Attribute.None, cc);
             }
         }
         ret = a.value;
@@ -312,7 +313,7 @@ private:
 //
 @DFD(1, DFD.Type.Static)
 DError* from(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -321,7 +322,7 @@ DError* from(
 //
 @DFD(1, DFD.Type.Static)
 DError* isArray(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -330,7 +331,7 @@ DError* isArray(
 //
 @DFD(1, DFD.Type.Static)
 DError* of(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -342,18 +343,18 @@ DError* of(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     //writef("Darray_prototype_toString()\n");
-    array_join(realm, othis, ret, null);
+    array_join(cc, othis, ret, null);
     return null;
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toLocaleString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey, Key;
@@ -371,11 +372,11 @@ DError* toLocaleString(
     if ((cast(Darray)othis) is null)
     {
         ret.putVundefined();
-        return TlsNotTransferrableError(realm);
+        return TlsNotTransferrableError(cc.realm);
     }
 
-    v = othis.Get(Key.length, realm);
-    len = v ? v.toUint32(realm) : 0;
+    v = othis.Get(Key.length, cc);
+    len = v ? v.toUint32(cc) : 0;
 
     // Program prog = cc.program;
     // if(0 == prog.slist.length)
@@ -391,13 +392,13 @@ DError* toLocaleString(
     {
         if(k)
             r ~= separator;
-        v = othis.Get(PropertyKey(k), realm);
+        v = othis.Get(PropertyKey(k), cc);
         if(v && !v.isUndefinedOrNull())
         {
             Dobject ot;
 
-            ot = v.toObject(realm);
-            v = ot.Get(Key.toLocaleString, realm);
+            ot = v.toObject(cc.realm);
+            v = ot.Get(Key.toLocaleString, cc);
             if(v && !v.isPrimitive())   // if it's an Object
             {
                 DError* a;
@@ -406,10 +407,10 @@ DError* toLocaleString(
 
                 o = v.object;
                 rt.putVundefined();
-                a = o.Call(realm, ot, rt, null);
+                a = o.Call(cc, ot, rt, null);
                 if(a)                   // if exception was thrown
                     return a;
-                r ~= rt.toString(realm);
+                r ~= rt.toString(cc);
             }
         }
     }
@@ -421,7 +422,7 @@ DError* toLocaleString(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* concat(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey, Key;
@@ -434,7 +435,7 @@ DError* concat(
     uint n;
     uint a;
 
-    A = realm.dArray();
+    A = cc.realm.dArray();
     n = 0;
     v = &othis.value;
     for(a = 0;; a++)
@@ -446,15 +447,15 @@ DError* concat(
             len = E.ulength;
             for(k = 0; k != len; k++)
             {
-                v = E.Get(PropertyKey(k), realm);
+                v = E.Get(PropertyKey(k), cc);
                 if(v)
-                    A.Set(PropertyKey(n), *v, Property.Attribute.None, realm);
+                    A.Set(PropertyKey(n), *v, Property.Attribute.None, cc);
                 n++;
             }
         }
         else
         {
-            A.Set(PropertyKey(n), *v, Property.Attribute.None, realm);
+            A.Set(PropertyKey(n), *v, Property.Attribute.None, cc);
             n++;
         }
         if(a == arglist.length)
@@ -463,7 +464,7 @@ DError* concat(
     }
 
     auto vl = Value(n);
-    A.Set(Key.length, vl, Property.Attribute.DontEnum, realm);
+    A.Set(Key.length, vl, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -471,15 +472,15 @@ DError* concat(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* join(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    array_join(realm, othis, ret, arglist);
+    array_join(cc, othis, ret, arglist);
     return null;
 }
 
 //
-void array_join(Drealm realm, Dobject othis, out Value ret,
+void array_join(CallContext* cc, Dobject othis, out Value ret,
                 Value[] arglist)
 {
     import dmdscript.primitive : Text, PropertyKey, Key;
@@ -492,20 +493,20 @@ void array_join(Drealm realm, Dobject othis, out Value ret,
     Value* v;
 
     //writef("array_join(othis = %p)\n", othis);
-    v = othis.Get(Key.length, realm);
-    len = v ? v.toUint32(realm) : 0;
+    v = othis.Get(Key.length, cc);
+    len = v ? v.toUint32(cc) : 0;
     if(arglist.length == 0 || arglist[0].isUndefined())
         separator = Text.comma;
     else
-        separator = arglist[0].toString(realm);
+        separator = arglist[0].toString(cc);
 
     for(k = 0; k != len; k++)
     {
         if(k)
             r ~= separator;
-        v = othis.Get(PropertyKey(k), realm);
+        v = othis.Get(PropertyKey(k), cc);
         if(v && !v.isUndefinedOrNull())
-            r ~= v.toString(realm);
+            r ~= v.toString(cc);
     }
 
     ret.put(r);
@@ -514,7 +515,7 @@ void array_join(Drealm realm, Dobject othis, out Value ret,
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toSource(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey, Key;
@@ -525,8 +526,8 @@ DError* toSource(
     uint k;
     Value* v;
 
-    v = othis.Get(Key.length, realm);
-    len = v ? v.toUint32(realm) : 0;
+    v = othis.Get(Key.length, cc);
+    len = v ? v.toUint32(cc) : 0;
     separator = ",";
 
     r = "[".idup;
@@ -534,9 +535,9 @@ DError* toSource(
     {
         if(k)
             r ~= separator;
-        v = othis.Get(PropertyKey(k), realm);
+        v = othis.Get(PropertyKey(k), cc);
         if(v && !v.isUndefinedOrNull())
-            r ~= v.toSource(realm);
+            r ~= v.toSource(cc);
     }
     r ~= "]";
 
@@ -548,7 +549,7 @@ DError* toSource(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* pop(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey, Key;
@@ -560,25 +561,25 @@ DError* pop(
     uint u;
 
     // If othis is a Darray, then we can optimize this significantly
-    v = othis.Get(Key.length, realm);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &undefined;
-    u = v.toUint32(realm);
+    u = v.toUint32(cc);
     if(u == 0)
     {
         val.put(0.0);
-        othis.Set(Key.length, val, Property.Attribute.DontEnum, realm);
+        othis.Set(Key.length, val, Property.Attribute.DontEnum, cc);
         ret.putVundefined();
     }
     else
     {
-        v = othis.Get(PropertyKey(u - 1), realm);
+        v = othis.Get(PropertyKey(u - 1), cc);
         if(!v)
             v = &undefined;
         ret = *v;
         val.put(u - 1);
         othis.Delete(PropertyKey(u - 1));
-        othis.Set(Key.length, val, Property.Attribute.DontEnum, realm);
+        othis.Set(Key.length, val, Property.Attribute.DontEnum, cc);
     }
     return null;
 }
@@ -586,7 +587,7 @@ DError* pop(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* push(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey, Key;
@@ -600,17 +601,17 @@ DError* push(
     uint a;
 
     // If othis is a Darray, then we can optimize this significantly
-    v = othis.Get(Key.length, realm);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &undefined;
-    u = v.toUint32(realm);
+    u = v.toUint32(cc);
     for(a = 0; a < arglist.length; a++)
     {
         val.put(arglist[a]);
-        othis.Set(PropertyKey(u + a), val, Property.Attribute.None, realm);
+        othis.Set(PropertyKey(u + a), val, Property.Attribute.None, cc);
     }
     val.put(u + a);
-    othis.Set(Key.length, val,  Property.Attribute.DontEnum, realm);
+    othis.Set(Key.length, val,  Property.Attribute.DontEnum, cc);
     ret.put(u + a);
     return null;
 }
@@ -618,7 +619,7 @@ DError* push(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* reverse(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey, Key;
@@ -634,24 +635,24 @@ DError* reverse(
     uint len;
     Value tmp;
 
-    v = othis.Get(Key.length, realm);
-    len = v ? v.toUint32(realm) : 0;
+    v = othis.Get(Key.length, cc);
+    len = v ? v.toUint32(cc) : 0;
     pivot = len / 2;
     for(a = 0; a != pivot; a++)
     {
         b = len - a - 1;
         //writef("a = %d, b = %d\n", a, b);
-        va = othis.Get(PropertyKey(a), realm);
+        va = othis.Get(PropertyKey(a), cc);
         if(va)
             tmp = *va;
-        vb = othis.Get(PropertyKey(b), realm);
+        vb = othis.Get(PropertyKey(b), cc);
         if(vb)
-            othis.Set(PropertyKey(a), *vb, Property.Attribute.None, realm);
+            othis.Set(PropertyKey(a), *vb, Property.Attribute.None, cc);
         else
             othis.Delete(PropertyKey(a));
 
         if(va)
-            othis.Set(PropertyKey(b), tmp, Property.Attribute.None, realm);
+            othis.Set(PropertyKey(b), tmp, Property.Attribute.None, cc);
         else
             othis.Delete(PropertyKey(b));
     }
@@ -662,7 +663,7 @@ DError* reverse(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* shift(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey, Key;
@@ -678,21 +679,21 @@ DError* shift(
 
     // If othis is a Darray, then we can optimize this significantly
     //writef("shift(othis = %p)\n", othis);
-    v = othis.Get(Key.length, realm);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &undefined;
-    len = v.toUint32(realm);
+    len = v.toUint32(cc);
 
     if(len)
     {
-        result = othis.Get(PropertyKey(0u), realm);
+        result = othis.Get(PropertyKey(0u), cc);
         ret = result ? *result : vundefined;
         for(k = 1; k != len; k++)
         {
-            v = othis.Get(PropertyKey(k), realm);
+            v = othis.Get(PropertyKey(k), cc);
             if(v)
             {
-                othis.Set(PropertyKey(k - 1), *v, Property.Attribute.None, realm);
+                othis.Set(PropertyKey(k - 1), *v, Property.Attribute.None, cc);
             }
             else
             {
@@ -706,7 +707,7 @@ DError* shift(
         ret = vundefined;
 
     auto vlen = Value(len);
-    othis.Set(Key.length, vlen, Property.Attribute.DontEnum, realm);
+    othis.Set(Key.length, vlen, Property.Attribute.DontEnum, cc);
     return null;
 }
 
@@ -714,7 +715,7 @@ DError* shift(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* slice(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey, Key;
@@ -731,10 +732,10 @@ DError* slice(
     Value* v;
     Darray A;
 
-    v = othis.Get(Key.length, realm);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &undefined;
-    len = v.toUint32(realm);
+    len = v.toUint32(cc);
 
 version(SliceSpliceExtension){
     double start;
@@ -742,24 +743,24 @@ version(SliceSpliceExtension){
     switch(arglist.length)
     {
     case 0:
-        start = vundefined.toNumber(realm);
+        start = vundefined.toNumber(cc);
         end = len;
         break;
 
     case 1:
-        start = arglist[0].toNumber(realm);
+        start = arglist[0].toNumber(cc);
         end = len;
         break;
 
     default:
-        start = arglist[0].toNumber(realm);
+        start = arglist[0].toNumber(cc);
         if(arglist[1].isUndefined())
         {
             end = len;
         }
         else
         {
-            end = arglist[1].toNumber(realm);
+            end = arglist[1].toNumber(cc);
         }
         break;
     }
@@ -851,26 +852,26 @@ else
             r8 = len;
     }
 }
-    A = realm.dArray();
+    A = cc.realm.dArray();
     for(n = 0; k < r8; k++)
     {
-        v = othis.Get(PropertyKey(k), realm);
+        v = othis.Get(PropertyKey(k), cc);
         if(v)
         {
-            A.Set(PropertyKey(n), *v, Property.Attribute.None, realm);
+            A.Set(PropertyKey(n), *v, Property.Attribute.None, cc);
         }
         n++;
     }
 
     auto vn = Value(n);
-    A.Set(Key.length, vn, Property.Attribute.DontEnum, realm);
+    A.Set(Key.length, vn, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
 
 //------------------------------------------------------------------------------
 static Dobject comparefn;
-static Drealm compareRealm;
+static CallContext* compareCC;
 
 extern (C) int compare_value(scope const void* x, scope const void* y)
 {
@@ -901,8 +902,8 @@ extern (C) int compare_value(scope const void* x, scope const void* y)
             arglist[0] = *vx;
             arglist[1] = *vy;
             ret.putVundefined();
-            comparefn.Call(compareRealm, comparefn, ret, arglist);
-            n = ret.toNumber(compareRealm);
+            comparefn.Call(compareCC, comparefn, ret, arglist);
+            n = ret.toNumber(compareCC);
             if(n < 0)
                 cmp = -1;
             else if(n > 0)
@@ -912,8 +913,8 @@ extern (C) int compare_value(scope const void* x, scope const void* y)
         }
         else
         {
-            sx = vx.toString(compareRealm);
-            sy = vy.toString(compareRealm);
+            sx = vx.toString(compareCC);
+            sy = vy.toString(compareCC);
             cmp = stdcmp(sx, sy);
             if(cmp < 0)
                 cmp = -1;
@@ -927,7 +928,7 @@ extern (C) int compare_value(scope const void* x, scope const void* y)
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* sort(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : qsort;
@@ -940,8 +941,8 @@ DError* sort(
     size_t u;
 
     //writef("Array.prototype.sort()\n");
-    v = othis.Get(Key.length, realm);
-    len = v ? v.toUint32(realm) : 0;
+    v = othis.Get(Key.length, cc);
+    len = v ? v.toUint32(cc) : 0;
 
     // This is not optimal, as isArrayIndex is done at least twice
     // for every array member. Additionally, the qsort() by index
@@ -1010,7 +1011,7 @@ DError* sort(
         if(p.isNoneAttribute && key.isArrayIndex(index))
         {
             pindices[nprops] = index;
-            pvalues[nprops] = *p.get(realm, othis);
+            pvalues[nprops] = *p.get(cc, othis);
             nprops++;
         }
     }
@@ -1018,7 +1019,7 @@ DError* sort(
     synchronized
     {
         comparefn = null;
-        compareRealm = realm;
+        compareCC = cc;
         if(arglist.length)
         {
             if(!arglist[0].isPrimitive())
@@ -1029,7 +1030,7 @@ DError* sort(
         qsort(pvalues.ptr, nprops, Value.sizeof, &compare_value);
 
         comparefn = null;
-        compareRealm = null;
+        compareCC = null;
     }
 
     // Stuff the sorted value's back into the array
@@ -1037,7 +1038,7 @@ DError* sort(
     {
         size_t index;
 
-        othis.Set(PropertyKey(u), pvalues[u], Property.Attribute.None, realm);
+        othis.Set(PropertyKey(u), pvalues[u], Property.Attribute.None, cc);
         index = pindices[u];
         if(index >= nprops)
         {
@@ -1055,7 +1056,7 @@ DError* sort(
 //------------------------------------------------------------------------------
 @DFD(2)
 DError* splice(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey, Key;
@@ -1074,10 +1075,10 @@ DError* splice(
     uint inscnt;
     uint startidx;
 
-    v = othis.Get(Key.length, realm);
+    v = othis.Get(Key.length, cc);
     if(!v)
         v = &undefined;
-    len = v.toUint32(realm);
+    len = v.toUint32(cc);
 
 version(SliceSpliceExtension){
     double start;
@@ -1086,18 +1087,18 @@ version(SliceSpliceExtension){
     switch(arglist.length)
     {
     case 0:
-        start = vundefined.toNumber(realm);
+        start = vundefined.toNumber(cc);
         deleteCount = 0;
         break;
 
     case 1:
-        start = arglist[0].toNumber(realm);
-        deleteCount = vundefined.toNumber(realm);
+        start = arglist[0].toNumber(cc);
+        deleteCount = vundefined.toNumber(cc);
         break;
 
     default:
-        start = arglist[0].toNumber(realm);
-        deleteCount = arglist[1].toNumber(realm);
+        start = arglist[0].toNumber(cc);
+        deleteCount = arglist[1].toNumber(cc);
         //checked later
         break;
     }
@@ -1154,7 +1155,7 @@ else
         delcnt = len - startidx;
 }
 
-    A = realm.dArray();
+    A = cc.realm.dArray();
 
     // If deleteCount is not specified, ECMA implies it should
     // be 0, while "JavaScript The Definitive Guide" says it should
@@ -1166,13 +1167,13 @@ else
     //writef("Darray.splice(startidx = %d, delcnt = %d)\n", startidx, delcnt);
     for(k = 0; k != delcnt; k++)
     {
-        v = othis.Get(PropertyKey(startidx + k), realm);
+        v = othis.Get(PropertyKey(startidx + k), cc);
         if(v)
-            A.Set(PropertyKey(k), *v, Property.Attribute.None, realm);
+            A.Set(PropertyKey(k), *v, Property.Attribute.None, cc);
     }
 
     auto delv = Value(delcnt);
-    A.Set(Key.length, delv, Property.Attribute.DontEnum, realm);
+    A.Set(Key.length, delv, Property.Attribute.DontEnum, cc);
     inscnt = (arglist.length > 2) ? cast(uint)arglist.length - 2 : 0;
     if(inscnt != delcnt)
     {
@@ -1180,10 +1181,10 @@ else
         {
             for(k = startidx; k != (len - delcnt); k++)
             {
-                v = othis.Get(PropertyKey(k + delcnt), realm);
+                v = othis.Get(PropertyKey(k + delcnt), cc);
                 if(v)
                     othis.Set(PropertyKey(k + inscnt), *v,
-                              Property.Attribute.None, realm);
+                              Property.Attribute.None, cc);
                 else
                     othis.Delete(PropertyKey(k + inscnt));
             }
@@ -1195,10 +1196,10 @@ else
         {
             for(k = len - delcnt; k != startidx; k--)
             {
-                v = othis.Get(PropertyKey(k + delcnt - 1), realm);
+                v = othis.Get(PropertyKey(k + delcnt - 1), cc);
                 if(v)
                     othis.Set(PropertyKey(k + inscnt - 1), *v,
-                              Property.Attribute.None, realm);
+                              Property.Attribute.None, cc);
                 else
                     othis.Delete(PropertyKey(k + inscnt - 1));
             }
@@ -1208,12 +1209,12 @@ else
     for(a = 2; a < arglist.length; a++)
     {
         v = &arglist[a];
-        othis.Set(PropertyKey(k), *v, Property.Attribute.None, realm);
+        othis.Set(PropertyKey(k), *v, Property.Attribute.None, cc);
         k++;
     }
 
     auto lv = Value(len - delcnt + inscnt);
-    othis.Set(Key.length, lv, Property.Attribute.DontEnum, realm);
+    othis.Set(Key.length, lv, Property.Attribute.DontEnum, cc);
     ret = A.value;
     return null;
 }
@@ -1221,7 +1222,7 @@ else
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* unshift(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey, Key;
@@ -1233,27 +1234,27 @@ DError* unshift(
     uint k;
     Value val;
 
-    v = othis.Get(PropertyKey(Key.length), realm);
+    v = othis.Get(PropertyKey(Key.length), cc);
     if(!v)
         v = &undefined;
-    len = v.toUint32(realm);
+    len = v.toUint32(cc);
 
     for(k = len; k>0; k--)
     {
-        v = othis.Get(PropertyKey(k - 1), realm);
+        v = othis.Get(PropertyKey(k - 1), cc);
         if(v)
             othis.Set(PropertyKey(cast(uint)(k + arglist.length - 1)), *v,
-                      Property.Attribute.None, realm);
+                      Property.Attribute.None, cc);
         else
             othis.Delete(PropertyKey(cast(uint)(k + arglist.length - 1)));
     }
 
     for(k = 0; k < arglist.length; k++)
     {
-        othis.Set(PropertyKey(k), arglist[k], Property.Attribute.None, realm);
+        othis.Set(PropertyKey(k), arglist[k], Property.Attribute.None, cc);
     }
     val.put(len + arglist.length);
-    othis.Set(Key.length, val, Property.Attribute.DontEnum, realm);
+    othis.Set(Key.length, val, Property.Attribute.DontEnum, cc);
     ret.put(len + arglist.length);
     return null;
 }
@@ -1261,7 +1262,7 @@ DError* unshift(
 //
 @DFD(1)
 DError* copyWithin(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1270,7 +1271,7 @@ DError* copyWithin(
 //
 @DFD(0)
 DError* entries(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1279,7 +1280,7 @@ DError* entries(
 //
 @DFD(1)
 DError* every(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1288,7 +1289,7 @@ DError* every(
 //
 @DFD(1)
 DError* fill(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1297,7 +1298,7 @@ DError* fill(
 //
 @DFD(1)
 DError* filter(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1306,7 +1307,7 @@ DError* filter(
 //
 @DFD(1)
 DError* find(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1315,7 +1316,7 @@ DError* find(
 //
 @DFD(1)
 DError* findIndex(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1324,7 +1325,7 @@ DError* findIndex(
 //
 @DFD(1)
 DError* forEach(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1333,7 +1334,7 @@ DError* forEach(
 //
 @DFD(1)
 DError* includes(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1342,7 +1343,7 @@ DError* includes(
 //
 @DFD(1)
 DError* indexOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1351,7 +1352,7 @@ DError* indexOf(
 //
 @DFD(1)
 DError* keys(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1360,7 +1361,7 @@ DError* keys(
 //
 @DFD(1)
 DError* lastIndexOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1369,7 +1370,7 @@ DError* lastIndexOf(
 //
 @DFD(1)
 DError* map(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1378,7 +1379,7 @@ DError* map(
 //
 @DFD(1)
 DError* reduce(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1387,7 +1388,7 @@ DError* reduce(
 //
 @DFD(1)
 DError* reduceRight(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1396,7 +1397,7 @@ DError* reduceRight(
 //
 @DFD(1)
 DError* some(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -1405,7 +1406,7 @@ DError* some(
 //
 @DFD(1)
 DError* values(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

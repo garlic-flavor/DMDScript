@@ -28,6 +28,7 @@ import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.drealm: undefined, Drealm;
+import dmdscript.callcontext: CallContext;
 debug import std.stdio;
 
 
@@ -132,7 +133,7 @@ class DregexpConstructor : Dconstructor
         return new Dregexp(classPrototype, args);
     }
 
-    override DError* Construct(Drealm realm, out Value ret, Value[] arglist)
+    override DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         import dmdscript.primitive : Text;
         // ECMA 262 v3 15.10.4.1
@@ -160,7 +161,7 @@ class DregexpConstructor : Dconstructor
             pattern = &arglist[0];
             break;
         }
-        R = Dregexp.isRegExp(realm, pattern);
+        R = Dregexp.isRegExp(cc, pattern);
         if(R)
         {
             if(flags.isUndefined)
@@ -170,18 +171,18 @@ class DregexpConstructor : Dconstructor
             }
             else
             {
-                return TypeError(realm, "RegExp.prototype.constructor");
+                return TypeError(cc.realm, "RegExp.prototype.constructor");
             }
         }
         else
         {
-            P = pattern.isUndefined ? Text.Empty : pattern.toString(realm);
-            F = flags.isUndefined ? Text.Empty : flags.toString(realm);
+            P = pattern.isUndefined ? Text.Empty : pattern.toString(cc);
+            F = flags.isUndefined ? Text.Empty : flags.toString(cc);
         }
         r = opCall(P, F);
         if(r.re.errors !is null)
         {
-            return RegexpCompileError(realm, r.re.errors.toString);
+            return RegexpCompileError(cc.realm, r.re.errors.toString);
         }
         else
         {
@@ -190,7 +191,7 @@ class DregexpConstructor : Dconstructor
         }
     }
 
-    override DError* Call(Drealm realm, Dobject othis, out Value ret,
+    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 262 v3 15.10.3.1
@@ -211,21 +212,21 @@ class DregexpConstructor : Dconstructor
                 }
             }
         }
-        return Construct(realm, ret, arglist);
+        return Construct(cc, ret, arglist);
     }
 
-    override Value* Get(in PropertyKey PropertyName, Drealm realm)
+    override Value* Get(in PropertyKey PropertyName, CallContext* cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
-        return super.Get(sk, realm);
+        return super.Get(sk, cc);
     }
 
     override
     DError* Set(in PropertyKey PropertyName, ref Value value,
-                in Property.Attribute attributes, Drealm realm)
+                in Property.Attribute attributes, CallContext* cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
-        return Dfunction.Set(sk, value, attributes, realm);
+        return Dfunction.Set(sk, value, attributes, cc);
     }
 
     override int CanPut(in string PropertyName)
@@ -279,7 +280,7 @@ class DregexpConstructor : Dconstructor
 /* ===================== Dregexp_prototype_toString =============== */
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a RegExp
@@ -296,7 +297,7 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return NotTransferrableError(realm, "RegExp.prototype.toString()");
+        return NotTransferrableError(cc.realm, "RegExp.prototype.toString()");
     }
     return null;
 }
@@ -304,28 +305,28 @@ DError* toString(
 /* ===================== Dregexp_prototype_test =============== */
 @DFD(1)
 DError* test(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.10.6.3 says this is equivalent to:
     //	RegExp.prototype.exec(string) != null
-    return Dregexp.exec(othis, realm, ret, arglist, EXEC_BOOLEAN);
+    return Dregexp.exec(othis, cc, ret, arglist, EXEC_BOOLEAN);
 }
 
 /* ===================== Dregexp_prototype_exec ============= */
 @DFD(1)
 DError* exec(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    return Dregexp.exec(othis, realm, ret, arglist, EXEC_ARRAY);
+    return Dregexp.exec(othis, cc, ret, arglist, EXEC_ARRAY);
 }
 
 
 /* ===================== Dregexp_prototype_compile ============= */
 @DFD(2)
 DError* compile(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.regex : RegexException;
@@ -345,10 +346,10 @@ DError* compile(
             break;
 
         default:
-            attributes = arglist[1].toString(realm);
+            attributes = arglist[1].toString(cc);
             goto case;
         case 1:
-            pattern = arglist[0].toString(realm);
+            pattern = arglist[0].toString(cc);
             break;
         }
 
@@ -369,7 +370,7 @@ DError* compile(
     else
     {
         ret.putVundefined();
-        return NotTransferrableError(realm, "RegExp.prototype.compile()");
+        return NotTransferrableError(cc.realm, "RegExp.prototype.compile()");
     }
 
     // Documentation says nothing about a return value,
@@ -488,26 +489,26 @@ class Dregexp : Dobject
         re = new RegExp(null, null);
     }
 
-    override DError* Call(Drealm realm, Dobject othis, out Value ret,
+    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
 
-        v = Get(Key.exec, realm);
-        return v.toObject(realm).Call(realm, this, ret, arglist);
+        v = Get(Key.exec, cc);
+        return v.toObject(cc.realm).Call(cc, this, ret, arglist);
     }
 
 static:
-    Dregexp isRegExp(Drealm realm, Value* v)
+    Dregexp isRegExp(CallContext* cc, Value* v)
     {
         if      (v.isPrimitive)
             return null;
         else
-            return cast(Dregexp)v.toObject(realm);
+            return cast(Dregexp)v.toObject(cc.realm);
     }
 
-    DError* exec(Dobject othis, Drealm realm, out Value ret,
+    DError* exec(Dobject othis, CallContext* cc, out Value ret,
                  Value[] arglist, int rettype)
     {
         // othis must be a RegExp
@@ -521,23 +522,23 @@ static:
 //            CallContext cc;
 
             if(arglist.length)
-                s = arglist[0].toString(realm);
+                s = arglist[0].toString(cc);
             else
             {
                 Dfunction df;
 
-                df = realm.dRegexp;
+                df = cc.realm.dRegexp;
                 s = (cast(DregexpConstructor)df).input.text;
             }
 
             r = dr.re;
-            dc = cast(DregexpConstructor)realm.dRegexp;
+            dc = cast(DregexpConstructor)cc.realm.dRegexp;
 
             // Decide if we are multiline
             r.multiline = 0 != dr.multiline.dbool;
 
             if(r.global && rettype != EXEC_INDEX)
-                lasti = cast(int)dr.lastIndex.toInteger(realm);
+                lasti = cast(int)dr.lastIndex.toInteger(cc);
             else
                 lasti = 0;
 
@@ -595,18 +596,18 @@ static:
                 {
                 case EXEC_ARRAY:
                 {
-                    Darray a = realm.dArray();
+                    Darray a = cc.realm.dArray();
 
                     auto val = Value(r.input);
-                    a.Set(Key.input, val, Property.Attribute.None, realm);
+                    a.Set(Key.input, val, Property.Attribute.None, cc);
                     val.put(r.index);
-                    a.Set(Key.index, val, Property.Attribute.None, realm);
+                    a.Set(Key.index, val, Property.Attribute.None, cc);
                     val.put(r.lastIndex);
                     a.Set(Key.lastIndex, val, Property.Attribute.DontConfig,
-                          realm);
+                          cc);
 
                     a.Set(PropertyKey(0), *dc.lastMatch,
-                          Property.Attribute.None, realm);
+                          Property.Attribute.None, cc);
 
                     // [1]..[nparens]
                     if (nmatches < 9)
@@ -617,27 +618,27 @@ static:
                         {
                             val.put(Text.Empty);
                             a.Set(PropertyKey(i), val,
-                                  Property.Attribute.None, realm);
+                                  Property.Attribute.None, cc);
                         }
                         // Reuse values already put into dc.dollar[]
                         else if(r.nmatches <= 9)
                             a.Set(PropertyKey(i), *dc.dollar[i],
-                                  Property.Attribute.None, realm);
+                                  Property.Attribute.None, cc);
                         else if(i > r.nmatches - 9)
                             a.Set(PropertyKey(i),
                                   *dc.dollar[i - (r.nmatches - 9)],
-                                  Property.Attribute.None, realm);
+                                  Property.Attribute.None, cc);
                         else if(r.captures(i) is null)
                         {
                             val.putVundefined;
                             a.Set(PropertyKey(i), val,
-                                  Property.Attribute.None, realm);
+                                  Property.Attribute.None, cc);
                         }
                         else
                         {
                             val.put(r.captures(i));
                             a.Set(PropertyKey(i), val,
-                                  Property.Attribute.None, realm);
+                                  Property.Attribute.None, cc);
                         }
                     }
                     ret.put(a);
@@ -693,7 +694,7 @@ static:
         else
         {
             ret.putVundefined();
-            return NotTransferrableError(realm, "RegExp.prototype.exec()");
+            return NotTransferrableError(cc.realm, "RegExp.prototype.exec()");
         }
 
         return null;

@@ -22,6 +22,7 @@ import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.value : DError, Value;
 import dmdscript.drealm: Drealm;
+import dmdscript.callcontext: CallContext;
 
 //==============================================================================
 ///
@@ -46,7 +47,7 @@ class DsetConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(Drealm realm, out Value ret,
+    override DError* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -60,7 +61,7 @@ private:
 //
 @DFD()
 DError* add(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -69,7 +70,7 @@ DError* add(
 //
 @DFD()
 DError* clear(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -78,7 +79,7 @@ DError* clear(
 //
 @DFD(1, DFD.Type.Prototype, "delete")
 DError* _delete(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -87,7 +88,7 @@ DError* _delete(
 //
 @DFD()
 DError* entries(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -96,7 +97,7 @@ DError* entries(
 //
 @DFD(1)
 DError* forEach(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -105,7 +106,7 @@ DError* forEach(
 //
 @DFD(1)
 DError* get(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -114,7 +115,7 @@ DError* get(
 //
 @DFD(1)
 DError* has(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -123,7 +124,7 @@ DError* has(
 //
 @DFD
 DError* keys(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -132,7 +133,7 @@ DError* keys(
 //
 @DFD(1)
 DError* set(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -141,7 +142,7 @@ DError* set(
 //
 @DFD
 DError* size(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -150,7 +151,7 @@ DError* size(
 //
 @DFD
 DError* values(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

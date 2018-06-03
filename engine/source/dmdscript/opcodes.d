@@ -32,6 +32,7 @@ import dmdscript.ddeclaredfunction;
 import dmdscript.dfunction;
 // import dmdscript.protoerror;
 import dmdscript.drealm : undefined, Drealm, DmoduleRealm;
+import dmdscript.callcontext: CallContext;
 
 debug import std.stdio;
 
@@ -61,7 +62,7 @@ struct IR
     /****************************
      * This is the main interpreter loop.
      */
-    static DError* call(Drealm realm, Dobject othis, const(IR)* code,
+    static DError* call(CallContext* cc, Dobject othis, const(IR)* code,
                         out Value ret, Value* locals)
     {
         import std.array : join;
@@ -100,14 +101,14 @@ struct IR
             for(auto counter = 0;; ++counter)
             {
                 // pop entry off scope chain
-                if      ((o = realm.popScope) is null)
+                if      ((o = cc.pop) is null)
                 {
                     ret.putVundefined;
                     return err;
                 }
                 else if (auto ca = cast(Catch)o)
                 {
-                    o = realm.dObject();
+                    o = cc.realm.dObject();
                     version(JSCRIPT_CATCH_BUG)
                     {
                         PutValue(realm, ca.name, &err.entity);
@@ -115,9 +116,9 @@ struct IR
                     else
                     {
                         o.Set(*ca.name, err.entity,
-                              Property.Attribute.DontDelete, realm);
+                              Property.Attribute.DontDelete, cc);
                     }
-                    realm.push(o);
+                    cc.push(o);
                     code = cast(IR*)codestart + ca.offset;
                     break;
                 }
@@ -165,7 +166,7 @@ struct IR
 
         try
         {
-        loop: for(;!realm.isInterrupting; )
+        loop: for(;!cc.realm.isInterrupting; )
             {
             // Lnext:
                 // if(realm.isInterrupting) // see if script was interrupted
@@ -188,14 +189,14 @@ struct IR
                     int i32;
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = cannotConvert(realm, b);
+                        sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
                     c = locals + (code + 3).index;
-                    v = o.Get(c.toPropertyKey, realm);
+                    v = o.Get(c.toPropertyKey, cc);
 
                     if(!v)
                         v = &undefined;
@@ -209,7 +210,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    sta = b.Set(c.toPropertyKey, *a, realm);
+                    sta = b.Set(c.toPropertyKey, *a, cc);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.Put].size;
@@ -219,15 +220,15 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     id = (code + 3).id;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = CannotConvertToObject3Error(realm,
-                            b.type.to!string, b.toString(realm),
+                        sta = CannotConvertToObject3Error(cc.realm,
+                            b.type.to!string, b.toString(cc),
                             id.toString);
                         goto Lthrow;
                     }
-                    v = o.Get(*id, realm);
+                    v = o.Get(*id, cc);
                     if(!v)
                     {
                         v = &undefined;
@@ -237,9 +238,9 @@ struct IR
                     break;
                 case Opcode.CheckRef: // s
                     id = (code+1).id;
-                    if (realm.get(*id) is null)
+                    if (cc.get(*id) is null)
                     {
-                        sta = UndefinedVarError(realm, id.toString);
+                        sta = UndefinedVarError(cc.realm, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.CheckRef].size;
@@ -261,7 +262,7 @@ struct IR
                     }
 
                     // v = scope_get(cc, scopex, id);
-                    v = realm.get(*id);
+                    v = cc.get(*id);
                     if(v is null)
                     {
                         // if (realm.strictMode)
@@ -270,7 +271,7 @@ struct IR
                         //     goto Lthrow;
                         // }
 
-                        realm.set(*id, undefined);
+                        cc.set(*id, undefined);
                         v = signalingUndefined(id.toString);
                         // realm.set(*id, *v);
                     }
@@ -293,22 +294,22 @@ struct IR
                 case Opcode.PutGetterS:
                 {
                     a = locals + (code + 1).index;
-                    auto f = cast(Dfunction)a.toObject(realm);
+                    auto f = cast(Dfunction)a.toObject(cc.realm);
                     if (f is null)
                     {
-                        sta = cannotConvert(realm, a);
+                        sta = cannotConvert(cc, a);
                         goto Lthrow;
                     }
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(o is null)
                     {
-                        sta = cannotConvert(realm, b);
+                        sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
                     if (!o.SetGetter(*(code+3).id, f, Property.Attribute.None))
                     {
-                        sta = CannotPutError(realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!
+                        sta = CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PutGetterS].size;
@@ -321,22 +322,22 @@ struct IR
                 case Opcode.PutSetterS:
                 {
                     a = locals + (code + 1).index;
-                    auto f = cast(Dfunction)a.toObject(realm);
+                    auto f = cast(Dfunction)a.toObject(cc.realm);
                     if (f is null)
                     {
-                        sta = cannotConvert(realm, a);
+                        sta = cannotConvert(cc, a);
                         goto Lthrow;
                     }
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = cannotConvert(realm, b);
+                        sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
                     if (!o.SetSetter(*(code+3).id, f, Property.Attribute.None))
                     {
-                        sta = CannotPutError(realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        sta = CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PutSetterS].size;
@@ -355,7 +356,7 @@ struct IR
                     assert (id !is null);
 
                     b = locals + (code + 2).index;
-                    v = b.Get(*id, realm);
+                    v = b.Get(*id, cc);
                     goto Laddass2;
 
                 case Opcode.AddAsSScope:         // a = (s += a)
@@ -367,17 +368,17 @@ struct IR
                         if(id is scopecache[si].id)
                             v = scopecache[si].v;
                         else
-                            v = realm.get(*id);
+                            v = cc.get(*id);
                     }
                     else
                     {
-                        v = realm.get(*id);
+                        v = cc.get(*id);
                     }
                     Laddass2:
                     a = locals + (code + 1).index;
                     if(!v)
                     {
-                        sta = UndefinedVarError(realm, id.toString);
+                        sta = UndefinedVarError(cc.realm, id.toString);
                         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                         // To_Do: add b's information
                         goto Lthrow;
@@ -390,23 +391,23 @@ struct IR
                     }
                     else
                     {
-                        v.toPrimitive(realm, *v);
-                        a.toPrimitive(realm, *a);
+                        v.toPrimitive(cc, *v);
+                        a.toPrimitive(cc, *a);
                         if(v.isString)
                         {
                             if (a.isUndefined)
                                 a.put(v.text);
                             else
-                                a.put(v.text ~ a.toString(realm));
+                                a.put(v.text ~ a.toString(cc));
                         }
                         else if(a.isString)
                         {
                             if (!v.isUndefined)
-                                a.put(v.toString(realm) ~ a.text);
+                                a.put(v.toString(cc) ~ a.text);
                         }
                         else
                         {
-                            a.put(a.toNumber(realm) + v.toNumber(realm));
+                            a.put(a.toNumber(cc) + v.toNumber(cc));
                         }
                         *v = *a; //full copy
                     }
@@ -421,14 +422,14 @@ struct IR
                 case Opcode.PutS:            // b.s = a
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = cannotConvert(realm, b);
+                        sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
                     sta = o.Set(*(code + 3).id, *a,
-                                Property.Attribute.None, realm);
+                                Property.Attribute.None, cc);
                     if(sta !is null)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutS].size;
@@ -436,10 +437,10 @@ struct IR
 
                 case Opcode.PutScope:            // s = a
                     a = locals + (code + 1).index;
-                    sta = a.checkReference(realm);
+                    sta = a.checkReference(cc.realm);
                     if (sta !is null)
                         goto Lthrow;
-                    sta = realm.set(*(code + 2).id, *a);
+                    sta = cc.set(*(code + 2).id, *a);
                     if (sta !is null)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutScope].size;
@@ -448,29 +449,29 @@ struct IR
                 case Opcode.PutDefault:              // b = a
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = CannotAssignError(realm, a.type.to!string,
+                        sta = CannotAssignError(cc.realm, a.type.to!string,
                                                 b.type.to!string);
                         goto Lthrow;
                     }
-                    sta = o.PutDefault(realm, *a);
+                    sta = o.PutDefault(cc.realm, *a);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutDefault].size;
                     break;
 
                 case Opcode.PutThis:             // id = a
-                    o = realm.getNonFakeObject;
+                    o = cc.getNonFakeObject;
                     id = (code + 2).id;
                     a = locals + (code + 1).index;
                     assert(o);
                     if(o.HasProperty(*id))
                         sta = o.Set(*id, *a,
-                                    Property.Attribute.DontDelete, realm);
+                                    Property.Attribute.DontDelete, cc);
                     else
-                        sta = realm.setThis(*id, *a,
+                        sta = cc.setThis(*id, *a,
                                          Property.Attribute.DontDelete);
                     if (sta !is null)
                         goto Lthrow;
@@ -496,8 +497,7 @@ struct IR
                 case Opcode.Object:              // a = object
                 {
                     auto fd = cast(FunctionDefinition)(code+2).fd;
-                    auto fobject = new DdeclaredFunction(
-                        realm, fd, realm.scopes.dup);
+                    auto fobject = new DdeclaredFunction(cc.realm, fd, cc.save);
                     (locals + (code + 1).index).put(fobject);
                     code += IRTypes[Opcode.Object].size;
                     break;
@@ -531,7 +531,7 @@ struct IR
 
                 case Opcode.ThisGet:             // a = othis.ident
                     a = locals + (code + 1).index;
-                    v = othis.Get(*(code + 2).id, realm);
+                    v = othis.Get(*(code + 2).id, cc);
                     if(!v)
                         v = &undefined;
                     *a = *v;
@@ -540,19 +540,19 @@ struct IR
 
                 case Opcode.Neg:                 // a = -a
                     a = locals + (code + 1).index;
-                    a.put(-a.toNumber(realm));
+                    a.put(-a.toNumber(cc));
                     code += IRTypes[Opcode.Neg].size;
                     break;
 
                 case Opcode.Pos:                 // a = a
                     a = locals + (code + 1).index;
-                    a.put(a.toNumber(realm));
+                    a.put(a.toNumber(cc));
                     code += IRTypes[Opcode.Pos].size;
                     break;
 
                 case Opcode.Com:                 // a = ~a
                     a = locals + (code + 1).index;
-                    a.put(~a.toInt32(realm));
+                    a.put(~a.toInt32(cc));
                     code += IRTypes[Opcode.Com].size;
                     break;
 
@@ -577,13 +577,13 @@ struct IR
                     c = locals + (code + 3).index;
                     if(c.isPrimitive)
                     {
-                        sta = RhsMustBeObjectError(realm, "instanceof",
+                        sta = RhsMustBeObjectError(cc.realm, "instanceof",
                                                    c.type.to!string);
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    sta = c.toObject(realm).HasInstance(realm, *a, *b);
+                    sta = c.toObject(cc.realm).HasInstance(cc, *a, *b);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.Instance].size;
@@ -605,13 +605,13 @@ struct IR
                         char[Value.sizeof] vtmpc;
                         Value* vc = cast(Value*)vtmpc;
 
-                        b.toPrimitive(realm, *vb);
-                        c.toPrimitive(realm, *vc);
+                        b.toPrimitive(cc, *vb);
+                        c.toPrimitive(cc, *vc);
 
                         if(vb.isString || vc.isString)
-                            a.put(vb.toString(realm) ~ vc.toString(realm));
+                            a.put(vb.toString(cc) ~ vc.toString(cc));
                         else
-                            a.put(vb.toNumber(realm) + vc.toNumber(realm));
+                            a.put(vb.toNumber(cc) + vc.toNumber(cc));
                     }
 
                     code += IRTypes[Opcode.Add].size;
@@ -621,7 +621,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toNumber(realm) - c.toNumber(realm));
+                    a.put(b.toNumber(cc) - c.toNumber(cc));
                     code += 4;
                     break;
 
@@ -629,7 +629,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toNumber(realm) * c.toNumber(realm));
+                    a.put(b.toNumber(cc) * c.toNumber(cc));
                     code += IRTypes[Opcode.Mul].size;
                     break;
 
@@ -638,7 +638,7 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
 
-                    a.put(b.toNumber(realm) / c.toNumber(realm));
+                    a.put(b.toNumber(cc) / c.toNumber(cc));
                     code += IRTypes[Opcode.Div].size;
                     break;
 
@@ -646,7 +646,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toNumber(realm) % c.toNumber(realm));
+                    a.put(b.toNumber(cc) % c.toNumber(cc));
                     code += IRTypes[Opcode.Mod].size;
                     break;
 
@@ -655,8 +655,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    auto i32 = b.toInt32(realm);
-                    auto u32 = c.toUint32(realm) & 0x1F;
+                    auto i32 = b.toInt32(cc);
+                    auto u32 = c.toUint32(cc) & 0x1F;
                     i32 <<= u32;
                     a.put(i32);
                     code += IRTypes[Opcode.ShL].size;
@@ -667,8 +667,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    auto i32 = b.toInt32(realm);
-                    auto u32 = c.toUint32(realm) & 0x1F;
+                    auto i32 = b.toInt32(cc);
+                    auto u32 = c.toUint32(cc) & 0x1F;
                     i32 >>= cast(int)u32;
                     a.put(i32);
                     code += IRTypes[Opcode.ShR].size;
@@ -679,8 +679,8 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    auto i32 = b.toUint32(realm);
-                    auto u32 = c.toUint32(realm) & 0x1F;
+                    auto i32 = b.toUint32(cc);
+                    auto u32 = c.toUint32(cc) & 0x1F;
                     u32 = (cast(uint)i32) >> u32;
                     a.put(u32);
                     code += IRTypes[Opcode.UShR].size;
@@ -690,7 +690,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toInt32(realm) & c.toInt32(realm));
+                    a.put(b.toInt32(cc) & c.toInt32(cc));
                     code += IRTypes[Opcode.And].size;
                     break;
 
@@ -698,7 +698,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toInt32(realm) | c.toInt32(realm));
+                    a.put(b.toInt32(cc) | c.toInt32(cc));
                     code += IRTypes[Opcode.Or].size;
                     break;
 
@@ -706,7 +706,7 @@ struct IR
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
-                    a.put(b.toInt32(realm) ^ c.toInt32(realm));
+                    a.put(b.toInt32(cc) ^ c.toInt32(cc));
                     code += IRTypes[Opcode.Xor].size;
                     break;
                 case Opcode.In:          // a = b in c
@@ -714,10 +714,10 @@ struct IR
                     b = locals + (code + 2).index;
                     c = locals + (code + 3).index;
                     pk = b.toPropertyKey;
-                    o = c.toObject(realm);
+                    o = c.toObject(cc.realm);
                     if(!o)
                         throw RhsMustBeObjectError.toThrow(
-                            "in", c.toString(realm));
+                            "in", c.toString(cc));
 
                     a.put(o.HasProperty(pk));
                     code += IRTypes[Opcode.In].size;
@@ -739,11 +739,11 @@ struct IR
 
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    v = b.Get(*id, realm);
+                    v = b.Get(*id, cc);
                     if(!v)
                         v = &undefined;
-                    a.put(v.toNumber(realm) + inc);
-                    b.Set(*id, *a, realm);
+                    a.put(v.toNumber(cc) + inc);
+                    b.Set(*id, *a, cc);
 
                     static assert(IRTypes[Opcode.PreInc].size
                                   == IRTypes[Opcode.PreIncS].size &&
@@ -764,33 +764,33 @@ struct IR
                         if(id is scopecache[si].id)
                         {
                             v = scopecache[si].v;
-                            auto n = v.toNumber(realm) + inc;
+                            auto n = v.toNumber(cc) + inc;
                             v.put(n);
                             a.put(n);
                         }
                         else
                         {
                             // v = scope_get(cc, scopex, id, o);
-                            v = realm.get(*id, o);
+                            v = cc.get(*id, o);
                             if(v)
                             {
-                                auto n = v.toNumber(realm) + inc;
+                                auto n = v.toNumber(cc) + inc;
                                 v.put(n);
                                 a.put(n);
                             }
                             else
                             {
-                                sta = UndefinedVarError(realm, id.toString);
+                                sta = UndefinedVarError(cc.realm, id.toString);
                                 goto Lthrow;
                             }
                         }
                     }
                     else
                     {
-                        v = realm.get(id, o);
+                        v = cc.get(id, o);
                         if(v)
                         {
-                            auto n = v.toNumber(realm) + inc;
+                            auto n = v.toNumber(cc) + inc;
                             a.put(n);
                             v.put(n);
                         }
@@ -834,12 +834,12 @@ struct IR
                     assert (id !is null);
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    v = b.Get(*id, realm);
+                    v = b.Get(*id, cc);
                     if(!v)
                         v = &undefined;
-                    auto n = v.toNumber(realm);
+                    auto n = v.toNumber(cc);
                     a.put(n + 1);
-                    b.Set(*id, *a, realm);
+                    b.Set(*id, *a, cc);
                     a.put(n);
 
                     static assert(IRTypes[Opcode.PostInc].size
@@ -850,17 +850,17 @@ struct IR
                 case Opcode.PostIncScope:        // a = s++
                     id = (code + 2).id;
                     // v = scope_get(cc, scopex, id, o);
-                    v = realm.get(*id, o);
+                    v = cc.get(*id, o);
                     if(v && v != &undefined)
                     {
                         a = locals + (code + 1).index;
-                        auto n = v.toNumber(realm);
+                        auto n = v.toNumber(cc);
                         v.put(n + 1);
                         a.put(n);
                     }
                     else
                     {
-                        sta = ReferenceError(realm, id.toString);
+                        sta = ReferenceError(cc.realm, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PostIncScope].size;
@@ -878,12 +878,12 @@ struct IR
                     assert (id !is null);
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    v = b.Get(*id, realm);
+                    v = b.Get(*id, cc);
                     if(!v)
                         v = &undefined;
-                    auto n = v.toNumber(realm);
+                    auto n = v.toNumber(cc);
                     a.put(n - 1);
-                    b.Set(*id, *a, realm);
+                    b.Set(*id, *a, cc);
                     a.put(n);
 
                     static assert(IRTypes[Opcode.PostDecS].size
@@ -893,17 +893,17 @@ struct IR
                 }
                 case Opcode.PostDecScope:        // a = s--
                     id = (code + 2).id;
-                    v = realm.get(*id, o);
+                    v = cc.get(*id, o);
                     if(v && v != &undefined)
                     {
-                        auto n = v.toNumber(realm);
+                        auto n = v.toNumber(cc);
                         a = locals + (code + 1).index;
                         v.put(n - 1);
                         a.put(n);
                     }
                     else
                     {
-                        sta = ReferenceError(realm, id.toString);
+                        sta = ReferenceError(cc.realm, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PostDecScope].size;
@@ -918,10 +918,10 @@ struct IR
                         bo = true;
                     else
                     {
-                        o = b.toObject(realm);
+                        o = b.toObject(cc.realm);
                         if(!o)
                         {
-                            sta = cannotConvert(realm, b);
+                            sta = cannotConvert(cc, b);
                             goto Lthrow;
                         }
                         if (code.opcode == Opcode.Del)
@@ -949,7 +949,7 @@ struct IR
                     id = (code + 2).id;
                     //o = scope_tos(scopex);		// broken way
                     // if(!scope_get(cc, scopex, id, o))
-                    if (!realm.get(*id, o))
+                    if (!cc.get(*id, o))
                         bo = true;
                     else if(o.implementsDelete())
                         bo = !!o.Delete(*id);
@@ -975,17 +975,17 @@ struct IR
                         res = (b.number < c.number);
                     else
                     {
-                        b.toPrimitive(realm, *b, Value.Type.Number);
-                        c.toPrimitive(realm, *c, Value.Type.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string x = b.toString(realm);
-                            string y = c.toString(realm);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) < 0;
                         }
                         else
-                            res = b.toNumber(realm) < c.toNumber(realm);
+                            res = b.toNumber(cc) < c.toNumber(cc);
                     }
                     a.put(res);
                     code += IRTypes[Opcode.CLT].size;
@@ -1002,17 +1002,17 @@ struct IR
                         res = (b.number <= c.number);
                     else
                     {
-                        b.toPrimitive(realm, *b, Value.Type.Number);
-                        c.toPrimitive(realm, *c, Value.Type.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string x = b.toString(realm);
-                            string y = c.toString(realm);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) <= 0;
                         }
                         else
-                            res = b.toNumber(realm) <= c.toNumber(realm);
+                            res = b.toNumber(cc) <= c.toNumber(cc);
                     }
                     a.put(res);
                     code += IRTypes[Opcode.CLE].size;
@@ -1029,17 +1029,17 @@ struct IR
                         res = (b.number > c.number);
                     else
                     {
-                        b.toPrimitive(realm, *b, Value.Type.Number);
-                        c.toPrimitive(realm, *c, Value.Type.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string x = b.toString(realm);
-                            string y = c.toString(realm);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) > 0;
                         }
                         else
-                            res = b.toNumber(realm) > c.toNumber(realm);
+                            res = b.toNumber(cc) > c.toNumber(cc);
                     }
                     a.put(res);
                     code += IRTypes[Opcode.CGT].size;
@@ -1056,17 +1056,17 @@ struct IR
                         res = (b.number >= c.number);
                     else
                     {
-                        b.toPrimitive(realm, *b, Value.Type.Number);
-                        c.toPrimitive(realm, *c, Value.Type.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string x = b.toString(realm);
-                            string y = c.toString(realm);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) >= 0;
                         }
                         else
-                            res = b.toNumber(realm) >= c.toNumber(realm);
+                            res = b.toNumber(cc) >= c.toNumber(cc);
                     }
                     a.put(res);
                     code += IRTypes[Opcode.CGE].size;
@@ -1111,28 +1111,28 @@ struct IR
                     else if (tx == Value.Type.Number &&
                              ty == Value.Type.String)
                     {
-                        c.put(c.toNumber(realm));
+                        c.put(c.toNumber(cc));
                         goto Lagain;
                     }
                     else if (tx == Value.Type.String &&
                              ty == Value.Type.Number)
                     {
-                        b.put(b.toNumber(realm));
+                        b.put(b.toNumber(cc));
                         goto Lagain;
                     }
                     else if (tx == Value.Type.Boolean)
                     {
-                        b.put(b.toNumber(realm));
+                        b.put(b.toNumber(cc));
                         goto Lagain;
                     }
                     else if (ty == Value.Type.Boolean)
                     {
-                        c.put(c.toNumber(realm));
+                        c.put(c.toNumber(cc));
                         goto Lagain;
                     }
                     else if (ty == Value.Type.Object)
                     {
-                        c.toPrimitive(realm, *c);
+                        c.toPrimitive(cc, *c);
                         // v = cast(Value*)c.toPrimitive(c, null);
                         // if(v)
                         // {
@@ -1143,7 +1143,7 @@ struct IR
                     }
                     else if (tx == Value.Type.Object)
                     {
-                        b.toPrimitive(realm, *b);
+                        b.toPrimitive(cc, *b);
                         // v = cast(Value*)b.toPrimitive(b, null);
                         // if(v)
                         // {
@@ -1268,17 +1268,17 @@ struct IR
                     }
                     else
                     {
-                        b.toPrimitive(realm, *b, Value.Type.Number);
-                        c.toPrimitive(realm, *c, Value.Type.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string x = b.toString(realm);
-                            string y = c.toString(realm);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) < 0;
                         }
                         else
-                            res = b.toNumber(realm) < c.toNumber(realm);
+                            res = b.toNumber(cc) < c.toNumber(cc);
                     }
                     if(!res)
                         code += (code + 1).offset;
@@ -1302,17 +1302,17 @@ struct IR
                     }
                     else
                     {
-                        b.toPrimitive(realm, *b, Value.Type.Number);
-                        c.toPrimitive(realm, *c, Value.Type.Number);
+                        b.toPrimitive(cc, *b, Value.Type.Number);
+                        c.toPrimitive(cc, *c, Value.Type.Number);
                         if(b.isString() && c.isString())
                         {
-                            string x = b.toString(realm);
-                            string y = c.toString(realm);
+                            string x = b.toString(cc);
+                            string y = c.toString(cc);
 
                             res = cmp(x, y) <= 0;
                         }
                         else
-                            res = b.toNumber(realm) <= c.toNumber(realm);
+                            res = b.toNumber(cc) <= c.toNumber(cc);
                     }
                     if(!res)
                         code += (code + 1).offset;
@@ -1322,14 +1322,14 @@ struct IR
                 }
                 case Opcode.JLTC:        // if (b < constant) goto c
                     b = locals + (code + 2).index;
-                    if(!(b.toNumber(realm) < *cast(double*)(code + 3)))
+                    if(!(b.toNumber(cc) < *cast(double*)(code + 3)))
                         code += (code + 1).offset;
                     else
                         code += IRTypes[Opcode.JLTC].size;
                     break;
                 case Opcode.JLEC:        // if (b <= constant) goto c
                     b = locals + (code + 2).index;
-                    if(!(b.toNumber(realm) <= *cast(double*)(code + 3)))
+                    if(!(b.toNumber(cc) <= *cast(double*)(code + 3)))
                         code += (code + 1).offset;
                     else
                         code += IRTypes[Opcode.JLEC].size;
@@ -1338,10 +1338,10 @@ struct IR
                 case Opcode.Iter:                // a = iter(b)
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = cannotConvert(realm, b);
+                        sta = cannotConvert(cc, b);
                         goto Lthrow;
                     }
                     sta = o.putIterator(*a);
@@ -1368,7 +1368,7 @@ struct IR
                     else
                     {
                         b = locals + (code + 2).index;
-                        b.Set(*id, Value(*ppk), realm);
+                        b.Set(*id, Value(*ppk), cc);
 
                         static assert (IRTypes[Opcode.Next].size
                                        == IRTypes[Opcode.NextS].size);
@@ -1385,9 +1385,9 @@ struct IR
                         code += (code + 1).offset;
                     else
                     {
-                        o = realm.getNonFakeObject;
+                        o = cc.getNonFakeObject;
                         auto val = Value(*ppk);
-                        o.Set(*id, val, Property.Attribute.None, realm);
+                        o.Set(*id, val, Property.Attribute.None, cc);
                         code += IRTypes[Opcode.NextScope].size;
                     }
                     break;
@@ -1404,17 +1404,17 @@ struct IR
                     assert (id !is null);
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                     {
                         goto Lcallerror;
                     }
-                    v = o.Get(*id, realm);
+                    v = o.Get(*id, cc);
                     if(!v)
                        goto Lcallerror;
 
                     a.putVundefined();
-                    sta = v.Call(realm, o, *a, (locals + (code + 5).index)
+                    sta = v.Call(cc, o, *a, (locals + (code + 5).index)
                                  [0 .. (code + 4).index]);
 
                     debug(VERIFY)
@@ -1430,9 +1430,9 @@ struct IR
                     Lcallerror:
                     {
                         auto s = id.toString;
-                        sta = UndefinedNoCall3Error(realm,
-                            b.type.to!string, b.toString(realm), s);
-                        if (auto didyoumean = realm.searchSimilarWord(o, s))
+                        sta = UndefinedNoCall3Error(cc.realm,
+                            b.type.to!string, b.toString(cc), s);
+                        if (auto didyoumean = cc.searchSimilarWord(o, s))
                         {
                             sta.addMessage(", did you mean \"" ~
                                            didyoumean.join("\" or \"") ~
@@ -1443,14 +1443,14 @@ struct IR
                 case Opcode.CallScope:   // a = s(argc, argv)
                     id = (code + 2).id;
                     a = locals + (code + 1).index;
-                    v = realm.get(*id, o);
+                    v = cc.get(*id, o);
 
                     if(v is null)
                     {
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
                         auto n = id.toString;
-                        sta = UndefinedVarError(realm, n);
-                        if (auto didyoumean = realm.searchSimilarWord(n))
+                        sta = UndefinedVarError(cc.realm, n);
+                        if (auto didyoumean = cc.searchSimilarWord(n))
                         {
                             sta.addMessage(", did you mean \"" ~
                                            didyoumean.join("\" or \"") ~
@@ -1461,7 +1461,7 @@ struct IR
                     // Should we pass othis or o? I think othis.
                     // cc.callerothis = othis;        // pass othis to eval()
                     a.putVundefined();
-                    sta = v.Call(realm, o, *a, (locals + (code + 4).index)
+                    sta = v.Call(cc, o, *a, (locals + (code + 4).index)
                                                [0 .. (code + 3).index]);
 
                     debug(VERIFY)
@@ -1469,7 +1469,7 @@ struct IR
                     if(sta !is null)
                     {
                         sta.addTrace(codestart, code);
-                        realm.addTraceInfoTo(sta);
+                        cc.addTraceInfoTo(sta);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.CallScope].size;
@@ -1478,15 +1478,15 @@ struct IR
                 case Opcode.CallV:   // v(argc, argv) = a
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = UndefinedNoCall2Error(realm, b.type.to!string,
-                                                    b.toString(realm));
+                        sta = UndefinedNoCall2Error(cc.realm, b.type.to!string,
+                                                    b.toString(cc));
                         goto Lthrow;
                     }
                     a.putVundefined();
-                    sta = o.Call(realm, o, *a,
+                    sta = o.Call(cc, o, *a,
                                  (locals + (code + 4).index)
                                  [0 .. (code + 3).index]);
                     if(sta !is null)
@@ -1507,22 +1507,22 @@ struct IR
 
                     a = locals + (code + 1).index;
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(!o)
                         goto Lcallerror;
                     //v = o.GetLambda(s, Value.calcHash(s));
-                    v = o.Get(*id, realm);
+                    v = o.Get(*id, cc);
                     if(v is null)
                         goto Lcallerror;
                     //writef("calling... '%s'\n", v.toString());
-                    o = v.toObject(realm);
+                    o = v.toObject(cc.realm);
                     if(o is null)
                     {
-                        sta = CannotAssignTo2Error(realm, b.type.to!string,
+                        sta = CannotAssignTo2Error(cc.realm, b.type.to!string,
                                                    id.toString);
                         goto Lthrow;
                     }
-                    sta = o.put_Value(realm, *a, (locals + (code + 5).index)
+                    sta = o.put_Value(cc.realm, *a, (locals + (code + 5).index)
                                       [0 .. (code + 4).argc]);
                     if(sta !is null)
                         goto Lthrow;
@@ -1534,22 +1534,22 @@ struct IR
 
                 case Opcode.PutCallScope:   // a = s(argc, argv)
                     id = (code + 2).id;
-                    v = realm.get(*id, o);
+                    v = cc.get(*id, o);
                     if(v is null)
                     {
-                        sta = UndefinedNoCall2Error(realm, "property",
+                        sta = UndefinedNoCall2Error(cc.realm, "property",
                                                     id.toString);
                         goto Lthrow;
                     }
-                    o = v.toObject(realm);
+                    o = v.toObject(cc.realm);
                     if(o is null)
                     {
-                        sta = CannotAssignToError(realm, id.toString);
+                        sta = CannotAssignToError(cc.realm, id.toString);
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
                     c = locals + (code + 4).index;
-                    sta = o.put_Value(realm, *a, c[0 .. (code + 3).argc]);
+                    sta = o.put_Value(cc.realm, *a, c[0 .. (code + 3).argc]);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutCallScope].size;
@@ -1557,16 +1557,16 @@ struct IR
 
                 case Opcode.PutCallV:        // v(argc, argv) = a
                     b = locals + (code + 2).index;
-                    o = b.toObject(realm);
+                    o = b.toObject(cc.realm);
                     if(o is null)
                     {
-                        sta = UndefinedNoCall2Error(realm, b.type.to!string,
-                                                    b.toString(realm));
+                        sta = UndefinedNoCall2Error(cc.realm, b.type.to!string,
+                                                    b.toString(cc));
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
                     c = locals + (code + 4).index;
-                    sta = o.put_Value(realm, *a, c[0 .. (code + 3).argc]);
+                    sta = o.put_Value(cc.realm, *a, c[0 .. (code + 3).argc]);
                     if(sta !is null)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutCallV].size;
@@ -1577,7 +1577,7 @@ struct IR
                     b = locals + (code + 2).index;
                     a.putVundefined();
                     c = locals + (code + 4).index;
-                    sta = b.Construct(realm, *a, c[0 .. (code + 3).argc]);
+                    sta = b.Construct(cc, *a, c[0 .. (code + 3).argc]);
                     debug(VERIFY)
                         assert(checksum == IR.verify(codestart));
                     if(sta !is null)
@@ -1588,19 +1588,19 @@ struct IR
                 case Opcode.Push:
                     SCOPECACHE_CLEAR();
                     a = locals + (code + 1).index;
-                    o = a.toObject(realm);
+                    o = a.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = cannotConvert(realm, a);
+                        sta = cannotConvert(cc, a);
                         goto Lthrow;
                     }
-                    realm.push(o);
+                    cc.push(o);
                     code += IRTypes[Opcode.Push].size;
                     break;
 
                 case Opcode.Pop:
                     SCOPECACHE_CLEAR();
-                    o = realm.popScope;
+                    o = cc.pop;
                     // If it's a Finally, we need to execute
                     // the finally block
                     code += IRTypes[Opcode.Pop].size;
@@ -1627,7 +1627,7 @@ struct IR
 
                 case Opcode.RetExp:
                     a = locals + (code + 1).index;
-                    sta = a.checkReference(realm);
+                    sta = a.checkReference(cc.realm);
                     if (sta !is null)
                         goto Lthrow;
                     ret = *a;
@@ -1636,7 +1636,7 @@ struct IR
 
                 case Opcode.ImpRet:
                     a = locals + (code + 1).index;
-                    sta = a.checkReference(realm);
+                    sta = a.checkReference(cc.realm);
                     if (sta !is null)
                         goto Lthrow;
                     ret = *a;
@@ -1646,7 +1646,7 @@ struct IR
 
                 case Opcode.Throw:
                     a = locals + (code + 1).index;
-                    sta = new DError(realm, *a);
+                    sta = new DError(cc, *a);
 
                     Lthrow:
                     sta = unwindStack(sta);
@@ -1661,13 +1661,13 @@ struct IR
                     SCOPECACHE_CLEAR();
                     auto offset = (code - codestart) + (code + 1).offset;
                     id = (code + 2).id;
-                    realm.push(new Catch(offset, id));
+                    cc.push(new Catch(offset, id));
                     code += IRTypes[Opcode.TryCatch].size;
                     break;
                 }
                 case Opcode.TryFinally:
                     SCOPECACHE_CLEAR();
-                    realm.push(new Finally(code + (code + 1).offset));
+                    cc.push(new Finally(code + (code + 1).offset));
                     code += IRTypes[Opcode.TryFinally].size;
                     break;
 
@@ -1676,7 +1676,7 @@ struct IR
                     version(all)  // Not supported under some com servers
                     {
                         auto linnum = (code + 1).index;
-                        sta = AssertError(realm, linnum);
+                        sta = AssertError(cc.realm, linnum);
                         goto Lthrow;
                     }
                     else
@@ -1697,7 +1697,7 @@ struct IR
                     auto name = (code + 2).value.text;
                     auto fd = cast(FunctionDefinition)(code + 3).fd;
                     auto newrealm = new DmoduleRealm(
-                        name, realm.modulePool, fd);
+                        name, cc.realm.modulePool, fd);
                     (locals + (code + 1).index).put(newrealm);
 
                     code += IRTypes[Opcode.Import].size;
@@ -1714,7 +1714,7 @@ struct IR
         }
         catch (Throwable t)
         {
-            sta = unwindStack(t.toDError(realm));
+            sta = unwindStack(t.toDError(cc.realm));
             if (sta !is null)
             {
                 sta.addTrace(codestart, code);
@@ -1840,10 +1840,10 @@ private:
 class Catch : Dobject
 {
     import dmdscript.value: Value;
-    import dmdscript.drealm: Drealm;
+    import dmdscript.callcontext: CallContext;
 
     // This is so scope_get() will skip over these objects
-    override Value* Get(in PropertyKey, Drealm) const
+    override Value* Get(in PropertyKey, CallContext*) const
     {
         return null;
     }
@@ -1873,7 +1873,7 @@ class Finally : Dobject
     import dmdscript.opcodes: IR;
     import dmdscript.drealm: Drealm;
 
-    override Value* Get(in PropertyKey, Drealm) const
+    override Value* Get(in PropertyKey, CallContext*) const
     {
         return null;
     }
@@ -1897,19 +1897,19 @@ class Finally : Dobject
 /*
 Helper function for Values that cannot be converted to Objects.
  */
-DError* cannotConvert(Drealm realm, Value* b)
+DError* cannotConvert(CallContext* cc, Value* b)
 {
     import std.conv : to;
     DError* sta;
 
     if(b.isUndefinedOrNull)
     {
-        sta = CannotConvertToObject4Error(realm, b.type.to!string);
+        sta = CannotConvertToObject4Error(cc.realm, b.type.to!string);
     }
     else
     {
         sta = CannotConvertToObject2Error(
-            realm, b.type.to!string, b.toString(realm));
+            cc.realm, b.type.to!string, b.toString(cc));
     }
     return sta;
 }

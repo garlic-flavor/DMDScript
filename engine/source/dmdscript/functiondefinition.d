@@ -207,17 +207,18 @@ class FunctionDefinition : TopStatement
     }
 
     final
-    void instantiate(Drealm realm, Property.Attribute attributes)
+    void instantiate(CallContext* cc, Property.Attribute attributes)
     {
+        alias PA = Property.Attribute;
         // Instantiate all the Var's per 10.1.3
-        auto actobj = realm.variable;
+        auto actobj = cc.variable;
         auto val = vundefined;
         foreach(name; varnames)
         {
             // If name is already declared, don't override it
-            actobj.Set(PropertyKey(name.toString), val,
-                       Property.Attribute.Instantiate |
-                       Property.Attribute.DontOverride | attributes, realm);
+            actobj.DefineOwnProperty(
+                PropertyKey(name.toString), val,
+                PA.Instantiate | PA.DontOverride | attributes);
         }
 
         // Instantiate the Function's per 10.1.3
@@ -225,12 +226,13 @@ class FunctionDefinition : TopStatement
         {
 
             // Set [[Scope]] property per 13.2 step 7
-            auto fobject = new DdeclaredFunction(realm, fd, realm.scopes.dup);
+            auto fobject = new DdeclaredFunction(cc.realm, fd, cc.save);
             val.put(fobject);
-            if(fd.name !is null && !fd.isliteral) // skip anonymous functions
+            // skip anonymous functions
+            if(fd.name !is null && !fd.isliteral && !fd.isglobal)
             {
-                actobj.Set(*fd.name, val,
-                           Property.Attribute.Instantiate | attributes, realm);
+                actobj.DefineOwnProperty(
+                    *fd.name, val, PA.Instantiate | attributes);
             }
         }
     }

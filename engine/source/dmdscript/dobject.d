@@ -23,6 +23,7 @@ import dmdscript.dfunction: Dconstructor;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.drealm: undefined, Drealm;
 import dmdscript.errmsgs;
+import dmdscript.callcontext: CallContext;
 
 debug import std.stdio;
 //debug = LOG;
@@ -99,19 +100,19 @@ class Dobject
 
     //--------------------------------------------------------------------
     //
-    Value* Get(in PropertyKey PropertyName, Drealm realm)
+    Value* Get(in PropertyKey PropertyName, CallContext* cc)
     {
-        return proptable.get(PropertyName, realm, this);
+        return proptable.get(PropertyName, cc, this);
     }
 
     //--------------------------------------------------------------------
 
     //
     DError* Set(in PropertyKey PropertyName, ref Value value,
-                in Property.Attribute attributes, Drealm realm)
+                in Property.Attribute attributes, CallContext* cc)
     {
         // ECMA 8.6.2.2
-        return proptable.set(PropertyName, value, attributes, realm,
+        return proptable.set(PropertyName, value, attributes, cc,
                              this, _extensible);
     }
 
@@ -164,9 +165,9 @@ class Dobject
 
     /// ditto
     bool DefineOwnProperty(in PropertyKey PropertyName, Dobject attr,
-                           Drealm realm)
+                           CallContext* cc)
     {
-        auto prop = Property(attr, realm);
+        auto prop = Property(attr, cc);
         return proptable.config(PropertyName, prop, _extensible);
     }
 
@@ -177,14 +178,14 @@ class Dobject
         return proptable.keys;
     }
 
-    DError* Call(Drealm realm, Dobject othis, out Value ret, Value[] arglist)
+    DError* Call(CallContext* cc, Dobject othis, out Value ret, Value[] arglist)
     {
-        return SNoCallError(realm, _classname);
+        return SNoCallError(cc.realm, _classname);
     }
 
-    DError* Construct(Drealm realm, out Value ret, Value[] arglist)
+    DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
-        return SNoConstructError(realm, _classname);
+        return SNoConstructError(cc.realm, _classname);
     }
 
     //--------------------------------------------------------------------
@@ -217,7 +218,7 @@ class Dobject
     }
 
     final @trusted
-    DError* DefaultValue(Drealm realm, out Value ret,
+    DError* DefaultValue(CallContext* cc, out Value ret,
                          in Value.Type hint = Value.Type.RefError)
     {
         import dmdscript.ddate : Ddate;
@@ -246,14 +247,14 @@ class Dobject
         {
             auto htab = PropertyKey(table[i]);
 
-            v = Get(htab, realm);
+            v = Get(htab, cc);
 
             if(v !is null && !v.isPrimitive())   // if it's an Object
             {
                 DError* a;
 
                 o = v.object;
-                a = o.Call(realm, this, ret, null);
+                a = o.Call(cc, this, ret, null);
                 if(a)                   // if exception was thrown
                     return a;
                 if(ret.isPrimitive)
@@ -261,12 +262,12 @@ class Dobject
             }
             i ^= 1;
         }
-        return NoDefaultValueError(realm);
+        return NoDefaultValueError(cc.realm);
     }
 
-    DError* HasInstance(Drealm realm, out Value ret, ref Value v)
+    DError* HasInstance(CallContext* cc, out Value ret, ref Value v)
     {   // ECMA v3 8.6.2
-        return SNoInstanceError(realm, _classname);
+        return SNoInstanceError(cc.realm, _classname);
     }
 
     @safe @nogc pure nothrow
@@ -413,20 +414,20 @@ class Dobject
     }
 
     @disable
-    bool InstanceofOperator(Dobject c, Drealm realm)
+    bool InstanceofOperator(Dobject c, CallContext* cc)
     {
         assert(c !is null);
-        if (auto instOfHandler = c.value.GetMethod(Key.hasInstance, realm))
+        if (auto instOfHandler = c.value.GetMethod(Key.hasInstance, cc))
         {
             Value ret;
-            auto err = instOfHandler.Call(realm, c, ret, [this.value]);
+            auto err = instOfHandler.Call(cc, c, ret, [this.value]);
             if (err !is null)
-                throw err.toScriptException(realm);
+                throw err.toScriptException(cc);
             return ret.toBoolean;
         }
         if (auto df = cast(Dfunction)c)
         {
-            return df.OrdinaryHasInstance(c, realm);
+            return df.OrdinaryHasInstance(c, cc);
         }
         else
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -501,7 +502,7 @@ class DobjectConstructor : Dconstructor
 
     //
     override
-    DError* Construct(Drealm realm, out Value ret, Value[] arglist)
+    DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         Dobject o;
         Value* v;
@@ -521,10 +522,10 @@ class DobjectConstructor : Dconstructor
                     o = opCall;
                 }
                 else
-                    o = v.toObject(realm);
+                    o = v.toObject(cc.realm);
             }
             else
-                o = v.toObject(realm);
+                o = v.toObject(cc.realm);
         }
 
         ret.put(o);
@@ -532,7 +533,7 @@ class DobjectConstructor : Dconstructor
     }
 
     //
-    override DError* Call(Drealm realm, Dobject othis, out Value ret,
+    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         Dobject o;
@@ -541,16 +542,16 @@ class DobjectConstructor : Dconstructor
         // ECMA 15.2.1
         if(arglist.length == 0)
         {
-            result = Construct(realm, ret, arglist);
+            result = Construct(cc, ret, arglist);
         }
         else
         {
             auto v = arglist.ptr;
             if(v.isUndefinedOrNull)
-                result = Construct(realm, ret, arglist);
+                result = Construct(cc, ret, arglist);
             else
             {
-                o = v.toObject(realm);
+                o = v.toObject(cc.realm);
                 ret.put(o);
                 result = null;
             }
@@ -569,7 +570,7 @@ private:
 //
 @DFD(2, DFD.Type.Static)
 DError* assign(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -578,7 +579,7 @@ DError* assign(
 //
 @DFD(2, DFD.Type.Static)
 DError* create(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -587,7 +588,7 @@ DError* create(
 //
 @DFD(2, DFD.Type.Static)
 DError* defineProperties(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -596,7 +597,7 @@ DError* defineProperties(
 //
 @DFD(3, DFD.Type.Static)
 DError* defineProperty(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey;
@@ -610,8 +611,8 @@ DError* defineProperty(
         goto failure;
     else if (!arglist[0].isObject)
     {
-        sta = CannotConvertToObject2Error(realm,
-            arglist[0].getTypeof, arglist[0].toString(realm));
+        sta = CannotConvertToObject2Error(cc.realm,
+            arglist[0].getTypeof, arglist[0].toString(cc));
         goto failure;
     }
 
@@ -622,15 +623,15 @@ DError* defineProperty(
     {
         if (!target.DefineOwnProperty(key, Property.Attribute.None))
         {
-            sta = CannotPutError(realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            sta = CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             goto failure;
         }
     }
     else
     {
-        if (!target.DefineOwnProperty(key, arglist[2].toObject(realm), realm))
+        if (!target.DefineOwnProperty(key, arglist[2].toObject(cc.realm), cc))
         {
-            sta = CannotPutError(realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            sta = CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             goto failure;
         }
     }
@@ -649,7 +650,7 @@ failure:
 //
 @DFD(1, DFD.Type.Static)
 DError* freeze(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -658,7 +659,7 @@ DError* freeze(
 //
 @DFD(2, DFD.Type.Static)
 DError* getOwnPropertyDescriptor(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     DError* sta;
@@ -666,11 +667,11 @@ DError* getOwnPropertyDescriptor(
     if (arglist.length < 2)
         goto failure;
 
-    if (auto target = arglist[0].toObject(realm))
+    if (auto target = arglist[0].toObject(cc.realm))
     {
         if (auto prop = target.GetOwnProperty(arglist[1].toPropertyKey))
         {
-            ret.put(prop.toObject(realm));
+            ret.put(prop.toObject(cc.realm));
             return null;
         }
     }
@@ -683,7 +684,7 @@ failure:
 //
 @DFD(1, DFD.Type.Static)
 DError* getOwnPropertySymbol(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -692,7 +693,7 @@ DError* getOwnPropertySymbol(
 //
 @DFD(1, DFD.Type.Static)
 DError* getPrototypeOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     if (0 == arglist.length)
@@ -701,7 +702,7 @@ DError* getPrototypeOf(
         return null;
     }
 
-    auto o = arglist[0].toObject(realm);
+    auto o = arglist[0].toObject(cc.realm);
     if (o is null)
     {
         ret.putVundefined;
@@ -715,7 +716,7 @@ DError* getPrototypeOf(
 //
 @DFD(2, DFD.Type.Static, "is")
 DError* _is(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -724,7 +725,7 @@ DError* _is(
 //
 @DFD(1, DFD.Type.Static)
 DError* isExtensible(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -733,7 +734,7 @@ DError* isExtensible(
 //
 @DFD(1, DFD.Type.Static)
 DError* isFrozen(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -742,7 +743,7 @@ DError* isFrozen(
 //
 @DFD(1, DFD.Type.Static)
 DError* isSealed(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -751,7 +752,7 @@ DError* isSealed(
 //
 @DFD(1, DFD.Type.Static)
 DError* keys(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -760,7 +761,7 @@ DError* keys(
 //
 @DFD(1, DFD.Type.Static)
 DError* preventExtensions(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     if (0 == arglist.length)
@@ -778,7 +779,7 @@ DError* preventExtensions(
 
     auto o = v.object;
     if (!o.preventExtensions)
-        return PreventExtensionsFailureError(realm, v.toString(realm));
+        return PreventExtensionsFailureError(cc.realm, v.toString(cc));
 
     ret.put(o);
     return null;
@@ -787,7 +788,7 @@ DError* preventExtensions(
 //
 @DFD(1, DFD.Type.Static)
 DError* seal(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert(0);
@@ -796,7 +797,7 @@ DError* seal(
 //
 @DFD(2, DFD.Type.Static)
 DError* setPrototypeOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     Dobject target, proto;
@@ -805,13 +806,13 @@ DError* setPrototypeOf(
     if (arglist.length < 1)
         goto failure;
 
-    target = arglist[0].toObject(realm);
+    target = arglist[0].toObject(cc.realm);
     if (1 < arglist.length)
-        proto = arglist[1].toObject(realm);
+        proto = arglist[1].toObject(cc.realm);
 
     if (!target.SetPrototypeOf(proto))
     {
-        sta = CannotPutError(realm);
+        sta = CannotPutError(cc.realm);
         goto failure;
     }
 
@@ -826,7 +827,7 @@ failure:
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.format : format;
@@ -849,7 +850,7 @@ DError* toString(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toLocaleString(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.2.4.3
@@ -857,14 +858,14 @@ DError* toLocaleString(
 
     Value* v;
 
-    v = othis.Get(Key.toString, realm);
+    v = othis.Get(Key.toString, cc);
     if(v && !v.isPrimitive())   // if it's an Object
     {
         DError* a;
         Dobject o;
 
         o = v.object;
-        a = o.Call(realm, othis, ret, arglist);
+        a = o.Call(cc, othis, ret, arglist);
         if(a)                   // if exception was thrown
             return a;
     }
@@ -874,7 +875,7 @@ DError* toLocaleString(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* valueOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     ret.put(othis);
@@ -884,7 +885,7 @@ DError* valueOf(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* toSource(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.property : Property;
@@ -904,7 +905,7 @@ DError* toSource(
             any = 1;
             buf ~= key.toString;
             buf ~= ':';
-            buf ~= p.get(realm, othis).toSource(realm);
+            buf ~= p.get(cc, othis).toSource(cc);
         }
     }
     buf ~= '}';
@@ -915,7 +916,7 @@ DError* toSource(
 //------------------------------------------------------------------------------
 @DFD(1)
 DError* hasOwnProperty(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey;
@@ -929,7 +930,7 @@ DError* hasOwnProperty(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* isPrototypeOf(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.2.4.6
@@ -940,7 +941,7 @@ DError* isPrototypeOf(
     v = arglist.length ? &arglist[0] : &undefined;
     if(!v.isPrimitive())
     {
-        o = v.toObject(realm);
+        o = v.toObject(cc.realm);
         for(;; )
         {
             o = o._prototype;
@@ -961,7 +962,7 @@ DError* isPrototypeOf(
 //------------------------------------------------------------------------------
 @DFD(0)
 DError* propertyIsEnumerable(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey;
@@ -977,7 +978,7 @@ DError* propertyIsEnumerable(
 //------------------------------------------------------------------------------
 @DFD(0, DFD.Type.Getter, "__proto__")
 DError* proto_Get(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);
@@ -985,7 +986,7 @@ DError* proto_Get(
 
 @DFD(0, DFD.Type.Setter, "__proto__")
 DError* proto_Set(
-    DnativeFunction pthis, Drealm realm, Dobject othis, out Value ret,
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     assert (0);

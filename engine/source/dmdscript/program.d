@@ -16,13 +16,180 @@
  */
 module dmdscript.program;
 
+import dmdscript.functiondefinition: FunctionDefinition;
+import dmdscript.primitive: ModulePool;
+import dmdscript.value: Value, DError;
+import dmdscript.drealm: Drealm;
 debug import std.stdio;
 
-/+ This module is going to remove.
+FunctionDefinition parse(string bufferId, string srctext,
+                         ModulePool modulePool, bool strictMode = false)
+{
+    import dmdscript.statement: TopStatement;
+    import dmdscript.parse: Parser;
+    import dmdscript.lexer: Mode;
+    import dmdscript.exception: ScriptException;
+    import dmdscript.primitive: PropertyKey;
 
+    alias P = Parser!(Mode.UseStringtable);
+
+    assert (modulePool !is null);
+    P p;
+
+    try
+    {
+        p = new P(srctext, modulePool, strictMode);
+        auto ts = p.parseProgram;
+
+        // Build empty function definition array
+        // Make globalfunction an anonymous one
+        //   (by passing in null for name) so
+        // it won't get instantiated as a property
+        return new FunctionDefinition(0, true, new PropertyKey(bufferId), null,
+                                      ts, p.strictMode);
+    }
+    catch (Throwable t)
+    {
+        auto se = t.ScriptException("at parsing.");
+        se.addInfo(bufferId, "global", p is null ? strictMode : p.strictMode);
+        throw se;
+    }
+    assert (0);
+}
+
+FunctionDefinition semantic(FunctionDefinition fd)
+{
+    import dmdscript.scopex: Scope;
+    import dmdscript.exception: ScriptException;
+
+    // Any functions parsed in topstatements wind up in the global
+    // object (cc.global), where they are found by normal property lookups.
+    // Any global new top statements only get executed once, and so although
+    // the previous group of topstatements gets lost, it does not matter.
+
+    // In essence, globalfunction encapsulates the *last* group of
+    // topstatements passed to script, and any previous version of
+    // globalfunction, along with previous topstatements, gets discarded.
+
+    // If pfd, it is not really necessary to create a global function just
+    // so we can do the semantic analysis, we could use p.lastnamedfunc
+    // instead if we're careful to insure that p.lastnamedfunc winds up
+    // as a property of the global object.
+
+    assert (fd !is null);
+    try
+    {
+        Scope sc;
+        sc.ctor (fd);   // create global scope
+        fd.semantic(&sc);
+    }
+    catch (Throwable t) // if semantic() failed
+    {
+        auto se = t.ScriptException ("at semantic");
+        se.addInfo(fd.name is null ? "anonymous" : fd.name.toString, "global",
+                   fd.strictMode);
+        fd.topstatements = null;
+        throw se;
+    }
+    return fd;
+}
+
+FunctionDefinition compile(FunctionDefinition fd)
+{
+    import dmdscript.exception: ScriptException;
+    try
+    {
+        fd.toIR(null);
+        // Don't need parse trees anymore, so null'ing the pointer allows
+        // the garbage collector to find & free them.
+        fd.topstatements = null;
+    }
+    catch (Throwable t)
+    {
+        auto se = t.ScriptException ("at compile.");
+        se.addInfo (fd.name is null ? "anonymous" : fd.name.toString, "global",
+                    fd.strictMode);
+        throw se;
+    }
+    return fd;
+}
+
+/**
+   Execute program.
+*/
+void execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
+                    T args)
+{
+    import dmdscript.primitive: Key, PropertyKey;
+    import dmdscript.darray: Darray;
+    import dmdscript.property: Property;
+    import dmdscript.callcontext: CallContext;
+    import dmdscript.opcodes: IR;
+    alias PA = Property.Attribute;
+
+    // ECMA 10.2.1
+    {   // Set argv and argc for execute
+        Darray arguments;
+        Value a;
+
+        arguments = realm.dArray();
+        a = Value(arguments);
+        realm.DefineOwnProperty (Key.arguments, a, PA.DontDelete | PA.DontEnum);
+        arguments.length.put(args.length);
+        foreach (i, one; args)
+        {
+            static if (is(typeof(one) == Value))
+                arguments.DefineOwnProperty (PropertyKey(i), one, PA.DontEnum);
+            else
+            {
+                a.put(one);
+                arguments.DefineOwnProperty (PropertyKey(i), a, PA.DontEnum);
+            }
+        }
+    }
+
+    {
+        Value[] locals;
+        Value* v;
+        CallContext* cc;
+        DError* result;
+
+        version (Win32)          // eh and alloca() not working under linux
+        {
+            import core.sys.posix.stdlib: alloca, free;
+            if (fd.nlocals < 128)
+                v = cast(Value*)alloca(fd.nlocals * Value.sizeof);
+            scope (exit) if (v !is null) free(v);
+        }
+        if (v !is null)
+            locals = v[0 .. fd.nlocals];
+        else
+            locals = new Value[fd.nlocals];
+
+        CallContext.reserve (fd.withdepth + 1);
+        cc = CallContext.push (realm, fd);
+
+        // Instantiate global variables as properties of global
+        // object with 0 attributes
+        fd.instantiate (cc, PA.DontDelete | PA.DontConfig);
+
+        ret.putVundefined;
+        result = IR.call(cc, realm, fd.code, ret, locals.ptr);
+
+        if (result !is null)
+        {
+            result.addInfo (fd.name is null ? "anonymous" : fd.name.toString,
+                            "global", fd.strictMode);
+            throw result.toScriptException (cc);
+        }
+
+        CallContext.pop(cc);
+        locals = null;
+    }
+}
+/+
 class Program
 {
-    import dmdscript.functiondefinition: FunctionDefinition;
     import dmdscript.drealm: Drealm;
     import dmdscript.primitive: ModulePool;
 
