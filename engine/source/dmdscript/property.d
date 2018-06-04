@@ -244,6 +244,46 @@ final class PropTable
             return false;
     }
 
+    @safe
+    bool configAccessor(in ref PropertyKey key,
+                        Dfunction getter, Dfunction setter,
+                        in Property.Attribute attributes, in bool extensible)
+    {
+        if      (auto p = _table.findExistingAlt(key, key.hash))
+        {
+            auto na = cast(Property.Attribute)attributes;
+            if (!p.canBeAccessor(na))
+            {
+                return false;
+            }
+
+            if (!_canExtend(key))
+            {
+                p.preventExtensions;
+                return false;
+            }
+
+            p.configGetterForce(getter, na);
+            p.configSetterForce(setter, na);
+
+            return true;
+        }
+        else if (extensible)
+        {
+            if (!_canExtend(key))
+            {
+                return false;
+            }
+
+            auto p = Property(getter, setter, attributes);
+            _table.insertAlt(key, p, key.hash);
+
+            return true;
+        }
+        else
+            return false;
+    }
+
     /// ditto
     @safe
     bool configGetter(in ref PropertyKey key, Dfunction getter,
@@ -475,26 +515,32 @@ struct Property
             valueOrWritable = true;
         }
         else
+        {
             valueOrWritable = 0 == (_attr & Attribute.ReadOnly);
 
-        if (auto v = obj.Get(Key.get, cc))
-        {
-            if (valueOrWritable)
-                throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            _attr |= Attribute.Accessor;
-            _Get = cast(Dfunction)v.toObject(cc.realm);
-            if (_Get is null)
-                throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        }
+            if (auto v = obj.Get(Key.get, cc))
+            {
+                if (valueOrWritable)
+                    throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!
+                _attr |= Attribute.Accessor;
+                _Get = cast(Dfunction)v.toObject(cc.realm);
+                if (_Get is null)
+                    throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!
+            }
+            else
+                _Get = null;
 
-        if (auto v = obj.Get(Key.set, cc))
-        {
-            if (valueOrWritable)
-                throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            _attr |= Attribute.Accessor;
-            _Set = cast(Dfunction)v.toObject(cc.realm);
-            if (_Set is null)
-                throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            if (auto v = obj.Get(Key.set, cc))
+            {
+                if (valueOrWritable)
+                    throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!
+                _attr |= Attribute.Accessor;
+                _Set = cast(Dfunction)v.toObject(cc.realm);
+                if (_Set is null)
+                    throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!
+            }
+            else
+                _Set = null;
         }
     }
 
@@ -667,6 +713,9 @@ struct Property
             if (a & Attribute.DontOverride)
                 return false;
 
+            if (_Set is null)
+                return false;
+
             a = a | Attribute.Accessor & ~Attribute.ReadOnly
                 & ~Attribute.Silent;
         }
@@ -695,6 +744,8 @@ struct Property
                 Value ret;
                 return _Set.Call(cc, othis, ret, [v]);
             }
+            else
+                return CannotPutError(cc.realm);
         }
         else
         {

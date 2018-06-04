@@ -235,7 +235,7 @@ class Dobject
         {
             i = 0;
         }
-        else if(hint == Value.Type.Number ||
+        else if(hint == Value.Type.Number || hint == Value.Type.BigInt ||
                 hint == Value.Type.RefError)
         {
             i = 1;
@@ -640,6 +640,7 @@ succeeded:
     assert (sta is null);
     assert (target !is null);
     ret.put(target);
+
     return null;
 
 failure:

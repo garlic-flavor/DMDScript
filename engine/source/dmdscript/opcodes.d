@@ -68,6 +68,7 @@ struct IR
         import std.array : join;
         import std.conv : to;
         import std.string : cmp;
+        import std.bigint: BigInt;
 
         const(IR*) codestart = code;
         Value* a;
@@ -513,7 +514,11 @@ struct IR
                         *cast(double*)(code + 2));
                     code += IRTypes[Opcode.Number].size;
                     break;
-
+                case Opcode.BigInt:              // a = BigInt
+                    (locals + (code + 1).index).put(
+                        *cast(BigInt**)(code + 2));
+                    code += IRTypes[Opcode.Object].size;
+                    break;
                 case Opcode.Boolean:             // a = boolean
                     (locals + (code + 1).index).put((code + 2).boolean);
                     code += IRTypes[Opcode.Boolean].size;
@@ -540,7 +545,10 @@ struct IR
 
                 case Opcode.Neg:                 // a = -a
                     a = locals + (code + 1).index;
-                    a.put(-a.toNumber(cc));
+                    if (a.type == Value.Type.BigInt)
+                        a.put(new BigInt( (*a.bigInt) * -1 ));
+                    else
+                        a.put(-a.toNumber(cc));
                     code += IRTypes[Opcode.Neg].size;
                     break;
 
@@ -598,8 +606,25 @@ struct IR
                     {
                         a.put(b.number + c.number);
                     }
+                    else if (b.type == Value.Type.BigInt ||
+                             c.type == Value.Type.BigInt)
+                    {
+                        if (b.type != c.type)
+                        {
+                            if (b.type == Value.Type.String ||
+                                c.type == Value.Type.String)
+                                goto LstringConcat;
+                            sta = TypeError(
+                                cc.realm, "converting to BigInt");
+                            goto Lthrow;
+                        }
+                        assert (b.bigInt !is null);
+                        assert (c.bigInt !is null);
+                        a.put(new BigInt((*(b.bigInt)) + (*(c.bigInt))));
+                    }
                     else
                     {
+                    LstringConcat:
                         char[Value.sizeof] vtmpb;
                         Value* vb = cast(Value*)vtmpb;
                         char[Value.sizeof] vtmpc;
@@ -610,6 +635,16 @@ struct IR
 
                         if(vb.isString || vc.isString)
                             a.put(vb.toString(cc) ~ vc.toString(cc));
+                        else if (vb.isBigInt || vc.isBigInt)
+                        {
+                            if (!vb.isBigInt || !vc.isBigInt)
+                            {
+                                sta = TypeError(
+                                    cc.realm, "converting to BigInt");
+                                goto Lthrow;
+                            }
+                            a.put(new BigInt((*b.bigInt) + (*c.bigInt)));
+                        }
                         else
                             a.put(vb.toNumber(cc) + vc.toNumber(cc));
                     }
@@ -1197,6 +1232,8 @@ struct IR
                             res = (b.text == c.text);
                         else if (tx == Value.Type.Boolean)
                             res = (b.dbool == c.dbool);
+                        else if (tx == Value.Type.BigInt)
+                            res = ((*b.bigInt) == (*c.bigInt));
                         else // TypeObject
                         {
                             res = b.object == c.object;

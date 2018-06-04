@@ -80,6 +80,7 @@ module dmdscript.ir;
 debug import std.conv : text;
 debug import std.format : format;
 import std.meta : AliasSeq;
+import std.bigint: BigInt;
 
 import dmdscript.primitive : Identifier;
 import dmdscript.functiondefinition : FunctionDefinition;
@@ -103,6 +104,7 @@ enum Opcode : ubyte
     String,
     ThisGet,
     Number,
+    BigInt,
     Object,
     This,
     Null,
@@ -770,6 +772,7 @@ alias IRTypes = AliasSeq!(
     IR2!(Opcode.String, Value*),        // acc = "string"
     IR2!(Opcode.ThisGet, Identifier),      // acc = othis.operand
     IR2!(Opcode.Number, double),           // acc = number
+    IR2!(Opcode.BigInt, BigInt*),          // acc = BigInt*
     IR2!(Opcode.Object, FunctionDefinition),
                                          // acc = new DdeclaredFunction(operand)
     IR1!(Opcode.This),                         // acc = this
@@ -931,6 +934,8 @@ auto IRTypeDispatcher(alias PROC, ARGS...)(Opcode op, ARGS args)
         return PROC!(IRTypes[Opcode.ThisGet])(args);
     case Opcode.Number:
         return PROC!(IRTypes[Opcode.Number])(args);
+    case Opcode.BigInt:
+        return PROC!(IRTypes[Opcode.BigInt])(args);
     case Opcode.Object:
         return PROC!(IRTypes[Opcode.Object])(args);
     case Opcode.This:
@@ -1172,7 +1177,8 @@ private template isGet(Opcode CODE)
             Opcode.Import:
             return false;
 
-        case Opcode.String, Opcode.ThisGet, Opcode.Number, Opcode.Object,
+        case Opcode.String, Opcode.ThisGet, Opcode.Number, Opcode.BigInt,
+            Opcode.Object,
             Opcode.This, Opcode.Null, Opcode.Undefined, Opcode.Boolean,
             Opcode.Call, Opcode.CallS, Opcode.CallScope, Opcode.CallV,
             Opcode.Get, Opcode.GetS, Opcode.GetScope,

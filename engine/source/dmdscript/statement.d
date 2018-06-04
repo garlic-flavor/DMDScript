@@ -117,21 +117,18 @@ class TopStatement
         debug throw se;
     }
 
-debug static:
-    string dump(in TopStatement[] s)
+    debug static:
+    void dump(in TopStatement[] s, scope void delegate(in char[]) sink)
     {
-        import std.array : Appender;
         import std.conv : to;
-        Appender!string buf;
         foreach(one; s)
         {
-            buf.put(one.linnum.to!string);
-            buf.put(":");
-            buf.put(typeid(one).to!string);
-            buf.put(":");
-            one.toBuffer(b=>buf.put(b));
+            sink(one.linnum.to!string);
+            sink(":");
+            sink(typeid(one).to!string);
+            sink(":");
+            one.toBuffer(sink);
         }
-        return buf.data;
     }
 }
 

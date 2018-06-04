@@ -98,6 +98,7 @@ enum Key : PropertyKey
     Object = PropertyKey("Object"),
     String = PropertyKey("String"),
     Number = PropertyKey("Number"),
+    BigInt = PropertyKey("BigInt"),
     Boolean = PropertyKey("Boolean"),
     Date = PropertyKey("Date"),
     Array = PropertyKey("Array"),

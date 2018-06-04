@@ -135,14 +135,14 @@ class FunctionDefinition : TopStatement
                     // if(sc.exception !is null)
                     //     break;
 
-                    if(iseval)
-                    {
+                    // if(iseval)
+                    // {
                         // There's an implied "return" on the last statement
                         if((i + 1) == topstatements.length)
                         {
                             ts = ts.ImpliedReturn();
                         }
-                    }
+                    // }
                     topstatements[i] = ts;
                     ts.done = Progress.Semantic;
                 }

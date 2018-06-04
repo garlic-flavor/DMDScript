@@ -131,10 +131,7 @@ private:
                 topstatements.put(parseFunction!(FunctionFlag.statement));
                 break;
 
-            case Tok.Eof:
-                return topstatements.data;
-
-            case Tok.Rbrace:
+            case Tok.Eof, Tok.Rbrace:
                 return topstatements.data;
 
             case Tok.String:
@@ -340,6 +337,7 @@ private:
             break;
 
         case Tok.Real:
+        case Tok.BigInt:
         case Tok.String:
         case Tok.Delete:
         case Tok.Lparen:
@@ -832,6 +830,12 @@ private:
 
         case Tok.Real:
             e = new RealExpression(linnum, token.realvalue);
+            nextToken();
+            break;
+
+        case Tok.BigInt:
+            e = new BigIntExpression(linnum, token.bigInt);
+            token.bigInt = null;
             nextToken();
             break;
 

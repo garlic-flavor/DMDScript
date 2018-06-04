@@ -79,6 +79,7 @@ enum Tok : int
     // Leaf operators
     Number, Identifier, String,
     Regexp, Real,
+    BigInt,
 
     //--------------------------------------------------------------------
     keywords_min,
@@ -140,6 +141,7 @@ enum Tok : int
 ///
 struct Token
 {
+    import std.bigint: BigInt;
     import dmdscript.primitive : number_t, real_t, RegexLiteral;
     import dmdscript.templateliteral : TemplateLiteral;
 
@@ -160,6 +162,7 @@ struct Token
         Identifier       ident;
         TemplateLiteral* tliteral;
         RegexLiteral*    regLiteral;
+        BigInt*          bigInt;
     };
 
     //--------------------------------------------------------------------
@@ -167,6 +170,7 @@ struct Token
     @trusted
     string toString() const
     {
+        import std.format: format;
         import std.conv : to;
 
         string p;
@@ -197,6 +201,9 @@ struct Token
             p = ident.toString;
             break;
 
+        case Tok.BigInt:
+            p = "%d".format(*bigInt);
+            break;
         default:
             p = toString(value);
             break;
@@ -1463,6 +1470,7 @@ private:
     @trusted
     Tok number(Token *t)
     {
+        import std.bigint: BigInt;
         import std.ascii : isDigit, isHexDigit, isOctalDigit;
         import std.string : toStringz;
         import core.sys.posix.stdlib : strtod;
@@ -1515,7 +1523,49 @@ private:
                     base = 10;                     // means back to decimal base
                 }
                 break;
+            case 'n', 'N': // BigInt literal
+            {
+                if (base == 0)
+                    base = 10;
+            Lbigint:
+                BigInt* bi = new BigInt(0);
 
+                prevIs_ = false;
+                foreach (char v; start[0 .. p - 1 - start])
+                {
+                    if      ('0' <= v && v <= '9')
+                    {
+                        v -= '0';
+                        prevIs_ = false;
+                    }
+                    else if ('a' <= v && v <= 'f')
+                    {
+                        v -= ('a' - 10);
+                        prevIs_ = false;
+                    }
+                    else if ('A' <= v && v <= 'F')
+                    {
+                        v -= ('A' - 10);
+                        prevIs_ = false;
+                    }
+                    else if ('_' == v)
+                    {
+                        if (prevIs_)
+                            goto Lerr;
+                        prevIs_ = true;
+                        continue;
+                    }
+                    else
+                        assert (0);
+
+                    (*bi) *= base;
+                    (*bi) = (*bi) + (cast(int)v);
+                }
+                if (prevIs_)
+                    goto Lerr;
+                t.bigInt = bi;
+                return Tok.BigInt;
+            }
             default:
                 p--;
                 Lnumber:
@@ -1603,6 +1653,11 @@ private:
                 while(isHexDigit(*p) || '_' == *p);
                 start += 2;
                 base = 16;
+                if (*p == 'n' || *p == 'N')
+                {
+                    ++p;
+                    goto Lbigint;
+                }
                 goto Lnumber;
 
             case 'b', 'B':

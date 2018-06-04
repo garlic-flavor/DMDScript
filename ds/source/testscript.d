@@ -18,7 +18,7 @@
 module testscript;
 
 import std.path;
-import std.file;
+static import std.file;
 import std.stdio;
 import std.exception;
 import core.sys.posix.stdlib;
@@ -90,7 +90,7 @@ int main(string[] args)
     debug
     {
         bool compileOnly;
-        SrcFile.DumpMode dumpMode;
+        Drealm.DumpMode dumpMode;
     }
 
     if(args.length == 1)
@@ -111,13 +111,13 @@ int main(string[] args)
                 compileOnly = true;
                 break;
             case "-dumpStatement":
-                dumpMode |= SrcFile.DumpMode.Statement;
+                dumpMode |= Drealm.DumpMode.Statement;
                 break;
             case "-dumpIR":
-                dumpMode |= SrcFile.DumpMode.IR;
+                dumpMode |= Drealm.DumpMode.IR;
                 break;
             case "-dump":
-                dumpMode |= SrcFile.DumpMode.All;
+                dumpMode |= Drealm.DumpMode.All;
                 break;
         }
         default:
@@ -337,16 +337,10 @@ class SrcFile
         import dmdscript.primitive: PropertyKey;
         import dmdscript.property: Property;
         import dmdscript.dnative: install;
-        import dmdscript.program: parse, sem = semantic, compile;
+        import dmdscript.program: parse, analyze, generate;
         import dmdscript.statement: TopStatement;
         /* Create a DMDScript program, and compile our text buffer.
          */
-
-
-        // debug
-        // {
-        //     realm.dumpMode = dumpMode;
-        // }
 
         try
         {
@@ -354,16 +348,16 @@ class SrcFile
 
             debug
             {
-                if (dumpMode & DumpMode.Statement)
-                    TopStatement.dump(fd.topstatements);
+                if (dumpMode & Drealm.DumpMode.Statement)
+                    TopStatement.dump(fd.topstatements,b=>b.write);
             }
 
-            fd = fd.sem.compile;
+            fd.analyze.generate;
 
             debug
             {
-                if (dumpMode & DumpMode.IR)
-                    FunctionDefinition.dump(fd, b=>b.writeln);
+                if (dumpMode & Drealm.DumpMode.IR)
+                    FunctionDefinition.dump(fd, b=>b.write);
             }
 
             // realm.compile (srcfile, buffer, &modulePool, strictMode);
@@ -388,7 +382,11 @@ class SrcFile
 
         Value ret;
 
-        auto realm = new Drealm();
+        auto realm = new Drealm(srcfile, &modulePool);
+        debug
+        {
+            realm.dumpMode = dumpMode;
+        }
         realm.install(
             "$262", new Test262(realm.rootPrototype, realm.functionPrototype));
 
@@ -440,7 +438,7 @@ class SrcFile
 
         //writef("read file '%s'\n",srcfile);
 
-        if (!moduleSpecifier.exists)
+        if (!std.file.exists(moduleSpecifier))
             throw new Exception (moduleSpecifier ~ " is not found.");
 
         // Read the includes[] files
@@ -485,16 +483,7 @@ class SrcFile
     }
 
 debug public:
-
-    enum DumpMode
-    {
-        None       = 0x00,
-        Statement  = 0x01,
-        IR         = 0x02,
-        All        = 0x03,
-    }
-
-    DumpMode dumpMode;
+    Drealm.DumpMode dumpMode;
 
 }
 
@@ -552,11 +541,7 @@ class DemptyRealm: Drealm
     this(string scriptId, ModulePool modulePool/*, bool strictMode*/)
     {
         import dmdscript.dnative: install;
-        super();
-
-        id = scriptId;
-        this.modulePool = modulePool;
-        // this.globalfunction = new FunctionDefinition(null, strictMode);
+        super(scriptId, modulePool);
 
         install!DemptyRealm(this, functionPrototype);
     }

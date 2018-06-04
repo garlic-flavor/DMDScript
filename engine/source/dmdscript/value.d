@@ -42,6 +42,8 @@ debug import std.stdio;
 
 struct Value
 {
+    import std.bigint: BigInt;
+
     // NEVER import dmdscript.dfunction : Dfunction at this.
     import dmdscript.iterator : Iterator;
     import dmdscript.primitive;
@@ -56,6 +58,7 @@ struct Value
         Null,
         Boolean,
         Number,
+        BigInt,
         String,
         Object,
 
@@ -69,7 +72,7 @@ struct Value
         enum canHave = is(T == bool) || is(T == const(bool)) ||
             is(T : Type) || is(T : PropertyKey) || is(T : double) ||
             is(T : string) || is(T : Dobject) || is(T == Iterator*) ||
-            is(T : Value);
+            is(T : Value) || is(T : BigInt*);
     }
 
     //--------------------------------------------------------------------
@@ -107,6 +110,12 @@ struct Value
         {
             assert (_type == Type.Number);
             return _number;
+        }
+
+        inout(BigInt)* bigInt() inout
+        {
+            assert (_type == Type.BigInt);
+            return _bi;
         }
 
         string text() const
@@ -230,6 +239,12 @@ struct Value
         {
             this = t;
         }
+        else static if (is(T == BigInt*))
+        {
+            assert (t !is null);
+            _type = Type.BigInt;
+            _bi = t;
+        }
         else static assert(0);
     }
 
@@ -285,6 +300,12 @@ struct Value
         else static if (is(T : Value))
         {
             this = t;
+        }
+        else static if (is(T : BigInt*))
+        {
+            assert (t !is null);
+            _type = Type.BigInt;
+            _bi = t;
         }
         else static assert(0);
         _hash = h;
@@ -355,6 +376,8 @@ struct Value
             return true;
         case Type.Object:
             return true;
+        case Type.BigInt:
+            return (*_bi) != 0;
         }
         assert(0);
     }
@@ -378,6 +401,8 @@ struct Value
             return _dbool ? 1 : 0;
         case Type.Number:
             return _number;
+        case Type.BigInt:
+            return double.nan; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         case Type.String, Type.Symbol:
         {
             double n;
@@ -444,7 +469,8 @@ struct Value
         case Type.Boolean:
             return _dbool ? 1 : 0;
 
-        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
+            Type.BigInt:
         {
             double number;
 
@@ -480,7 +506,8 @@ struct Value
         case Type.Boolean:
             return _dbool ? 1 : 0;
 
-        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
+            Type.BigInt:
         {
             int int32;
             double number;
@@ -523,7 +550,8 @@ struct Value
         case Type.Boolean:
             return _dbool ? 1 : 0;
 
-        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
+            Type.BigInt:
         {
             uint uint32;
             double number;
@@ -566,7 +594,8 @@ struct Value
         case Type.Boolean:
             return cast(short)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
+            Type.BigInt:
         {
             short int16;
             double number;
@@ -607,7 +636,8 @@ struct Value
         case Type.Boolean:
             return cast(ushort)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
+            Type.BigInt:
         {
             ushort uint16;
             double number;
@@ -648,7 +678,8 @@ struct Value
         case Type.Boolean:
             return cast(byte)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
+            Type.BigInt:
         {
             byte int8;
             double number;
@@ -689,7 +720,8 @@ struct Value
         case Type.Boolean:
             return cast(ubyte)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
+            Type.BigInt:
         {
             ubyte uint8;
             double number;
@@ -730,7 +762,8 @@ struct Value
         case Type.Boolean:
             return cast(ubyte)(_dbool ? 1 : 0);
 
-        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol:
+        case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
+            Type.BigInt:
         {
             ubyte uint8;
             double number;
@@ -755,6 +788,8 @@ struct Value
     //--------------------------------------------------------------------
     PropertyKey toPropertyKey()
     {
+        import std.format: format;
+
         final switch(_type)
         {
         case Type.RefError:
@@ -767,7 +802,6 @@ struct Value
         case Type.Boolean:
             return _dbool ? Key._true : Key._false;
         case Type.Number:
-        {
             if (0 <= _number)
             {
                 auto i32 = cast(size_t)_number;
@@ -775,7 +809,15 @@ struct Value
                     return PropertyKey(i32);
             }
             return PropertyKey(NumberToString(_number));
-        }
+        case Type.BigInt:
+            if (0 <= (*_bi))
+            {
+                auto i32 = _bi.uintLength;
+                if ((*_bi) == i32)
+                    return PropertyKey(i32);
+            }
+            return PropertyKey("%d".format(*_bi));
+
         case Type.String:
         {
             size_t i32;
@@ -809,6 +851,8 @@ struct Value
     @trusted
     string toString() const
     {
+        import std.format: format;
+
         final switch(_type)
         {
         case Type.RefError:
@@ -821,6 +865,8 @@ struct Value
             return _dbool ? Key._true : Key._false;
         case Type.Number:
             return NumberToString(_number);
+        case Type.BigInt:
+            return "%d".format(*_bi);
         case Type.String, Type.Symbol:
             return _text;
         case Type.Object:
@@ -835,6 +881,7 @@ struct Value
     //--------------------------------------------------------------------
     string toString(CallContext* cc)
     {
+        import std.format: format;
         final switch(_type)
         {
         case Type.RefError:
@@ -848,6 +895,8 @@ struct Value
             return _dbool ? Key._true : Key._false;
         case Type.Number:
             return NumberToString(_number);
+        case Type.BigInt:
+            return "%dn".format(*_bi);
         case Type.String, Type.Symbol:
             return _text;
         case Type.Object:
@@ -887,6 +936,13 @@ struct Value
                 to!string(cast(long)_number, radix) :
                 "-" ~ to!string(cast(long) - _number, radix);
         }
+        else if (_type == Type.BigInt)
+        {
+            assert(2 <= radix && radix <= 36);
+            return 0 <= (*_bi) ?
+                to!string(_bi.toLong, radix) :
+                "-" ~ to!string(_bi.toLong, radix);
+        }
         else
         {
             return toString(cc);
@@ -897,6 +953,7 @@ struct Value
     string toSource(CallContext* cc)
     {
         import dmdscript.drealm: undefined;
+        import std.format: format;
 
         switch(_type)
         {
@@ -907,6 +964,8 @@ struct Value
             s = "\"" ~ _text ~ "\"";
             return s;
         }
+        case Type.BigInt:
+            return "%dn".format(*_bi);
         case Type.Symbol:
             return _text;
         case Type.Object:
@@ -968,6 +1027,8 @@ struct Value
             return realm.dBoolean(_dbool);
         case Type.Number:
             return realm.dNumber(_number);
+        case Type.BigInt:
+            return realm.dBigInt(_bi);
         case Type.String:
             return realm.dString(_text);
         case Type.Symbol:
@@ -1040,6 +1101,15 @@ struct Value
                 return stringcmp(NumberToString(_number), v._text);
             }
             break;
+        case Type.BigInt:
+            if (v._type == Type.BigInt)
+            {
+                if      ((*_bi) == (*v._bi))
+                    return 0;
+                else if ((*_bi) > (*v._bi))
+                    return 1;
+            }
+            break;
         case Type.String:
             if(v._type == Type.String)
             {
@@ -1079,6 +1149,7 @@ struct Value
         case Type.String:      return Text.string;
         case Type.Object:      return _object.getTypeof;
         case Type.Symbol:      return Key.Symbol;
+        case Type.BigInt:      return Key.BigInt;
         case Type.Iter:
             assert(0);
         }
@@ -1136,6 +1207,12 @@ struct Value
     bool isPrimitive() const
     {
         return _type != Type.Object;
+    }
+
+    @property @safe @nogc pure nothrow
+    bool isBigInt() const
+    {
+        return _type == Type.BigInt;
     }
 
 // deprecated
@@ -1260,7 +1337,7 @@ struct Value
         case Type.Object:
             return _object is r._object;
 
-        case Type.RefError, Type.Number, Type.Iter:
+        case Type.RefError, Type.Number, Type.Iter, Type.BigInt:
             assert(0);
         }
     }
@@ -1300,6 +1377,10 @@ struct Value
             return cast(uint)cast(void*)_object;
         case Type.Iter:
             assert(0);
+        case Type.BigInt:
+            if (0 == _hash)
+                _hash = _bi.toHash;
+            return _hash;
         }
     }
 
@@ -1465,6 +1546,7 @@ private:
         ushort    _uint16;
 
         Iterator* _iter;         // V_ITER
+        BigInt* _bi;
     }
 
     //
@@ -1585,9 +1667,11 @@ struct DError
         {
             auto msg = entity.toString(cc);
             string name = TypeError.Text;
-            auto pk = PropertyKey(Key.constructor);
-            if (auto constructor = entity.Get(pk, cc))
-                name = constructor.object.classname;
+            if (entity.isObject)
+                name = entity.object.classname;
+            // auto pk = PropertyKey(Key.constructor);
+            // if (auto constructor = entity.Get(pk, cc))
+            //     name = constructor.object.classname;
             return new ScriptException(name, msg);
         }
     }
@@ -1645,22 +1729,59 @@ struct DError
 package:
 
 @trusted
-DError* toDError(Ctor = cTypeError)(Throwable t, Drealm realm)
+DError* toDError(Ctor = void)(Throwable t, Drealm realm)
 {
-    import dmdscript.exception : ScriptException;
-    import dmdscript.protoerror : toD0, TypeError;
+    import dmdscript.exception: ScriptException;
+    import dmdscript.protoerror: D0base, SyntaxError, EvalError, ReferenceError,
+        RangeError, TypeError, UriError;
 
     assert(t !is null);
     ScriptException exception;
 
-    if (auto se = cast(ScriptException)t)
-        return new DError(se.toD0!Ctor(realm));
+    auto se = cast(ScriptException)t;
+    if (se is null)
+        se = new ScriptException(Key.Error, t.toString, t.file, t.line);
+
+    D0base d0;
+    static if      (is(Ctor == SyntaxError))
+        d0 = realm.dSyntaxError(se);
+    else static if (is(Ctor == EvalError))
+        d0 = realm.dEvalError(se);
+    else static if (is(Ctor == ReferenceError))
+        d0 = realm.dReferenceError(se);
+    else static if (is(Ctor == RangeError))
+        d0 = realm.dRangeError(se);
+    else static if (is(Ctor == TypeError))
+        d0 = realm.dTypeError(se);
+    else static if (is(Ctor == UriError))
+        d0 = realm.dUriError(se);
     else
     {
-        exception = new ScriptException(Ctor.Text,
-                                        t.toString, t.file, t.line);
-        assert(exception !is null);
-        return new DError(exception.toD0!Ctor(realm));
+        switch (se.type)
+        {
+        case SyntaxError.Text:
+            d0 = realm.dSyntaxError(se);
+            break;
+        case EvalError.Text:
+            d0 = realm.dEvalError(se);
+            break;
+        case ReferenceError.Text:
+            d0 = realm.dReferenceError(se);
+            break;
+        case RangeError.Text:
+            d0 = realm.dRangeError(se);
+            break;
+        case TypeError.Text:
+            d0 = realm.dTypeError(se);
+            break;
+        case UriError.Text:
+            d0 = realm.dUriError(se);
+            break;
+        default:
+            d0 = new D0base (realm.dObject(), se);
+        }
     }
+    assert (d0 !is null);
+    return new DError(d0);
 }
 

@@ -44,11 +44,11 @@ private:
 //------------------------------------------------------------------------------
 class DnumberConstructor : Dconstructor
 {
-    this(Dobject superClassProperty, Dobject functionPrototype)
+    this(Dobject superClassPrototype, Dobject functionPrototype)
     {
         import dmdscript.property : Property;
 
-        super(new Dobject(superClassProperty), functionPrototype,
+        super(new Dobject(superClassPrototype), functionPrototype,
               Key.Number, 1);
 
         install(functionPrototype);

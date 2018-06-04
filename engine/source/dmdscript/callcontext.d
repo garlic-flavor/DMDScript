@@ -20,18 +20,22 @@ module dmdscript.callcontext;
 debug import std.stdio;
 
 import dmdscript.dobject : Dobject;
-import dmdscript.drealm: Drealm;
 
 //------------------------------------------------------------------------------
 ///
 struct CallContext
 {
+    import dmdscript.drealm: Drealm;
     import dmdscript.property: Property;
     import dmdscript.dfunction: Dfunction;
     import dmdscript.value: Value, DError;
     import dmdscript.primitive: PropertyKey;
     import dmdscript.functiondefinition: FunctionDefinition;
 
+    /* Get current realm environment.
+
+       This couldn't be null.
+     */
     @property @safe @nogc pure nothrow
     inout(Drealm) realm() inout
     {
@@ -39,37 +43,58 @@ struct CallContext
     }
 
     //--------------------------------------------------------------------
-    /// Get the object who calls the current function.
+    /** Get the object who calls the current function.
+
+        This could be null.
+     */
     @property @safe @nogc pure nothrow
     inout(Dfunction) caller() inout
     {
         return _caller;
     }
 
+    /** Get the function definition that current code is in.
+
+        This could be null, before any function is called.
+     */
     @property @safe @nogc pure nothrow
     inout(FunctionDefinition) callerf() inout
     {
         return _callerf;
     }
 
+    /** Get the object that contains the caller function as its member.
+
+        This could be null.
+     */
     @property @safe @nogc pure nothrow
     inout(Dobject) callerothis() inout
     {
         return _callerothis;
     }
 
+    /** Get current strict mode.
+     */
     @property @safe @nogc pure nothrow
     bool strictMode() const
     {
         return _strictMode;
     }
 
+    /** Get the object that compose global scope.
+
+        This equals to realm.
+     */
     @property @safe @nogc pure nothrow
     inout(Dobject) global() inout
     {
         return _realm;
     }
 
+    /** Get scopes chain duplicated.
+
+        This couldn't be null
+     */
     @property @safe
     Scope* save()
     {
@@ -85,7 +110,8 @@ struct CallContext
     }
 
     //--------------------------------------------------------------------
-    /// Get the current innermost field that compose a function.
+    /** Get the current innermost field that compose a function.
+     */
     @property @safe @nogc pure nothrow
     inout(Dobject) variable() inout
     {
@@ -93,6 +119,10 @@ struct CallContext
         return _rootScope.obj;
     }
 
+    /** Get the object that isn't Catch nor Try.
+
+        This is called from dmdscript.opcodes.IR.call.
+     */
     @safe @nogc pure nothrow
     Dobject getNonFakeObject()
     {
@@ -105,48 +135,20 @@ struct CallContext
         assert (0);
     }
 
+    /** Return true if current scope is the innermost function scope.
+     */
     @property @safe @nogc pure nothrow
     bool isRoot() const
     {
         return _scope is _rootScope;
     }
 
-    @safe
-    void push (Dobject o)
-    {
-        assert (o);
-        _scope = newScope(o, _scope);
-    }
-
     //--------------------------------------------------------------------
-    /** Remove the innermost searching field composing a scope block.
-    And returns that object.
+    /** Search a variable in current scope chain.
 
-    When the innermost field is composing a function or an eval, no object will
-    be removed form the stack, and a null will be returned.
-    */
-    @safe
-    Dobject pop()
-    {
-        auto s = _scope;
-        assert (s !is null);
-        if (s is _rootScope)
-            return null;
-
-        auto obj = s.obj;
-        assert (obj !is null);
-
-        _scope = _scope.next;
-        dtor (s);
-        return obj;
-    }
-
-    //--------------------------------------------------------------------
-    /** Search a variable in the current scope chain.
-
-    Params:
-        key   = The name of the variable.
-        pthis = The field that contains the searched variable.
+        Params:
+            key   = The name of the variable.
+            pthis = The field that contains the searched variable.
     */
     Value* get (in ref PropertyKey key, out Dobject pthis)
     {
@@ -182,9 +184,14 @@ struct CallContext
     }
 
     //--------------------------------------------------------------------
-    /** Assign to a variable in the current scope chain.
+    /** Assign to a variable in current scope chain.
 
-    Or, define the variable in global field.
+        Or, define the variable in the global field.
+
+        Params:
+            key   =
+            value =
+            attr  =
     */
     DError* set (in ref PropertyKey key, ref Value value,
                  Property.Attribute attr = Property.Attribute.None)
@@ -221,7 +228,13 @@ struct CallContext
     }
 
     //--------------------------------------------------------------------
-    /// Define/Assign a variable in the current innermost field.
+    /** Define/Assign a variable in current innermost field.
+
+        Params:
+            key   =
+            value =
+            attr  =
+     */
     DError* setThis(in ref PropertyKey key, ref Value value,
                     Property.Attribute attr)
     {
@@ -230,6 +243,45 @@ struct CallContext
         return _rootScope.obj.Set(key, value, attr, &this);
     }
 
+    /** Remove the innermost searching field composing a scope block.
+    And returns that object.
+
+    When the innermost field is composing a function or an eval, no object will
+    be removed form the stack, and a null will be returned.
+    */
+    @safe
+    Dobject pop()
+    {
+        auto s = _scope;
+        assert (s !is null);
+        if (s is _rootScope)
+            return null;
+
+        auto obj = s.obj;
+        assert (obj !is null);
+
+        _scope = _scope.next;
+        dtor (s);
+        return obj;
+    }
+
+    /** Push new block scope.
+
+        Params:
+            o = the object that composes a scope.
+     */
+    @safe
+    void push (Dobject o)
+    {
+        assert (o !is null);
+        _scope = newScope(o, _scope);
+    }
+
+    /** Get words that similar with name, for debugging purpose.
+
+        Params:
+            name =
+     */
     string[] searchSimilarWord (string name)
     {
         import std.string: soundexer;
@@ -246,6 +298,13 @@ struct CallContext
         return result.data.join;
     }
 
+    /** Get words that similar with name being in inside of target's prototype
+        chain.
+
+        Params:
+            target =
+            name   =
+     */
     string[] searchSimilarWord (Dobject target, string name)
     {
         import std.string: soundexer;
@@ -253,7 +312,9 @@ struct CallContext
         return .searchSimilarWord(target, key);
     }
 
-
+package:
+    /* This is called from dmdscript.opcodes.IR.call.
+     */
     void addTraceInfoTo(DError* err)
     {
         assert (err !is null);
@@ -298,6 +359,9 @@ private:
                      FunctionDefinition callerf, Dobject callerothis, Scope* s,
                      bool strictMode)
     {
+        assert (realm !is null);
+        assert (s !is null);
+
         _realm = realm;
         _caller = caller;
         _callerf = callerf;
@@ -311,12 +375,16 @@ private:
 
 public static:
 
+    /** This struct contains the object composing a block scope.
+     */
     struct Scope
     {
         Dobject obj;
         Scope* next;
     }
 
+    /** This allocates Scope struct, for speedup.
+     */
     @safe
     void reserve (size_t num)
     {
@@ -334,6 +402,8 @@ public static:
         }
     }
 
+    /** Push a function scope.
+     */
     @safe
     CallContext* push (CallContext* outerCC, Dobject actobj, Dfunction caller,
                        FunctionDefinition callerf, Dobject callerothis)
@@ -344,6 +414,7 @@ public static:
                       newScope(actobj, outerCC._scope), callerf.strictMode);
     }
 
+    /// ditto
     @safe
     CallContext* push (CallContext* outerCC, Scope* s, Dobject actobj,
                        Dfunction caller, FunctionDefinition callerf,
@@ -355,6 +426,7 @@ public static:
                       newScope(actobj, s), callerf.strictMode);
     }
 
+    /// ditto
     @safe
     CallContext* push (Drealm realm, FunctionDefinition callerf)
     {
@@ -364,6 +436,7 @@ public static:
                       callerf.strictMode);
     }
 
+    /// ditto
     @safe
     CallContext* push (Drealm realm, bool strictMode)
     {
@@ -372,6 +445,10 @@ public static:
                       strictMode);
     }
 
+    /** Remove a function scope indicated by cc.
+
+        This is called only for recycling an instance.
+     */
     @safe
     CallContext* pop (ref CallContext* cc)
     {
@@ -444,6 +521,7 @@ private static:
 
 //..............................................................................
 //
+private:
 string[] searchSimilarWord(Dobject target, in ref char[4] key)
 {
     import std.array : Appender;
@@ -462,68 +540,6 @@ string[] searchSimilarWord(Dobject target, in ref char[4] key)
 }
 
 /+
-//------------------------------------------------------------------------------
-///
-class DefinedFunctionScope
-{
-    import dmdscript.dfunction : Dfunction;
-    import dmdscript.functiondefinition : FunctionDefinition;
-
-    Stack _stack;      ///
-    alias _stack this; ///
-
-    ///
-    @safe pure nothrow
-    this(Dobject[] superScopes, Dobject actobj, Dfunction caller,
-         FunctionDefinition callerf, Dobject callerothis)
-    {
-        assert (callerothis !is null);
-        assert (callerf !is null);
-
-        _stack = Stack(superScopes, actobj);
-        _caller = caller;
-        _callerf = callerf;
-        _callerothis = callerothis;
-    }
-
-
-    @property @safe @nogc pure nothrow
-    {
-        ///
-        inout(Dfunction) caller() inout
-        {
-            return _caller;
-        }
-
-        ///
-        inout(FunctionDefinition) callerf() inout
-        {
-            return _callerf;
-        }
-
-        ///
-        inout(Dobject) callerothis() inout
-        {
-            return _callerothis;
-        }
-
-        ///
-        bool strictMode() const
-        {
-            assert (_callerf !is null);
-            return _callerf.strictMode;
-        }
-    }
-
-    //::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-private:
-    Dfunction _caller;
-    FunctionDefinition _callerf;
-    Dobject _callerothis;
-}
-
-package:
-+//+
 
 //..............................................................................
 //

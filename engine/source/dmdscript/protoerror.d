@@ -51,13 +51,6 @@ class D0(alias Text) : D0base
 
         assert (GetPrototypeOf !is null);
     }
-
-    this(Dobject prototype, PropertyKey name, ScriptException exception)
-    {
-        super(prototype, name, exception);
-        assert (GetPrototypeOf !is null);
-    }
-
 }
 
 //------------------------------------------------------------------------------
@@ -129,43 +122,6 @@ alias RangeError = D0_constructor!"RangeError";
 alias TypeError = D0_constructor!"TypeError";
 alias UriError = D0_constructor!"URIError";
 
-D0base toD0(Ctor)(ScriptException e, Drealm realm)
-{
-    static if      (is(Ctor == SyntaxError))
-        return realm.dSyntaxError(e);
-    else static if (is(Ctor == EvalError))
-        return realm.dEvalError(e);
-    else static if (is(Ctor == ReferenceError))
-        return realm.dReferenceError(e);
-    else static if (is(Ctor == RangeError))
-        return realm.dRangeError(e);
-    else static if (is(Ctor == TypeError))
-        return realm.dTypeError(e);
-    else static if (is(Ctor == UriError))
-        return realm.dUriError(e);
-    else
-    {
-        switch (e.type)
-        {
-        case SyntaxError.Text:
-            return realm.dSyntaxError(e);
-        case EvalError.Text:
-            return realm.dEvalError(e);
-        case ReferenceError.Text:
-            return realm.dReferenceError(e);
-        case RangeError.Text:
-            return realm.dRangeError(e);
-        case TypeError.Text:
-            return realm.dTypeError(e);
-        case UriError.Text:
-            return realm.dUriError(e);
-        default:
-            return null;
-        }
-    }
-    assert (0);
-}
-
 //==============================================================================
 package:
 
@@ -175,6 +131,24 @@ class D0base : Dobject
     import dmdscript.exception : ScriptException;
 
     ScriptException exception;
+
+    this(Dobject prototype, ScriptException exception)
+    {
+        import dmdscript.property : Property;
+
+        assert(exception !is null);
+
+        super(prototype, PropertyKey(exception.type));
+        this.exception = exception;
+
+        Value val;
+        val.put(exception.msg);
+        DefineOwnProperty(Key.message, val, Property.Attribute.None);
+        val.put(exception.toString);
+        DefineOwnProperty(Key.description, val, Property.Attribute.None);
+        // DefineOwnProperty(Key.number, cast(double)exception.code,
+        //                   Property.Attribute.None);
+    }
 
     protected this(Dobject prototype, PropertyKey typename, string m)
     {
@@ -188,41 +162,6 @@ class D0base : Dobject
         val.put(0);
         DefineOwnProperty(Key.number, val, Property.Attribute.None);
         exception = new ScriptException(typename, m);
-    }
-
-    protected this(Dobject prototype, ScriptException exception)
-    {
-        import dmdscript.property : Property;
-
-        super(prototype, Key.Error);
-        assert(exception !is null);
-        this.exception = exception;
-
-        Value val;
-        val.put(exception.msg);
-        DefineOwnProperty(Key.message, val, Property.Attribute.None);
-        val.put(exception.toString);
-        DefineOwnProperty(Key.description, val, Property.Attribute.None);
-        // DefineOwnProperty(Key.number, cast(double)exception.code,
-        //                   Property.Attribute.None);
-    }
-
-    protected this(Dobject prototype, PropertyKey typename,
-                   ScriptException exception)
-    {
-        import dmdscript.property : Property;
-
-        super(prototype, typename);
-        assert(exception !is null);
-        this.exception = exception;
-
-        Value val;
-        val.put(exception.msg);
-        DefineOwnProperty(Key.message, val, Property.Attribute.None);
-        val.put(exception.toString);
-        DefineOwnProperty(Key.description, val, Property.Attribute.None);
-        // DefineOwnProperty(Key.number, cast(double)exception.code,
-        //                   Property.Attribute.None);
     }
 }
 

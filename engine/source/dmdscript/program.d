@@ -20,10 +20,14 @@ import dmdscript.functiondefinition: FunctionDefinition;
 import dmdscript.primitive: ModulePool;
 import dmdscript.value: Value, DError;
 import dmdscript.drealm: Drealm;
+import dmdscript.callcontext: CallContext;
 debug import std.stdio;
 
+/**
+ */
 FunctionDefinition parse(string bufferId, string srctext,
-                         ModulePool modulePool, bool strictMode = false)
+                         ModulePool modulePool, bool strictMode = false,
+                         string funcName = null)
 {
     import dmdscript.statement: TopStatement;
     import dmdscript.parse: Parser;
@@ -35,6 +39,9 @@ FunctionDefinition parse(string bufferId, string srctext,
 
     assert (modulePool !is null);
     P p;
+    bool isglobal = 0 == funcName.length;
+    if (0 == funcName.length)
+        funcName = bufferId;
 
     try
     {
@@ -45,19 +52,22 @@ FunctionDefinition parse(string bufferId, string srctext,
         // Make globalfunction an anonymous one
         //   (by passing in null for name) so
         // it won't get instantiated as a property
-        return new FunctionDefinition(0, true, new PropertyKey(bufferId), null,
-                                      ts, p.strictMode);
+        return new FunctionDefinition(0, isglobal, new PropertyKey(funcName),
+                                      null, ts, p.strictMode);
     }
     catch (Throwable t)
     {
         auto se = t.ScriptException("at parsing.");
-        se.addInfo(bufferId, "global", p is null ? strictMode : p.strictMode);
+        se.addInfo(bufferId, isglobal ? "global" : funcName,
+                   p is null ? strictMode : p.strictMode);
         throw se;
     }
     assert (0);
 }
 
-FunctionDefinition semantic(FunctionDefinition fd)
+/**
+ */
+FunctionDefinition analyze(FunctionDefinition fd)
 {
     import dmdscript.scopex: Scope;
     import dmdscript.exception: ScriptException;
@@ -94,7 +104,9 @@ FunctionDefinition semantic(FunctionDefinition fd)
     return fd;
 }
 
-FunctionDefinition compile(FunctionDefinition fd)
+/**
+ */
+FunctionDefinition generate(FunctionDefinition fd)
 {
     import dmdscript.exception: ScriptException;
     try
@@ -114,10 +126,9 @@ FunctionDefinition compile(FunctionDefinition fd)
     return fd;
 }
 
-/**
-   Execute program.
+/** Execute program.
 */
-void execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
+DError* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
                     T args)
 {
     import dmdscript.primitive: Key, PropertyKey;
@@ -127,14 +138,18 @@ void execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
     import dmdscript.opcodes: IR;
     alias PA = Property.Attribute;
 
+    assert (fd !is null);
+    assert (cc !is null);
+
     // ECMA 10.2.1
     {   // Set argv and argc for execute
         Darray arguments;
         Value a;
 
-        arguments = realm.dArray();
+        arguments = cc.realm.dArray();
         a = Value(arguments);
-        realm.DefineOwnProperty (Key.arguments, a, PA.DontDelete | PA.DontEnum);
+        cc.variable.DefineOwnProperty (
+            Key.arguments, a, PA.DontDelete | PA.DontEnum);
         arguments.length.put(args.length);
         foreach (i, one; args)
         {
@@ -151,7 +166,6 @@ void execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
     {
         Value[] locals;
         Value* v;
-        CallContext* cc;
         DError* result;
 
         version (Win32)          // eh and alloca() not working under linux
@@ -167,26 +181,36 @@ void execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
             locals = new Value[fd.nlocals];
 
         CallContext.reserve (fd.withdepth + 1);
-        cc = CallContext.push (realm, fd);
 
         // Instantiate global variables as properties of global
         // object with 0 attributes
         fd.instantiate (cc, PA.DontDelete | PA.DontConfig);
 
         ret.putVundefined;
-        result = IR.call(cc, realm, fd.code, ret, locals.ptr);
+        result = IR.call(cc, cc.realm, fd.code, ret, locals.ptr);
 
         if (result !is null)
         {
             result.addInfo (fd.name is null ? "anonymous" : fd.name.toString,
                             "global", fd.strictMode);
-            throw result.toScriptException (cc);
         }
 
-        CallContext.pop(cc);
         locals = null;
+
+        return result;
     }
 }
+///
+void execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
+                    T args)
+{
+    auto cc = CallContext.push (realm, fd);
+    auto result = execute(fd, cc, ret, args);
+    if (result !is null)
+        throw result.toScriptException(cc);
+    CallContext.pop(cc);
+}
+
 /+
 class Program
 {

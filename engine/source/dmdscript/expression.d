@@ -168,7 +168,34 @@ final class RealExpression : Expression
     }
 }
 
-/******************************** IdentifierExpression **************************/
+//
+final class BigIntExpression : Expression
+{
+    import std.bigint: BigInt;
+    BigInt* value;
+
+    @safe @nogc pure nothrow
+    this (uint linnum, BigInt* pbi)
+    {
+        super (linnum, Tok.BigInt);
+        this.value = pbi;
+    }
+
+    override @safe
+    void toIR(IRstate* irs, idx_t ret)
+    {
+        if (ret)
+            irs.gen!(Opcode.BigInt)(linnum, ret, value);
+    }
+
+    override @trusted
+    void toBuffer (scope void delegate(in char[]) sink) const
+    {
+        value.toString(sink, "%d");
+    }
+}
+
+/****************************** IdentifierExpression **************************/
 
 final class IdentifierExpression : Expression
 {
@@ -1916,7 +1943,7 @@ final class ImportExpression : Expression
         sink("import : ");
         sink(moduleSpecifier);
         sink("\n{\n");
-        sink(TopStatement.dump(topstatements));
+        TopStatement.dump(topstatements, sink);
         sink("}\n");
     }
 }
