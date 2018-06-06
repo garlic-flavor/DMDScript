@@ -1779,25 +1779,26 @@ struct IR
      */
 
     debug static void toBuffer(size_t address, const(IR)* code,
-                               scope void delegate(in char[]) sink)
+                               scope void delegate(in char[]) sink,
+                               uint lineshift)
     {
-        static string proc(T)(size_t address, const(IR)* c)
+        static string proc(T)(size_t address, const(IR)* c, uint lineshift)
         {
             import std.traits : Parameters;
 
             alias Ps = Parameters!(T.toString);
-            static if      (0 == Ps.length)
-                return (cast(T*)c).toString;
-            else static if (1 == Ps.length && is(Ps[0] : size_t))
-                return (cast(T*)c).toString(address);
+            static if      (1 == Ps.length)
+                return (cast(T*)c).toString(lineshift);
+            else static if (2 == Ps.length && is(Ps[1] : size_t))
+                return (cast(T*)c).toString(lineshift, address);
             else static assert(0);
         }
-        sink(IRTypeDispatcher!proc(code.opcode, address, code,));
+        sink(IRTypeDispatcher!proc(code.opcode, address, code, lineshift));
     }
 
     debug static
     void dump(const(IR)* code, scope void delegate(in char[]) sink,
-              uint indent = 0)
+              uint lineshift, uint indent)
     {
         import std.format: format;
         import std.range: take, repeat;
@@ -1810,7 +1811,7 @@ struct IR
             sink(' '.repeat.take(indent).to!string);
             sink(format("%04d", cast(size_t)(code - codestart)));
             sink(":");
-            toBuffer(code - codestart, code, sink);
+            toBuffer(code - codestart, code, sink, lineshift);
             sink("\n");
             if(code.opcode == Opcode.End)
                 break;

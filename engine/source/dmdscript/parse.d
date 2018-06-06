@@ -997,11 +997,6 @@ private:
                     nextToken();
                     check(Tok.Colon);
                     fields.put(new Field(ident, parseAssignExp()));
-                    if(token != Tok.Comma)
-                        break;
-                    nextToken();
-                    if(token == Tok.Rbrace)//allow trailing comma
-                        break;
                 }
                 else if (Tok.Set == token)
                 {
@@ -1012,12 +1007,6 @@ private:
                         break;
                     }
                     fields.put(new Field(fe.func.name, fe, Field.Type.Setter));
-                    if (token != Tok.Comma)
-                        break;
-                    nextToken();
-                    if (token == Tok.Rbrace)
-                        break;
-
                 }
                 else if (Tok.Get == token)
                 {
@@ -1028,17 +1017,27 @@ private:
                         break;
                     }
                     fields.put(new Field(fe.func.name, fe, Field.Type.Getter));
-                    if (token != Tok.Comma)
-                        break;
-                    nextToken();
-                    if (token == Tok.Rbrace)
-                        break;
+                }
+                else if (Tok.Lbracket == token) // computed property name.
+                {
+                    nextToken;
+                    auto exp = parseAssignExp;
+                    check(Tok.Rbracket);
+                    check(Tok.Colon);
+                    fields.put(new Field(exp, parseAssignExp));
                 }
                 else
                 {
                     error(ExpectedIdentifierError);
                     break;
                 }
+
+                if (token != Tok.Comma)
+                    break;
+                nextToken();
+                if (token == Tok.Rbrace)
+                    break;
+
             }
             check(Tok.Rbrace);
         }

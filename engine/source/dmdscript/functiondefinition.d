@@ -283,7 +283,7 @@ class FunctionDefinition : TopStatement
             sink(f.name.toString);
         }
         sink("\n");
-        IR.dump(f.code, sink, indent);
+        IR.dump(f.code, sink, 0, indent);
 
         for (size_t i = 0; i < f.functiondefinitions.length; ++i)
         {

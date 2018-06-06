@@ -261,9 +261,9 @@ align(1):
 
     Opcode opAssign(in Opcode op){ opcode = op; return opcode;}
 
-    debug string toString() const
+    debug string toString(uint lineshift) const
     {
-        return format("% 4d:%s", linnum, opcode);
+        return format("% 4d:%s", linnum - lineshift, opcode);
     }
 }
 static assert (Instruction.sizeof == size_t.sizeof);
@@ -279,8 +279,8 @@ private struct IR0(Opcode CODE)
     this(uint linnum)
     { ir = Instruction(linnum, code); }
 
-    debug string toString() const
-    { return ir.toString; }
+    debug string toString(uint lineshift) const
+    { return ir.toString(lineshift); }
 }
 
 //
@@ -305,8 +305,8 @@ align(size_t.sizeof):
         this.acc = acc;
     }
 
-    debug string toString() const
-    { return text(ir, " ", acc); }
+    debug string toString(uint lineshift) const
+    { return text(ir.toString(lineshift), " ", acc); }
 }
 
 //
@@ -327,7 +327,7 @@ align(size_t.sizeof):
         this.operand = operand;
     }
 
-    debug string toString()
+    debug string toString(uint lineshift)
     {
         import dmdscript.opcodes : IR;
         static if      (is(T : Identifier))
@@ -338,7 +338,7 @@ align(size_t.sizeof):
         {
             import std.array: Appender;
             Appender!string buf;
-            IR.dump(operand.code, b=>buf.put(b));
+            IR.dump(operand.code, b=>buf.put(b), lineshift, 0);
             auto opName = text("function\n{\n", buf.data, "}");
         }
         else static if (is(T : double))
@@ -347,9 +347,9 @@ align(size_t.sizeof):
             auto opName = text("[", operand, "]");
 
         static if (isGet!CODE)
-            return text(ir, " [", acc, "] = ", opName);
+            return text(ir.toString(lineshift), " [", acc, "] = ", opName);
         else
-            return text(ir, " ", opName, " = [", acc, "]");
+            return text(ir.toString(lineshift), " ", opName, " = [", acc, "]");
     }
 }
 
@@ -381,8 +381,11 @@ align(size_t.sizeof):
         operand2 = o2;
     }
 
-    debug string toString()
-    { return text(ir, " ", acc, ", ", operand1, ", ", operand2); }
+    debug string toString(uint lineshift)
+    {
+        return text(ir.toString(lineshift), " ", acc, ", ", operand1, ", ",
+                    operand2);
+    }
 }
 
 //
@@ -407,13 +410,13 @@ align(size_t.sizeof):
         this.argv = argv;
     }
 
-    debug string toString() const
+    debug string toString(uint lineshift) const
     {
         static if (is(T : Identifier))
-            return text(ir, " [", acc, "] = ", func.toString,
-                        "([", argv, "..", argv + argc, "])");
+            return text(ir.toString(lineshift), " [", acc, "] = ",
+                        func.toString, "([", argv, "..", argv + argc, "])");
         else
-            return text(ir, " [", acc, "] = [", func,
+            return text(ir.toString(lineshift), " [", acc, "] = [", func,
                         "]([", argv, "..", argv + argc, "])");
     }
 }
@@ -452,13 +455,15 @@ align(size_t.sizeof):
         this.argv = argv;
     }
 
-    debug string toString() const
+    debug string toString(uint lineshift) const
     {
         static if (is(T : Identifier))
-            return text(ir, " [", acc, "] = [", owner, "].\"", method.toString,
+            return text(ir.toString(lineshift),
+                        " [", acc, "] = [", owner, "].\"", method.toString,
                         "\"([", argv, " .. ", argv + argc, "])");
         else
-            return text(ir, " [", acc, "] = [", owner, "].[", method,
+            return text(ir.toString(lineshift),
+                        " [", acc, "] = [", owner, "].[", method,
                         "]([", argv, " .. ", argv + argc, "])");
     }
 }
@@ -483,7 +488,7 @@ align(size_t.sizeof):
         this.method = method;
     }
 
-    debug string toString() const
+    debug string toString(uint lineshift) const
     {
         static if (is(T : Identifier))
             auto mName = text("\"", *method, "\"");
@@ -491,9 +496,11 @@ align(size_t.sizeof):
             auto mName = text("[", method, "]");
 
         static if (isGet!CODE)
-            return text(ir, " [", acc, "] = [", owner, "].", mName);
+            return text(ir.toString(lineshift),
+                        " [", acc, "] = [", owner, "].", mName);
         else
-            return text(ir, " [", owner, "].", mName, " = [", acc, "]");
+            return text(ir.toString(lineshift),
+                        " [", owner, "].", mName, " = [", acc, "]");
     }
 }
 
@@ -524,13 +531,14 @@ align(size_t.sizeof):
         this.hash = hash;
     }
 
-    debug string toString() const
+    debug string toString(uint lineshift) const
     {
         static if (CODE == Opcode.AddAsSScope)
-            return text(ir, " [", acc, "] = \"", *operand,
+            return text(ir.toString(lineshift), " [", acc, "] = \"", *operand,
                         "\"(#", hash, ") += [", acc, "]");
         else
-            return text(ir, " [", acc, "] = \"", *operand, "\"(#", hash, ")");
+            return text(ir.toString(lineshift),
+                        " [", acc, "] = \"", *operand, "\"(#", hash, ")");
     }
 }
 
@@ -554,8 +562,10 @@ align(size_t.sizeof):
         this.iter = iter;
     }
 
-    debug string toString(size_t base = 0) const
-    { return text(ir, " if(", func, ", ", iter, ") goto ", offset + base); }
+    debug string toString(uint lineshift, size_t base = 0) const
+    {
+        return text(ir.toString(lineshift),
+                    " if(", func, ", ", iter, ") goto ", offset + base); }
 }
 
 // if (owner.method iter) goto offset; iter = iter.next;
@@ -580,9 +590,10 @@ align(size_t.sizeof):
         this.iter = iter;
     }
 
-    debug string toString(size_t base = 0) const
+    debug string toString(uint lineshift, size_t base = 0) const
     {
-        return text(ir, " if(", owner, ".", method, ", ", iter, ") goto ",
+        return text(ir.toString(lineshift),
+                    " if(", owner, ".", method, ", ", iter, ") goto ",
                     offset + base);
     }
 }
@@ -603,9 +614,9 @@ align(size_t.sizeof):
         this.offset = offset;
     }
 
-    debug string toString(size_t base = 0) const
+    debug string toString(uint lineshift, size_t base = 0) const
     {
-        return "%s goto %04d".format(ir, offset + base);
+        return "%s goto %04d".format(ir.toString(lineshift), offset + base);
     }
 }
 //
@@ -626,8 +637,8 @@ align(size_t.sizeof):
         this.cond = cond;
     }
 
-    debug string toString(size_t base = 0) const
-    { return text(ir, " if(", cond, ") ", offset + base); }
+    debug string toString(uint lineshift, size_t base = 0) const
+    { return text(ir.toString(lineshift), " if(", cond, ") ", offset + base); }
 }
 //
 private struct IRjump3(Opcode CODE, T = idx_t)
@@ -649,7 +660,7 @@ align(size_t.sizeof):
         this.operand2 = o2;
     }
 
-    debug string toString(size_t base = 0) const
+    debug string toString(uint lineshift, size_t base = 0) const
     {
         import std.format;
 
@@ -662,13 +673,13 @@ align(size_t.sizeof):
 
         static if      (CODE == Opcode.JLT || CODE == Opcode.JLE)
             return "%s if([%d] %s [%d]) else goto %04d".format(
-                ir, operand1, cmp, operand2, base + offset);
+                ir.toString(lineshift), operand1, cmp, operand2, base + offset);
         else static if (CODE == Opcode.JLTC || CODE == Opcode.JLEC)
             return "%s if([%d] %s %s) else goto %04d".format(
-                ir, operand1, cmp, operand2, base + offset);
+                ir.toString(lineshift), operand1, cmp, operand2, base + offset);
         else
             return "%s if([%d] %s %s) else goto %04d".format(
-                ir, operand1, cmp, operand2, base + offset);
+                ir.toString(lineshift), operand1, cmp, operand2, base + offset);
     }
 }
 
@@ -690,8 +701,11 @@ align(size_t.sizeof):
         this.statement = statement;
     }
 
-    debug string toString(size_t base = 0) const
-    { return text(ir, " ", (cast(size_t)cast(void*)statement) + base); }
+    debug string toString(uint lineshift, size_t base = 0) const
+    {
+        return text(ir.toString(lineshift), " ",
+                    (cast(size_t)cast(void*)statement) + base);
+    }
 }
 
 //
@@ -712,12 +726,13 @@ align(size_t.sizeof):
         this.name = name;
     }
 
-    debug string toString(size_t base = 0) const
+    debug string toString(uint lineshift, size_t base = 0) const
     {
         if (name !is null)
-            return text(ir, " ", *name, ", ", offset + base);
+            return text(ir.toString(lineshift), " ", *name, ", ",
+                        offset + base);
         else
-            return text(ir, " \"\"", offset + base);
+            return text(ir.toString(lineshift), " \"\"", offset + base);
     }
 }
 
@@ -737,12 +752,12 @@ align(size_t.sizeof):
         this.operand = operand;
     }
 
-    debug string toString() const
+    debug string toString(uint lineshift) const
     {
         if (operand !is null)
-            return text(ir, " ", *operand);
+            return text(ir.toString(lineshift), " ", *operand);
         else
-            return text(ir, " \"\"");
+            return text(ir.toString(lineshift), " \"\"");
     }
 }
 
@@ -759,8 +774,10 @@ private struct IRAssert
         ir = Instruction(linnum, code);
     }
 
-    debug string toString() const
-    { return text(ir, " at line ", ir.linnum); }
+    debug string toString(uint lineshift) const
+    {
+        return text(ir.toString(lineshift), " at line ", ir.linnum - lineshift);
+    }
 }
 
 //

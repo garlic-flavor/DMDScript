@@ -281,7 +281,6 @@ private:
         //----------------------------------------------------------
         void setSourceInfo(Source[] delegate(string) callback)
         {
-            size_t accLine;
             size_t accOffset;
             if (linnum == 0)
                 return;
@@ -291,18 +290,20 @@ private:
             if (0 == bufferId.length)
                 return;
 
+            lineshift = 0;
             foreach (one; callback(bufferId))
             {
-                if (linnum <= accLine + one.lineCount)
+                if (linnum <= lineshift + one.lineCount)
                 {
                     sourcename = one.filename;
-                    linnum -= accLine;
                     if (haveOffset)
                         offset -= accOffset;
-                    line = getLineAt(one.buffer, linnum, haveOffset, offset);
+                    assert (lineshift <= linnum);
+                    line = getLineAt(one.buffer, linnum - lineshift,
+                                     haveOffset, offset);
                     break;
                 }
-                accLine += one.lineCount;
+                lineshift += one.lineCount;
                 accOffset += one.buffer.length;
             }
         }
@@ -333,7 +334,7 @@ private:
             if (0 < linnum)
             {
                 sink("(");
-                sink(unsignedToTempString(linnum, tmpBuff, 10));
+                sink(unsignedToTempString(linnum - lineshift, tmpBuff, 10));
                 sink(")");
             }
             if (strictMode)
@@ -394,7 +395,7 @@ private:
                 if (ite.opcode.linnum < code.opcode.linnum)
                     continue;
                 sink(ite is code ? "*" : " ");
-                IR.toBuffer(0, ite, sink);
+                IR.toBuffer(0, ite, sink, lineshift);
                 sink("\n");
             }
         }
@@ -426,6 +427,7 @@ private:
         string line; //
         bool haveOffset;//
         size_t offset; //
+        uint lineshift;
 
         string bufferId;
         bool strictMode;

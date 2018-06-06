@@ -504,43 +504,38 @@ struct Property
     // See_Also: Ecma-262-v7/6.2.4.5
     this(Dobject obj, CallContext* cc)
     {
-        bool valueOrWritable = false;
-
         assert(obj);
 
         _attr = getAttribute(cc, obj);
         if (auto v = obj.Get(Key.value, cc))
         {
             _value = *v;
-            valueOrWritable = true;
         }
         else
         {
-            valueOrWritable = 0 == (_attr & Attribute.ReadOnly);
+            auto writable = (0 == (_attr & Attribute.ReadOnly));
+
+            _Get = null;
+            _Set = null;
 
             if (auto v = obj.Get(Key.get, cc))
             {
-                if (valueOrWritable)
-                    throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!
-                _attr |= Attribute.Accessor;
                 _Get = cast(Dfunction)v.toObject(cc.realm);
-                if (_Get is null)
-                    throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!!
             }
-            else
-                _Get = null;
 
             if (auto v = obj.Get(Key.set, cc))
             {
-                if (valueOrWritable)
-                    throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!
-                _attr |= Attribute.Accessor;
-                _Set = cast(Dfunction)v.toObject(cc.realm);
-                if (_Set is null)
-                    throw CannotPutError.toThrow; // !!!!!!!!!!!!!!!!!!!!!!!!
+                if (writable)
+                    _Set = cast(Dfunction)v.toObject(cc.realm);
             }
+
+            if (_Get !is null || _Set !is null)
+                _attr |= Attribute.Accessor;
             else
-                _Set = null;
+            {
+                _value.put(obj);
+            }
+
         }
     }
 
@@ -914,24 +909,24 @@ private static:
             if (!v.toBoolean)
                 attr |= Attribute.DontEnum;
         }
-        else
-            attr |= Attribute.DontEnum;
+        // else
+        //     attr |= Attribute.DontEnum;
 
         if (auto v = obj.Get(Key.configurable, cc))
         {
             if (!v.toBoolean)
                 attr |= Attribute.DontConfig;
         }
-        else
-            attr |= Attribute.DontConfig;
+        // else
+        //     attr |= Attribute.DontConfig;
 
         if (auto v = obj.Get(Key.writable, cc))
         {
             if (!v.toBoolean)
                 attr |= Attribute.ReadOnly;
         }
-        else
-            attr |= Attribute.ReadOnly;
+        // else
+        //     attr |= Attribute.ReadOnly;
 
         return attr;
     }

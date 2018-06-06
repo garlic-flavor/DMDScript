@@ -574,6 +574,7 @@ final class Field
         Normal,
         Getter,
         Setter,
+        Computed,
     }
 
     @safe @nogc pure nothrow
@@ -584,8 +585,17 @@ final class Field
         this.type = type;
     }
 
+    @safe @nogc pure nothrow
+    this(Expression idExp, Expression exp, Type type = Type.Computed)
+    {
+        this.idExp = idExp;
+        this.exp = exp;
+        this.type = type;
+    }
+
 private:
     Identifier ident;
+    Expression idExp;
     Expression exp;
     Type type;
 }
@@ -607,6 +617,8 @@ final class ObjectLiteral : Expression
     {
         foreach(Field f; fields)
         {
+            if (f.idExp !is null)
+                f.idExp = f.idExp.semantic(sc);
             f.exp = f.exp.semantic(sc);
         }
         return this;
@@ -631,6 +643,14 @@ final class ObjectLiteral : Expression
                     irs.gen!(Opcode.PutGetterS)(linnum, x[0], ret, f.ident);
                 else if (f.type == Field.Type.Setter)
                     irs.gen!(Opcode.PutSetterS)(linnum, x[0], ret, f.ident);
+                else if (f.type == Field.Type.Computed)
+                {
+                    assert (f.idExp !is null);
+                    auto name = irs.alloc(1);
+                    f.idExp.toIR(irs, name[0]);
+                    irs.gen!(Opcode.Put)(linnum, x[0], ret, name[0]);
+                    irs.release(name);
+                }
                 else
                     irs.gen!(Opcode.PutS)(linnum, x[0], ret, f.ident);
             }
@@ -649,7 +669,14 @@ final class ObjectLiteral : Expression
             if(i)
                 sink(",");
             i = 1;
-            sink(f.ident.toString);
+            if      (f.ident !is null)
+                sink(f.ident.toString);
+            else if (f.idExp !is null)
+            {
+                sink("[");
+                f.idExp.toBuffer(sink);
+                sink("]");
+            }
             sink(":");
             f.exp.toBuffer(sink);
         }
