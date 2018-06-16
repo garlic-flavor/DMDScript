@@ -276,10 +276,10 @@ private:
 //
 struct err(alias Ctor, ARGS...)
 {
-    import dmdscript.value : DError, toDError;
+    import dmdscript.value : DError;
     import dmdscript.opcodes : IR;
     import dmdscript.exception : ScriptException;
-    import dmdscript.drealm: Drealm;
+    import dmdscript.callcontext: CallContext;
 
     string fmt; //
 
@@ -291,13 +291,33 @@ struct err(alias Ctor, ARGS...)
     }
 
     //
-    @safe
-    DError* opCall(Drealm realm, ARGS args, string file = __FILE__,
+    @trusted
+    DError* opCall(CallContext* cc, ARGS args, string file = __FILE__,
                    size_t line = __LINE__) const
     {
         import std.format : format;
-        return new ScriptException(Ctor.Text, fmt.format(args), file, line)
-            .toDError!Ctor(realm);
+        import dmdscript.value: Value;
+        import dmdscript.protoerror: D0base, EvalError;
+
+        string msg = fmt.format(args);
+        D0base d0;
+        static if      (is(Ctor == SyntaxError))
+            d0 = cc.realm.dSyntaxError(msg);
+        else static if (is(Ctor == EvalError))
+            d0 = cc.realm.dEvalError(msg);
+        else static if (is(Ctor == cReferenceError))
+            d0 = cc.realm.dReferenceError(msg);
+        else static if (is(Ctor == RangeError))
+            d0 = cc.realm.dRangeError(msg);
+        else static if (is(Ctor == cTypeError))
+            d0 = cc.realm.dTypeError(msg);
+        else static if (is(Ctor == UriError))
+            d0 = cc.realm.dUriError(msg);
+        else static assert (0);
+
+        Value v;
+        v.put(d0);
+        return new DError (cc, v, file, line);
     }
     alias opCall this;
 

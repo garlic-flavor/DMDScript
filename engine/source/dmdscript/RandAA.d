@@ -131,7 +131,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         A Exception on unsuccessful key search.
     */
     @trusted
-    ref auto opIndex()(auto ref K index) inout
+    ref auto opIndex()(in auto ref K index) inout
     {
         import std.conv : text;
 
@@ -151,7 +151,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         null if index is not found.
     */
     @trusted
-    inout(V)* opBinaryRight(string OP : "in")(auto ref K index) inout
+    inout(V)* opBinaryRight(string OP : "in")(in auto ref K index) inout
     {
         size_t i = findExisting(index, getHash(index));
         if(i == size_t.max)
@@ -600,7 +600,7 @@ private static:
     // Optimized for a few special cases to avoid the virtual function call
     // to TypeInfo.getHash().
     static @trusted nothrow
-    size_t getHash(in K key)
+    size_t getHash(in ref K key)
     {
         static if(is (Y : long) && Y.sizeof <= size_t.sizeof)
         {

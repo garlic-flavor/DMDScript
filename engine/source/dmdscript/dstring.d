@@ -206,7 +206,7 @@ DError* fromCharCode(
         if(!isValidDchar(u))
         {
             ret.putVundefined();
-            return NotValidUTFError(cc.realm, "String", "fromCharCode()", u);
+            return NotValidUTFError(cc, "String", "fromCharCode()", u);
         }
 
         l = encode(buf, u);
@@ -250,8 +250,7 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return FunctionWantsStringError(cc.realm, Key.toString,
-                                        othis.classname);
+        return FunctionWantsStringError(cc, Key.toString, othis.classname);
     }
     return null;
 }
@@ -273,7 +272,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined();
-        return FunctionWantsStringError(cc.realm, Key.valueOf, othis.classname);
+        return FunctionWantsStringError(cc, Key.valueOf, othis.classname);
     }
     return null;
 }

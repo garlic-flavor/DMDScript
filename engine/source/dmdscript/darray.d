@@ -75,7 +75,7 @@ class Darray : Dobject
                     i = v.toUint32(cc);
                     if(i != v.toInteger(cc))
                     {
-                        return LengthIntError(cc.realm);
+                        return LengthIntError(cc);
                     }
                     if(i < ulength)
                     {
@@ -251,7 +251,7 @@ class DarrayConstructor : Dconstructor
                 if(cast(double)len != v.number)
                 {
                     ret.putVundefined;
-                    return ArrayLenOutOfBoundsError(cc.realm, v.number);
+                    return ArrayLenOutOfBoundsError(cc, v.number);
                 }
                 else
                 {
@@ -372,7 +372,7 @@ DError* toLocaleString(
     if ((cast(Darray)othis) is null)
     {
         ret.putVundefined();
-        return TlsNotTransferrableError(cc.realm);
+        return TlsNotTransferrableError(cc);
     }
 
     v = othis.Get(Key.length, cc);

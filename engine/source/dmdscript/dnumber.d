@@ -247,8 +247,7 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return FunctionWantsNumberError(cc.realm, Key.toString,
-                                        othis.classname);
+        return FunctionWantsNumberError(cc, Key.toString, othis.classname);
     }
     return null;
 }
@@ -270,7 +269,7 @@ DError* toLocaleString(
     {
         ret.putVundefined();
         return FunctionWantsNumberError(
-            cc.realm, Key.toLocaleString, othis.classname);
+            cc, Key.toLocaleString, othis.classname);
     }
     return null;
 }
@@ -289,7 +288,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined();
-        return FunctionWantsNumberError(cc.realm, Key.valueOf, othis.classname);
+        return FunctionWantsNumberError(cc, Key.valueOf, othis.classname);
     }
     return null;
 }
@@ -363,7 +362,7 @@ DError* toFixed(
     if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
     {
         ret.putVundefined();
-        return ValueOutOfRangeError(cc.realm, Key.toFixed, "fractonDigits");
+        return ValueOutOfRangeError(cc, Key.toFixed, "fractonDigits");
     }
     v = &othis.value;
     x = v.toNumber(cc);
@@ -515,7 +514,7 @@ DError* toExponential(
             if(fractionDigits < 0 || fractionDigits > FIXED_DIGITS)
             {
                 ret.putVundefined();
-                return ValueOutOfRangeError(cc.realm, Key.toExponential,
+                return ValueOutOfRangeError(cc, Key.toExponential,
                                             "fractionDigits");
             }
 
@@ -660,7 +659,7 @@ DError* toPrecision(
             if(precision < 1 || precision > 21)
             {
                 ret.putVundefined();
-                return ValueOutOfRangeError(cc.realm, Key.toPrecision,
+                return ValueOutOfRangeError(cc, Key.toPrecision,
                                             "precision");
             }
 

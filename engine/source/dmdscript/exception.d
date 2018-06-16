@@ -21,7 +21,8 @@ debug import std.stdio;
 ///
 class ScriptException : Exception
 {
-    import dmdscript.opcodes : IR;
+    import dmdscript.opcodes: IR;
+    import dmdscript.primitive: PropertyKey;
 
     // int code; // for what?
 
@@ -42,12 +43,12 @@ class ScriptException : Exception
          string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line, n);
-        typename = "Unknown";
+        typename = PropertyKey("Unknown");
     }
 
     ///
     @nogc @safe pure nothrow
-    this(string type, string msg,
+    this(PropertyKey type, string msg,
          string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line);
@@ -56,7 +57,7 @@ class ScriptException : Exception
 
     ///
     @nogc @safe pure nothrow
-    this(string type, string msg, Throwable next,
+    this(PropertyKey type, string msg, Throwable next,
          string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line, next);
@@ -65,7 +66,7 @@ class ScriptException : Exception
 
     /// ditto
     @safe pure
-    this(string type, string message, string funcname, uint linnum,
+    this(PropertyKey type, string message, string funcname, uint linnum,
          string file = __FILE__, size_t line = __LINE__)
     {
         super(message, file, line);
@@ -75,8 +76,8 @@ class ScriptException : Exception
 
     /// ditto
     @safe pure
-    this(string type, string msg, uint linnum, string file = __FILE__,
-         size_t line = __LINE__)
+    this(PropertyKey type, string msg, uint linnum,
+         string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line);
         addTrace(linnum, file, line);
@@ -93,7 +94,7 @@ class ScriptException : Exception
 
     ///
     @property @safe @nogc pure nothrow
-    string type() const
+    PropertyKey type() const
     {
         return typename;
     }
@@ -436,7 +437,7 @@ private:
     //====================================================================
 private:
     TraceDescriptor[] trace;
-    string typename;
+    PropertyKey typename;
 
     //
     @safe @nogc pure nothrow

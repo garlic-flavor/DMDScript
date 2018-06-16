@@ -83,6 +83,7 @@ enum Key : PropertyKey
     constructor = PropertyKey("constructor"),
     toString = PropertyKey("toString"),
     toSource = PropertyKey("toSource"),
+    toPrimitive = PropertyKey("toPrimitive"),
     valueOf = PropertyKey("valueOf"),
     message = PropertyKey("message"),
     description = PropertyKey("description"),
@@ -203,6 +204,11 @@ struct PropertyKey
         bool hasString() const
         {
             return _text !is null;
+        }
+
+        bool isSymbol() const
+        {
+            return (cast(size_t)_text.ptr) == _hash;
         }
     }
 

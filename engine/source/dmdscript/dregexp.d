@@ -171,7 +171,7 @@ class DregexpConstructor : Dconstructor
             }
             else
             {
-                return TypeError(cc.realm, "RegExp.prototype.constructor");
+                return TypeError(cc, "RegExp.prototype.constructor");
             }
         }
         else
@@ -182,7 +182,7 @@ class DregexpConstructor : Dconstructor
         r = opCall(P, F);
         if(r.re.errors !is null)
         {
-            return RegexpCompileError(cc.realm, r.re.errors.toString);
+            return RegexpCompileError(cc, r.re.errors.toString);
         }
         else
         {
@@ -297,7 +297,7 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return NotTransferrableError(cc.realm, "RegExp.prototype.toString()");
+        return NotTransferrableError(cc, "RegExp.prototype.toString()");
     }
     return null;
 }
@@ -370,7 +370,7 @@ DError* compile(
     else
     {
         ret.putVundefined();
-        return NotTransferrableError(cc.realm, "RegExp.prototype.compile()");
+        return NotTransferrableError(cc, "RegExp.prototype.compile()");
     }
 
     // Documentation says nothing about a return value,
@@ -694,7 +694,7 @@ static:
         else
         {
             ret.putVundefined();
-            return NotTransferrableError(cc.realm, "RegExp.prototype.exec()");
+            return NotTransferrableError(cc, "RegExp.prototype.exec()");
         }
 
         return null;

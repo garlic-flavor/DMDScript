@@ -222,9 +222,9 @@ struct IR
                     b = locals + (code + 2).index;
                     id = (code + 3).id;
                     o = b.toObject(cc.realm);
-                    if(!o)
+                    if(o is null)
                     {
-                        sta = CannotConvertToObject3Error(cc.realm,
+                        sta = CannotConvertToObject3Error(cc,
                             b.type.to!string, b.toString(cc),
                             id.toString);
                         goto Lthrow;
@@ -241,7 +241,7 @@ struct IR
                     id = (code+1).id;
                     if (cc.get(*id) is null)
                     {
-                        sta = UndefinedVarError(cc.realm, id.toString);
+                        sta = UndefinedVarError(cc, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.CheckRef].size;
@@ -310,7 +310,7 @@ struct IR
                     }
                     if (!o.SetGetter(*(code+3).id, f, Property.Attribute.None))
                     {
-                        sta = CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!
+                        sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PutGetterS].size;
@@ -338,7 +338,7 @@ struct IR
                     }
                     if (!o.SetSetter(*(code+3).id, f, Property.Attribute.None))
                     {
-                        sta = CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PutSetterS].size;
@@ -379,7 +379,7 @@ struct IR
                     a = locals + (code + 1).index;
                     if(!v)
                     {
-                        sta = UndefinedVarError(cc.realm, id.toString);
+                        sta = UndefinedVarError(cc, id.toString);
                         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                         // To_Do: add b's information
                         goto Lthrow;
@@ -438,7 +438,7 @@ struct IR
 
                 case Opcode.PutScope:            // s = a
                     a = locals + (code + 1).index;
-                    sta = a.checkReference(cc.realm);
+                    sta = a.checkReference(cc);
                     if (sta !is null)
                         goto Lthrow;
                     sta = cc.set(*(code + 2).id, *a);
@@ -453,11 +453,11 @@ struct IR
                     o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = CannotAssignError(cc.realm, a.type.to!string,
+                        sta = CannotAssignError(cc, a.type.to!string,
                                                 b.type.to!string);
                         goto Lthrow;
                     }
-                    sta = o.PutDefault(cc.realm, *a);
+                    sta = o.PutDefault(cc, *a);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutDefault].size;
@@ -585,7 +585,7 @@ struct IR
                     c = locals + (code + 3).index;
                     if(c.isPrimitive)
                     {
-                        sta = RhsMustBeObjectError(cc.realm, "instanceof",
+                        sta = RhsMustBeObjectError(cc, "instanceof",
                                                    c.type.to!string);
                         goto Lthrow;
                     }
@@ -606,32 +606,16 @@ struct IR
                     {
                         a.put(b.number + c.number);
                     }
-                    else if (b.type == Value.Type.BigInt ||
-                             c.type == Value.Type.BigInt)
-                    {
-                        if (b.type != c.type)
-                        {
-                            if (b.type == Value.Type.String ||
-                                c.type == Value.Type.String)
-                                goto LstringConcat;
-                            sta = TypeError(
-                                cc.realm, "converting to BigInt");
-                            goto Lthrow;
-                        }
-                        assert (b.bigInt !is null);
-                        assert (c.bigInt !is null);
-                        a.put(new BigInt((*(b.bigInt)) + (*(c.bigInt))));
-                    }
                     else
                     {
-                    LstringConcat:
-                        char[Value.sizeof] vtmpb;
-                        Value* vb = cast(Value*)vtmpb;
-                        char[Value.sizeof] vtmpc;
-                        Value* vc = cast(Value*)vtmpc;
+                        Value vb, vc;
 
-                        b.toPrimitive(cc, *vb);
-                        c.toPrimitive(cc, *vc);
+                        sta = b.toPrimitive(cc, vb);
+                        if (sta !is null)
+                            goto Lthrow;
+                        sta = c.toPrimitive(cc, vc);
+                        if (sta !is null)
+                            goto Lthrow;
 
                         if(vb.isString || vc.isString)
                             a.put(vb.toString(cc) ~ vc.toString(cc));
@@ -640,10 +624,10 @@ struct IR
                             if (!vb.isBigInt || !vc.isBigInt)
                             {
                                 sta = TypeError(
-                                    cc.realm, "converting to BigInt");
+                                    cc, "converting to BigInt");
                                 goto Lthrow;
                             }
-                            a.put(new BigInt((*b.bigInt) + (*c.bigInt)));
+                            a.put(new BigInt(*vb.bigInt + *vc.bigInt));
                         }
                         else
                             a.put(vb.toNumber(cc) + vc.toNumber(cc));
@@ -815,7 +799,7 @@ struct IR
                             }
                             else
                             {
-                                sta = UndefinedVarError(cc.realm, id.toString);
+                                sta = UndefinedVarError(cc, id.toString);
                                 goto Lthrow;
                             }
                         }
@@ -895,7 +879,7 @@ struct IR
                     }
                     else
                     {
-                        sta = ReferenceError(cc.realm, id.toString);
+                        sta = ReferenceError(cc, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PostIncScope].size;
@@ -938,7 +922,7 @@ struct IR
                     }
                     else
                     {
-                        sta = ReferenceError(cc.realm, id.toString);
+                        sta = ReferenceError(cc, id.toString);
                         goto Lthrow;
                     }
                     code += IRTypes[Opcode.PostDecScope].size;
@@ -1467,13 +1451,13 @@ struct IR
                     Lcallerror:
                     {
                         auto s = id.toString;
-                        sta = UndefinedNoCall3Error(cc.realm,
+                        sta = UndefinedNoCall3Error(cc,
                             b.type.to!string, b.toString(cc), s);
                         if (auto didyoumean = cc.searchSimilarWord(o, s))
                         {
-                            sta.addMessage(", did you mean \"" ~
-                                           didyoumean.join("\" or \"") ~
-                                           "\"?");
+                            sta.exception.addMessage(
+                                ", did you mean \"" ~
+                                didyoumean.join("\" or \"") ~ "\"?");
                         }
                         goto Lthrow;
                     }
@@ -1486,12 +1470,12 @@ struct IR
                     {
                         //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
                         auto n = id.toString;
-                        sta = UndefinedVarError(cc.realm, n);
+                        sta = UndefinedVarError(cc, n);
                         if (auto didyoumean = cc.searchSimilarWord(n))
                         {
-                            sta.addMessage(", did you mean \"" ~
-                                           didyoumean.join("\" or \"") ~
-                                           "\"?");
+                            sta.exception.addMessage(
+                                ", did you mean \"" ~
+                                didyoumean.join("\" or \"") ~ "\"?");
                         }
                         goto Lthrow;
                     }
@@ -1505,7 +1489,7 @@ struct IR
                         assert(checksum == IR.verify(codestart));
                     if(sta !is null)
                     {
-                        sta.addTrace(codestart, code);
+                        sta.exception.addTrace(codestart, code);
                         cc.addTraceInfoTo(sta);
                         goto Lthrow;
                     }
@@ -1518,7 +1502,7 @@ struct IR
                     o = b.toObject(cc.realm);
                     if(!o)
                     {
-                        sta = UndefinedNoCall2Error(cc.realm, b.type.to!string,
+                        sta = UndefinedNoCall2Error(cc, b.type.to!string,
                                                     b.toString(cc));
                         goto Lthrow;
                     }
@@ -1555,11 +1539,11 @@ struct IR
                     o = v.toObject(cc.realm);
                     if(o is null)
                     {
-                        sta = CannotAssignTo2Error(cc.realm, b.type.to!string,
+                        sta = CannotAssignTo2Error(cc, b.type.to!string,
                                                    id.toString);
                         goto Lthrow;
                     }
-                    sta = o.put_Value(cc.realm, *a, (locals + (code + 5).index)
+                    sta = o.put_Value(cc, *a, (locals + (code + 5).index)
                                       [0 .. (code + 4).argc]);
                     if(sta !is null)
                         goto Lthrow;
@@ -1574,19 +1558,19 @@ struct IR
                     v = cc.get(*id, o);
                     if(v is null)
                     {
-                        sta = UndefinedNoCall2Error(cc.realm, "property",
+                        sta = UndefinedNoCall2Error(cc, "property",
                                                     id.toString);
                         goto Lthrow;
                     }
                     o = v.toObject(cc.realm);
                     if(o is null)
                     {
-                        sta = CannotAssignToError(cc.realm, id.toString);
+                        sta = CannotAssignToError(cc, id.toString);
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
                     c = locals + (code + 4).index;
-                    sta = o.put_Value(cc.realm, *a, c[0 .. (code + 3).argc]);
+                    sta = o.put_Value(cc, *a, c[0 .. (code + 3).argc]);
                     if(sta)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutCallScope].size;
@@ -1597,13 +1581,13 @@ struct IR
                     o = b.toObject(cc.realm);
                     if(o is null)
                     {
-                        sta = UndefinedNoCall2Error(cc.realm, b.type.to!string,
+                        sta = UndefinedNoCall2Error(cc, b.type.to!string,
                                                     b.toString(cc));
                         goto Lthrow;
                     }
                     a = locals + (code + 1).index;
                     c = locals + (code + 4).index;
-                    sta = o.put_Value(cc.realm, *a, c[0 .. (code + 3).argc]);
+                    sta = o.put_Value(cc, *a, c[0 .. (code + 3).argc]);
                     if(sta !is null)
                         goto Lthrow;
                     code += IRTypes[Opcode.PutCallV].size;
@@ -1664,7 +1648,7 @@ struct IR
 
                 case Opcode.RetExp:
                     a = locals + (code + 1).index;
-                    sta = a.checkReference(cc.realm);
+                    sta = a.checkReference(cc);
                     if (sta !is null)
                         goto Lthrow;
                     ret = *a;
@@ -1673,7 +1657,7 @@ struct IR
 
                 case Opcode.ImpRet:
                     a = locals + (code + 1).index;
-                    sta = a.checkReference(cc.realm);
+                    sta = a.checkReference(cc);
                     if (sta !is null)
                         goto Lthrow;
                     ret = *a;
@@ -1689,7 +1673,7 @@ struct IR
                     sta = unwindStack(sta);
                     if(sta !is null)
                     {
-                        sta.addTrace(codestart, code);
+                        sta.exception.addTrace(codestart, code);
                         return sta;
                     }
                     break;
@@ -1712,8 +1696,8 @@ struct IR
                 {
                     version(all)  // Not supported under some com servers
                     {
-                        auto linnum = (code + 1).index;
-                        sta = AssertError(cc.realm, linnum);
+                        auto linnum = code.opcode.linnum;
+                        sta = AssertError(cc, linnum);
                         goto Lthrow;
                     }
                     else
@@ -1751,10 +1735,10 @@ struct IR
         }
         catch (Throwable t)
         {
-            sta = unwindStack(t.toDError(cc.realm));
+            sta = unwindStack(new DError(cc, t));
             if (sta !is null)
             {
-                sta.addTrace(codestart, code);
+                sta.exception.addTrace(codestart, code);
                 return sta;
             }
         }
@@ -1942,12 +1926,12 @@ DError* cannotConvert(CallContext* cc, Value* b)
 
     if(b.isUndefinedOrNull)
     {
-        sta = CannotConvertToObject4Error(cc.realm, b.type.to!string);
+        sta = CannotConvertToObject4Error(cc, b.type.to!string);
     }
     else
     {
         sta = CannotConvertToObject2Error(
-            cc.realm, b.type.to!string, b.toString(cc));
+            cc, b.type.to!string, b.toString(cc));
     }
     return sta;
 }

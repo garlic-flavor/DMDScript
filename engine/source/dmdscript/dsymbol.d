@@ -29,21 +29,48 @@ import dmdscript.callcontext: CallContext;
 ///
 class Dsymbol : Dobject
 {
-    import dmdscript.primitive : Key;
+    import dmdscript.primitive: Key, PropertyKey;
+    import dmdscript.RandAA: RandAA;
 
 private:
     this(Dobject prototype, string desc)
     {
         super(prototype, Key.Symbol);
-        value.putVsymbol(desc);
+        value.putVsymbol(get(PropertyKey(desc)));
     }
 
     this(Dobject prototype, ref Value desc)
     {
+        assert (desc.type == Value.Type.Symbol);
         super(prototype, Key.Symbol);
         value = desc;
     }
+
+static public:
+
+    static void init()
+    {
+        if (_table is null)
+            _table = new Table;
+    }
+
+    PropertyKey get(PropertyKey key)
+    {
+        assert (!key.isSymbol);
+        assert (_table !is null);
+        auto symbol = key in _table;
+        if (symbol !is null)
+            return *symbol;
+        auto ns = PropertyKey.symbol(key);
+        _table.insertAlt(key, ns, key.hash);
+        return ns;
+    }
+
+static private:
+    alias Table = RandAA!(PropertyKey, PropertyKey, false);
+    Table _table;
 }
+
 
 //
 class DsymbolConstructor : Dconstructor
@@ -53,10 +80,27 @@ class DsymbolConstructor : Dconstructor
 
     this(Dobject superClassPrototype, Dobject functionPrototype)
     {
+        import dmdscript.primitive: PropertyKey;
+        import dmdscript.property: Property;
+        alias PA = Property.Attribute;
+        enum ATTR = PA.ReadOnly | PA.DontDelete | PA.DontConfig;
+
         super(new Dobject(superClassPrototype), functionPrototype,
               Key.Symbol, 1);
 
         install(functionPrototype);
+
+        // propagete well known symbols.
+        Value v;
+        PropertyKey pk;
+        foreach (one; [Key.toPrimitive])
+        {
+            pk = Dsymbol.get(one);
+            v.putVsymbol(pk);
+            DefineOwnProperty(one, v, ATTR );
+        }
+
+
     }
 
     Dsymbol opCall(ARGS...)(ARGS args)
@@ -73,8 +117,10 @@ class DsymbolConstructor : Dconstructor
     override DError* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
-        ret.putVsymbol(0 < arglist.length ? arglist[0].toString(cc) :
-                                            Key.undefined.idup);
+        import dmdscript.primitive: PropertyKey;
+        ret.putVsymbol(0 < arglist.length ?
+                       Dsymbol.get(PropertyKey(arglist[0].toString(cc))) :
+                       Dsymbol.get(Key.undefined));
         return null;
     }
 }
@@ -91,4 +137,22 @@ DError* _for(
     assert(0);
 }
 
+@DFD(0)
+DError* valueOf(
+    DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
+    Value[] arglist)
+{
+    import dmdscript.primitive: Key;
+    import dmdscript.errmsgs: FunctionWantsStringError;
 
+    if (auto ds = cast(Dsymbol)othis)
+    {
+        ret = ds.value;
+    }
+    else
+    {
+        ret.putVundefined;
+        return FunctionWantsStringError(cc, Key.valueOf, othis.classname);
+    }
+    return null;
+}

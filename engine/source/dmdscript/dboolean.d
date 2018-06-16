@@ -97,7 +97,7 @@ DError* toString(
     else
     {
         ret.putVundefined;
-        return FunctionWantsBoolError(cc.realm, Key.toString, othis.classname);
+        return FunctionWantsBoolError(cc, Key.toString, othis.classname);
     }
     return null;
 }
@@ -119,7 +119,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined;
-        return FunctionWantsBoolError(cc.realm, Key.valueOf, othis.classname);
+        return FunctionWantsBoolError(cc, Key.valueOf, othis.classname);
     }
     return null;
 }

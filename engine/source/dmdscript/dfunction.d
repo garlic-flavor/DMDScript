@@ -89,7 +89,7 @@ abstract class Dfunction : Dobject
         w = Get(Key.prototype, cc);
         if(w.isPrimitive())
         {
-            return MustBeObjectError(cc.realm, w.type.to!string);
+            return MustBeObjectError(cc, w.type.to!string);
         }
         o = w.toObject(cc.realm);
         for(;; )
@@ -315,12 +315,10 @@ class DfunctionConstructor : Dconstructor
         catch (Throwable t)
         {
             ret.putVundefined();
-            auto o = cc.realm.dSyntaxError(t);
-            auto v = new DError;
-            v.put(o);
-            return v;
+            Value v;
+            v.put(cc.realm.dSyntaxError(t.toString));
+            return new DError(cc, v);
         }
-
     }
 }
 
@@ -351,7 +349,7 @@ DError* toString(
     else
     {
         ret.putVundefined();
-        return TsNotTransferrableError(cc.realm);
+        return TsNotTransferrableError(cc);
     }
     return null;
 }
@@ -406,7 +404,7 @@ DError* apply(
         {
             Ltypeerror:
             ret.putVundefined();
-            return ArrayArgsError(cc.realm);
+            return ArrayArgsError(cc);
         }
         Dobject a;
 

@@ -47,6 +47,7 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.1
+    @property @safe @nogc pure nothrow
     Dobject GetPrototypeOf()
     {
         return _prototype;
@@ -180,26 +181,26 @@ class Dobject
 
     DError* Call(CallContext* cc, Dobject othis, out Value ret, Value[] arglist)
     {
-        return SNoCallError(cc.realm, _classname);
+        return SNoCallError(cc, _classname);
     }
 
     DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
-        return SNoConstructError(cc.realm, _classname);
+        return SNoConstructError(cc, _classname);
     }
 
     //--------------------------------------------------------------------
 
-    DError* PutDefault(Drealm realm, out Value value)
+    DError* PutDefault(CallContext* cc, out Value value)
     {
         // Not ECMA, Microsoft extension
-        return NoDefaultPutError(realm);
+        return NoDefaultPutError(cc);
     }
 
-    DError* put_Value(Drealm realm, out Value ret, Value[] arglist)
+    DError* put_Value(CallContext* cc, out Value ret, Value[] arglist)
     {
         // Not ECMA, Microsoft extension
-        return FunctionNotLvalueError(realm);
+        return FunctionNotLvalueError(cc);
     }
 
     int CanPut(in string PropertyName)
@@ -221,11 +222,15 @@ class Dobject
     DError* DefaultValue(CallContext* cc, out Value ret,
                          in Value.Type hint = Value.Type.RefError)
     {
-        import dmdscript.ddate : Ddate;
+        import dmdscript.ddate: Ddate;
+        import dmdscript.dsymbol: Dsymbol;
 
         Dobject o;
         Value* v;
-        enum Key[2] table = [Key.toString, Key.valueOf];
+        PropertyKey[] table =
+            [cast(PropertyKey)Key.toString,
+             Dsymbol.get(Key.toPrimitive),
+             cast(PropertyKey)Key.valueOf];
         int i = 0;                      // initializer necessary for /W4
 
         // ECMA 8.6.2.6
@@ -243,13 +248,21 @@ class Dobject
         else
             assert(0);
 
-        for(int j = 0; j < 2; j++)
+        for(int j = 0; j < 3; j++)
         {
-            auto htab = PropertyKey(table[i]);
+            auto htab = table[i];//PropertyKey(table[i]);
 
             v = Get(htab, cc);
 
-            if(v !is null && !v.isPrimitive())   // if it's an Object
+            // if it's an Object
+            if      (v is null){}
+            else if (v.isUndefined || v.isNull){}
+            else if (v.isPrimitive)
+            {
+                if (i == 1)
+                    break;
+            }
+            else if (v.isCallable)
             {
                 DError* a;
 
@@ -259,15 +272,21 @@ class Dobject
                     return a;
                 if(ret.isPrimitive)
                     return null;
+                else if (i == 1)
+                    break;
             }
-            i ^= 1;
+            else if (i == 1)
+                break;
+            ++i;
+            if (table.length <= i)
+                i = 0;
         }
-        return NoDefaultValueError(cc.realm);
+        return NoDefaultValueError(cc);
     }
 
     DError* HasInstance(CallContext* cc, out Value ret, ref Value v)
     {   // ECMA v3 8.6.2
-        return SNoInstanceError(cc.realm, _classname);
+        return SNoInstanceError(cc, _classname);
     }
 
     @safe @nogc pure nothrow
@@ -290,25 +309,25 @@ class Dobject
 
     //
     @disable
-    DError* CreateDataProperty(Drealm realm, in PropertyKey name,
+    DError* CreateDataProperty(CallContext* cc, in PropertyKey name,
                                ref Value value)
     {
         if (DefineOwnProperty(name, value, Property.Attribute.None))
             return null;
         else
-            return CreateDataPropertyError(realm);
+            return CreateDataPropertyError(cc);
     }
 
     //
     @disable
-    DError* CreateMethodProperty(Drealm realm,
+    DError* CreateMethodProperty(CallContext* cc,
                                  in ref PropertyKey PropertyName,
                                  ref Value value)
     {
         if (DefineOwnProperty(PropertyName, value, Property.Attribute.DontEnum))
             return null;
         else
-            return CreateMethodPropertyError(realm);
+            return CreateMethodPropertyError(cc);
     }
 
     @disable
@@ -422,7 +441,7 @@ class Dobject
             Value ret;
             auto err = instOfHandler.Call(cc, c, ret, [this.value]);
             if (err !is null)
-                throw err.toScriptException(cc);
+                throw err.exception;
             return ret.toBoolean;
         }
         if (auto df = cast(Dfunction)c)
@@ -459,7 +478,7 @@ class Dobject
 
     //
     this(Dobject prototype, PropertyKey cn = Key.Object,
-        PropTable pt = null)
+         PropTable pt = null)
     {
         if (pt is null)
             proptable = new PropTable;
@@ -559,7 +578,10 @@ class DobjectConstructor : Dconstructor
         return result;
     }
 
-    Dobject opCall(){ return new Dobject(classPrototype); }
+    Dobject opCall(PropertyKey cn = Key.Object)
+    {
+        return new Dobject(classPrototype, cn);
+    }
 
 }
 
@@ -611,7 +633,7 @@ DError* defineProperty(
         goto failure;
     else if (!arglist[0].isObject)
     {
-        sta = CannotConvertToObject2Error(cc.realm,
+        sta = CannotConvertToObject2Error(cc,
             arglist[0].getTypeof, arglist[0].toString(cc));
         goto failure;
     }
@@ -623,7 +645,7 @@ DError* defineProperty(
     {
         if (!target.DefineOwnProperty(key, Property.Attribute.None))
         {
-            sta = CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             goto failure;
         }
     }
@@ -631,7 +653,7 @@ DError* defineProperty(
     {
         if (!target.DefineOwnProperty(key, arglist[2].toObject(cc.realm), cc))
         {
-            sta = CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             goto failure;
         }
     }
@@ -780,7 +802,7 @@ DError* preventExtensions(
 
     auto o = v.object;
     if (!o.preventExtensions)
-        return PreventExtensionsFailureError(cc.realm, v.toString(cc));
+        return PreventExtensionsFailureError(cc, v.toString(cc));
 
     ret.put(o);
     return null;
@@ -813,7 +835,7 @@ DError* setPrototypeOf(
 
     if (!target.SetPrototypeOf(proto))
     {
-        sta = CannotPutError(cc.realm);
+        sta = CannotPutError(cc);
         goto failure;
     }
 

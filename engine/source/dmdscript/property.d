@@ -124,14 +124,14 @@ final class PropTable
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
             if (!_canExtend(key))
             {
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError(cc.realm); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
             return p.setForce(value, cc, othis);
@@ -144,7 +144,7 @@ final class PropTable
                 if (p.IsSilence)
                     return null;
                 else
-                    return CannotPutError(cc.realm); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return CannotPutError(cc); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
             return p.setForce(value, cc, othis);
         }
@@ -156,7 +156,7 @@ final class PropTable
         }
         else
         {
-            return CannotPutError(cc.realm);
+            return CannotPutError(cc);
         }
     }
 
@@ -688,7 +688,7 @@ struct Property
                     return ret;
                 else
                 {
-                    debug throw err.toScriptException(cc);
+                    debug throw err.exception;
                     else return null;
                 }
             }
@@ -740,7 +740,7 @@ struct Property
                 return _Set.Call(cc, othis, ret, [v]);
             }
             else
-                return CannotPutError(cc.realm);
+                return CannotPutError(cc);
         }
         else
         {

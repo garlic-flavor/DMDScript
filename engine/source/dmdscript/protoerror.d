@@ -41,16 +41,17 @@ class D0(alias Text) : D0base
     }
 
 
-    this(Dobject prototype, Throwable t)
-    {
-        if (auto se = cast(ScriptException)t)
-            super(prototype, se);
-        else
-            super(prototype,
-                  new ScriptException("Unexpected exception", t));
+// deprecated
+//     this(Dobject prototype, Throwable t)
+//     {
+//         if (auto se = cast(ScriptException)t)
+//             super(prototype, se);
+//         else
+//             super(prototype,
+//                   new ScriptException("Unexpected exception", t));
 
-        assert (GetPrototypeOf !is null);
-    }
+//         assert (GetPrototypeOf !is null);
+//     }
 }
 
 //------------------------------------------------------------------------------
@@ -130,38 +131,18 @@ class D0base : Dobject
     import dmdscript.primitive : Key, PropertyKey;
     import dmdscript.exception : ScriptException;
 
-    ScriptException exception;
-
-    this(Dobject prototype, ScriptException exception)
-    {
-        import dmdscript.property : Property;
-
-        assert(exception !is null);
-
-        super(prototype, PropertyKey(exception.type));
-        this.exception = exception;
-
-        Value val;
-        val.put(exception.msg);
-        DefineOwnProperty(Key.message, val, Property.Attribute.None);
-        val.put(exception.toString);
-        DefineOwnProperty(Key.description, val, Property.Attribute.None);
-        // DefineOwnProperty(Key.number, cast(double)exception.code,
-        //                   Property.Attribute.None);
-    }
-
-    protected this(Dobject prototype, PropertyKey typename, string m)
+    this(Dobject prototype, PropertyKey typename, string m)
     {
         import dmdscript.property : Property;
 
         super(prototype, typename);
 
-        auto val = Value(m);
-        DefineOwnProperty(Key.message, val, Property.Attribute.None);
-        DefineOwnProperty(Key.description, val, Property.Attribute.None);
-        val.put(0);
-        DefineOwnProperty(Key.number, val, Property.Attribute.None);
-        exception = new ScriptException(typename, m);
+        value.put(0);
+        DefineOwnProperty(Key.number, value, Property.Attribute.None);
+
+        value.put(m);
+        DefineOwnProperty(Key.message, value, Property.Attribute.None);
+        DefineOwnProperty(Key.description, value, Property.Attribute.None);
     }
 }
 
@@ -178,7 +159,7 @@ DError* toString(
 {
     import dmdscript.primitive : Key;
     if (auto d0 = cast(D0base)othis)
-        ret.put(d0.exception.toString);
+        ret.put(d0.value.toString);
     else
         ret.put(othis.Get(Key.message, cc));
     return null;

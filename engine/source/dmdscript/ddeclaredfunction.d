@@ -56,7 +56,7 @@ private
         this.scopex = scopex;
 
         // ECMA 3 13.2
-        auto o = realm.dObject();        // step 9
+        auto o = realm.dObject(name);        // step 9
         auto val = Value(o);
         // step 11
         DefineOwnProperty(Key.prototype, val, Property.Attribute.DontEnum);
@@ -159,9 +159,10 @@ private
         result = IR.call(ncc, othis, fd.code, ret, locals.ptr);
         if (result !is null)
         {
-            result.addInfo (cc.realm.id, fd.name !is null ?
-                            "function " ~ fd.name.toString : "anonymous",
-                            fd.strictMode);
+            result.exception.addInfo (
+                cc.realm.id, fd.name !is null ?
+                "function " ~ fd.name.toString : "anonymous",
+                fd.strictMode);
         }
 
         CallContext.pop(ncc);
@@ -193,7 +194,8 @@ private
             proto = cc.realm.rootPrototype;
         else
             proto = v.toObject(cc.realm);
-        othis = new Dobject(proto);
+
+        othis = new Dobject(proto, name);
         result = Call(cc, othis, ret, arglist);
         if(!result)
         {

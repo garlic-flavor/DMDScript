@@ -89,8 +89,7 @@ DError* valueOf(
     else
     {
         ret.putVundefined;
-        return FunctionWantsNumberError(cc.realm, Key.valueOf,
-                                        othis.classname);
+        return FunctionWantsNumberError(cc, Key.valueOf, othis.classname);
     }
     return null;
 }

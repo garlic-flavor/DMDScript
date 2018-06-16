@@ -71,7 +71,7 @@ class Drealm : Dobject // aka global environment.
     import dmdscript.dregexp: DregexpConstructor;
     // import dmdscript.derror;
     import dmdscript.dmath: Dmath;
-    import dmdscript.dsymbol: DsymbolConstructor;
+    import dmdscript.dsymbol: DsymbolConstructor, Dsymbol;
     import dmdscript.dproxy: DproxyConstructor;
     import dmdscript.dbigint: DbigIntConstructor;
 
@@ -115,6 +115,8 @@ class Drealm : Dobject // aka global environment.
 
         // Dglobal.prototype is implementation-dependent
         super(rootPrototype, Key.global);
+
+        Dsymbol.init;
 
         void init(T...)(ref T args)
         {
@@ -296,7 +298,6 @@ DError* eval(
     import dmdscript.property : Property;
     import dmdscript.opcodes : IR;
     import dmdscript.program: parse, analyze, generate, execute;
-    import dmdscript.value: toDError;
 
     // ECMA 15.1.2.1
     Value* v;
@@ -340,7 +341,8 @@ DError* eval(
         auto ncc = CallContext.push(cc, actobj, pthis, fd, othis);
         result = fd.execute(ncc, ret);
         if (result !is null)
-            result.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
+            result.exception.setSourceInfo(
+                id=>[new ScriptException.Source("eval", s)]);
 
         CallContext.pop(ncc);
     }
@@ -350,7 +352,7 @@ DError* eval(
         se.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
 
         ret.putVundefined();
-        return se.toDError(cc.realm);
+        return new DError(cc, se);
     }
 
     return result;
@@ -951,14 +953,14 @@ void dglobal_print(
                 import dmdscript.protoerror : D0base;
                 import std.windows.charset : toMBSz;
 
-                if (arglist[i].type == Value.Type.Object)
-                {
-                    if (auto err = cast(D0base)arglist[i].object)
-                    {
-                        err.exception.toString((b){printf("%s", b.toMBSz);});
-                        continue;
-                    }
-                }
+                // if (arglist[i].type == Value.Type.Object)
+                // {
+                //     if (auto err = cast(D0base)arglist[i].object)
+                //     {
+                //         err.exception.toString((b){printf("%s", b.toMBSz);});
+                //         continue;
+                //     }
+                // }
 
                 printf("%s", arglist[i].toString(cc).toMBSz);
             }

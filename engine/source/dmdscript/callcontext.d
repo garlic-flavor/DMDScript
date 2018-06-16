@@ -208,7 +208,7 @@ struct CallContext
             v = o.Get(key, &this);
             if (v !is null)
             {
-                if (auto err = v.checkReference(_realm))
+                if (auto err = v.checkReference(&this))
                     return err;
                 else
                     return o.Set (key, value, attr, &this);
@@ -218,7 +218,7 @@ struct CallContext
             else if (_strictMode)
             {
                 return CannotAssignToBeforeDeclarationError(
-                    _realm, key.toString);
+                    &this, key.toString);
             }
             else
                 return o.Set(key, value, attr, &this);
@@ -325,7 +325,7 @@ package:
             name = _callerf.name.toString;
 
 
-        err.addInfo (_realm.id, name, _callerf.strictMode);
+        err.exception.addInfo (_realm.id, name, _callerf.strictMode);
     }
 
 private:

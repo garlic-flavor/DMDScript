@@ -191,8 +191,9 @@ DError* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
 
         if (result !is null)
         {
-            result.addInfo (fd.name is null ? "anonymous" : fd.name.toString,
-                            "global", fd.strictMode);
+            result.exception.addInfo (
+                fd.name is null ? "anonymous" : fd.name.toString,
+                "global", fd.strictMode);
         }
 
         locals = null;
@@ -207,7 +208,7 @@ void execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
     auto cc = CallContext.push (realm, fd);
     auto result = execute(fd, cc, ret, args);
     if (result !is null)
-        throw result.toScriptException(cc);
+        throw result.exception;
     CallContext.pop(cc);
 }
 

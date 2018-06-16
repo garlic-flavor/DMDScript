@@ -142,11 +142,11 @@ struct Value
     //--------------------------------------------------------------------
     @trusted
     DError* checkReference(
-        Drealm realm, string file = __FILE__, size_t line = __LINE__) const
+        CallContext* cc, string file = __FILE__, size_t line = __LINE__) const
     {
         if(_type == Type.RefError)
         {
-            return UndefinedVarError(realm, _text, file, line);
+            return UndefinedVarError(cc, _text, file, line);
         }
         return null;
     }
@@ -177,12 +177,12 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted pure nothrow
-    void putVsymbol(string s)
+    void putVsymbol()(auto ref PropertyKey s)
     {
-        auto pk = PropertyKey.symbol(s);
+        assert (s.isSymbol);
         _type = Type.Symbol;
-        _text = pk.text;
-        _hash = pk.hash;
+        _text = s.text;
+        _hash = s.hash;
     }
 
     //--------------------------------------------------------------------
@@ -322,7 +322,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    void toPrimitive(CallContext* cc, ref Value v,
+    DError* toPrimitive(CallContext* cc, ref Value v,
                      in Type PreferredType = Type.RefError)
     {
         if(_type == Type.Object)
@@ -340,17 +340,18 @@ struct Value
              */
             assert(_object);
             if (auto a = _object.DefaultValue(cc, v, PreferredType))
-                throw a.toScriptException(cc);
+                return a;
             if(!v.isPrimitive)
             {
                 v.putVundefined;
-                throw ObjectCannotBePrimitiveError.toThrow;
+                return ObjectCannotBePrimitiveError(cc);
             }
         }
         else
         {
             v = this;
         }
+        return null;
     }
 
     //--------------------------------------------------------------------
@@ -1246,7 +1247,6 @@ struct Value
         return false;
     }
 
-    @disable
     bool isCallable() const
     {
         import dmdscript.dfunction : Dfunction;
@@ -1416,18 +1416,18 @@ struct Value
         {
             static if      (is(K : PropertyKey))
             {
-                return CannotPutToPrimitiveError(cc.realm,
+                return CannotPutToPrimitiveError(cc,
                     name.toString, value.toString(cc), getTypeof);
             }
             else static if (is(K : uint))
             {
-                return CannotPutIndexToPrimitiveError(cc.realm,
+                return CannotPutIndexToPrimitiveError(cc,
                     name, value.toString(cc), _type.to!string);
             }
             else
             {
                 return CannotPutToPrimitiveError(
-                    cc.realm, name, value.toString(cc), _type.to!string);
+                    cc, name, value.toString(cc), _type.to!string);
             }
         }
     }
@@ -1487,7 +1487,7 @@ struct Value
         {
             //PRINTF("Call method not implemented for primitive %p (%s)\n", this, string_t_ptr(toString()));
             ret.putVundefined();
-            return PrimitiveNoCallError(cc.realm, _type.to!string);
+            return PrimitiveNoCallError(cc, _type.to!string);
         }
     }
 
@@ -1504,7 +1504,7 @@ struct Value
         else
         {
             ret.putVundefined();
-            return PrimitiveNoConstructError(cc.realm, _type.to!string);
+            return PrimitiveNoConstructError(cc, _type.to!string);
         }
     }
 
@@ -1516,7 +1516,7 @@ struct Value
         else
         {
             v.putVundefined();
-            return ForInMustBeObjectError(cc.realm);
+            return ForInMustBeObjectError(cc);
         }
     }
 
@@ -1618,7 +1618,6 @@ Value* CanonicalNumericIndexString(CallContext* cc, in string str)
 
 //------------------------------------------------------------------------------
 /* DError contains the ending status of a function.
-Mostly, this contains a ScriptException.
 DError is needed for catch statements in the script.
  */
 struct DError
@@ -1629,159 +1628,63 @@ struct DError
 
     Value entity;
     alias entity this;
+    private ScriptException _exception;
 
     ///
+    @trusted
     this(CallContext* cc, ref Value v,
          string file = __FILE__, size_t line = __LINE__)
     {
-        import dmdscript.protoerror : TypeError;
-
-        if (v.type == Value.Type.Object)
-        {
-            entity = v;
-        }
-        else
-        {
-            entity.put(cc.realm.dTypeError(
-                           new ScriptException(TypeError.Text,
-                                               v.toString(cc),
-                                               file, line)));
-        }
-    }
-
-    ///
-    @safe @nogc pure nothrow
-    this(D0base err)
-    {
-        entity.put(err);
-    }
-
-    ///
-    ScriptException toScriptException(CallContext* cc)
-    {
         import dmdscript.protoerror: TypeError;
+        import dmdscript.dfunction: Dfunction;
 
-        if (auto d0 = cast(D0base)entity.toObject(cc.realm))
-            return d0.exception;
+        if (v.isObject)
+            entity = v;
         else
-        {
-            auto msg = entity.toString(cc);
-            string name = TypeError.Text;
-            if (entity.isObject)
-                name = entity.object.classname;
-            // auto pk = PropertyKey(Key.constructor);
-            // if (auto constructor = entity.Get(pk, cc))
-            //     name = constructor.object.classname;
-            return new ScriptException(name, msg);
-        }
+            entity.put(cc.realm.dTypeError(v.toString(cc)));
+
+        _exception = new ScriptException (
+            entity.object.classname, entity.toString(cc), file, line);
     }
 
     ///
-    @safe @nogc pure nothrow
-    void addInfo(string bufferId, string funcname = "", bool strictMode = false)
-    {
-        import dmdscript.protoerror: D0base;
-
-        if (auto d0 = cast(D0base)entity.object)
-        {
-            assert(d0.exception);
-            d0.exception.addInfo(bufferId, funcname, strictMode);
-        }
-    }
-
-    ///
-   @safe pure
-    void addTrace(const(IR)* base, const(IR)* code,
-                  string f = __FILE__, size_t l = __LINE__)
+    this (CallContext* cc, Throwable se,
+          string file = __FILE__, size_t line = __LINE__)
     {
         import dmdscript.protoerror;
-        if (auto d0 = cast(D0base)entity.object)
-        {
-            assert(d0.exception);
-            d0.exception.addTrace(base, code, f, l);
-        }
-    }
-
-    void setSourceInfo(ScriptException.Source[] delegate(string) callback)
-    {
-        if (auto d0 = cast(D0base)entity.object)
-        {
-            assert(d0.exception);
-            d0.exception.setSourceInfo(callback);
-        }
-    }
-
-    ///
-    @safe pure
-    void addMessage(string message)
-    {
-        import dmdscript.protoerror;
-
-        if (auto d0 = cast(D0base)entity.object)
-        {
-            assert(d0.exception);
-            d0.exception.addMessage(message);
-        }
-    }
-}
-
-//==============================================================================
-package:
-
-@trusted
-DError* toDError(Ctor = void)(Throwable t, Drealm realm)
-{
-    import dmdscript.exception: ScriptException;
-    import dmdscript.protoerror: D0base, SyntaxError, EvalError, ReferenceError,
-        RangeError, TypeError, UriError;
-
-    assert(t !is null);
-    ScriptException exception;
-
-    auto se = cast(ScriptException)t;
-    if (se is null)
-        se = new ScriptException(Key.Error, t.toString, t.file, t.line);
-
-    D0base d0;
-    static if      (is(Ctor == SyntaxError))
-        d0 = realm.dSyntaxError(se);
-    else static if (is(Ctor == EvalError))
-        d0 = realm.dEvalError(se);
-    else static if (is(Ctor == ReferenceError))
-        d0 = realm.dReferenceError(se);
-    else static if (is(Ctor == RangeError))
-        d0 = realm.dRangeError(se);
-    else static if (is(Ctor == TypeError))
-        d0 = realm.dTypeError(se);
-    else static if (is(Ctor == UriError))
-        d0 = realm.dUriError(se);
-    else
-    {
-        switch (se.type)
+        _exception = ScriptException(se);
+        Dobject d0;
+        switch (_exception.type)
         {
         case SyntaxError.Text:
-            d0 = realm.dSyntaxError(se);
+            d0 = cc.realm.dSyntaxError(_exception.msg);
             break;
         case EvalError.Text:
-            d0 = realm.dEvalError(se);
+            d0 = cc.realm.dEvalError(_exception.msg);
             break;
         case ReferenceError.Text:
-            d0 = realm.dReferenceError(se);
+            d0 = cc.realm.dReferenceError(_exception.msg);
             break;
         case RangeError.Text:
-            d0 = realm.dRangeError(se);
+            d0 = cc.realm.dRangeError(_exception.msg);
             break;
         case TypeError.Text:
-            d0 = realm.dTypeError(se);
+            d0 = cc.realm.dTypeError(_exception.msg);
             break;
         case UriError.Text:
-            d0 = realm.dUriError(se);
+            d0 = cc.realm.dUriError(_exception.msg);
             break;
         default:
-            d0 = new D0base (realm.dObject(), se);
+            d0 = cc.realm.dTypeError(_exception.msg);
         }
+        entity.put (d0);
     }
-    assert (d0 !is null);
-    return new DError(d0);
-}
 
+    ///
+    @property @nogc pure nothrow
+    ScriptException exception()
+    {
+        assert (_exception !is null);
+        return _exception;
+    }
+}

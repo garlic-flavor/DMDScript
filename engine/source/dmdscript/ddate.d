@@ -317,10 +317,10 @@ class DdateConstructor : Dconstructor
 
 /* ===================== Ddate.prototype functions =============== */
 
-DError* checkdate(Drealm realm, out Value ret, string name, Dobject othis)
+DError* checkdate(CallContext* cc, out Value ret, string name, Dobject othis)
 {
     ret.putVundefined();
-    return FunctionWantsDateError(realm, name, othis.classname);
+    return FunctionWantsDateError(cc, name, othis.classname);
 }
 
 int getThisTime(out Value ret, Dobject othis, out d_time n)
@@ -356,7 +356,7 @@ DError* toString(
 
     //writefln("Ddate_prototype_toString()");
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.toString, othis);
+        return checkdate(cc, ret, Key.toString, othis);
 
     version(DATETOSTRING)
     {
@@ -381,7 +381,7 @@ DError* toDateString(
     string s;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.toDateString, othis);
+        return checkdate(cc, ret, Key.toDateString, othis);
 
     version(DATETOSTRING)
     {
@@ -406,7 +406,7 @@ DError* toTimeString(
     string s;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.toTimeString, othis);
+        return checkdate(cc, ret, Key.toTimeString, othis);
 
     version(DATETOSTRING)
     {
@@ -431,7 +431,7 @@ DError* valueOf(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.valueOf, othis);
+        return checkdate(cc, ret, Key.valueOf, othis);
     getThisTime(ret, othis, n);
     return null;
 }
@@ -444,7 +444,7 @@ DError* getTime(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getTime, othis);
+        return checkdate(cc, ret, Key.getTime, othis);
     getThisTime(ret, othis, n);
     return null;
 }
@@ -457,7 +457,7 @@ DError* getYear(
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(cc.realm, ret, Key.getYear, othis);
+        return checkdate(cc, ret, Key.getYear, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -484,7 +484,7 @@ DError* getFullYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getFullYear, othis);
+        return checkdate(cc, ret, Key.getFullYear, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -502,7 +502,7 @@ DError* getUTCFullYear(
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(cc.realm, ret, Key.getUTCFullYear, othis);
+        return checkdate(cc, ret, Key.getUTCFullYear, othis);
     if(getThisTime(ret, othis, n) == 0)
     {
         n = yearFromTime(n);
@@ -519,7 +519,7 @@ DError* getMonth(
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(cc.realm, ret, Key.getMonth, othis);
+        return checkdate(cc, ret, Key.getMonth, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -537,7 +537,7 @@ DError* getUTCMonth(
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(cc.realm, ret, Key.getUTCMonth, othis);
+        return checkdate(cc, ret, Key.getUTCMonth, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -555,7 +555,7 @@ DError* getDate(
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(cc.realm, ret, Key.getDate, othis);
+        return checkdate(cc, ret, Key.getDate, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -575,7 +575,7 @@ DError* getUTCDate(
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(cc.realm, ret, Key.getUTCDate, othis);
+        return checkdate(cc, ret, Key.getUTCDate, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -593,7 +593,7 @@ DError* getDay(
     d_time n;
 
     if ((cast(Ddate)othis))
-        return checkdate(cc.realm, ret, Key.getDay, othis);
+        return checkdate(cc, ret, Key.getDay, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -611,7 +611,7 @@ DError* getUTCDay(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getUTCDay, othis);
+        return checkdate(cc, ret, Key.getUTCDay, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -629,7 +629,7 @@ DError* getHours(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getHours, othis);
+        return checkdate(cc, ret, Key.getHours, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -647,7 +647,7 @@ DError* getUTCHours(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getUTCHours, othis);
+        return checkdate(cc, ret, Key.getUTCHours, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -665,7 +665,7 @@ DError* getMinutes(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getMinutes, othis);
+        return checkdate(cc, ret, Key.getMinutes, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -683,7 +683,7 @@ DError* getUTCMinutes(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getUTCMinutes, othis);
+        return checkdate(cc, ret, Key.getUTCMinutes, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -701,7 +701,7 @@ DError* getSeconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getSeconds, othis);
+        return checkdate(cc, ret, Key.getSeconds, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -719,7 +719,7 @@ DError* getUTCSeconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getUTCSeconds, othis);
+        return checkdate(cc, ret, Key.getUTCSeconds, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -737,7 +737,7 @@ DError* getMilliseconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getMilliseconds, othis);
+        return checkdate(cc, ret, Key.getMilliseconds, othis);
 
     if(getThisLocalTime(ret, othis, n) == 0)
     {
@@ -755,7 +755,7 @@ DError* getUTCMilliseconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getUTCMilliseconds, othis);
+        return checkdate(cc, ret, Key.getUTCMilliseconds, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -773,7 +773,7 @@ DError* getTimezoneOffset(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.getTimezoneOffset, othis);
+        return checkdate(cc, ret, Key.getTimezoneOffset, othis);
 
     if(getThisTime(ret, othis, n) == 0)
     {
@@ -791,7 +791,7 @@ DError* setTime(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setTime, othis);
+        return checkdate(cc, ret, Key.setTime, othis);
 
     if(!arglist.length)
         n = d_time_nan;
@@ -815,7 +815,7 @@ DError* setMilliseconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setMilliseconds, othis);
+        return checkdate(cc, ret, Key.setMilliseconds, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -842,7 +842,7 @@ DError* setUTCMilliseconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setUTCMilliseconds, othis);
+        return checkdate(cc, ret, Key.setUTCMilliseconds, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -870,7 +870,7 @@ DError* setSeconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setSeconds, othis);
+        return checkdate(cc, ret, Key.setSeconds, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -912,7 +912,7 @@ DError* setUTCSeconds(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setUTCSeconds, othis);
+        return checkdate(cc, ret, Key.setUTCSeconds, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -955,7 +955,7 @@ DError* setMinutes(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setMinutes, othis);
+        return checkdate(cc, ret, Key.setMinutes, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1007,7 +1007,7 @@ DError* setUTCMinutes(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setUTCMinutes, othis);
+        return checkdate(cc, ret, Key.setUTCMinutes, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1060,7 +1060,7 @@ DError* setHours(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setHours, othis);
+        return checkdate(cc, ret, Key.setHours, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1124,7 +1124,7 @@ DError* setUTCHours(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setUTCHours, othis);
+        return checkdate(cc, ret, Key.setUTCHours, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1185,7 +1185,7 @@ DError* setDate(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setDate, othis);
+        return checkdate(cc, ret, Key.setDate, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1212,7 +1212,7 @@ DError* setUTCDate(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setUTCDate, othis);
+        return checkdate(cc, ret, Key.setUTCDate, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1240,7 +1240,7 @@ DError* setMonth(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setMonth, othis);
+        return checkdate(cc, ret, Key.setMonth, othis);
 
     if(getThisLocalTime(ret, othis, t) == 0)
     {
@@ -1282,7 +1282,7 @@ DError* setUTCMonth(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setUTCMonth, othis);
+        return checkdate(cc, ret, Key.setUTCMonth, othis);
 
     if(getThisTime(ret, othis, t) == 0)
     {
@@ -1325,7 +1325,7 @@ DError* setFullYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setFullYear, othis);
+        return checkdate(cc, ret, Key.setFullYear, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1377,7 +1377,7 @@ DError* setUTCFullYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setUTCFullYear, othis);
+        return checkdate(cc, ret, Key.setUTCFullYear, othis);
 
     getThisTime(ret, othis, t);
     if(t == d_time_nan)
@@ -1429,7 +1429,7 @@ DError* setYear(
     d_time n;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.setYear, othis);
+        return checkdate(cc, ret, Key.setYear, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1464,7 +1464,7 @@ DError* toLocaleString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.toLocaleString, othis);
+        return checkdate(cc, ret, Key.toLocaleString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1483,7 +1483,7 @@ DError* toLocaleDateString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.toLocaleDateString, othis);
+        return checkdate(cc, ret, Key.toLocaleDateString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1502,7 +1502,7 @@ DError* toLocaleTimeString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.toLocaleTimeString, othis);
+        return checkdate(cc, ret, Key.toLocaleTimeString, othis);
 
     if(getThisLocalTime(ret, othis, t))
         t = 0;
@@ -1520,7 +1520,7 @@ DError* toUTCString(
     d_time t;
 
     if ((cast(Ddate)othis) is null)
-        return checkdate(cc.realm, ret, Key.toUTCString, othis);
+        return checkdate(cc, ret, Key.toUTCString, othis);
 
     if(getThisTime(ret, othis, t))
         t = 0;
