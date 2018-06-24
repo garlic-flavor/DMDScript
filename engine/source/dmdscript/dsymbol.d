@@ -20,10 +20,11 @@ module dmdscript.dsymbol;
 import dmdscript.dobject: Dobject;
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
-import dmdscript.value: DError, Value;
+import dmdscript.value: Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
-
+import dmdscript.derror: Derror;
+debug import std.stdio: writeln;
 
 //==============================================================================
 ///
@@ -33,12 +34,14 @@ class Dsymbol : Dobject
     import dmdscript.RandAA: RandAA;
 
 private:
+    nothrow
     this(Dobject prototype, string desc)
     {
         super(prototype, Key.Symbol);
         value.putVsymbol(get(PropertyKey(desc)));
     }
 
+    nothrow
     this(Dobject prototype, ref Value desc)
     {
         assert (desc.type == Value.Type.Symbol);
@@ -54,6 +57,7 @@ static public:
             _table = new Table;
     }
 
+    nothrow
     PropertyKey get(PropertyKey key)
     {
         assert (!key.isSymbol);
@@ -69,6 +73,18 @@ static public:
 static private:
     alias Table = RandAA!(PropertyKey, PropertyKey, false);
     Table _table;
+
+    PropertyKey install(PropertyKey sym)
+    {
+        assert (sym.isSymbol);
+        assert (_table !is null);
+
+        auto key = PropertyKey(sym.text);
+        auto symbol = key in _table;
+        if (symbol is null)
+            _table.insertAlt(key, sym, key.hash);
+        return key;
+    }
 }
 
 
@@ -84,6 +100,8 @@ class DsymbolConstructor : Dconstructor
         import dmdscript.property: Property;
         alias PA = Property.Attribute;
         enum ATTR = PA.ReadOnly | PA.DontDelete | PA.DontConfig;
+        import dmdscript.property: SpecialSymbols;
+        alias SS = SpecialSymbols;
 
         super(new Dobject(superClassPrototype), functionPrototype,
               Key.Symbol, 1);
@@ -93,34 +111,41 @@ class DsymbolConstructor : Dconstructor
         // propagete well known symbols.
         Value v;
         PropertyKey pk;
-        foreach (one; [Key.toPrimitive])
+        foreach (one; [SS.opAssign, SS.toPrimitive])
         {
-            pk = Dsymbol.get(one);
-            v.putVsymbol(pk);
-            DefineOwnProperty(one, v, ATTR );
+            pk = Dsymbol.install(one);
+            v.putVsymbol(one);
+            DefineOwnProperty(pk, v, ATTR );
         }
-
-
     }
 
+    nothrow
     Dsymbol opCall(ARGS...)(ARGS args)
     {
         return new Dsymbol(classPrototype, args);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         import dmdscript.primitive: PropertyKey;
-        ret.putVsymbol(0 < arglist.length ?
-                       Dsymbol.get(PropertyKey(arglist[0].toString(cc))) :
-                       Dsymbol.get(Key.undefined));
+        PropertyKey key;
+
+        if (0 < arglist.length)
+        {
+            string s;
+            arglist[0].to(s, cc);
+            key = PropertyKey(s);
+        }
+        else
+            key = Key.undefined;
+        ret.putVsymbol(Dsymbol.get(key));
         return null;
     }
 }
@@ -130,7 +155,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static, "for")
-DError* _for(
+Derror* _for(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -138,7 +163,7 @@ DError* _for(
 }
 
 @DFD(0)
-DError* valueOf(
+Derror* valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

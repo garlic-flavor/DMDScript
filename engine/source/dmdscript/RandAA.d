@@ -116,7 +116,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     }
 
     ///
-    @safe
+    @safe nothrow
     void rehash()
     {
         if(cast(float)(_length + nDead) / space < 0.7)
@@ -150,7 +150,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     Returns:
         null if index is not found.
     */
-    @trusted
+    @trusted nothrow
     inout(V)* opBinaryRight(string OP : "in")(in auto ref K index) inout
     {
         size_t i = findExisting(index, getHash(index));
@@ -165,7 +165,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     }
 
     /// Hackery
-    @trusted
+    @trusted @nogc nothrow
     inout(V)* findExistingAlt(in ref K key, in size_t hashFull) inout
     {
         size_t pos = hashFull & mask;
@@ -213,7 +213,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     }
 
     ///
-    @safe
+    @safe nothrow
     void insertAlt(in ref K key, ref V val, in size_t hashFull)
     {
         assignNoRehashCheck(key, val, hashFull);
@@ -221,7 +221,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     }
 
     ///
-    @safe
+    @safe nothrow
     void opIndexAssign()(auto ref V val, auto ref K index)
     {
         assignNoRehashCheck(index, val, getHash(index));
@@ -253,41 +253,15 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
 
     /// ditto
     @trusted
-    ref const(V) remove(in ref K index, in size_t hash)
+    void remove(in V* v)
     {
-        import std.conv : text;
+        if (v < vals || vals + space <= v)
+            throw new Exception("invalid argument.");
 
-        size_t i = findExisting(index, hash);
-        if(i == size_t.max)
-        {
-            throw new Exception(text("Could not find key ", index));
-        }
-        else
-        {
-            _length--;
-            nDead++;
-            flags[i] = REMOVED;
-            return vals[i];
-        }
-    }
-
-    /// ditto
-    @trusted
-    bool remove()(auto ref K index, out V value)
-    {
-        size_t i = findExisting(index, getHash(index));
-        if(i == size_t.max)
-        {
-            return false;
-        }
-        else
-        {
-            _length--;
-            nDead++;
-            flags[i] = REMOVED;
-            value = vals[i];
-            return true;
-        }
+        size_t i = v - vals;
+        _length--;
+        nDead++;
+        flags[i] = REMOVED;
     }
 
     /**
@@ -389,7 +363,7 @@ private:
     }
 
     //
-    @trusted
+    @trusted @nogc pure nothrow
     size_t findExisting(in ref K key, in size_t hashFull)  const
     {
         size_t pos = hashFull & mask;
@@ -439,7 +413,7 @@ private:
 
     //
     @trusted @nogc pure nothrow
-    size_t findForInsert(in ref K key, in size_t hashFull) const
+    size_t findForInsert(in ref K key, in size_t hashFull) //const
     {
         size_t pos = hashFull & mask;
         static if(useRandom)
@@ -488,7 +462,7 @@ private:
     }
 
     //
-    @trusted
+    @trusted @nogc pure nothrow
     void assignNoRehashCheck(in ref K key, ref V val, in size_t hashFull)
     {
         const size_t i = findForInsert(key, hashFull);

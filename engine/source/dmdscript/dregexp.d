@@ -29,6 +29,8 @@ import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.drealm: undefined, Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
+
 debug import std.stdio;
 
 
@@ -128,12 +130,13 @@ class DregexpConstructor : Dconstructor
         // any difference.
     }
 
+    nothrow
     Dregexp opCall(ARGS...)(ARGS args)
     {
         return new Dregexp(classPrototype, args);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    override Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         import dmdscript.primitive : Text;
         // ECMA 262 v3 15.10.4.1
@@ -176,13 +179,20 @@ class DregexpConstructor : Dconstructor
         }
         else
         {
-            P = pattern.isUndefined ? Text.Empty : pattern.toString(cc);
-            F = flags.isUndefined ? Text.Empty : flags.toString(cc);
+            if (pattern.isUndefined)
+                P = Text.Empty;
+            else
+                pattern.to(P, cc);
+            if (flags.isUndefined)
+                F = Text.Empty;
+            else
+                flags.to(F, cc);
         }
         r = opCall(P, F);
         if(r.re.errors !is null)
         {
-            return RegexpCompileError(cc, r.re.errors.toString);
+            try return RegexpCompileError(cc, r.re.errors.toString);
+            catch(Throwable) return null;
         }
         else
         {
@@ -191,7 +201,7 @@ class DregexpConstructor : Dconstructor
         }
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 262 v3 15.10.3.1
@@ -215,14 +225,15 @@ class DregexpConstructor : Dconstructor
         return Construct(cc, ret, arglist);
     }
 
-    override Value* Get(in PropertyKey PropertyName, CallContext* cc)
+    override
+    Derror* Get(in PropertyKey PropertyName,  out Value* ret, CallContext* cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
-        return super.Get(sk, cc);
+        return super.Get(sk, ret, cc);
     }
 
     override
-    DError* Set(in PropertyKey PropertyName, ref Value value,
+    Derror* Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, CallContext* cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
@@ -247,6 +258,7 @@ class DregexpConstructor : Dconstructor
     }
 
     // Translate Perl property names to script property names
+    nothrow
     static string perlAlias(string s)
     {
         import std.algorithm : countUntil;
@@ -268,7 +280,8 @@ class DregexpConstructor : Dconstructor
         {
             ptrdiff_t i;
 
-            i = countUntil(from, s[1]);
+            try i = countUntil(from, s[1]);
+            catch(Throwable){}
             if(i >= 0)
                 t = to[i];
         }
@@ -279,7 +292,7 @@ class DregexpConstructor : Dconstructor
 
 /* ===================== Dregexp_prototype_toString =============== */
 @DFD(0)
-DError* toString(
+Derror* toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -304,7 +317,7 @@ DError* toString(
 
 /* ===================== Dregexp_prototype_test =============== */
 @DFD(1)
-DError* test(
+Derror* test(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -315,7 +328,7 @@ DError* test(
 
 /* ===================== Dregexp_prototype_exec ============= */
 @DFD(1)
-DError* exec(
+Derror* exec(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -325,7 +338,7 @@ DError* exec(
 
 /* ===================== Dregexp_prototype_compile ============= */
 @DFD(2)
-DError* compile(
+Derror* compile(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -346,10 +359,10 @@ DError* compile(
             break;
 
         default:
-            attributes = arglist[1].toString(cc);
+            arglist[1].to(attributes, cc);
             goto case;
         case 1:
-            pattern = arglist[0].toString(cc);
+            arglist[0].to(pattern, cc);
             break;
         }
 
@@ -395,6 +408,7 @@ class Dregexp : Dobject
 
     RegExp re;
 
+    nothrow
     this(Dobject prototype, string pattern, string attributes)
     {
         super(prototype, Key.RegExp);
@@ -489,26 +503,38 @@ class Dregexp : Dobject
         re = new RegExp(null, null);
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // This is the same as calling RegExp.prototype.exec(str)
         Value* v;
 
-        v = Get(Key.exec, cc);
-        return v.toObject(cc.realm).Call(cc, this, ret, arglist);
+        if (auto err = Get(Key.exec, v, cc))
+            return err;
+        if (v !is null)
+        {
+            Dobject o;
+            v.to(o, cc);
+            return o.Call(cc, this, ret, arglist);
+        }
+        return null;
     }
 
 static:
+    nothrow
     Dregexp isRegExp(CallContext* cc, Value* v)
     {
         if      (v.isPrimitive)
             return null;
         else
-            return cast(Dregexp)v.toObject(cc.realm);
+        {
+            Dobject o;
+            v.to(o, cc);
+            return cast(Dregexp)o;
+        }
     }
 
-    DError* exec(Dobject othis, CallContext* cc, out Value ret,
+    Derror* exec(Dobject othis, CallContext* cc, out Value ret,
                  Value[] arglist, int rettype)
     {
         // othis must be a RegExp
@@ -522,7 +548,7 @@ static:
 //            CallContext cc;
 
             if(arglist.length)
-                s = arglist[0].toString(cc);
+                arglist[0].to(s, cc);
             else
             {
                 Dfunction df;
@@ -538,7 +564,11 @@ static:
             r.multiline = 0 != dr.multiline.dbool;
 
             if(r.global && rettype != EXEC_INDEX)
-                lasti = cast(int)dr.lastIndex.toInteger(cc);
+            {
+                double n;
+                dr.lastIndex.toInteger(n, cc);
+                lasti = cast(int)n;
+            }
             else
                 lasti = 0;
 
@@ -603,8 +633,8 @@ static:
                     val.put(r.index);
                     a.Set(Key.index, val, Property.Attribute.None, cc);
                     val.put(r.lastIndex);
-                    a.Set(Key.lastIndex, val, Property.Attribute.DontConfig,
-                          cc);
+                    a.Set(Key.lastIndex, val,
+                          Property.Attribute.DontConfig, cc);
 
                     a.Set(PropertyKey(0), *dc.lastMatch,
                           Property.Attribute.None, cc);
@@ -721,11 +751,13 @@ package
                    uint, "_padding", 3));
         Throwable errors;
 
+        nothrow
         this(string pattern, string attributes)
         {
             compile(pattern, attributes);
         }
 
+        nothrow
         void compile(string pattern, string attributes)
         {
             import std.conv : to;
@@ -767,7 +799,8 @@ package
             {
                 errors = t;
             }
-            m.destroy;
+            try m.destroy;
+            catch (Throwable){}
             src = null;
         }
 

@@ -24,7 +24,8 @@ debug import std.stdio;
 ///
 final class PropTable
 {
-    import dmdscript.value: Value, DError;
+    import dmdscript.value: Value;
+    import dmdscript.derror: Derror;
     import dmdscript.primitive: PropertyKey;
     import dmdscript.dobject: Dobject;
     import dmdscript.dfunction : Dfunction;
@@ -33,18 +34,6 @@ final class PropTable
 
     ///
     alias Table = RandAA!(PropertyKey, Property, false);
-
-    static struct SpecialSymbols
-    {
-    static:
-        PropertyKey opAssign;
-
-        static this()
-        {
-            opAssign = PropertyKey.symbol("opAssign");
-        }
-    }
-
 
     //--------------------------------------------------------------------
     ///
@@ -56,22 +45,27 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    int opApply(scope int delegate(ref Property) dg)
-    {
-        return _table.opApply(dg);
-    }
+    // int opApply(scope int delegate(ref Property) dg)
+    // {
+    //     return _table.opApply(dg);
+    // }
     /// ditto
-    int opApply(scope int delegate(ref PropertyKey, ref Property) dg)
+    auto opApply(T)(scope T dg)
     {
         return _table.opApply(dg);
     }
+    // /// ditto
+    // int opApply(scope int delegate(ref PropertyKey, ref Property) dg)
+    // {
+    //     return _table.opApply(dg);
+    // }
 
     //--------------------------------------------------------------------
     /**
     Look up name and get its corresponding Property.
     Return null if not found.
     */
-    @trusted
+    @trusted @nogc pure nothrow
     Property* getProperty(in ref PropertyKey key)
     {
         for (auto t = cast(PropTable)this; t !is null; t = t._previous)
@@ -82,7 +76,7 @@ final class PropTable
         return null;
     }
 
-    @trusted
+    @trusted @nogc pure nothrow
     Value* getOwnData(in PropertyKey key)
     {
         if (auto prop = _table.findExistingAlt(key, key.hash))
@@ -95,7 +89,7 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    @safe
+    @safe @nogc pure nothrow
     Property* getOwnProperty(in ref PropertyKey k)
     {
         return _table.findExistingAlt(k, k.hash);
@@ -103,18 +97,21 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    Value* get(in ref PropertyKey key, CallContext* cc, Dobject othis)
+    nothrow
+    Derror* get(in ref PropertyKey key, out Value* ret, Dobject othis,
+                CallContext* cc)
     {
         if (auto p = getProperty(key))
-            return p.get(cc, othis);
+            return p.get(ret, othis, cc);
         return null;
     }
 
     //--------------------------------------------------------------------
     ///
-    DError* set(in ref PropertyKey key, ref Value value,
-                in Property.Attribute attributes,
-                CallContext* cc, Dobject othis, in bool extensible)
+    nothrow
+    Derror* set(in ref PropertyKey key, ref Value value,
+                Dobject othis, in Property.Attribute attributes,
+                in bool extensible, CallContext* cc)
     {
         if      (auto p = _table.findExistingAlt(key, key.hash))
         {
@@ -134,7 +131,7 @@ final class PropTable
                     return CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
 
-            return p.setForce(value, cc, othis);
+            return p.setForce(value, othis, cc);
         }
         else if (auto p = getProperty(SpecialSymbols.opAssign))
         {
@@ -146,7 +143,7 @@ final class PropTable
                 else
                     return CannotPutError(cc); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             }
-            return p.setForce(value, cc, othis);
+            return p.setForce(value, othis, cc);
         }
         else if (extensible)
         {
@@ -162,7 +159,7 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    @safe
+    @safe nothrow
     bool config(in ref PropertyKey key, ref Property prop, in bool extensible)
     {
         if      (auto p = _table.findExistingAlt(key, key.hash))
@@ -180,7 +177,7 @@ final class PropTable
 
 
     ///
-    @safe
+    @safe nothrow
     bool config(in ref PropertyKey key, in Property.Attribute attributes,
                 in bool extensible)
     {
@@ -206,7 +203,7 @@ final class PropTable
     }
 
     /// ditto
-    @safe
+    @safe nothrow pure
     bool config(in ref PropertyKey key, ref Value value,
                 in Property.Attribute attributes, in bool extensible)
     {
@@ -244,7 +241,7 @@ final class PropTable
             return false;
     }
 
-    @safe
+    @safe nothrow
     bool configAccessor(in ref PropertyKey key,
                         Dfunction getter, Dfunction setter,
                         in Property.Attribute attributes, in bool extensible)
@@ -285,7 +282,7 @@ final class PropTable
     }
 
     /// ditto
-    @safe
+    @safe nothrow
     bool configGetter(in ref PropertyKey key, Dfunction getter,
                       in Property.Attribute attributes, in bool extensible)
     {
@@ -324,7 +321,7 @@ final class PropTable
     }
 
     /// ditto
-    @safe
+    @safe nothrow
     bool configSetter(in ref PropertyKey key, Dfunction setter,
                       in Property.Attribute attributes, in bool extensible)
     {
@@ -364,7 +361,7 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    @trusted
+    @trusted @nogc pure nothrow
     bool canset(in ref PropertyKey key) const
     {
         auto t = cast(PropTable)this;
@@ -384,14 +381,15 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    @safe
+    @safe nothrow
     bool del(in ref PropertyKey key)
     {
         if(auto p = _table.findExistingAlt(key, key.hash))
         {
             if(!p.deletable)
                 return false;
-            _table.remove(key, key.hash);
+            try _table.remove(p);
+            catch (Exception) return false;
         }
         return true;                    // not found
     }
@@ -420,7 +418,7 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    @safe
+    @safe pure nothrow
     Property* opBinaryRight(string OP : "in")(in ref PropertyKey key)
     {
         return _table.findExistingAlt(key, key.hash);
@@ -431,7 +429,7 @@ private:
     Table _table;
     PropTable _previous;
 
-    @trusted
+    @trusted @nogc pure nothrow
     bool _canExtend(in ref PropertyKey key) const
     {
         for (auto t = cast(PropTable)_previous; t !is null; t = t._previous)
@@ -453,11 +451,12 @@ private:
 ///                      /6.2.4
 struct Property
 {
-    import dmdscript.value: Value, DError;
+    import dmdscript.value: Value;
     import dmdscript.dfunction: Dfunction;
     import dmdscript.dobject: Dobject;
     import dmdscript.callcontext: CallContext;
     import dmdscript.drealm: Drealm;
+    import dmdscript.derror: Derror;
 
     /// attribute flags
     enum Attribute : uint
@@ -502,12 +501,17 @@ struct Property
     }
 
     // See_Also: Ecma-262-v7/6.2.4.5
-    this(Dobject obj, CallContext* cc)
+    nothrow
+    this(CallContext* cc, Dobject obj)
     {
         assert(obj);
 
         _attr = getAttribute(cc, obj);
-        if (auto v = obj.Get(Key.value, cc))
+        Value* v;
+        Derror* err;
+        Dobject o;
+        err = obj.Get(Key.value, v, cc);
+        if (err is null && v !is null )
         {
             _value = *v;
         }
@@ -518,15 +522,21 @@ struct Property
             _Get = null;
             _Set = null;
 
-            if (auto v = obj.Get(Key.get, cc))
+            err = obj.Get(Key.get, v, cc);
+            if (err is null && v !is null)
             {
-                _Get = cast(Dfunction)v.toObject(cc.realm);
+                v.to(o, cc);
+                _Get = cast(Dfunction)o;
             }
 
-            if (auto v = obj.Get(Key.set, cc))
+            err = obj.Get(Key.set, v, cc);
+            if (err is null && v !is null)
             {
                 if (writable)
-                    _Set = cast(Dfunction)v.toObject(cc.realm);
+                {
+                    v.to(o, cc);
+                    _Set = cast(Dfunction)o;
+                }
             }
 
             if (_Get !is null || _Set !is null)
@@ -540,7 +550,7 @@ struct Property
     }
 
     // See_Also: Ecma-262-v7/6.2.4.5
-    this(ref Value v, Dobject obj, CallContext* cc)
+    this(CallContext* cc, ref Value v, Dobject obj)
     {
         _attr = getAttribute(cc, obj);
         _value = v;
@@ -629,7 +639,7 @@ struct Property
     }
     /// ditto
     @trusted
-    bool config(ref Value v, Attribute a)
+    bool config(ref Value v, Attribute a, CallContext* cc)
     {
         if      (canBeData(a))
         {
@@ -640,7 +650,11 @@ struct Property
         else if (_attr & Attribute.Accessor)
             return 0 != (_attr & Attribute.Silent);
         else
-            return _value == v || (0 != (_attr & Attribute.Silent));
+        {
+            bool b;
+            _value.equals(v, b, cc);
+            return b || (0 != (_attr & Attribute.Silent));
+        }
     }
 
     ///
@@ -676,31 +690,33 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    Value* get(CallContext* cc, Dobject othis)
+    nothrow
+    Derror* get(out Value* ret, Dobject othis, CallContext* cc)
     {
         if (_attr & Attribute.Accessor)
         {
             if (_Get !is null)
             {
-                auto ret = new Value;
-                auto err = _Get.Call(cc, othis, *ret, null);
-                if (err is null)
-                    return ret;
-                else
-                {
-                    debug throw err.exception;
-                    else return null;
-                }
+                ret = new Value;
+                return _Get.Call(cc, othis, *ret, null);
             }
         }
         else
-            return &_value;
+            ret = &_value;
 
         return null;
     }
 
+    @property @trusted @nogc pure nothrow
+    Value* getAsData()
+    {
+        assert ((_attr & Attribute.Accessor) == 0);
+        return &_value;
+    }
+
     //--------------------------------------------------------------------
     ///
+    @trusted @nogc pure nothrow
     bool canSetValue(ref Attribute a) const
     {
         if (_attr & Attribute.Accessor)
@@ -730,7 +746,8 @@ struct Property
 
     //--------------------------------------------------------------------
     ///
-    DError* setForce(ref Value v, CallContext* cc, Dobject othis,)
+    nothrow
+    Derror* setForce(ref Value v, Dobject othis, CallContext* cc)
     {
         if (_attr & Attribute.Accessor)
         {
@@ -898,31 +915,41 @@ public static:
 
 private static:
 
+    nothrow
     Attribute getAttribute(CallContext* cc, Dobject obj)
     {
         bool valueOrWritable = false;
         assert(obj !is null);
 
         Attribute attr;
-        if (auto v = obj.Get(Key.enumerable, cc))
+        Value* v;
+        Derror* err;
+        bool b;
+        err = obj.Get(Key.enumerable, v, cc);
+        if (err is null && v !is null)
         {
-            if (!v.toBoolean)
+            err = v.to(b, cc);
+            if (err is null && !b)
                 attr |= Attribute.DontEnum;
         }
         // else
         //     attr |= Attribute.DontEnum;
 
-        if (auto v = obj.Get(Key.configurable, cc))
+        err = obj.Get(Key.configurable, v, cc);
+        if (err is null && v !is null)
         {
-            if (!v.toBoolean)
+            err = v.to(b, cc);
+            if (err is null && !b)
                 attr |= Attribute.DontConfig;
         }
         // else
         //     attr |= Attribute.DontConfig;
 
-        if (auto v = obj.Get(Key.writable, cc))
+        err = obj.Get(Key.writable, v, cc);
+        if (err is null && v !is null)
         {
-            if (!v.toBoolean)
+            err = v.to(b, cc);
+            if (err is null && !b)
                 attr |= Attribute.ReadOnly;
         }
         // else
@@ -932,6 +959,33 @@ private static:
     }
 
 }
+
+
+//------------------------------------------------------------------------------
+struct SpecialSymbols
+{
+    static this()
+    {
+        foreach (one; __traits(allMembers, typeof(this)))
+        {
+            static if (is(typeof((__traits(getMember, typeof(this), one)))
+                          : PropertyKey))
+            {
+                __traits(getMember, typeof(this), one) =
+                    PropertyKey.symbol(one);
+            }
+        }
+
+    }
+
+    static const:
+    PropertyKey opAssign;
+    PropertyKey toPrimitive;
+
+    PropertyKey traceinfo;
+
+}
+
 
 
 //==============================================================================

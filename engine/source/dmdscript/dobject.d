@@ -18,12 +18,13 @@
 module dmdscript.dobject;
 
 import dmdscript.primitive: Key;
-import dmdscript.value: Value, DError;
+import dmdscript.value: Value;
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.drealm: undefined, Drealm;
 import dmdscript.errmsgs;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror, onError;
 
 debug import std.stdio;
 //debug = LOG;
@@ -54,6 +55,7 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.2
+    @safe pure nothrow
     bool SetPrototypeOf(Dobject p)
     {
         if (!_extensible)
@@ -75,12 +77,14 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.3
+    nothrow
     bool IsExtensible() const
     {
         return _extensible;
     }
 
     /// Ecma-262-v7/9.1.4
+    nothrow
     bool preventExtensions()
     {
         _extensible = false;
@@ -88,12 +92,14 @@ class Dobject
     }
 
     /// Ecma-262-v7/9.1.5
+    @safe @nogc pure nothrow
     Property* GetOwnProperty(in PropertyKey key)
     {
         return proptable.getOwnProperty(key);
     }
 
     /// Ecma-262-v7/9.1.7
+    nothrow
     bool HasProperty(in PropertyKey name)
     {
         return proptable.getProperty(name) !is null;
@@ -101,24 +107,27 @@ class Dobject
 
     //--------------------------------------------------------------------
     //
-    Value* Get(in PropertyKey PropertyName, CallContext* cc)
+    nothrow
+    Derror* Get(in PropertyKey PropertyName, out Value* ret, CallContext* cc)
     {
-        return proptable.get(PropertyName, cc, this);
+        return proptable.get(PropertyName, ret, this, cc);
     }
 
     //--------------------------------------------------------------------
 
     //
-    DError* Set(in PropertyKey PropertyName, ref Value value,
+    nothrow
+    Derror* Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, CallContext* cc)
     {
         // ECMA 8.6.2.2
-        return proptable.set(PropertyName, value, attributes, cc,
-                             this, _extensible);
+        return proptable.set(PropertyName, value, this, attributes,
+                             _extensible, cc);
     }
 
     //--------------------------------------------------------------------
     //
+    nothrow
     bool SetGetter(in PropertyKey PropertyName, Dfunction getter,
                    in Property.Attribute attribute)
     {
@@ -127,6 +136,7 @@ class Dobject
                                       _extensible);
     }
     //
+    nothrow
     bool SetSetter(in PropertyKey PropertyName, Dfunction setter,
                    in Property.Attribute attribute)
     {
@@ -151,6 +161,7 @@ class Dobject
 
     //--------------------------------------------------------------------
     ///
+    @safe nothrow
     bool DefineOwnProperty(in PropertyKey PropertyName,
                            in Property.Attribute attributes)
     {
@@ -158,6 +169,7 @@ class Dobject
     }
 
     /// ditto
+    @safe pure nothrow
     bool DefineOwnProperty(in PropertyKey PropertyName,
                            ref Value v, in Property.Attribute attributes)
     {
@@ -165,10 +177,11 @@ class Dobject
     }
 
     /// ditto
+    nothrow
     bool DefineOwnProperty(in PropertyKey PropertyName, Dobject attr,
                            CallContext* cc)
     {
-        auto prop = Property(attr, cc);
+        auto prop = Property(cc, attr);
         return proptable.config(PropertyName, prop, _extensible);
     }
 
@@ -179,30 +192,34 @@ class Dobject
         return proptable.keys;
     }
 
-    DError* Call(CallContext* cc, Dobject othis, out Value ret, Value[] arglist)
+    nothrow
+    Derror* Call(CallContext* cc, Dobject othis, out Value ret, Value[] arglist)
     {
         return SNoCallError(cc, _classname);
     }
 
-    DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    nothrow
+    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         return SNoConstructError(cc, _classname);
     }
 
     //--------------------------------------------------------------------
-
-    DError* PutDefault(CallContext* cc, out Value value)
+    nothrow
+    Derror* PutDefault(out Value value, CallContext* cc)
     {
         // Not ECMA, Microsoft extension
         return NoDefaultPutError(cc);
     }
 
-    DError* put_Value(CallContext* cc, out Value ret, Value[] arglist)
+    nothrow
+    Derror* put_Value(CallContext* cc, out Value ret, Value[] arglist)
     {
         // Not ECMA, Microsoft extension
         return FunctionNotLvalueError(cc);
     }
 
+    nothrow
     int CanPut(in string PropertyName)
     {
         // ECMA 8.6.2.3
@@ -210,7 +227,7 @@ class Dobject
         return proptable.canset(key);
     }
 
-    int implementsDelete()
+    bool implementsDelete()
     {
         // ECMA 8.6.2 says every object implements [[Delete]],
         // but ECMA 11.4.1 says that some objects may not.
@@ -218,64 +235,64 @@ class Dobject
         return true;
     }
 
-    final @trusted
-    DError* DefaultValue(CallContext* cc, out Value ret,
+    final @trusted nothrow
+    Derror* DefaultValue(out Value ret, CallContext* cc,
                          in Value.Type hint = Value.Type.RefError)
     {
         import dmdscript.ddate: Ddate;
-        import dmdscript.dsymbol: Dsymbol;
+        import dmdscript.property: SpecialSymbols;
 
+        Derror* err;
         Dobject o;
         Value* v;
         PropertyKey[] table =
-            [cast(PropertyKey)Key.toString,
-             Dsymbol.get(Key.toPrimitive),
-             cast(PropertyKey)Key.valueOf];
+            [SpecialSymbols.toPrimitive,
+             cast(PropertyKey)Key.valueOf,
+             cast(PropertyKey)Key.toString];
         int i = 0;                      // initializer necessary for /W4
 
         // ECMA 8.6.2.6
-
         if(hint == Value.Type.String ||
            (hint == Value.Type.RefError && (cast(Ddate)this) !is null))
         {
-            i = 0;
+            i = 2;
         }
         else if(hint == Value.Type.Number || hint == Value.Type.BigInt ||
                 hint == Value.Type.RefError)
         {
-            i = 1;
+            i = 0;
         }
         else
             assert(0);
 
         for(int j = 0; j < 3; j++)
         {
-            auto htab = table[i];//PropertyKey(table[i]);
+            auto htab = table[i];
 
-            v = Get(htab, cc);
+            if (Get(htab, v, cc).onError(err))
+                return err;
 
-            // if it's an Object
             if      (v is null){}
             else if (v.isUndefined || v.isNull){}
             else if (v.isPrimitive)
             {
-                if (i == 1)
+                if (i == 0)
                     break;
             }
+            // if it's an Object
             else if (v.isCallable)
             {
-                DError* a;
+                Derror* a;
 
                 o = v.object;
-                a = o.Call(cc, this, ret, null);
-                if(a)                   // if exception was thrown
-                    return a;
+                if (o.Call(cc, this, ret, null).onError(a))
+                    return a;                   // if exception was thrown
                 if(ret.isPrimitive)
                     return null;
-                else if (i == 1)
+                else if (i == 0)
                     break;
             }
-            else if (i == 1)
+            else if (i == 0)
                 break;
             ++i;
             if (table.length <= i)
@@ -284,7 +301,8 @@ class Dobject
         return NoDefaultValueError(cc);
     }
 
-    DError* HasInstance(CallContext* cc, out Value ret, ref Value v)
+    nothrow
+    Derror* HasInstance(ref Value v, out Value ret,  CallContext* cc)
     {   // ECMA v3 8.6.2
         return SNoInstanceError(cc, _classname);
     }
@@ -295,8 +313,8 @@ class Dobject
         return Text.object;
     }
 
-    final @trusted
-    DError* putIterator(out Value v)
+    final @trusted nothrow
+    Derror* putIterator(out Value v)
     {
         import dmdscript.iterator : Iterator;
 
@@ -307,176 +325,177 @@ class Dobject
         return null;
     }
 
-    //
-    @disable
-    DError* CreateDataProperty(CallContext* cc, in PropertyKey name,
-                               ref Value value)
-    {
-        if (DefineOwnProperty(name, value, Property.Attribute.None))
-            return null;
-        else
-            return CreateDataPropertyError(cc);
-    }
+    // //
+    // @disable
+    // DError CreateDataProperty(CallContext* cc, in PropertyKey name,
+    //                            ref Value value)
+    // {
+    //     if (DefineOwnProperty(name, value, Property.Attribute.None))
+    //         return null;
+    //     else
+    //         return CreateDataPropertyError(cc);
+    // }
 
-    //
-    @disable
-    DError* CreateMethodProperty(CallContext* cc,
-                                 in ref PropertyKey PropertyName,
-                                 ref Value value)
-    {
-        if (DefineOwnProperty(PropertyName, value, Property.Attribute.DontEnum))
-            return null;
-        else
-            return CreateMethodPropertyError(cc);
-    }
+    // //
+    // @disable
+    // DError CreateMethodProperty(CallContext* cc,
+    //                              in ref PropertyKey PropertyName,
+    //                              ref Value value)
+    // {
+    //     if (DefineOwnProperty(PropertyName, value, Property.Attribute.DontEnum))
+    //         return null;
+    //     else
+    //         return CreateMethodPropertyError(cc);
+    // }
 
-    @disable
-    void CreateDataPropertyOrThrow(in ref PropertyKey PropertyName,
-                                   ref Value value)
-    {
-        if (!DefineOwnProperty(PropertyName, value, Property.Attribute.None))
-            throw CreateDataPropertyError.toThrow;
-    }
+    // @disable
+    // void CreateDataPropertyOrThrow(in ref PropertyKey PropertyName,
+    //                                ref Value value)
+    // {
+    //     if (!DefineOwnProperty(PropertyName, value, Property.Attribute.None))
+    //         throw CreateDataPropertyError.toThrow;
+    // }
 
-    @disable
-    final
-    void DefinePropertyOrThrow(K, V)(in auto ref K name, auto ref V value,
-                               in Property.Attribute attr)
-        if (PropTable.IsKeyValue(K, V))
-    {
-        if (!DefineOwnProperty(name, value, attr))
-            throw CreateMethodPropertyError.toThrow;
-    }
+    // @disable
+    // final
+    // void DefinePropertyOrThrow(K, V)(in auto ref K name, auto ref V value,
+    //                            in Property.Attribute attr)
+    //     if (PropTable.IsKeyValue(K, V))
+    // {
+    //     if (!DefineOwnProperty(name, value, attr))
+    //         throw CreateMethodPropertyError.toThrow;
+    // }
 
-    @disable
-    void DefinePropertyOrThrow(in ref PropertyKey PropertyName,
-                                  in Property.Attribute attr)
-    {
-        if (!DefineOwnProperty(PropertyName, attr))
-            throw CreateMethodPropertyError.toThrow;
-    }
+    // @disable
+    // void DefinePropertyOrThrow(in ref PropertyKey PropertyName,
+    //                               in Property.Attribute attr)
+    // {
+    //     if (!DefineOwnProperty(PropertyName, attr))
+    //         throw CreateMethodPropertyError.toThrow;
+    // }
 
-    @disable
-    void DeletePropertyOrThrow(in PropertyKey PropertyName)
-    {
-        if (!Delete(PropertyName))
-            throw CantDeleteError.toThrow(PropertyName.toString);
-    }
-
-
-    @disable
-    bool HasOwnProperty(in ref PropertyKey PropertyName)
-    {
-        return GetOwnProperty(PropertyName) !is null;
-    }
+    // @disable
+    // void DeletePropertyOrThrow(in PropertyKey PropertyName)
+    // {
+    //     if (!Delete(PropertyName))
+    //         throw CantDeleteError.toThrow(PropertyName.toString);
+    // }
 
 
-    enum IntegrityLevel
-    {
-        zero, sealed, frozen,
-    }
+    // @disable
+    // bool HasOwnProperty(in ref PropertyKey PropertyName)
+    // {
+    //     return GetOwnProperty(PropertyName) !is null;
+    // }
 
-    @disable
-    bool SetIntegrityLevel(in IntegrityLevel il)
-    {
-        if (!preventExtensions)
-            return false;
-        auto keys = OwnPropertyKeys;
-        if      (il == IntegrityLevel.sealed)
-        {
-            foreach(ref one; keys)
-                DefinePropertyOrThrow(one, Property.Attribute.DontConfig);
-        }
-        else if (il == IntegrityLevel.frozen)
-        {
-            foreach(ref one; keys)
-            {
-                if (auto desc = proptable.getOwnProperty(one))
-                {
-                    if (desc.IsAccessorDescriptor)
-                    {
-                        DefinePropertyOrThrow(one,
-                                              Property.Attribute.DontConfig);
-                    }
-                    else
-                    {
-                        DefinePropertyOrThrow(one,
-                                              Property.Attribute.DontConfig |
-                                              Property.Attribute.ReadOnly);
-                    }
-                }
-            }
-        }
-        return true;
-    }
 
-    @disable
-    bool TestIntegrityLevel(in IntegrityLevel il)
-    {
-        if (_extensible)
-            return false;
-        foreach(ref one; OwnPropertyKeys)
-        {
-            if (auto currentDesc = proptable.getOwnProperty(one))
-            {
-                if (currentDesc.configurable)
-                    return false;
-                if (il == IntegrityLevel.frozen &&
-                    currentDesc.IsDataDescriptor)
-                {
-                    if (currentDesc.writable)
-                        return false;
-                }
-            }
-        }
-        return true;
-    }
+//     enum IntegrityLevel
+//     {
+//         zero, sealed, frozen,
+//     }
 
-    @disable
-    bool InstanceofOperator(Dobject c, CallContext* cc)
-    {
-        assert(c !is null);
-        if (auto instOfHandler = c.value.GetMethod(Key.hasInstance, cc))
-        {
-            Value ret;
-            auto err = instOfHandler.Call(cc, c, ret, [this.value]);
-            if (err !is null)
-                throw err.exception;
-            return ret.toBoolean;
-        }
-        if (auto df = cast(Dfunction)c)
-        {
-            return df.OrdinaryHasInstance(c, cc);
-        }
-        else
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// use errmsgs.
-            throw new Exception("should be a function");
-    }
+//     @disable
+//     bool SetIntegrityLevel(in IntegrityLevel il)
+//     {
+//         if (!preventExtensions)
+//             return false;
+//         auto keys = OwnPropertyKeys;
+//         if      (il == IntegrityLevel.sealed)
+//         {
+//             foreach(ref one; keys)
+//                 DefinePropertyOrThrow(one, Property.Attribute.DontConfig);
+//         }
+//         else if (il == IntegrityLevel.frozen)
+//         {
+//             foreach(ref one; keys)
+//             {
+//                 if (auto desc = proptable.getOwnProperty(one))
+//                 {
+//                     if (desc.IsAccessorDescriptor)
+//                     {
+//                         DefinePropertyOrThrow(one,
+//                                               Property.Attribute.DontConfig);
+//                     }
+//                     else
+//                     {
+//                         DefinePropertyOrThrow(one,
+//                                               Property.Attribute.DontConfig |
+//                                               Property.Attribute.ReadOnly);
+//                     }
+//                 }
+//             }
+//         }
+//         return true;
+//     }
 
-    // Ecma-262-v7/7.3.21
-    @disable
-    Value[] EnumerableOwnNames()
-    {
-        import std.array : Appender;
+//     @disable
+//     bool TestIntegrityLevel(in IntegrityLevel il)
+//     {
+//         if (_extensible)
+//             return false;
+//         foreach(ref one; OwnPropertyKeys)
+//         {
+//             if (auto currentDesc = proptable.getOwnProperty(one))
+//             {
+//                 if (currentDesc.configurable)
+//                     return false;
+//                 if (il == IntegrityLevel.frozen &&
+//                     currentDesc.IsDataDescriptor)
+//                 {
+//                     if (currentDesc.writable)
+//                         return false;
+//                 }
+//             }
+//         }
+//         return true;
+//     }
 
-        Appender!(Value[]) names;
-        foreach(ref one; OwnPropertyKeys)
-        {
-            if (auto desc = proptable.getOwnProperty(one))
-            {
-                if (desc.enumerable)
-                    names.put(Value(one));
-            }
-        }
-        return names.data;
-    }
+//     @disable
+//     bool InstanceofOperator(Dobject c, CallContext* cc)
+//     {
+//         assert(c !is null);
+//         if (auto instOfHandler = c.value.GetMethod(Key.hasInstance, cc))
+//         {
+//             Value ret;
+//             auto err = instOfHandler.Call(cc, c, ret, [this.value]);
+//             if (err !is null)
+//                 throw err.exception;
+//             return ret.toBoolean;
+//         }
+//         if (auto df = cast(Dfunction)c)
+//         {
+//             return df.OrdinaryHasInstance(c, cc);
+//         }
+//         else
+// //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// // use errmsgs.
+//             throw new Exception("should be a function");
+//     }
+
+//     // Ecma-262-v7/7.3.21
+//     @disable
+//     Value[] EnumerableOwnNames()
+//     {
+//         import std.array : Appender;
+
+//         Appender!(Value[]) names;
+//         foreach(ref one; OwnPropertyKeys)
+//         {
+//             if (auto desc = proptable.getOwnProperty(one))
+//             {
+//                 if (desc.enumerable)
+//                     names.put(Value(one));
+//             }
+//         }
+//         return names.data;
+//     }
 
     // Ecma-262-v7/7.3.22
     @disable
     void GetFunctionRealm(){}
 
     //
+    @safe pure nothrow
     this(Dobject prototype, PropertyKey cn = Key.Object,
          PropTable pt = null)
     {
@@ -521,7 +540,7 @@ class DobjectConstructor : Dconstructor
 
     //
     override
-    DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         Dobject o;
         Value* v;
@@ -541,10 +560,10 @@ class DobjectConstructor : Dconstructor
                     o = opCall;
                 }
                 else
-                    o = v.toObject(cc.realm);
+                    v.to(o, cc);
             }
             else
-                o = v.toObject(cc.realm);
+                v.to(o, cc);
         }
 
         ret.put(o);
@@ -552,11 +571,11 @@ class DobjectConstructor : Dconstructor
     }
 
     //
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         Dobject o;
-        DError* result;
+        Derror* result;
 
         // ECMA 15.2.1
         if(arglist.length == 0)
@@ -570,7 +589,7 @@ class DobjectConstructor : Dconstructor
                 result = Construct(cc, ret, arglist);
             else
             {
-                o = v.toObject(cc.realm);
+                v.to(o, cc);
                 ret.put(o);
                 result = null;
             }
@@ -578,6 +597,7 @@ class DobjectConstructor : Dconstructor
         return result;
     }
 
+    nothrow
     Dobject opCall(PropertyKey cn = Key.Object)
     {
         return new Dobject(classPrototype, cn);
@@ -591,7 +611,7 @@ private:
 //------------------------------------------------------------------------------
 //
 @DFD(2, DFD.Type.Static)
-DError* assign(
+Derror* assign(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -600,7 +620,7 @@ DError* assign(
 
 //
 @DFD(2, DFD.Type.Static)
-DError* create(
+Derror* create(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -609,7 +629,7 @@ DError* create(
 
 //
 @DFD(2, DFD.Type.Static)
-DError* defineProperties(
+Derror* defineProperties(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -618,14 +638,14 @@ DError* defineProperties(
 
 //
 @DFD(3, DFD.Type.Static)
-DError* defineProperty(
+Derror* defineProperty(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey;
     import dmdscript.property : Property;
 
-    DError* sta;
+    Derror* sta;
     Dobject target;
     PropertyKey key;
 
@@ -633,13 +653,15 @@ DError* defineProperty(
         goto failure;
     else if (!arglist[0].isObject)
     {
+        string s;
+        arglist[0].to(s, cc);
         sta = CannotConvertToObject2Error(cc,
-            arglist[0].getTypeof, arglist[0].toString(cc));
+            arglist[0].getTypeof, s);
         goto failure;
     }
 
     target = arglist[0].object;
-    key = arglist[1].toPropertyKey;
+    arglist[1].to(key, cc);
 
     if (arglist.length < 3)
     {
@@ -651,7 +673,9 @@ DError* defineProperty(
     }
     else
     {
-        if (!target.DefineOwnProperty(key, arglist[2].toObject(cc.realm), cc))
+        Dobject o;
+        arglist[2].to(o, cc);
+        if (!target.DefineOwnProperty(key, o, cc))
         {
             sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             goto failure;
@@ -672,7 +696,7 @@ failure:
 
 //
 @DFD(1, DFD.Type.Static)
-DError* freeze(
+Derror* freeze(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -681,20 +705,27 @@ DError* freeze(
 
 //
 @DFD(2, DFD.Type.Static)
-DError* getOwnPropertyDescriptor(
+Derror* getOwnPropertyDescriptor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
-    DError* sta;
+    import dmdscript.primitive: PropertyKey;
+    Derror* sta;
+    Dobject target;
 
     if (arglist.length < 2)
         goto failure;
 
-    if (auto target = arglist[0].toObject(cc.realm))
+    arglist[0].to(target, cc);
+    if (target !is null)
     {
-        if (auto prop = target.GetOwnProperty(arglist[1].toPropertyKey))
+        PropertyKey pk;
+        arglist[1].to(pk, cc);
+        if (auto prop = target.GetOwnProperty(pk))
         {
-            ret.put(prop.toObject(cc.realm));
+            Dobject o;
+            o = prop.toObject(cc.realm);
+            ret.put(o);
             return null;
         }
     }
@@ -706,7 +737,7 @@ failure:
 
 //
 @DFD(1, DFD.Type.Static)
-DError* getOwnPropertySymbol(
+Derror* getOwnPropertySymbol(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -715,7 +746,7 @@ DError* getOwnPropertySymbol(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* getPrototypeOf(
+Derror* getPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -725,7 +756,8 @@ DError* getPrototypeOf(
         return null;
     }
 
-    auto o = arglist[0].toObject(cc.realm);
+    Dobject o;
+    arglist[0].to(o, cc);
     if (o is null)
     {
         ret.putVundefined;
@@ -738,7 +770,7 @@ DError* getPrototypeOf(
 
 //
 @DFD(2, DFD.Type.Static, "is")
-DError* _is(
+Derror* _is(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -747,7 +779,7 @@ DError* _is(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isExtensible(
+Derror* isExtensible(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -756,7 +788,7 @@ DError* isExtensible(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isFrozen(
+Derror* isFrozen(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -765,7 +797,7 @@ DError* isFrozen(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isSealed(
+Derror* isSealed(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -774,7 +806,7 @@ DError* isSealed(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* keys(
+Derror* keys(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -783,7 +815,7 @@ DError* keys(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* preventExtensions(
+Derror* preventExtensions(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -802,7 +834,11 @@ DError* preventExtensions(
 
     auto o = v.object;
     if (!o.preventExtensions)
-        return PreventExtensionsFailureError(cc, v.toString(cc));
+    {
+        string s;
+        v.to(s, cc);
+        return PreventExtensionsFailureError(cc, s);
+    }
 
     ret.put(o);
     return null;
@@ -810,7 +846,7 @@ DError* preventExtensions(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* seal(
+Derror* seal(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -819,19 +855,19 @@ DError* seal(
 
 //
 @DFD(2, DFD.Type.Static)
-DError* setPrototypeOf(
+Derror* setPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     Dobject target, proto;
-    DError* sta;
+    Derror* sta;
 
     if (arglist.length < 1)
         goto failure;
 
-    target = arglist[0].toObject(cc.realm);
+    arglist[0].to(target, cc);
     if (1 < arglist.length)
-        proto = arglist[1].toObject(cc.realm);
+        arglist[1].to(proto, cc);
 
     if (!target.SetPrototypeOf(proto))
     {
@@ -849,7 +885,7 @@ failure:
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toString(
+Derror* toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -872,7 +908,7 @@ DError* toString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toLocaleString(
+Derror* toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -881,10 +917,11 @@ DError* toLocaleString(
 
     Value* v;
 
-    v = othis.Get(Key.toString, cc);
+    if (auto err = othis.Get(Key.toString, v, cc))
+        return err;
     if(v && !v.isPrimitive())   // if it's an Object
     {
-        DError* a;
+        Derror* a;
         Dobject o;
 
         o = v.object;
@@ -897,7 +934,7 @@ DError* toLocaleString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* valueOf(
+Derror* valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -907,7 +944,7 @@ DError* valueOf(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toSource(
+Derror* toSource(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -928,7 +965,15 @@ DError* toSource(
             any = 1;
             buf ~= key.toString;
             buf ~= ':';
-            buf ~= p.get(cc, othis).toSource(cc);
+            Value* v;
+            if (auto err = p.get(v, othis, cc))
+                continue;
+            if (v !is null)
+            {
+                string s;
+                v.toSource(s, cc);
+                buf ~= s;
+            }
         }
     }
     buf ~= '}';
@@ -938,21 +983,22 @@ DError* toSource(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* hasOwnProperty(
+Derror* hasOwnProperty(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey;
 
     // ECMA v3 15.2.4.5
-    auto key = (arglist.length ? arglist[0] : undefined).toPropertyKey;
+    PropertyKey key;
+    (arglist.length ? arglist[0] : undefined).to(key, cc);
     ret.put(othis.proptable.getOwnProperty(key) !is null);
     return null;
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* isPrototypeOf(
+Derror* isPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -964,7 +1010,7 @@ DError* isPrototypeOf(
     v = arglist.length ? &arglist[0] : &undefined;
     if(!v.isPrimitive())
     {
-        o = v.toObject(cc.realm);
+        v.to(o, cc);
         for(;; )
         {
             o = o._prototype;
@@ -984,13 +1030,14 @@ DError* isPrototypeOf(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* propertyIsEnumerable(
+Derror* propertyIsEnumerable(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey;
     // ECMA v3 15.2.4.7
-    auto key = (arglist.length ? arglist[0] : undefined).toPropertyKey;
+    PropertyKey key;
+    (arglist.length ? arglist[0] : undefined).to(key, cc);
     if (auto p = othis.proptable.getOwnProperty(key))
         ret.put(p.enumerable);
     else
@@ -1000,7 +1047,7 @@ DError* propertyIsEnumerable(
 
 //------------------------------------------------------------------------------
 @DFD(0, DFD.Type.Getter, "__proto__")
-DError* proto_Get(
+Derror* proto_Get(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1008,7 +1055,7 @@ DError* proto_Get(
 }
 
 @DFD(0, DFD.Type.Setter, "__proto__")
-DError* proto_Set(
+Derror* proto_Set(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

@@ -22,18 +22,20 @@ import std.math;
 import dmdscript.primitive: number_t, PropertyKey, Text, PKey = Key;
 import dmdscript.dobject: Dobject;
 import dmdscript.dfunction: Dconstructor;
-import dmdscript.value: Value, DError;
+import dmdscript.value: Value;
 import dmdscript.errmsgs;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor,
     installConstants;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 
 //==============================================================================
 ///
 class Dnumber : Dobject
 {
 private:
+    nothrow
     this(Dobject prototype, double n = 0)
     {
         super(prototype, Key.Number);
@@ -93,31 +95,37 @@ class DnumberConstructor : Dconstructor
         }
     }
 
+    nothrow
     Dnumber opCall(double n = 0)
     {
         return new Dnumber(classPrototype, n);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.7.2
         double n;
         Dobject o;
 
-        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
+        n = 0;
+        if (0 < arglist.length)
+            arglist[0].to(n, cc);
         o = opCall(n);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 15.7.1
         double n;
 
-        n = (arglist.length) ? arglist[0].toNumber(cc) : 0;
+        if (0 < arglist.length)
+            arglist[0].to(n, cc);
+        else
+            n = 0;
         ret.put(n);
         return null;
     }
@@ -151,7 +159,7 @@ enum Key : PropertyKey
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isFinite(
+Derror* isFinite(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -160,7 +168,7 @@ DError* isFinite(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isInteger(
+Derror* isInteger(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -169,7 +177,7 @@ DError* isInteger(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isNaN(
+Derror* isNaN(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -178,7 +186,7 @@ DError* isNaN(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isSafeInteger(
+Derror* isSafeInteger(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -187,7 +195,7 @@ DError* isSafeInteger(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* parseFloat(
+Derror* parseFloat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -196,7 +204,7 @@ DError* parseFloat(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* parseInt(
+Derror* parseInt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -207,7 +215,7 @@ DError* parseInt(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* toString(
+Derror* toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -225,9 +233,9 @@ DError* toString(
         {
             double radix;
 
-            radix = arglist[0].toNumber(cc);
+            arglist[0].to(radix, cc);
             if(radix == 10.0 || arglist[0].isUndefined())
-                s = v.toString(cc);
+                v.to(s, cc);
             else
             {
                 int r;
@@ -235,13 +243,13 @@ DError* toString(
                 r = cast(int)radix;
                 // radix must be an integer 2..36
                 if(r == radix && r >= 2 && r <= 36)
-                    s = v.toString(cc, r);
+                    v.to(s, r, cc);
                 else
-                    s = v.toString(cc);
+                    v.to(s, cc);
             }
         }
         else
-            s = v.toString(cc);
+            v.to(s, cc);
         ret.put(s);
     }
     else
@@ -254,29 +262,32 @@ DError* toString(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* toLocaleString(
+Derror* toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.3
 
     // othis must be a Number
+    Derror* err;
+    string s;
     if (auto dn = cast(Dnumber)othis)
     {
-        ret.put(dn.value.toLocaleString(cc));
+        err = dn.value.toLocaleString(s, cc);
+        ret.put(s);
     }
     else
     {
         ret.putVundefined();
-        return FunctionWantsNumberError(
+        err = FunctionWantsNumberError(
             cc, Key.toLocaleString, othis.classname);
     }
-    return null;
+    return err;
 }
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* valueOf(
+Derror* valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -336,7 +347,7 @@ number_t deconstruct_real(double x, int f, out int pe)
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* toFixed(
+Derror* toFixed(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -355,7 +366,7 @@ DError* toFixed(
     if(arglist.length)
     {
         v = &arglist[0];
-        fractionDigits =  v.toInteger(cc);
+        v.toInteger(fractionDigits, cc);
     }
     else
         fractionDigits = 0;
@@ -365,7 +376,7 @@ DError* toFixed(
         return ValueOutOfRangeError(cc, Key.toFixed, "fractonDigits");
     }
     v = &othis.value;
-    x = v.toNumber(cc);
+    v.to(x, cc);
     if(std.math.isNaN(x))
     {
         result = Key.NaN;              // return "NaN"
@@ -385,7 +396,9 @@ DError* toFixed(
         {
             Value vn;
             vn.put(x);
-            ret.put(vn.toString(cc));
+            string s;
+            vn.to(s, cc);
+            ret.put(s);
             return null;
         }
         else
@@ -461,7 +474,7 @@ DError* toFixed(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* toExponential(
+Derror* toExponential(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -479,11 +492,11 @@ DError* toExponential(
     if(arglist.length)
     {
         varg = &arglist[0];
-        fractionDigits = varg.toInteger(cc);
+        varg.toInteger(fractionDigits, cc);
     }else
         fractionDigits = FIXED_DIGITS;
     v = &othis.value;
-    x = v.toNumber(cc);
+    v.to(x, cc);
     if(std.math.isNaN(x))
     {
         result = Key.NaN;              // return "NaN"
@@ -600,7 +613,7 @@ DError* toExponential(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* toPrecision(
+Derror* toPrecision(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -617,7 +630,7 @@ DError* toPrecision(
     string result;
 
     v = &othis.value;
-    x = v.toNumber(cc);
+    v.to(x, cc);
 
     varg = (arglist.length == 0) ? &undefined : &arglist[0];
 
@@ -626,7 +639,7 @@ DError* toPrecision(
         Value vn;
 
         vn.put(x);
-        result = vn.toString(cc);
+        vn.to(result, cc);
     }
     else
     {
@@ -655,7 +668,7 @@ DError* toPrecision(
                 goto Ldone;
             }
 
-            precision = varg.toInteger(cc);
+            varg.toInteger(precision, cc);
             if(precision < 1 || precision > 21)
             {
                 ret.putVundefined();

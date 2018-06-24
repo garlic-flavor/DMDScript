@@ -29,14 +29,16 @@ import dmdscript.dobject : Dobject;
 class Darguments : Dobject
 {
     import dmdscript.primitive : Identifier, PropertyKey;
-    import dmdscript.value : Value, DError;
+    import dmdscript.value : Value;
     import dmdscript.property : Property;
     import dmdscript.drealm: Drealm;
     import dmdscript.callcontext: CallContext;
+    import dmdscript.derror: Derror;
 
     Dobject actobj;             // activation object
     Identifier[] parameters;
 
+    nothrow
     this(Drealm realm, Dobject caller, Dobject callee,
          Dobject actobj, Identifier[] parameters, Value[] arglist)
 
@@ -73,18 +75,18 @@ class Darguments : Dobject
     }
 
     override protected
-    Value* Get(in PropertyKey PropertyName, CallContext* cc)
+    Derror* Get(in PropertyKey PropertyName,  out Value* ret, CallContext* cc)
     {
         import dmdscript.primitive : StringToIndex;
 
         size_t index;
         return (PropertyName.isArrayIndex(index) && index < parameters.length)
-            ? actobj.Get(PropertyKey(index), cc)
-            : super.Get(PropertyName, cc);
+            ? actobj.Get(PropertyKey(index), ret, cc)
+            : super.Get( PropertyName, ret, cc);
     }
 
     override
-    DError* Set(in PropertyKey PropertyName, ref Value value,
+    Derror* Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, CallContext* cc)
     {
         import dmdscript.primitive : StringToIndex;

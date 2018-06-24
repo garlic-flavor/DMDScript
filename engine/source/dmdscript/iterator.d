@@ -23,9 +23,10 @@ import dmdscript.dobject : Dobject;
 struct Iterator
 {
     import dmdscript.primitive: PropertyKey;
-    import dmdscript.value: Value, DError;
+    import dmdscript.value: Value;
     import dmdscript.drealm: Drealm;
     import dmdscript.callcontext: CallContext;
+    import dmdscript.derror: Derror;
 
     PropertyKey[] keys;
     size_t  keyindex;
@@ -43,6 +44,7 @@ struct Iterator
         debug assert(foo == ITERATOR_VALUE);
     }
 
+    nothrow
     void ctor(Dobject o)
     {
         import std.algorithm.sorting : sort;
@@ -103,63 +105,63 @@ struct Iterator
         assert(0);
     }
 
-    // Ecma-262-v7/7.4.2
-    @disable
-    DError* IteratorNext(CallContext* cc, out Value ret, Value[] args = null)
-    {
-        auto err = o.value.Invoke(Key.next, cc, ret, args);
-        if (ret.type != Value.Type.Object)
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // use errmsgs
-            throw new Exception("");
-        return err;
-    }
+//     // Ecma-262-v7/7.4.2
+//     @disable
+//     DError IteratorNext(CallContext* cc, out Value ret, Value[] args = null)
+//     {
+//         auto err = o.value.Invoke(Key.next, cc, ret, args);
+//         if (ret.type != Value.Type.Object)
+// //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//             // use errmsgs
+//             throw new Exception("");
+//         return err;
+//     }
 
-    // Ecma-262-v7/7.4.3
-    @disable
-    bool IteratorComplete(CallContext* cc)
-    {
-        if (auto ret = o.Get(Key.done, cc))
-            return ret.toBoolean;
-        return false;
-    }
+//     // Ecma-262-v7/7.4.3
+//     @disable
+//     bool IteratorComplete(CallContext* cc)
+//     {
+//         if (auto ret = o.Get(Key.done, cc))
+//             return ret.toBoolean;
+//         return false;
+//     }
 
-    // Ecma-262-v7/7.4.4
-    @disable
-    Value* IteratorValue(CallContext* cc)
-    {
-        return o.Get(Key.value, cc);
-    }
+//     // Ecma-262-v7/7.4.4
+//     @disable
+//     Value* IteratorValue(CallContext* cc)
+//     {
+//         return o.Get(Key.value, cc);
+//     }
 
-    // Ecma-262-v7/7.4.5
-    @disable
-    bool IteratorStep(CallContext* cc, out Value ret)
-    {
-        auto err = IteratorNext(cc, ret);
-        return IteratorComplete(cc);
-    }
+//     // Ecma-262-v7/7.4.5
+//     @disable
+//     bool IteratorStep(CallContext* cc, out Value ret)
+//     {
+//         auto err = IteratorNext(cc, ret);
+//         return IteratorComplete(cc);
+//     }
 
-    // Ecma-262-v7/7.4.6
-    @disable
-    void IteratorClose(){}
+//     // Ecma-262-v7/7.4.6
+//     @disable
+//     void IteratorClose(){}
 
-static:
+// static:
 
-    @disable
-    Dobject CreateIterResultObject(CallContext* cc, Value value, bool done)
-    {
-        auto obj = cc.realm.dObject();
-        obj.CreateDataProperty(Key.value, value);
-        auto val = Value(done);
-        obj.CreateDataProperty(Key.done, val);
-        return obj;
-    }
+//     @disable
+//     Dobject CreateIterResultObject(CallContext* cc, Value value, bool done)
+//     {
+//         auto obj = cc.realm.dObject();
+//         obj.CreateDataProperty(Key.value, value);
+//         auto val = Value(done);
+//         obj.CreateDataProperty(Key.done, val);
+//         return obj;
+//     }
 
-    @disable
-    Dobject CreateListIterator(Value[] list)
-    {
-        return null;
-    }
+//     @disable
+//     Dobject CreateListIterator(Value[] list)
+//     {
+//         return null;
+//     }
 }
 
 //==============================================================================

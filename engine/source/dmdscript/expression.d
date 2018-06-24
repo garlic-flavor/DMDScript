@@ -80,7 +80,7 @@ class Expression
                 funcname = sc.funcdef.name.toString;
         }
 
-        throw CannotAssignToError.toThrow(toString, linnum, funcname);
+        throw CannotAssignToError.early(toString, linnum, funcname);
 
 //         if (sc.exception is null)
 //         {
@@ -1914,7 +1914,6 @@ final class CondExp : BinExp
 //------------------------------------------------------------------------------
 final class ImportExpression : Expression
 {
-    static const PropertyKey Module = Key.CreateRealm;
     import dmdscript.statement: TopStatement;
     string moduleSpecifier;
     TopStatement[] topstatements;
@@ -1930,7 +1929,7 @@ final class ImportExpression : Expression
     override
     Expression semantic(Scope* ssc)
     {
-        import dmdscript.exception: ScriptException;
+        import dmdscript.exception: EarlyException;
 
         globalfunction = new FunctionDefinition(0, 1, null, null,
                                                 topstatements);
@@ -1940,17 +1939,11 @@ final class ImportExpression : Expression
             sc.ctor(globalfunction);
             globalfunction = globalfunction.semantic (&sc);
         }
-        catch (Throwable t)
+        catch (EarlyException ee)
         {
-            auto se = t.ScriptException ("at semantic");
-            se.addInfo(moduleSpecifier);
-            throw se;
+            ee.id = moduleSpecifier;
+            throw ee;
         }
-        // if (sc.exception !is null)
-        // {
-        //     sc.exception.addInfo(moduleSpecifier);
-        //     ssc.exception = sc.exception;
-        // }
 
         return this;
     }

@@ -83,10 +83,12 @@ class TopStatement
     }
 
     final
-    void error(Scope* sc, ScriptException se)
+    void error(Scope* sc, string msg,
+               string f = __FILE__, size_t l = __LINE__)
     {
+        import dmdscript.exception: EarlyException;
+        import dmdscript.protoerror: SyntaxError;
         assert(sc !is null);
-        assert(se !is null);
 
         string funcname;
         if (sc.funcdef !is null)
@@ -97,7 +99,9 @@ class TopStatement
                 funcname = sc.funcdef.name.toString;
         }
 
-        se.addTrace(funcname, linnum);
+        throw new EarlyException(SyntaxError.Text, msg, funcname, linnum, f, l);
+
+        // se.addTrace(funcname, linnum);
 
         // if (sc.exception is null)
         // {
@@ -114,7 +118,8 @@ class TopStatement
         //     sc.exception = se;
         // }
         // assert(se !is null);
-        debug throw se;
+
+        // debug throw se;
     }
 
     debug static:

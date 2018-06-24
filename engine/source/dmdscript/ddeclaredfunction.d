@@ -25,16 +25,18 @@ debug import std.stdio;
 class DdeclaredFunction : Dconstructor
 {
     import dmdscript.dobject: Dobject;
-    import dmdscript.value: DError, Value;
+    import dmdscript.value: Value;
     import dmdscript.functiondefinition: FunctionDefinition;
     import dmdscript.drealm: Drealm;
     import dmdscript.callcontext: CallContext;
+    import dmdscript.derror: Derror, onError;
 
     FunctionDefinition fd;
 
 private
     CallContext.Scope* scopex; // Function object's scope chain per 13.2 step 7
 
+    nothrow
     this(Drealm realm, FunctionDefinition fd, CallContext.Scope* scopex)
     {
         import dmdscript.primitive : Key, PropertyKey;
@@ -65,7 +67,7 @@ private
         o.DefineOwnProperty(Key.constructor, val, Property.Attribute.DontEnum);
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // 1. Create activation object per ECMA 10.1.6
@@ -88,7 +90,7 @@ private
         Darguments args;
         Value[] locals;
         uint i;
-        DError* result;
+        Derror* result;
 
         // if it's an empty function, just return
         if(fd.code[0].opcode == Opcode.Ret)
@@ -156,10 +158,9 @@ private
             locals = p1;
         }
 
-        result = IR.call(ncc, othis, fd.code, ret, locals.ptr);
-        if (result !is null)
+        if (IR.call(ncc, othis, fd.code, ret, locals.ptr).onError(result))
         {
-            result.exception.addInfo (
+            result.addInfo (
                 cc.realm.id, fd.name !is null ?
                 "function " ~ fd.name.toString : "anonymous",
                 fd.strictMode);
@@ -178,7 +179,7 @@ private
         return result;
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Key;
@@ -187,13 +188,18 @@ private
         Dobject othis;
         Dobject proto;
         Value* v;
-        DError* result;
+        Derror* result;
 
-        v = Get(Key.prototype, cc);
+        if (auto err = Get(Key.prototype, v, cc))
+            return err;
+        assert (v !is null);
         if(v.isPrimitive())
             proto = cc.realm.rootPrototype;
         else
-            proto = v.toObject(cc.realm);
+        {
+            if (auto err = v.to(proto, cc))
+                return err;
+        }
 
         othis = new Dobject(proto, name);
         result = Call(cc, othis, ret, arglist);

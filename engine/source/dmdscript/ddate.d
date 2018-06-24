@@ -28,6 +28,7 @@ import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 
 version = DATETOSTRING;                 // use DateToString
 
@@ -102,7 +103,7 @@ string dateToString(CallContext* cc, d_time t, TIMEFORMAT tf)
 
 /* ===================== Ddate.constructor functions ==================== */
 @DFD(1, DFD.Type.Static)
-DError* parse(
+Derror* parse(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -114,7 +115,7 @@ DError* parse(
         n = d_time_nan;
     else
     {
-        s = arglist[0].toString(cc);
+        arglist[0].to(s, cc);
         n = parseDateString(cc, s);
     }
 
@@ -123,7 +124,7 @@ DError* parse(
 }
 
 @DFD(7, DFD.Type.Static)
-DError* UTC(
+Derror* UTC(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -146,26 +147,26 @@ DError* UTC(
     {
     default:
     case 7:
-        ms = arglist[6].toDtime(cc);
+        arglist[6].toDtime(ms, cc);
         goto case;
     case 6:
-        seconds = arglist[5].toDtime(cc);
+        arglist[5].toDtime(seconds, cc);
         goto case;
     case 5:
-        minutes = arglist[4].toDtime(cc);
+        arglist[4].toDtime(minutes, cc);
         goto case;
     case 4:
-        hours = arglist[3].toDtime(cc);
+        arglist[3].toDtime(hours, cc);
         time = makeTime(hours, minutes, seconds, ms);
         goto case;
     case 3:
-        date = arglist[2].toDtime(cc);
+        arglist[2].toDtime(date, cc);
         goto case;
     case 2:
-        month = arglist[1].toDtime(cc);
+        arglist[1].toDtime(month, cc);
         goto case;
     case 1:
-        year = arglist[0].toDtime(cc);
+        arglist[0].toDtime(year, cc);
 
         if(year != d_time_nan && year >= 0 && year <= 99)
             year += 1900;
@@ -183,7 +184,7 @@ DError* UTC(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* now(
+Derror* now(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -207,7 +208,7 @@ class DdateConstructor : Dconstructor
         return new Ddate(classPrototype, args);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.9.3
@@ -224,72 +225,81 @@ class DdateConstructor : Dconstructor
 
         d_time day;
         d_time time = 0;
-        //generate NaN check boilerplate code
-        static string breakOnNan(string var)
+
+        try
         {
-            return "if(" ~ var ~ " == d_time_nan){
+            //generate NaN check boilerplate code
+            static string breakOnNan(string var)
+            {
+                return "if(" ~ var ~ " == d_time_nan){
 			n = d_time_nan;
 			break;
 		}";
+            }
+            //writefln("Ddate_constructor.Construct()");
+            switch(arglist.length)
+            {
+            default:
+            case 7:
+                arglist[6].toDtime(ms, cc);
+                mixin (breakOnNan("ms"));
+                goto case;
+            case 6:
+                arglist[5].toDtime(seconds, cc);
+                mixin (breakOnNan("seconds"));
+                goto case;
+            case 5:
+                arglist[4].toDtime(minutes, cc);
+                mixin (breakOnNan("minutes"));
+                goto case;
+            case 4:
+                arglist[3].toDtime(hours, cc);
+                mixin (breakOnNan("hours"));
+                time = makeTime(hours, minutes, seconds, ms);
+                goto case;
+            case 3:
+                arglist[2].toDtime(date, cc);
+                goto case;
+            case 2:
+                arglist[1].toDtime(month, cc);
+                arglist[0].toDtime(year, cc);
+
+                if(year != d_time_nan && year >= 0 && year <= 99)
+                    year += 1900;
+                day = makeDay(year, month, date);
+                n = timeClip(localTimetoUTC(makeDate(day, time)));
+                break;
+
+            case 1:
+                arglist[0].toPrimitive(ret, cc);
+                if(ret.type == Value.Type.String)
+                {
+                    n = parseDateString(cc, ret.text);
+                }
+                else
+                {
+                    ret.toDtime(n, cc);
+                    n = timeClip(n);
+                }
+                break;
+
+            case 0:
+                n = getUTCtime();
+                break;
+            }
+            //writefln("\tn = %s", n);
+            o = opCall(n);
         }
-        //writefln("Ddate_constructor.Construct()");
-        switch(arglist.length)
+        catch(Throwable t)
         {
-        default:
-        case 7:
-            ms = arglist[6].toDtime(cc);
-            mixin (breakOnNan("ms"));
-            goto case;
-        case 6:
-            seconds = arglist[5].toDtime(cc);
-            mixin (breakOnNan("seconds"));
-            goto case;
-        case 5:
-            minutes = arglist[4].toDtime(cc);
-            mixin (breakOnNan("minutes"));
-            goto case;
-        case 4:
-            hours = arglist[3].toDtime(cc);
-            mixin (breakOnNan("hours"));
-            time = makeTime(hours, minutes, seconds, ms);
-            goto case;
-        case 3:
-            date = arglist[2].toDtime(cc);
-            goto case;
-        case 2:
-            month = arglist[1].toDtime(cc);
-            year = arglist[0].toDtime(cc);
-
-            if(year != d_time_nan && year >= 0 && year <= 99)
-                year += 1900;
-            day = makeDay(year, month, date);
-            n = timeClip(localTimetoUTC(makeDate(day, time)));
-            break;
-
-        case 1:
-            arglist[0].toPrimitive(cc, ret);
-            if(ret.type == Value.Type.String)
-            {
-                n = parseDateString(cc, ret.text);
-            }
-            else
-            {
-                n = ret.toDtime(cc);
-                n = timeClip(n);
-            }
-            break;
-
-        case 0:
-            n = getUTCtime();
-            break;
+            ret.putVundefined;
+            return new Derror(cc, t, Value("date conversion error"));
         }
-        //writefln("\tn = %s", n);
-        o = opCall(n);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
 
@@ -298,16 +308,24 @@ class DdateConstructor : Dconstructor
         string s;
         d_time t;
 
-        version(DATETOSTRING)
+        try
         {
-            t = getUTCtime();
-            t = UTCtoLocalTime(t);
-            s = dateToString(cc, t, TIMEFORMAT.String);
+            version(DATETOSTRING)
+            {
+                t = getUTCtime();
+                t = UTCtoLocalTime(t);
+                s = dateToString(cc, t, TIMEFORMAT.String);
+            }
+            else
+            {
+                t = time();
+                s = toString(t);
+            }
         }
-        else
+        catch (Throwable t)
         {
-            t = time();
-            s = toString(t);
+            ret.putVundefined;
+            return new Derror(cc, t, Value("date conversion error."));
         }
         ret.put(s);
         return null;
@@ -317,7 +335,7 @@ class DdateConstructor : Dconstructor
 
 /* ===================== Ddate.prototype functions =============== */
 
-DError* checkdate(CallContext* cc, out Value ret, string name, Dobject othis)
+Derror* checkdate(CallContext* cc, out Value ret, string name, Dobject othis)
 {
     ret.putVundefined();
     return FunctionWantsDateError(cc, name, othis.classname);
@@ -346,7 +364,7 @@ int getThisLocalTime(out Value ret, Dobject othis, out d_time n)
     return isn;
 }
 @DFD(0)
-DError* toString(
+Derror* toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -372,7 +390,7 @@ DError* toString(
     return null;
 }
 @DFD(0)
-DError* toDateString(
+Derror* toDateString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -397,7 +415,7 @@ DError* toDateString(
     return null;
 }
 @DFD(0)
-DError* toTimeString(
+Derror* toTimeString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -423,7 +441,7 @@ DError* toTimeString(
     return null;
 }
 @DFD(0)
-DError* valueOf(
+Derror* valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -436,7 +454,7 @@ DError* valueOf(
     return null;
 }
 @DFD(0)
-DError* getTime(
+Derror* getTime(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -449,7 +467,7 @@ DError* getTime(
     return null;
 }
 @DFD(0)
-DError* getYear(
+Derror* getYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -476,7 +494,7 @@ DError* getYear(
     return null;
 }
 @DFD(0)
-DError* getFullYear(
+Derror* getFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -494,7 +512,7 @@ DError* getFullYear(
     return null;
 }
 @DFD(0)
-DError* getUTCFullYear(
+Derror* getUTCFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -511,7 +529,7 @@ DError* getUTCFullYear(
     return null;
 }
 @DFD(0)
-DError* getMonth(
+Derror* getMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -529,7 +547,7 @@ DError* getMonth(
     return null;
 }
 @DFD(0)
-DError* getUTCMonth(
+Derror* getUTCMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -547,7 +565,7 @@ DError* getUTCMonth(
     return null;
 }
 @DFD(0)
-DError* getDate(
+Derror* getDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -567,7 +585,7 @@ DError* getDate(
     return null;
 }
 @DFD(0)
-DError* getUTCDate(
+Derror* getUTCDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -585,7 +603,7 @@ DError* getUTCDate(
     return null;
 }
 @DFD(0)
-DError* getDay(
+Derror* getDay(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -603,7 +621,7 @@ DError* getDay(
     return null;
 }
 @DFD(0)
-DError* getUTCDay(
+Derror* getUTCDay(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -621,7 +639,7 @@ DError* getUTCDay(
     return null;
 }
 @DFD(0)
-DError* getHours(
+Derror* getHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -639,7 +657,7 @@ DError* getHours(
     return null;
 }
 @DFD(0)
-DError* getUTCHours(
+Derror* getUTCHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -657,7 +675,7 @@ DError* getUTCHours(
     return null;
 }
 @DFD(0)
-DError* getMinutes(
+Derror* getMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -675,7 +693,7 @@ DError* getMinutes(
     return null;
 }
 @DFD(0)
-DError* getUTCMinutes(
+Derror* getUTCMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -693,7 +711,7 @@ DError* getUTCMinutes(
     return null;
 }
 @DFD(0)
-DError* getSeconds(
+Derror* getSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -711,7 +729,7 @@ DError* getSeconds(
     return null;
 }
 @DFD(0)
-DError* getUTCSeconds(
+Derror* getUTCSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -729,7 +747,7 @@ DError* getUTCSeconds(
     return null;
 }
 @DFD(0)
-DError* getMilliseconds(
+Derror* getMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -747,7 +765,7 @@ DError* getMilliseconds(
     return null;
 }
 @DFD(0)
-DError* getUTCMilliseconds(
+Derror* getUTCMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -765,7 +783,7 @@ DError* getUTCMilliseconds(
     return null;
 }
 @DFD(0)
-DError* getTimezoneOffset(
+Derror* getTimezoneOffset(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -783,7 +801,7 @@ DError* getTimezoneOffset(
     return null;
 }
 @DFD(1)
-DError* setTime(
+Derror* setTime(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -796,14 +814,14 @@ DError* setTime(
     if(!arglist.length)
         n = d_time_nan;
     else
-        n = arglist[0].toDtime(cc);
+        arglist[0].toDtime(n, cc);
     n = timeClip(n);
     othis.value.putVtime(n);
     ret.putVtime(n);
     return null;
 }
 @DFD(1)
-DError* setMilliseconds(
+Derror* setMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -822,7 +840,7 @@ DError* setMilliseconds(
         if(!arglist.length)
             ms = d_time_nan;
         else
-            ms = arglist[0].toDtime(cc);
+            arglist[0].toDtime(ms, cc);
         time = makeTime(hourFromTime(t), minFromTime(t), secFromTime(t), ms);
         n = timeClip(localTimetoUTC(makeDate(day(t), time)));
         othis.value.putVtime(n);
@@ -831,7 +849,7 @@ DError* setMilliseconds(
     return null;
 }
 @DFD(1)
-DError* setUTCMilliseconds(
+Derror* setUTCMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -849,7 +867,7 @@ DError* setUTCMilliseconds(
         if(!arglist.length)
             ms = d_time_nan;
         else
-            ms = arglist[0].toDtime(cc);
+            arglist[0].toDtime(ms, cc);
         time = makeTime(hourFromTime(t), minFromTime(t), secFromTime(t), ms);
         n = timeClip(makeDate(day(t), time));
         othis.value.putVtime(n);
@@ -858,7 +876,7 @@ DError* setUTCMilliseconds(
     return null;
 }
 @DFD(2)
-DError* setSeconds(
+Derror* setSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -878,13 +896,13 @@ DError* setSeconds(
         {
         default:
         case 2:
-            ms = arglist[1].toDtime(cc);
-            seconds = arglist[0].toDtime(cc);
+            arglist[1].toDtime(ms, cc);
+            arglist[0].toDtime(seconds, cc);
             break;
 
         case 1:
             ms = msFromTime(t);
-            seconds = arglist[0].toDtime(cc);
+            arglist[0].toDtime(seconds, cc);
             break;
 
         case 0:
@@ -900,7 +918,7 @@ DError* setSeconds(
     return null;
 }
 @DFD(2)
-DError* setUTCSeconds(
+Derror* setUTCSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -920,13 +938,13 @@ DError* setUTCSeconds(
         {
         default:
         case 2:
-            ms = arglist[1].toDtime(cc);
-            seconds = arglist[0].toDtime(cc);
+            arglist[1].toDtime(ms, cc);
+            arglist[0].toDtime(seconds, cc);
             break;
 
         case 1:
             ms = msFromTime(t);
-            seconds = arglist[0].toDtime(cc);
+            arglist[0].toDtime(seconds, cc);
             break;
 
         case 0:
@@ -942,7 +960,7 @@ DError* setUTCSeconds(
     return null;
 }
 @DFD(3)
-DError* setMinutes(
+Derror* setMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -963,21 +981,21 @@ DError* setMinutes(
         {
         default:
         case 3:
-            ms = arglist[2].toDtime(cc);
-            seconds = arglist[1].toDtime(cc);
-            minutes = arglist[0].toDtime(cc);
+            arglist[2].toDtime(ms, cc);
+            arglist[1].toDtime(seconds, cc);
+            arglist[0].toDtime(minutes, cc);
             break;
 
         case 2:
             ms = msFromTime(t);
-            seconds = arglist[1].toDtime(cc);
-            minutes = arglist[0].toDtime(cc);
+            arglist[1].toDtime(seconds, cc);
+            arglist[0].toDtime(minutes, cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[0].toDtime(cc);
+            arglist[0].toDtime(minutes, cc);
             break;
 
         case 0:
@@ -994,7 +1012,7 @@ DError* setMinutes(
     return null;
 }
 @DFD(3)
-DError* setUTCMinutes(
+Derror* setUTCMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1015,21 +1033,21 @@ DError* setUTCMinutes(
         {
         default:
         case 3:
-            ms = arglist[2].toDtime(cc);
-            seconds = arglist[1].toDtime(cc);
-            minutes = arglist[0].toDtime(cc);
+            arglist[2].toDtime(ms, cc);
+            arglist[1].toDtime(seconds, cc);
+            arglist[0].toDtime(minutes, cc);
             break;
 
         case 2:
             ms = msFromTime(t);
-            seconds = arglist[1].toDtime(cc);
-            minutes = arglist[0].toDtime(cc);
+            arglist[1].toDtime(seconds, cc);
+            arglist[0].toDtime(minutes, cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[0].toDtime(cc);
+            arglist[0].toDtime(minutes, cc);
             break;
 
         case 0:
@@ -1046,7 +1064,7 @@ DError* setUTCMinutes(
     return null;
 }
 @DFD(4)
-DError* setHours(
+Derror* setHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1068,31 +1086,31 @@ DError* setHours(
         {
         default:
         case 4:
-            ms = arglist[3].toDtime(cc);
-            seconds = arglist[2].toDtime(cc);
-            minutes = arglist[1].toDtime(cc);
-            hours = arglist[0].toDtime(cc);
+            arglist[3].toDtime(ms, cc);
+            arglist[2].toDtime(seconds, cc);
+            arglist[1].toDtime(minutes, cc);
+            arglist[0].toDtime(hours, cc);
             break;
 
         case 3:
             ms = msFromTime(t);
-            seconds = arglist[2].toDtime(cc);
-            minutes = arglist[1].toDtime(cc);
-            hours = arglist[0].toDtime(cc);
+            arglist[2].toDtime(seconds, cc);
+            arglist[1].toDtime(minutes, cc);
+            arglist[0].toDtime(hours, cc);
             break;
 
         case 2:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[1].toDtime(cc);
-            hours = arglist[0].toDtime(cc);
+            arglist[1].toDtime(minutes, cc);
+            arglist[0].toDtime(hours, cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
             minutes = minFromTime(t);
-            hours = arglist[0].toDtime(cc);
+            arglist[0].toDtime(hours, cc);
             break;
 
         case 0:
@@ -1110,7 +1128,7 @@ DError* setHours(
     return null;
 }
 @DFD(4)
-DError* setUTCHours(
+Derror* setUTCHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1132,31 +1150,31 @@ DError* setUTCHours(
         {
         default:
         case 4:
-            ms = arglist[3].toDtime(cc);
-            seconds = arglist[2].toDtime(cc);
-            minutes = arglist[1].toDtime(cc);
-            hours = arglist[0].toDtime(cc);
+            arglist[3].toDtime(ms, cc);
+            arglist[2].toDtime(seconds, cc);
+            arglist[1].toDtime(minutes, cc);
+            arglist[0].toDtime(hours, cc);
             break;
 
         case 3:
             ms = msFromTime(t);
-            seconds = arglist[2].toDtime(cc);
-            minutes = arglist[1].toDtime(cc);
-            hours = arglist[0].toDtime(cc);
+            arglist[2].toDtime(seconds, cc);
+            arglist[1].toDtime(minutes, cc);
+            arglist[0].toDtime(hours, cc);
             break;
 
         case 2:
             ms = msFromTime(t);
             seconds = secFromTime(t);
-            minutes = arglist[1].toDtime(cc);
-            hours = arglist[0].toDtime(cc);
+            arglist[1].toDtime(minutes, cc);
+            arglist[0].toDtime(hours, cc);
             break;
 
         case 1:
             ms = msFromTime(t);
             seconds = secFromTime(t);
             minutes = minFromTime(t);
-            hours = arglist[0].toDtime(cc);
+            arglist[0].toDtime(hours, cc);
             break;
 
         case 0:
@@ -1174,7 +1192,7 @@ DError* setUTCHours(
     return null;
 }
 @DFD(1)
-DError* setDate(
+Derror* setDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1192,7 +1210,7 @@ DError* setDate(
         if(!arglist.length)
             date = d_time_nan;
         else
-            date = arglist[0].toDtime(cc);
+            arglist[0].toDtime(date, cc);
         day = makeDay(yearFromTime(t), monthFromTime(t), date);
         n = timeClip(localTimetoUTC(makeDate(day, timeWithinDay(t))));
         othis.value.putVtime(n);
@@ -1201,7 +1219,7 @@ DError* setDate(
     return null;
 }
 @DFD(1)
-DError* setUTCDate(
+Derror* setUTCDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1219,7 +1237,7 @@ DError* setUTCDate(
         if(!arglist.length)
             date = d_time_nan;
         else
-            date = arglist[0].toDtime(cc);
+            arglist[0].toDtime(date, cc);
         day = makeDay(yearFromTime(t), monthFromTime(t), date);
         n = timeClip(makeDate(day, timeWithinDay(t)));
         othis.value.putVtime(n);
@@ -1228,7 +1246,7 @@ DError* setUTCDate(
     return null;
 }
 @DFD(2)
-DError* setMonth(
+Derror* setMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1248,12 +1266,12 @@ DError* setMonth(
         {
         default:
         case 2:
-            month = arglist[0].toDtime(cc);
-            date = arglist[1].toDtime(cc);
+            arglist[0].toDtime(month, cc);
+            arglist[1].toDtime(date, cc);
             break;
 
         case 1:
-            month = arglist[0].toDtime(cc);
+            arglist[0].toDtime(month, cc);
             date = dateFromTime(t);
             break;
 
@@ -1270,7 +1288,7 @@ DError* setMonth(
     return null;
 }
 @DFD(2)
-DError* setUTCMonth(
+Derror* setUTCMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1290,12 +1308,12 @@ DError* setUTCMonth(
         {
         default:
         case 2:
-            month = arglist[0].toDtime(cc);
-            date = arglist[1].toDtime(cc);
+            arglist[0].toDtime(month, cc);
+            arglist[1].toDtime(date, cc);
             break;
 
         case 1:
-            month = arglist[0].toDtime(cc);
+            arglist[0].toDtime(month, cc);
             date = dateFromTime(t);
             break;
 
@@ -1312,7 +1330,7 @@ DError* setUTCMonth(
     return null;
 }
 @DFD(3)
-DError* setFullYear(
+Derror* setFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1334,21 +1352,21 @@ DError* setFullYear(
     {
     default:
     case 3:
-        date = arglist[2].toDtime(cc);
-        month = arglist[1].toDtime(cc);
-        year = arglist[0].toDtime(cc);
+        arglist[2].toDtime(date, cc);
+        arglist[1].toDtime(month, cc);
+        arglist[0].toDtime(year, cc);
         break;
 
     case 2:
         date = dateFromTime(t);
-        month = arglist[1].toDtime(cc);
-        year = arglist[0].toDtime(cc);
+        arglist[1].toDtime(month, cc);
+        arglist[0].toDtime(year, cc);
         break;
 
     case 1:
         date = dateFromTime(t);
         month = monthFromTime(t);
-        year = arglist[0].toDtime(cc);
+        arglist[0].toDtime(year, cc);
         break;
 
     case 0:
@@ -1364,7 +1382,7 @@ DError* setFullYear(
     return null;
 }
 @DFD(3)
-DError* setUTCFullYear(
+Derror* setUTCFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1386,21 +1404,21 @@ DError* setUTCFullYear(
     {
     default:
     case 3:
-        month = arglist[2].toDtime(cc);
-        date = arglist[1].toDtime(cc);
-        year = arglist[0].toDtime(cc);
+        arglist[2].toDtime(month, cc);
+        arglist[1].toDtime(date, cc);
+        arglist[0].toDtime(year, cc);
         break;
 
     case 2:
         month = monthFromTime(t);
-        date = arglist[1].toDtime(cc);
-        year = arglist[0].toDtime(cc);
+        arglist[1].toDtime(date, cc);
+        arglist[0].toDtime(year, cc);
         break;
 
     case 1:
         month = monthFromTime(t);
         date = dateFromTime(t);
-        year = arglist[0].toDtime(cc);
+        arglist[0].toDtime(year, cc);
         break;
 
     case 0:
@@ -1416,7 +1434,7 @@ DError* setUTCFullYear(
     return null;
 }
 @DFD(1)
-DError* setYear(
+Derror* setYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1439,7 +1457,7 @@ DError* setYear(
     case 1:
         month = monthFromTime(t);
         date = dateFromTime(t);
-        year = arglist[0].toDtime(cc);
+        arglist[0].toDtime(year, cc);
         if(0 <= year && year <= 99)
             year += 1900;
         day = makeDay(year, month, date);
@@ -1455,7 +1473,7 @@ DError* setYear(
     return null;
 }
 @DFD(0)
-DError* toLocaleString(
+Derror* toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1474,7 +1492,7 @@ DError* toLocaleString(
     return null;
 }
 @DFD(0)
-DError* toLocaleDateString(
+Derror* toLocaleDateString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1493,7 +1511,7 @@ DError* toLocaleDateString(
     return null;
 }
 @DFD(0)
-DError* toLocaleTimeString(
+Derror* toLocaleTimeString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1511,7 +1529,7 @@ DError* toLocaleTimeString(
     return null;
 }
 @DFD(0)
-DError* toUTCString(
+Derror* toUTCString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1531,7 +1549,7 @@ DError* toUTCString(
 
 //
 @DFD(1)
-DError* toJSON(
+Derror* toJSON(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

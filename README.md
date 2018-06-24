@@ -28,7 +28,7 @@ An implementation of the ECMA 262 (Javascript) programming language
 | ------------ | ---------- |
 | Architecture |        x86 |
 | OS           | Windows 10 |
-| dmd          |    2.080.0 |
+| dmd          |    2.080.1 |
 | test262      | #3bfad28cc |
 
 ### about harness.d

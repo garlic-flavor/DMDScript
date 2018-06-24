@@ -19,11 +19,12 @@
 module dmdscript.dfunction;
 
 import dmdscript.dobject: Dobject;
-import dmdscript.value: DError, Value;
+import dmdscript.value: Value;
 import dmdscript.errmsgs;
 import dmdscript.primitive: Key;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 debug import std.stdio;
 
 //==============================================================================
@@ -52,7 +53,7 @@ abstract class Dfunction : Dobject
     Dobject HomeObject;
 
     override abstract
-    DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                  Value[] arglist);
 
     //
@@ -74,7 +75,7 @@ abstract class Dfunction : Dobject
     }
 
     //
-    override DError* HasInstance(CallContext* cc, out Value ret, ref Value v)
+    override Derror* HasInstance(ref Value v, out Value ret, CallContext* cc)
     {
         import std.conv : to;
 
@@ -85,19 +86,26 @@ abstract class Dfunction : Dobject
 
         if(v.isPrimitive())
             goto Lfalse;
-        V = v.toObject(cc.realm);
-        w = Get(Key.prototype, cc);
+        if (auto err = v.to(V, cc))
+            return err;
+        if (auto err = Get(Key.prototype, w, cc))
+            return err;
+        assert (w !is null);
         if(w.isPrimitive())
         {
-            return MustBeObjectError(cc, w.type.to!string);
+            string msg;
+            try msg = w.type.to!string;
+            catch(Throwable t){}
+            return MustBeObjectError(cc, msg);
         }
-        o = w.toObject(cc.realm);
+        if (auto err = w.to(o, cc))
+            return err;
         for(;; )
         {
             V = V.GetPrototypeOf;
             if(!V)
                 goto Lfalse;
-            if(o == V)
+            if(o is V)
                 goto Ltrue;
         }
 
@@ -110,28 +118,28 @@ abstract class Dfunction : Dobject
         return null;
     }
 
-    @disable
-    bool OrdinaryHasInstance(Dobject o, CallContext* cc)
-    {
-        if (auto btf = cast(BoundFunctionExoticObject)this)
-        {
-            return o.InstanceofOperator(this, cc);
-        }
-        auto p = Get(Key.prototype, cc);
-        assert(p && p.object);
+    // @disable
+    // bool OrdinaryHasInstance(Dobject o, CallContext* cc)
+    // {
+    //     if (auto btf = cast(BoundFunctionExoticObject)this)
+    //     {
+    //         return o.InstanceofOperator(this, cc);
+    //     }
+    //     auto p = Get(Key.prototype, cc);
+    //     assert(p && p.object);
 
-        debug size_t loopCounter = 0;
-        for(;;)
-        {
-            o = o.GetPrototypeOf;
-            if (o is null)
-                return false;
-            if (p.object is o)
-                return true;
-            assert(++loopCounter < 100);
-        }
-        assert(0);
-    }
+    //     debug size_t loopCounter = 0;
+    //     for(;;)
+    //     {
+    //         o = o.GetPrototypeOf;
+    //         if (o is null)
+    //             return false;
+    //         if (p.object is o)
+    //             return true;
+    //         assert(++loopCounter < 100);
+    //     }
+    //     assert(0);
+    // }
 
 
     @property @safe @nogc pure nothrow
@@ -144,6 +152,7 @@ protected:
     PropertyKey _name;
 
     //
+    nothrow
     this(Dobject prototype, PropertyKey name, uint length)
     {
         import dmdscript.property : Property;
@@ -177,7 +186,11 @@ public static:
         if (v.isPrimitive)
             return null;
         else
-            return cast(Dfunction)v.toObject(cc.realm);
+        {
+            Dobject o;
+            v.to(o, cc);
+            return cast(Dfunction)o;
+        }
     }
 }
 
@@ -186,12 +199,12 @@ abstract class Dconstructor : Dfunction
 {
     //
     abstract override
-    DError* Construct(CallContext* cc, out Value ret, Value[] arglist);
+    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist);
 
 
     //
     override
-    DError* Call(CallContext* cc, Dobject, out Value ret, Value[] arglist)
+    Derror* Call(CallContext* cc, Dobject, out Value ret, Value[] arglist)
     {
         // ECMA 15.3.1
         return Construct(cc, ret, arglist);
@@ -207,6 +220,7 @@ abstract class Dconstructor : Dfunction
 protected:
 
     //
+    nothrow
     this(Dobject classPrototype, Dobject functionPrototype,
          PropertyKey name, uint length)
     {
@@ -253,11 +267,10 @@ class DfunctionConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.functiondefinition : FunctionDefinition;
-        import dmdscript.exception : ScriptException;
         import dmdscript.lexer : Mode;
         import dmdscript.parse : Parser;
         import dmdscript.scopex : Scope;
@@ -272,14 +285,16 @@ class DfunctionConstructor : Dconstructor
         // Get parameter list (P) and body from arglist[]
         if(arglist.length)
         {
-            bdy = arglist[arglist.length - 1].toString(cc);
+            arglist[arglist.length - 1].to(bdy, cc);
             if(arglist.length >= 2)
             {
                 for(uint a = 0; a < arglist.length - 1; a++)
                 {
                     if(a)
                         P ~= ',';
-                    P ~= arglist[a].toString(cc);
+                    string s;
+                    arglist[a].to(s, cc);
+                    P ~= s;
                 }
             }
         }
@@ -315,9 +330,7 @@ class DfunctionConstructor : Dconstructor
         catch (Throwable t)
         {
             ret.putVundefined();
-            Value v;
-            v.put(cc.realm.dSyntaxError(t.toString));
-            return new DError(cc, v);
+            return new Derror(cc, t, Value(cc.realm.dSyntaxError(t.msg)));
         }
     }
 }
@@ -329,7 +342,7 @@ private:
 //------------------------------------------------------------------------------
 //
 @DFD(0)
-DError* toString(
+Derror* toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -357,7 +370,7 @@ DError* toString(
 //------------------------------------------------------------------------------
 //
 @DFD(2)
-DError* apply(
+Derror* apply(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -373,7 +386,7 @@ DError* apply(
     Value* thisArg;
     Value* argArray;
     Dobject o;
-    DError* v;
+    Derror* v;
 
     thisArg = &undefined;
     argArray = &undefined;
@@ -391,8 +404,8 @@ DError* apply(
 
     if(thisArg.isUndefinedOrNull())
         o = cc.global;
-    else
-        o = thisArg.toObject(cc.realm);
+    else if (auto err = thisArg.to(o, cc))
+        return err;
 
     if(argArray.isUndefinedOrNull())
     {
@@ -408,7 +421,8 @@ DError* apply(
         }
         Dobject a;
 
-        a = argArray.toObject(cc.realm);
+        if (auto err = argArray.to(a, cc))
+            return err;
 
         // Must be array or arguments object
         if(((cast(Darray)a) is null) && ((cast(Darguments)a) is null))
@@ -419,8 +433,15 @@ DError* apply(
         Value[] alist;
         Value* x;
 
-        x = a.Get(Key.length, cc);
-        len = x ? x.toUint32(cc) : 0;
+        if (auto err = a.Get(Key.length, x, cc))
+            return err;
+        assert (x !is null);
+        len = 0;
+        if (x !is null)
+        {
+            if (auto err = x.to(len, cc))
+                return err;
+        }
 
         Value[] p1;
         Value* v1;
@@ -436,7 +457,9 @@ DError* apply(
 
         for(i = 0; i < len; i++)
         {
-            x = a.Get(PropertyKey(i), cc);
+            if (auto err = a.Get(PropertyKey(i), x, cc))
+                return err;
+            assert (x !is null);
             alist[i] = *x;
         }
 
@@ -449,7 +472,7 @@ DError* apply(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* bind(
+Derror* bind(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -460,14 +483,14 @@ DError* bind(
 //------------------------------------------------------------------------------
 //
 @DFD(1)
-DError* call(
+Derror* call(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.3.4.4
     Value* thisArg;
     Dobject o;
-    DError* v;
+    Derror* v;
 
     if(arglist.length == 0)
     {
@@ -480,7 +503,10 @@ DError* call(
         if(thisArg.isUndefinedOrNull())
             o = cc.global;
         else
-            o = thisArg.toObject(cc.realm);
+        {
+            if (auto err = thisArg.to(o, cc))
+                return err;
+        }
         v = othis.Call(cc, o, ret, arglist[1 .. $]);
     }
     return v;

@@ -20,15 +20,16 @@ module dmdscript.dnative;
 
 import dmdscript.dobject: Dobject;
 import dmdscript.dfunction: Dfunction;
-import dmdscript.value: Value, DError;
+import dmdscript.value: Value;
 import dmdscript.property: Property;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 debug import std.stdio;
 
 //------------------------------------------------------------------------------
 ///
-alias PCall = DError* function(
+alias PCall = Derror* function(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist);
 
@@ -47,10 +48,11 @@ class DnativeFunction : Dfunction
         pcall = func;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
-        return (*pcall)(this, cc, othis, ret, arglist);
+        try return (*pcall)(this, cc, othis, ret, arglist);
+        catch (Throwable t) return new Derror(cc, t, Value("D error"));
     }
 }
 

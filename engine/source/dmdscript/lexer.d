@@ -228,31 +228,38 @@ enum Mode : ubyte
 class Lexer(Mode MODE)
 {
     import dmdscript.primitive : Identifier, RegexLiteral;
-    import dmdscript.exception : ScriptException;
     import dmdscript.errmsgs;
 
     Token token;
     // ScriptException exception;            // syntax error information
 
     //
+    // pure
+    // void error(Throwable t)
+    // {
+    //     assert(t !is null);
+
+    //     auto se = cast(ScriptException)t;
+    //     if (se is null)
+    //         se = new ScriptException ("Unkown exception", t);
+
+    //     se.addTrace(currentline, cast(size_t)(token.ptr - base.ptr));
+
+    //     assert(base.ptr < end);
+    //     p = end - 1;
+    //     token.next = null;
+
+    //     // exception = se;
+
+    //     /*debug*/ throw se;
+    // }
     pure
-    void error(Throwable t)
+    void error(string msg, Throwable n = null,
+               string f = __FILE__, size_t s = __LINE__)
     {
-        assert(t !is null);
-
-        auto se = cast(ScriptException)t;
-        if (se is null)
-            se = new ScriptException ("Unkown exception", t);
-
-        se.addTrace(currentline, cast(size_t)(token.ptr - base.ptr));
-
-        assert(base.ptr < end);
-        p = end - 1;
-        token.next = null;
-
-        // exception = se;
-
-        /*debug*/ throw se;
+        import dmdscript.exception: SyntaxException;
+        throw new SyntaxException(
+            msg, base, token.ptr, _strictMode, f, s, n);
     }
 
     //

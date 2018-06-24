@@ -17,13 +17,13 @@
 
 module dmdscript.drealm;
 
-import dmdscript.primitive : Key;
 import dmdscript.dobject : Dobject;
-import dmdscript.value : Value, DError, vundefined;
+import dmdscript.value : Value;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
     installConstants;
 import dmdscript.property : Property;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror, onError;
 
 debug import std.stdio;
 
@@ -78,7 +78,7 @@ class Drealm : Dobject // aka global environment.
     import dmdscript.protoerror: SyntaxError, EvalError, ReferenceError,
         RangeError, TypeError, UriError;
 
-    import dmdscript.primitive: PropertyKey, ModulePool;
+    import dmdscript.primitive: PropertyKey, ModulePool, Key;
     import dmdscript.callcontext: CallContext;
 
     Dobject rootPrototype, functionPrototype;
@@ -139,14 +139,16 @@ class Drealm : Dobject // aka global environment.
         installConstants!(
             "NaN", double.nan,
             "Infinity", double.infinity,
-            "undefined", vundefined)(this,
+            "undefined", undefined)(this,
                                      Property.Attribute.DontEnum |
                                      Property.Attribute.DontDelete);
 
         debug
         {
             auto cc = CallContext.push(this, false);
-            auto v = Get(PropertyKey("Infinity"), cc);
+            Value* v;
+            assert (Get(PropertyKey("Infinity"), v, cc) is null);
+            assert (v !is null);
             assert (!v.isUndefined);
             assert (v.type == Value.Type.Number);
             assert (v.number is double.infinity);
@@ -163,7 +165,8 @@ class Drealm : Dobject // aka global environment.
         {
             import dmdscript.primitive : PropertyKey;
 
-            assert(dString.Get(PropertyKey("fromCharCode"), cc));
+            assert(dString.Get(PropertyKey("fromCharCode"), v, cc) is null);
+            assert (v !is null);
 
             auto prop = dObject.classPrototype
                 .GetOwnProperty(PropertyKey("__proto__"));
@@ -229,37 +232,30 @@ class DmoduleRealm: Drealm
 {
     import dmdscript.functiondefinition: FunctionDefinition;
 
+    FunctionDefinition _fd;
+
     this (string id, ModulePool modulePool, FunctionDefinition fd)
     {
-        import dmdscript.program: analyze, generate, execute;
         super(id, modulePool);
 
-        Value ret;
-        DError* err;
-        if (fd !is null)
-        {
-            try fd.analyze.generate.execute (this, ret);
-            catch (Throwable t)
-            {
-//##############################################################################
-// UNDER CONSTRUCTION
-            // exports to outer realm.
-            }
-        }
-        // this.globalfunction = fd;
+        this._fd = fd;
+    }
 
-        // semantic;
-        // toIR;
+    override
+    Derror* Call(CallContext* cc, Dobject othis, out Value ret, Value[] args)
+    {
+        import dmdscript.program: execute;
 
-        // Value ret;
-        // auto err = execute(ret, null);
+        Derror* err;
+        _fd.execute (this, ret).onError(err);
+        return err;
     }
 }
 
 //==============================================================================
 
-@DFD(1, Key.CreateRealm)
-DError* CreateRealm (
+@DFD(1)
+Derror* CreateRealm (
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -273,7 +269,7 @@ DError* CreateRealm (
     {
         v = &arglist[0];
         if (!v.isUndefinedOrNull)
-            moduleId = v.toString(cc);
+            v.to(moduleId, cc);
     }
 
     o = new DmoduleRealm(moduleId, cc.realm.modulePool, null);
@@ -284,13 +280,12 @@ DError* CreateRealm (
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* eval(
+Derror* eval(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import dmdscript.functiondefinition : FunctionDefinition;
-    import dmdscript.exception : ScriptException;
     import dmdscript.statement : TopStatement;
     import dmdscript.parse : Parser;
     import dmdscript.scopex : Scope;
@@ -298,62 +293,76 @@ DError* eval(
     import dmdscript.property : Property;
     import dmdscript.opcodes : IR;
     import dmdscript.program: parse, analyze, generate, execute;
+    import dmdscript.exception: SyntaxException, EarlyException;
 
     // ECMA 15.1.2.1
     Value* v;
     string s;
     FunctionDefinition fd;
     // ScriptException exception;
-    DError* result;
+    Derror* result;
     // Dobject callerothis;
     // Dobject[] scopes;
 
     // Parse program
-    try
+    v = arglist.length ? &arglist[0] : &undefined;
+    if(v.type != Value.Type.String)
     {
-        v = arglist.length ? &arglist[0] : &undefined;
-        if(v.type != Value.Type.String)
-        {
-            ret = *v;
-            return null;
-        }
-        s = v.toString(cc);
-
-        // auto p = new Parser!(Mode.None)(s, cc.realm.modulePool, cc.strictMode);
-        // topstatements = p.parseProgram;
-        fd = "string".parse(s, cc.realm.modulePool, cc.strictMode, "eval");
-        fd.iseval = 1;
-        debug
-        {
-            if (cc.realm.dumpMode & Drealm.DumpMode.Statement)
-                TopStatement.dump(fd.topstatements, b=>b.write);
-        }
-
-        fd.analyze.generate;
-
-        debug
-        {
-            if (cc.realm.dumpMode & Drealm.DumpMode.IR)
-                FunctionDefinition.dump(fd, b=>b.write);
-        }
-
-        Dobject actobj = cc.realm.dObject();
-        auto ncc = CallContext.push(cc, actobj, pthis, fd, othis);
-        result = fd.execute(ncc, ret);
-        if (result !is null)
-            result.exception.setSourceInfo(
-                id=>[new ScriptException.Source("eval", s)]);
-
-        CallContext.pop(ncc);
+        ret = *v;
+        return null;
     }
-    catch (Throwable t)
+    v.to(s, cc);
+
+    // auto p = new Parser!(Mode.None)(s, cc.realm.modulePool, cc.strictMode);
+    // topstatements = p.parseProgram;
+    try fd = s.parse(cc.realm.modulePool, cc.strictMode);
+    catch (SyntaxException se)
+        return new Derror(cc, se, Value(cc.realm.dSyntaxError(se.msg)));
+
+    fd.iseval = 1;
+    debug
     {
-        auto se = t.ScriptException ("in eval");
-        se.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
-
-        ret.putVundefined();
-        return new DError(cc, se);
+        if (cc.realm.dumpMode & Drealm.DumpMode.Statement)
+            TopStatement.dump(fd.topstatements, b=>b.write);
     }
+
+    try fd.analyze.generate;
+    catch (EarlyException ee)
+    {
+        import dmdscript.protoerror: toError;
+        ee.base = s;
+        return new Derror(cc, ee, Value(ee.type.toError(ee.msg, cc.realm)));
+    }
+
+    debug
+    {
+        if (cc.realm.dumpMode & Drealm.DumpMode.IR)
+            FunctionDefinition.dump(fd, b=>b.write);
+    }
+
+    Dobject actobj = cc.realm.dObject();
+    auto ncc = CallContext.push(cc, actobj, pthis, fd, othis);
+    if (fd.execute(ncc, ret).onError(result))
+    {
+        result.addInfo("eval", "global", cc.strictMode);
+        result.addSource(s);
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // result.addInfo(cc, id=>ModuleCode(s, "eval", s));
+    }
+    CallContext.pop(ncc);
+    // }
+    // catch (Throwable t)
+    // {
+    //     auto o = cc.realm.dEvalError(t.msg);
+    //     auto vo = Value(o);
+    //     return new Derror(cc, t, vo);
+
+    //     // auto se = t.ScriptException ("in eval");
+    //     // se.setSourceInfo(id=>[new ScriptException.Source("eval", s)]);
+
+    //     // ret.putVundefined();
+    //     // return new DError(cc, se);
+    // }
 
     return result;
 //     // Analyze, generate code
@@ -473,7 +482,7 @@ DError* eval(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-DError* parseInt(
+Derror* parseInt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -524,7 +533,7 @@ DError* parseInt(
     if(arglist.length >= 2)
     {
         v2 = &arglist[1];
-        radix = v2.toInt32(cc);
+        v2.to(radix, cc);
     }
 
     if(radix)
@@ -601,7 +610,7 @@ DError* parseInt(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* parseFloat(
+Derror* parseFloat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -629,7 +638,7 @@ int ISURIALNUM(dchar c)
 char[16 + 1] TOHEX = "0123456789ABCDEF";
 
 @DFD(1)
-DError* escape(
+Derror* escape(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -697,7 +706,7 @@ DError* escape(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* unescape(
+Derror* unescape(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -787,7 +796,7 @@ DError* unescape(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* isNaN(
+Derror* isNaN(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -802,7 +811,7 @@ DError* isNaN(
         v = &arglist[0];
     else
         v = &undefined;
-    n = v.toNumber(cc);
+    v.to(n, cc);
     b = isNaN(n) ? true : false;
     ret.put(b);
     return null;
@@ -810,7 +819,7 @@ DError* isNaN(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* isFinite(
+Derror* isFinite(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -825,22 +834,22 @@ DError* isFinite(
         v = &arglist[0];
     else
         v = &undefined;
-    n = v.toNumber(cc);
+    v.to(n, cc);
     b = isFinite(n) ? true : false;
     ret.put(b);
     return null;
 }
 
 //------------------------------------------------------------------------------
-DError* URI_error(Drealm realm, string s)
+Derror* URI_error(CallContext* cc, string s)
 {
-    Dobject o = realm.dUriError(s ~ "() failure");
-    auto v = new DError;
-    v.put(o);
-    return v;
+    auto msg = s ~ "() failure";
+    auto o = cc.realm.dUriError(msg);
+    auto v = Value(o);
+    return new Derror(cc, msg, v);
 }
 @DFD(1)
-DError* decodeURI(
+Derror* decodeURI(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -856,7 +865,7 @@ DError* decodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(cc.realm, __FUNCTION__);
+        return URI_error(cc, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -864,7 +873,7 @@ DError* decodeURI(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* decodeURIComponent(
+Derror* decodeURIComponent(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -881,7 +890,7 @@ DError* decodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(cc.realm, __FUNCTION__);
+        return URI_error(cc, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -889,7 +898,7 @@ DError* decodeURIComponent(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* encodeURI(
+Derror* encodeURI(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -906,7 +915,7 @@ DError* encodeURI(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(cc.realm, __FUNCTION__);
+        return URI_error(cc, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -914,7 +923,7 @@ DError* encodeURI(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* encodeURIComponent(
+Derror* encodeURIComponent(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -930,7 +939,7 @@ DError* encodeURIComponent(
     catch(URIException u)
     {
         ret.putVundefined();
-        return URI_error(cc.realm, __FUNCTION__);
+        return URI_error(cc, __FUNCTION__);
     }
     ret.put(s);
     return null;
@@ -950,7 +959,6 @@ void dglobal_print(
         {
             version (Windows) // FUUU******UUUCK!!
             {
-                import dmdscript.protoerror : D0base;
                 import std.windows.charset : toMBSz;
 
                 // if (arglist[i].type == Value.Type.Object)
@@ -962,11 +970,14 @@ void dglobal_print(
                 //     }
                 // }
 
-                printf("%s", arglist[i].toString(cc).toMBSz);
+                string s;
+                arglist[i].to(s, cc);
+                printf("%s", s.toMBSz);
             }
             else
             {
-                string s = arglist[i].toString(cc);
+                string s;
+                arglist[i].toString(cc, s);
 
                 writef("%s", s);
             }
@@ -978,7 +989,7 @@ void dglobal_print(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* print(
+Derror* print(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -989,7 +1000,7 @@ DError* print(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* println(
+Derror* println(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1003,7 +1014,7 @@ DError* println(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* readln(
+Derror* readln(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1060,7 +1071,7 @@ DError* readln(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* getenv(
+Derror* getenv(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1072,7 +1083,8 @@ DError* getenv(
     ret.putVundefined();
     if(arglist.length)
     {
-        string s = arglist[0].toString(cc);
+        string s;
+        arglist[0].to(s, cc);
         char* p = getenv(toStringz(s));
         if(p)
             ret.put(p[0 .. strlen(p)].idup);
@@ -1085,7 +1097,7 @@ DError* getenv(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* ScriptEngine(
+Derror* ScriptEngine(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1097,7 +1109,7 @@ DError* ScriptEngine(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* ScriptEngineBuildVersion(
+Derror* ScriptEngineBuildVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1107,7 +1119,7 @@ DError* ScriptEngineBuildVersion(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* ScriptEngineMajorVersion(
+Derror* ScriptEngineMajorVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1117,7 +1129,7 @@ DError* ScriptEngineMajorVersion(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* ScriptEngineMinorVersion(
+Derror* ScriptEngineMinorVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1131,9 +1143,11 @@ DError* ScriptEngineMinorVersion(
 string arg0string(CallContext* cc, Value[] arglist)
 {
     Value* v = arglist.length ? &arglist[0] : &undefined;
-    return v.toString(cc);
+    string s;
+    v.to(s, cc);
+    return s;
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // I want to remove this.
-public auto undefined = vundefined;
+public auto undefined = Value(Value.Type.Undefined);

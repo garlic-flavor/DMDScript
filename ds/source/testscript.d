@@ -29,12 +29,15 @@ import dmdscript.callcontext;
 // import dmdscript.program;
 import dmdscript.drealm;
 import dmdscript.errmsgs;
+import dmdscript.exception;
+import dmdscript.derror: Derror;
 
 enum
 {
     EXITCODE_INIT_ERROR = 1,
     EXITCODE_INVALID_ARGS = 2,
     EXITCODE_RUNTIME_ERROR = 3,
+    EXITCODE_COMPILE_ERROR = 4,
 }
 
 /**************************************************
@@ -123,11 +126,11 @@ int main(string[] args)
         default:
             if      (args[i].startsWith("-i"))
             {
-                includes ~= args[i][2..$];
+                includes ~= args[i][2..$].strip;
             }
             else if (args[i].startsWith("-"))
             {
-                BadSwitchError(args[i]).toString.writefln;
+                BadSwitchError(args[i]).writefln;
                 errors++;
             }
             else if (0 < args[i].strip.length)
@@ -157,153 +160,36 @@ int main(string[] args)
         if (verbose)
             writefln("read    %s:", m.srcfile);
         m.read();
+
         if (verbose)
             writefln("compile %s:", m.srcfile);
         try m.compile();
-        catch (Throwable t)
+        catch (SyntaxException se)
         {
-            errout(t);
-            return EXITCODE_RUNTIME_ERROR;
+            errout(se, m);
+            return EXITCODE_COMPILE_ERROR;
+        }
+        catch (EarlyException ee)
+        {
+            errout(ee, m);
+            return EXITCODE_COMPILE_ERROR;
         }
 
         debug
         {
             if (compileOnly) continue;
         }
-
         if (verbose)
             writefln("execute %s:", m.srcfile);
-        try m.execute();
-        catch(Throwable t)
+
+        if (auto err = m.execute())
         {
-            errout(t);
+            errout(err, m);
             return EXITCODE_RUNTIME_ERROR;
         }
     }
     return EXIT_SUCCESS;
 }
-
-void errout(Throwable t) nothrow
-{
-    import dmdscript.exception : ScriptException;
-    import std.stdio : stderr, stdout;
-
-    //
-    static void setConsoleColorRed(void delegate() proc)
-    {
-        version (Windows)
-        {
-
-            import core.sys.windows.windows;
-
-            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-            assert (hConsole !is INVALID_HANDLE_VALUE);
-            CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-            GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-            auto saved_attributes = consoleInfo.wAttributes;
-            SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-
-            scope (exit)
-                SetConsoleTextAttribute(hConsole, saved_attributes);
-        }
-        proc();
-    }
-
-    //
-    static void setConsoleColorIntensity(void delegate() proc)
-    {
-        version (Windows)
-        {
-            import core.sys.windows.windows;
-
-            auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-            assert (hConsole !is INVALID_HANDLE_VALUE);
-            CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-            GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-            auto saved_attributes = consoleInfo.wAttributes;
-            SetConsoleTextAttribute(hConsole, FOREGROUND_INTENSITY);
-
-            scope (exit)
-                SetConsoleTextAttribute(hConsole, saved_attributes);
-        }
-        proc();
-    }
-
-    try
-    {
-        void sink(in char[] b)
-        {
-            version (Windows)
-            {
-                import std.windows.charset : toMBSz;
-
-                auto buf = b.toMBSz;
-                for (size_t i = 0; i < size_t.max; ++i)
-                {
-                    if (buf[i] == '\0')
-                    {
-                        stderr.write(buf[0..i]);
-                        break;
-                    }
-                }
-            }
-            else
-                stderr.write(b);
-        }
-
-
-        if (auto se = cast(ScriptException)t)
-        {
-            stdout.flush;
-            stderr.flush;
-
-            se.firstTrace(&sink);
-            sink(": ");
-            setConsoleColorIntensity(
-                (){
-                    sink(se.type);
-                    sink(": ");
-                });
-
-            setConsoleColorRed((){sink(se.msg);});
-            sink("\n--------------------\n");
-
-            foreach (one; se.traces)
-            {
-                setConsoleColorIntensity(
-                    (){one.scriptNameAndLine(&sink);});
-
-                one.dFileAndLine(&sink);
-                sink("\n");
-
-                one.sourceTrace(&sink);
-                sink("\n");
-
-                one.irTrace(&sink);
-                sink("\n");
-            }
-
-            sink("\n--------------------\n");
-            se.restInfo(&sink);
-            sink("\n--------------------\n");
-            se.nextInfo(&sink);
-
-            sink("\n");
-            stderr.flush;
-
-        }
-        else
-        {
-            stdout.flush;
-            stderr.flush;
-            t.toString(&sink);
-            sink("\n");
-            stderr.flush;
-        }
-    }
-    catch(Throwable){}
-}
-
 
 class SrcFile
 {
@@ -311,7 +197,6 @@ class SrcFile
     string srcfile;
     string[] includes;
 
-    // DscriptRealm realm;
     string buffer;
     bool strictMode;
     FunctionDefinition fd;
@@ -344,7 +229,7 @@ class SrcFile
 
         try
         {
-            fd = srcfile.parse(buffer, &modulePool, strictMode);
+            fd = buffer.parse(&modulePool, strictMode);
 
             debug
             {
@@ -359,19 +244,12 @@ class SrcFile
                 if (dumpMode & Drealm.DumpMode.IR)
                     FunctionDefinition.dump(fd, b=>b.write);
             }
-
-            // realm.compile (srcfile, buffer, &modulePool, strictMode);
-        }
-        catch (ScriptException e)
-        {
-            e.setSourceInfo (&getSourceInfo);
-            throw e;
         }
         finally
             buffer = null;
     }
 
-    void execute()
+    Derror* execute()
     {
         import dmdscript.value: Value;
         import dmdscript.exception;
@@ -381,8 +259,8 @@ class SrcFile
          */
 
         Value ret;
-
         auto realm = new Drealm(srcfile, &modulePool);
+
         debug
         {
             realm.dumpMode = dumpMode;
@@ -390,35 +268,7 @@ class SrcFile
         realm.install(
             "$262", new Test262(realm.rootPrototype, realm.functionPrototype));
 
-        try fd.execute(realm, ret);
-        catch (Throwable t)
-        {
-            auto se = t.ScriptException ("at execution.");
-            se.setSourceInfo (&getSourceInfo);
-            throw se;
-        }
-    }
-
-
-    auto getSourceInfo(string bufferId)
-    {
-        import dmdscript.exception : ScriptException;
-        alias SESource = ScriptException.Source;
-
-        import std.conv : to;
-        import std.exception : assumeUnique;
-
-        auto sources = new SESource[includes.length + 1];
-
-        foreach (i, name; includes ~ bufferId)
-        {
-            auto size = cast(size_t)std.file.getSize(name);
-            auto buf = new char[size+1];
-            buf[0..size] = cast(char[])std.file.read(name);
-            buf[size] = '\n';
-            sources[i] = new SESource(name, buf.assumeUnique);
-        }
-        return sources;
+        return fd.execute(realm, ret);
     }
 
     string modulePool(string moduleSpecifier)
@@ -437,6 +287,11 @@ class SrcFile
         */
 
         //writef("read file '%s'\n",srcfile);
+
+        assert (0 < moduleSpecifier.length);
+
+        if (auto pbuf = moduleSpecifier in pool)
+            return *pbuf;
 
         if (!std.file.exists(moduleSpecifier))
             throw new Exception (moduleSpecifier ~ " is not found.");
@@ -479,7 +334,115 @@ class SrcFile
         i++;
         assert(i == len);
 
-        return buffer.assumeUnique;
+        auto ret = buffer.assumeUnique;
+        pool[moduleSpecifier] = ret;
+        return ret;
+    }
+    string[string] pool;
+
+    bool searchInfo(in string base, in const(char)* head,
+                    out string name, out string line,
+                    out size_t linnum, out size_t column)
+    {
+        string bufferSpec;
+        foreach (key, val; pool)
+        {
+            if (val.ptr is base.ptr)
+            {
+                bufferSpec = key;
+                assert (val.length == base.length);
+                assert (val[$-1] == 0x1A);
+                assert (base[$-1] == 0x1A);
+                break;
+            }
+        }
+        if (0 == bufferSpec.length)
+            return false;
+
+        auto start = base.ptr;
+        foreach (n; includes ~ bufferSpec)
+        {
+            auto len = std.file.getSize(n) + 1;
+            if (start + len <= head)
+            {
+                start += len;
+                continue;
+            }
+
+            name = n;
+            return searchInfo(start[0..cast(size_t)len], head,
+                              line, linnum, column);
+        }
+
+        return false;
+    }
+
+    bool searchInfo(in string base, in const(char)* head,
+                    out string line, out size_t linnum, out size_t column)
+    {
+        auto start = base.ptr;
+        linnum = 1;
+        for (auto ite = start; ite < start + base.length; ++ite)
+        {
+            if ((*ite) == '\n' || (*ite) == 0x1A)
+            {
+                if (head <= ite || (*ite) == 0x1A)
+                {
+                    column = head - start;
+                    line = start[0..ite - start];
+                    return true;
+                }
+
+                ++linnum;
+                start = ite + 1;
+            }
+        }
+
+        return false;
+    }
+
+    bool searchInfo(in string id, ref size_t linnum,
+                    out string name, out string line)
+    {
+        auto moduleSpec = 0 < id.length ? id : srcfile;
+        string buf = modulePool(moduleSpec);
+        auto start = buf.ptr;
+        foreach (n; includes ~ moduleSpec)
+        {
+            auto len = std.file.getSize(n) + 1;
+            if (searchInfo(start[0..cast(size_t)len], linnum, line))
+            {
+                name = n;
+                return true;
+            }
+            else
+                start += len;
+        }
+        return false;
+    }
+
+    bool searchInfo(string buf, ref size_t linnum, out string line)
+    {
+        auto start = buf.ptr;
+        size_t l;
+        for (auto ite = start; ; ++ite)
+        {
+            if ((*ite) == '\n' || ite == buf.ptr + buf.length)
+            {
+                if      (l + 1 == linnum)
+                {
+                    line = start[0..ite - start];
+                    return true;
+                }
+                ++l;
+                start = ite + 1;
+
+                if (&buf[$-1] <= ite)
+                    break;
+            }
+        }
+        linnum -= l;
+        return false;
     }
 
 debug public:
@@ -492,7 +455,8 @@ class Test262 : Dobject
 {
     import dmdscript.dnative: DFD = DnativeFunctionDescriptor,
         DnativeFunction, install;
-    import dmdscript.value: DError, Value;
+    import dmdscript.value: Value;
+    import dmdscript.derror: Derror;
 
     this (Dobject superPrototype, Dobject functionPrototype)
     {
@@ -504,7 +468,7 @@ class Test262 : Dobject
 static:
 
     @DFD(0)
-    DError* createRealm(
+    Derror* createRealm(
         DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
         Value[] arglist)
     {
@@ -516,7 +480,7 @@ static:
         {
             v = &arglist[0];
             if (!v.isUndefinedOrNull)
-                moduleId = v.toString(cc);
+                v.to(moduleId, cc);
         }
 
         o = new DemptyRealm(moduleId, cc.realm.modulePool);
@@ -533,7 +497,8 @@ static:
 //------------------------------------------------------------------------------
 class DemptyRealm: Drealm
 {
-    import dmdscript.value: Value, DError;
+    import dmdscript.value: Value;
+    import dmdscript.derror: Derror;
     import dmdscript.primitive: ModulePool;
     import dmdscript.functiondefinition: FunctionDefinition;
     import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
@@ -548,7 +513,7 @@ class DemptyRealm: Drealm
 
 static:
     @DFD(1)
-    DError* eval(
+    Derror* eval(
         DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
         Value[] arglist)
     {
@@ -561,3 +526,584 @@ static:
         return r;
     }
 }
+
+//==============================================================================
+
+void sink(in char[] b)
+{
+    version (Windows)
+    {
+        import std.windows.charset : toMBSz;
+
+        auto buf = b.toMBSz;
+        for (size_t i = 0; i < size_t.max; ++i)
+        {
+            if (buf[i] == '\0')
+            {
+                stderr.write(buf[0..i]);
+                break;
+            }
+        }
+    }
+    else
+        stderr.write(b);
+}
+
+void errout(SyntaxException se, ref SrcFile sf)
+{
+    import std.string: stripLeft;
+    import std.array: array;
+    import std.range: repeat, take;
+    import core.internal.string: unsignedToTempString;
+    char[20] tmpBuf = void;
+
+    assert (se !is null);
+
+    string name, line;
+    size_t linnum, column;
+
+    stdout.flush;
+    stderr.flush;
+    scope(exit) stderr.flush;
+
+    if (!sf.searchInfo(se.base, se.head, name, line, linnum, column) &&
+        !sf.searchInfo(se.base, se.head, line, linnum, column))
+    {
+        sink(se.toString);
+        sink("\n");
+        return;
+    }
+    if (0 == name.length)
+        name = "anonymous";
+
+    setConsoleColorRed({sink("SyntaxError");});
+    sink("@"); sink(se.file);
+    sink("("); sink(unsignedToTempString(se.line, tmpBuf, 10)); sink(")");
+    if (se.strictMode)
+        sink("[STRICT MODE]");
+    if (0 < se.msg.length)
+    {
+        sink(": ");
+        setConsoleColorIntensity({sink(se.msg);});
+    }
+
+    sink("\n"); sink(name);
+    sink("("); sink(unsignedToTempString(linnum, tmpBuf, 10)); sink(")\n");
+    sink(" >");
+    sink(line); sink("\n");
+
+    auto rline = line.stripLeft;
+    sink(line[0..$-rline.length]); // output indent.
+    ' '.repeat.take(column - line.length + rline.length + 2).array.sink;
+    sink("^\n");
+
+    errinfo(se);
+}
+
+void errout(EarlyException ee, ref SrcFile sf)
+{
+    import core.internal.string: unsignedToTempString;
+    char[20] tmpBuf = void;
+
+    assert (ee !is null);
+    string name, line;
+    size_t linnum = ee.linnum;
+
+    stdout.flush;
+    stderr.flush;
+    scope(exit) stderr.flush;
+
+    if ((0 < ee.base.length && !sf.searchInfo(ee.base, linnum, line)) ||
+        (0 == ee.base.length && !sf.searchInfo(ee.id, linnum, name, line)))
+    {
+        sink(ee.toString);
+        sink("\n");
+        return;
+    }
+
+    setConsoleColorRed({sink(ee.type); sink("[early]"); });
+    sink("@"); sink(ee.file);
+    sink("("); sink(unsignedToTempString(ee.line, tmpBuf, 10)); sink(")");
+    if (0 < ee.msg.length)
+    {
+        sink(": ");
+        setConsoleColorIntensity({sink(ee.msg);});
+    }
+
+    sink("\n");
+    sink(name);
+    sink("("); sink(unsignedToTempString(linnum, tmpBuf, 10)); sink(")\n");
+    sink(" >"); sink(line); sink("\n");
+
+    errinfo(ee);
+}
+
+void errinfo(Throwable t)
+{
+    debug
+    {
+        if (t.info !is null)
+        {
+            try
+            {
+                sink("\n----------");
+                foreach (i; t.info)
+                {
+                    sink("\n");
+                    sink(i);
+                }
+            }
+            catch (Throwable){}
+        }
+        sink("\n");
+        if (t.next !is null)
+            sink(t.next.toString);
+    }
+}
+
+void errout(Derror* e, ref SrcFile sf)
+{
+    import std.format: format;
+    import dmdscript.ir: Opcode;
+    import dmdscript.opcodes: IR;
+    import core.internal.string: unsignedToTempString;
+    char[20] tmpBuf = void;
+
+    assert (e !is null);
+    assert (sf !is null);
+
+
+    stdout.flush;
+    stderr.flush;
+    scope(exit) stderr.flush;
+
+    assert (e.isObject);
+    auto eo = e.object;
+    auto ti = e.traceinfo;
+
+next:
+    assert (ti !is null);
+
+    // setConsoleColorRed({sink(eo.classname);}); sink(": ");
+    setConsoleColorRed({sink(ti.message);}); sink("\n");
+
+    if (auto t = ti.throwable)
+    {
+        if      (auto se = cast(SyntaxException)t)
+            errout(se, sf);
+        else if (auto ee = cast(EarlyException)t)
+            errout(e, sf);
+        else
+            sink(t.toString);
+        sink("\n");
+    }
+
+    for (auto t = ti.trace; t !is null; t = t.next)
+    {
+        debug
+        {
+            sink(t.dFile);
+            sink("(");
+            sink(unsignedToTempString(t.dLine, tmpBuf, 10));
+            sink(")\n");
+        }
+
+        if (t.code is null)
+            continue;
+
+        string name, line;
+        size_t linnum = t.code.opcode.linnum;
+        if ((0 < t.src.length && !sf.searchInfo(t.src, linnum, line)) ||
+            (0 == t.src.length &&
+             !sf.searchInfo(t.bufferId, linnum, name, line)))
+        {
+            sink("\n");
+            continue;
+        }
+
+        if      (0 < name.length){}
+        else if (0 < t.bufferId.length)
+            name = t.bufferId;
+        else
+            name = "anonymous";
+
+        setConsoleColorYellow(
+            {
+                sink(name); sink(":"); sink(t.funcname);
+                sink("("); sink(unsignedToTempString(linnum, tmpBuf, 10));
+                sink(")");
+                if (t.strictMode)
+                    sink("[STRICT MODE]");
+                sink("\n");
+            });
+
+        sink("@ "); sink(line); sink("\n\n");
+
+        debug
+        {
+            for (auto ite = t.base;
+                 ite.opcode != Opcode.End && ite.opcode != Opcode.Error;
+                 ite += IR.size(ite.opcode))
+            {
+                if (ite.opcode.linnum == t.code.opcode.linnum)
+                {
+                    sink(ite is t.code ? "@" : " ");
+                    sink("% 4d[%04d]:".format(linnum, ite - t.base));
+                    IR.toBuffer(0, ite, a=>sink(a));
+                    sink("\n");
+                }
+            }
+        }
+        sink("\n");
+    }
+
+    if (auto p = ti.previous)
+    {
+        sink("----------\n");
+        ti = p;
+        goto next;
+    }
+}
+
+
+// string getLineAt(string base, uint linnum, bool haveOffset, ref size_t offset)
+// {
+//     size_t l = 1;
+//     bool thisLine = false;
+//     size_t lineStart = 0;
+
+//     if (l == linnum)
+//         thisLine = true;
+
+//     for (size_t i = 0; i < base.length; ++i)
+//     {
+//         if (base[i] == '\n')
+//         {
+//             if (thisLine)
+//                 return base[lineStart .. i];
+
+//             ++l;
+//             if (l == linnum)
+//             {
+//                 thisLine = true;
+//                 lineStart = i+1;
+//                 if (haveOffset)
+//                     offset -= lineStart;
+//             }
+//         }
+//     }
+//     if (thisLine)
+//         return base[lineStart .. $];
+//     else
+//         return null;
+// }
+
+
+// void errout(Throwable t, ref SrcFile sf) nothrow
+// {
+//     import std.stdio : stderr, stdout;
+
+
+//     try
+//     {
+//         import core.internal.string : unsignedToTempString;
+//         import std.array: replace;
+//         import std.string: stripRight;
+//         import dmdscript.ir: Opcode;
+//         char[20] tmpBuff = void;
+//         enum Tab = "    ";
+
+//         void sink(in char[] b)
+//         {
+//             version (Windows)
+//             {
+//                 import std.windows.charset : toMBSz;
+
+//                 auto buf = b.toMBSz;
+//                 for (size_t i = 0; i < size_t.max; ++i)
+//                 {
+//                     if (buf[i] == '\0')
+//                     {
+//                         stderr.write(buf[0..i]);
+//                         break;
+//                     }
+//                 }
+//             }
+//             else
+//                 stderr.write(b);
+//         }
+
+
+//         // if (auto se = cast(ScriptException)t)
+//         // {
+//         //     stdout.flush;
+//         //     stderr.flush;
+
+//         //     se.firstTrace(&sink);
+//         //     sink(": ");
+//         //     setConsoleColorIntensity(
+//         //         (){
+//         //             sink(se.type);
+//         //             sink(": ");
+//         //         });
+
+//         //     setConsoleColorRed((){sink(se.msg);});
+//         //     sink("\n--------------------\n");
+
+//         //     foreach (one; se.traces)
+//         //     {
+//         //         if (0 == one.bufferId.length)
+//         //             continue;
+
+//         //         auto sources = sf.getSoucreInfo(one.bufferId);
+//         //         string sourcename = "";
+//         //         string buffer = "";
+//         //         size_t lineshift = 0;
+//         //         foreach (s; sources)
+//         //         {
+//         //             if (one.line <= lineshift + s.lineCount)
+//         //             {
+//         //                 sourcename = s.filename;
+//         //                 buffer = s.buffer;
+//         //                 break;
+//         //             }
+//         //             else
+//         //                 lineshift += s.lineCount;
+//         //         }
+
+//         //         setConsoleColorIntensity(
+//         //             (){
+//         //                 sink("(#");
+//         //                 sink(one.bufferId);
+//         //                 sink(")");
+//         //                 if ((0 < sourcename.length || one.funcname.length)
+//         //                     && 0 < one.linnum)
+//         //                     sink("@");
+//         //                 if (0 < sourcename.length)
+//         //                     sink(sourcename);
+//         //                 if (0 < one.funcname.length)
+//         //                 {
+//         //                     if (0 < soucename.length)
+//         //                         sink("/");
+//         //                     sink(one.funcname);
+//         //                 }
+//         //                 if (0 < linnum)
+//         //                 {
+//         //                     sink("(");
+//         //                     sink(unsignedToTempString(
+//         //                              linnum - lineshift, tmpBuff, 10));
+//         //                     sink(")");
+//         //                 }
+//         //                 if (strictMode)
+//         //                     sink("[STRICT MODE]");
+//         //             });
+
+//         //         sink("[@");
+//         //         sink(one.dFilename);
+//         //         sink("(");
+//         //         sink(unsignedToTempString(one.dLinnum, tmpBuff, 10));
+//         //         sink(")]");
+//         //         sink("\n");
+
+//         //         auto ofs = one.offset;
+//         //         auto line = getLineAt(buffer, one.linnum - lineshift,
+//         //                               one.haveOffset, ofs);
+//         //         if (0 < line.length)
+//         //         {
+//         //             sink(">");
+//         //             sink(line.replace("\t", Tab).stripRight);
+//         //             if (one.haveOffset)
+//         //             {
+//         //                 sink("\n");
+//         //                 for (size_t i = 0; i < line.length && i < ofs; ++i)
+//         //                 {
+//         //                     if (line[i] == '\t')
+//         //                         sink(Tab);
+//         //                     else
+//         //                         sink(" ");
+//         //                 }
+//         //                 sink(" ^\n");
+//         //             }
+//         //         }
+
+//         //         sink("\n");
+
+//         //         if (one.base !is null && one.code !is null && 0 < one.linnum)
+//         //         {
+//         //             for (const(IR)* ite = base; ; ite += IR.size(ite.opcode))
+//         //             {
+//         //                 if (ite.opcode == Opcode.End ||
+//         //                     ite.opcode == Opcode.Error ||
+//         //                     one.code.opcode.linnum < ite.opcode.linnum)
+//         //                     break;
+//         //                 if (ite.opcode.linnum < one.code.opcode.linnum)
+//         //                     continue;
+//         //                 sink(ite is code ? "*" : " ");
+//         //                 IR.toBuffer(0, ite, sink, lineshift);
+//         //                 sink("\n");
+//         //             }
+//         //         }
+//         //         sink("\n");
+//         //     }
+
+//         //     sink("\n--------------------\n");
+//         //     se.restInfo(&sink);
+//         //     sink("\n--------------------\n");
+//         //     se.nextInfo(&sink);
+
+//         //     sink("\n");
+//         //     stderr.flush;
+
+//         // }
+//         // else
+//         // {
+//             stdout.flush;
+//             stderr.flush;
+//             t.toString(&sink);
+//             sink("\n");
+//             stderr.flush;
+//         // }
+//     }
+//     catch(Throwable){}
+// }
+
+
+
+
+/+
+//------------------------------------------------------------------------------
+struct ModuleCode
+{
+    string code; // whole code.
+    alias code this;
+
+    struct Block
+    {
+        string name; // filename, typically.
+        string code;  // a slice of the whole code.
+    }
+    Block[] blocks;
+
+    this(string[] srcs...)
+    {
+        if (0 == srcs.length)
+            return;
+        code = srcs[0];
+        for (size_t i = 1; i < srcs.length - 1; i += 2)
+        {
+            assert (code.ptr <= srcs[i+1].ptr &&
+                    srcs[i+1].ptr + srcs[i+1].length <= code.ptr + code.length);
+            blocks ~= Block(srcs[i], srcs[i+1]);
+        }
+    }
+
+
+    @property @safe @nogc pure nothrow
+    bool empty() const
+    {
+        return 0 == code.length;
+    }
+
+
+    struct Result
+    {
+        bool found;
+        string name;
+        string line;
+        size_t linnum;
+        size_t column;
+    }
+
+    Result search(const(char)* head) const
+    {
+        static Result impl(in ref Block block, const(char)* head)
+        {
+            auto ite = block.code.ptr;
+            auto linehead = block.code.ptr;
+            size_t linnum = 1;
+            for (; ite < head; ++ite)
+            {
+                if (*ite == '\n')
+                {
+                    linehead = ite + 1;
+                    ++linnum;
+                }
+            }
+
+            for (; ite < (block.code.ptr + block.code.length); ++ite)
+            {
+                if (*ite == '\n')
+                    break;
+            }
+            return Result (
+                true, block.name, linehead[0..ite - linehead],
+                linnum, cast(size_t)(head - linehead));
+        }
+
+        foreach (ref block; blocks)
+        {
+            if (block.code.ptr <= head &&
+                head < (block.code.ptr + block.code.length))
+                return impl(block, head);
+        }
+        return Result();
+    }
+
+    Result search(size_t linnum) const
+    {
+        size_t l = 1;
+        if (linnum == 1)
+            return search(code.ptr);
+        for(auto ite = code.ptr; ite < code.ptr + code.length; ++ite)
+        {
+            if (*ite == '\n')
+            {
+                ++l;
+                if (l == linnum)
+                    return search(ite+1);
+            }
+        }
+        return Result();
+    }
+}
++/
+
+void setConsoleColor(uint ATTR)(void delegate() proc)
+{
+    version (Windows)
+    {
+        import core.sys.windows.windows;
+
+        auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        assert (hConsole !is INVALID_HANDLE_VALUE);
+        CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+        GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+        auto saved_attributes = consoleInfo.wAttributes;
+
+        stdout.flush;
+        SetConsoleTextAttribute(hConsole, ATTR);
+        scope (exit)
+        {
+            stdout.flush;
+            SetConsoleTextAttribute(hConsole, saved_attributes);
+        }
+    }
+    proc();
+}
+
+version(Windows)
+{
+    import core.sys.windows.windows;
+    alias setConsoleColorRed = setConsoleColor!92;
+    alias setConsoleColorIntensity = setConsoleColor!FOREGROUND_INTENSITY;
+    alias setConsoleColorYellow = setConsoleColor!94;
+    alias setConsoleColorHiContrast = setConsoleColor!15;
+}
+else
+{
+    alias setConsoleColorRed = setConsoleColor!0;
+    alias setConsoleColorIntensity = setConsoleColor!0;
+    alias setConsoleColorYellow = setConsoleColor!0;
+    alias setConsoleColorHiContrast = setConsoleColor!15;
+}
+

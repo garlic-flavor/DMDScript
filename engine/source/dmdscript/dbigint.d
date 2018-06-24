@@ -18,9 +18,10 @@ module dmdscript.dbigint;
 
 import dmdscript.dobject: Dobject;
 import dmdscript.dfunction: Dconstructor;
-import dmdscript.value: Value, DError;
+import dmdscript.value: Value;
 import dmdscript.callcontext: CallContext;
 import dmdscript.dnative: DFD = DnativeFunctionDescriptor, DnativeFunction;
+import dmdscript.derror: Derror;
 
 //==============================================================================
 ///
@@ -29,6 +30,7 @@ class DbigInt: Dobject
     import std.bigint: BigInt;
 
 private:
+    nothrow
     this (Dobject prototype, BigInt* pbi)
     {
         import dmdscript.primitive: Key;
@@ -51,13 +53,14 @@ class DbigIntConstructor: Dconstructor
         install(functionPrototype);
     }
 
+    nothrow
     DbigInt opCall(BigInt* pbi)
     {
         return new DbigInt(classPrototype, pbi);
     }
 
     override
-    DError* Construct (CallContext* cc, out Value ret, Value[] arglist)
+    Derror* Construct (CallContext* cc, out Value ret, Value[] arglist)
     {
         BigInt* pbi;
         Dobject o;
@@ -66,7 +69,7 @@ class DbigIntConstructor: Dconstructor
     }
 
     override
-    DError* Call (CallContext* cc, Dobject othis, out Value ret,
+    Derror* Call (CallContext* cc, Dobject othis, out Value ret,
                   Value[] arglist)
     {
         assert (0);
@@ -75,7 +78,7 @@ class DbigIntConstructor: Dconstructor
 
 //
 @DFD(0)
-DError* valueOf(
+Derror* valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

@@ -83,7 +83,6 @@ enum Key : PropertyKey
     constructor = PropertyKey("constructor"),
     toString = PropertyKey("toString"),
     toSource = PropertyKey("toSource"),
-    toPrimitive = PropertyKey("toPrimitive"),
     valueOf = PropertyKey("valueOf"),
     message = PropertyKey("message"),
     description = PropertyKey("description"),
@@ -116,8 +115,6 @@ enum Key : PropertyKey
     Promise = PropertyKey("Promise"),
     Reflect = PropertyKey("Reflect"),
     Proxy = PropertyKey("Proxy"),
-
-    CreateRealm = PropertyKey("CreateRealm"),
 
     arguments = PropertyKey("arguments"),
     callee = PropertyKey("callee"),
@@ -154,7 +151,7 @@ struct PropertyKey
 
     //--------------------------------------------------------------------
     ///
-    @safe pure
+    @safe @nogc pure nothrow
     this(K)(in auto ref K key) if (IsKey!K)
     {
         static if      (is(K : PropertyKey))
@@ -236,18 +233,18 @@ struct PropertyKey
 
     //--------------------------------------------------------------------
     ///
-    @safe
+    @safe nothrow
     string toString() const
     {
         import std.conv : to;
         if (_text !is null)
             return _text;
         else
-            return _hash.to!string;
+            return _hash.uintToString;
     }
 
     ///
-    @trusted
+    @trusted @nogc pure nothrow
     bool isArrayIndex(out size_t index) const
     {
         if (_text is null)
@@ -260,7 +257,7 @@ struct PropertyKey
     }
 
     //--------------------------------------------------------------------
-    @nogc pure nothrow
+    @trusted @nogc pure nothrow
     bool opEquals()(in auto ref PropertyKey p) const
     {
         if (_text !is null)
@@ -275,7 +272,7 @@ private:
 
 static public:
     ///
-    @safe nothrow
+    @safe pure nothrow
     const(PropertyKey)* build(string str)
     {
         return new PropertyKey(str);
@@ -291,7 +288,7 @@ static public:
 ///
 alias Identifier = const(PropertyKey)*;
 
-//------------------------------------------------------------------------------
+///
 alias ModulePool = string delegate(string moduleSpecifier);
 
 //==============================================================================
@@ -347,7 +344,7 @@ Input:
     parsefloat    0: convert per ECMA 9.3.1
                   1: convert per ECMA 15.1.2.3 (global.parseFloat())
 */
-@trusted
+@trusted nothrow
 double StringNumericLiteral(string str, out size_t endidx, int parsefloat)
 {
     import std.string : toStringz;
@@ -364,9 +361,10 @@ double StringNumericLiteral(string str, out size_t endidx, int parsefloat)
         return 0;
     // Skip leading whitespace
     eoff = str.length;
-    foreach(size_t j, dchar c; str)
+    dchar d;
+    for (size_t j = 0; j < str.length; ++j)
     {
-        if(!c.isWhite)
+        if(!str[j].isWhite)
         {
             eoff = j;
             break;
@@ -458,7 +456,7 @@ double StringNumericLiteral(string str, out size_t endidx, int parsefloat)
 }
 
 //------------------------------------------------------------------------------
-@trusted
+@trusted nothrow
 string NumberToString(in double n)
 {
     import std.format : sformat;
@@ -492,7 +490,8 @@ string NumberToString(in double n)
         // library is upgraded to ANSI C 99 conformance, use
         // 16 digits, which is all the GCC library will round correctly.
 
-        sformat(buffer, "%.16g\0", n);
+        try sformat(buffer, "%.16g\0", n);
+        catch (Throwable){}
         //std.c.stdio.sprintf(buffer.ptr, "%.16g", number);
 
         // Trim leading spaces
@@ -641,6 +640,14 @@ size_t calcHash(in string s)
     return calcHash(hash);
 }
 
+@safe nothrow
+string uintToString(size_t ui)
+{
+    import core.internal.string: unsignedToTempString;
+    char[20] tmpBuff = void;
+    return unsignedToTempString(ui, tmpBuff, 10).idup;
+}
+
 //------------------------------------------------------------------------------
 /*
 Use this instead of std.string.cmp() because
@@ -672,7 +679,7 @@ struct RegexLiteral
 
 //------------------------------------------------------------------------------
 //
-@safe pure
+@safe @nogc pure nothrow
 bool parseUnicode(bool sentinelExists = false)(
     string base, ref size_t index, out dchar ret)
 {

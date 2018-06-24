@@ -24,9 +24,10 @@ class DboundFunction : Dobject
 {
     import dmdscript.primitive : Text;
     import dmdscript.dfunction : Dfunction;
-    import dmdscript.value : Value, DError;
+    import dmdscript.value : Value;
     import dmdscript.drealm: Drealm;
     import dmdscript.callcontext: CallContext;
+    import dmdscript.derror: Derror;
 
     Dfunction BoundTargetFunction;
     Dobject BoundThis;
@@ -38,7 +39,7 @@ class DboundFunction : Dobject
     }
 
     override
-    DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                  Value[] arglist)
     {
         assert(BoundTargetFunction !is null);

@@ -25,7 +25,6 @@ class Parser(Mode MODE) : Lexer!MODE
 {
     import dmdscript.functiondefinition : FunctionDefinition;
     import dmdscript.primitive : Identifier, ModulePool;
-    import dmdscript.exception : ScriptException;
     import dmdscript.lexer : IdTable, Tok;
     import dmdscript.statement : TopStatement, Statement;
     import dmdscript.expression;
@@ -708,17 +707,12 @@ private:
             nextToken;
             if      (Tok.String == token.value) // import 'hoge.ds';
             {
-                try
-                {
-                    auto bdy = modulePool(token.str);
-                    auto sp = new Parser!(Mode.Module)(
-                        bdy, modulePool, strictMode);
-                    auto ts = sp.parseProgram;
-                    s = new ExpStatement(
-                        linnum, new ImportExpression(linnum, token.str, ts));
-                }
-                catch (Throwable t)
-                    error(t);
+                auto bdy = modulePool(token.str);
+                auto sp = new Parser!(Mode.Module)(
+                    bdy, modulePool, strictMode);
+                auto ts = sp.parseProgram;
+                s = new ExpStatement(
+                    linnum, new ImportExpression(linnum, token.str, ts));
 
                 nextToken;
                 break;

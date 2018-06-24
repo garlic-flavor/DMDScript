@@ -21,11 +21,12 @@ import dmdscript.primitive : PKey = Key, PropertyKey;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
-import dmdscript.value : DError, Value;
+import dmdscript.value: Value;
 import dmdscript.errmsgs;
-import dmdscript.property : Property, PropTable;
+import dmdscript.property : Property;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // NOT IMPLEMENTED YET.
@@ -34,15 +35,22 @@ class Dproxy : Dobject
     import dmdscript.dfunction : Dfunction;
 
 private:
+    nothrow
     this(Dobject prototype, CallContext* cc, Dobject prop)
     {
+        import dmdscript.property: SpecialSymbols;
         super(prototype, Key.Proxy);
 
-        if (auto ret = prop.Get(Key.set, cc))
+        Value* ret;
+        if (auto err = prop.Get(Key.set, ret, cc))
+            return;
+        if (ret !is null)
         {
-            if (auto func = cast(Dfunction)ret.toObject(cc.realm))
+            Dobject o;
+            ret.to(o, cc);
+            if (auto func = cast(Dfunction)o)
             {
-                SetSetter(PropTable.SpecialSymbols.opAssign, func,
+                SetSetter(SpecialSymbols.opAssign, func,
                           Property.Attribute.DontEnum);
             }
         }
@@ -61,18 +69,18 @@ class DproxyConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         Dobject proto, attr;
 
         if (0 < arglist.length)
-            proto = arglist[0].toObject(cc.realm);
+            arglist[0].to(proto, cc);
         else
             proto = new Dobject(null);
 
         if (1 < arglist.length)
-            attr = arglist[1].toObject(cc.realm);
+            arglist[1].to(attr, cc);
         else
             attr = new Dobject(null);
 
@@ -93,7 +101,7 @@ enum Key : PropertyKey
 
 //
 @DFD(2, DFD.Type.Static)
-DError* revocable(
+Derror* revocable(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

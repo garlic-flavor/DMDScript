@@ -20,9 +20,10 @@ module dmdscript.darraybuffer;
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.dobject: Dobject;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
-import dmdscript.value: DError, Value;
+import dmdscript.value: Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 
 //==============================================================================
 ///
@@ -49,7 +50,7 @@ class DarrayBufferConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -61,7 +62,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isView(
+Derror* isView(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -71,7 +72,7 @@ DError* isView(
 
 //
 @DFD()
-DError* byteLength(
+Derror* byteLength(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -80,7 +81,7 @@ DError* byteLength(
 
 //
 @DFD(2)
-DError* slice(
+Derror* slice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

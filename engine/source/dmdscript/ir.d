@@ -253,17 +253,19 @@ align(1):
 
     alias opcode this;
 
+    @safe @nogc pure nothrow
     this(uint linnum, Opcode op)
     {
         this.linnum = cast(typeof(this.linnum))linnum;
         opcode = op;
     }
 
+    @safe @nogc pure nothrow
     Opcode opAssign(in Opcode op){ opcode = op; return opcode;}
 
-    debug string toString(uint lineshift) const
+    debug string toString() const
     {
-        return format("% 4d:%s", linnum - lineshift, opcode);
+        return format("%s", opcode);
     }
 }
 static assert (Instruction.sizeof == size_t.sizeof);
@@ -276,11 +278,12 @@ private struct IR0(Opcode CODE)
 
     Instruction ir;
 
+    @safe @nogc pure nothrow
     this(uint linnum)
     { ir = Instruction(linnum, code); }
 
-    debug string toString(uint lineshift) const
-    { return ir.toString(lineshift); }
+    debug string toString() const
+    { return ir.toString(); }
 }
 
 //
@@ -293,20 +296,22 @@ align(size_t.sizeof):
     Instruction ir;
     idx_t acc;  // the position of an acc buffer in local variable array.
 
+    @safe @nogc pure nothrow
     this(uint linnum, idx_t acc)
     {
         ir = Instruction(linnum, code);
         this.acc = acc;
     }
 
+    @safe @nogc pure nothrow
     this(uint linnum, Opcode op, idx_t acc)
     {
         ir = Instruction(linnum, op);
         this.acc = acc;
     }
 
-    debug string toString(uint lineshift) const
-    { return text(ir.toString(lineshift), " ", acc); }
+    debug string toString() const
+    { return text(ir.toString(), " ", acc); }
 }
 
 //
@@ -320,6 +325,7 @@ align(size_t.sizeof):
     idx_t acc;
     T operand;
 
+    @safe @nogc pure nothrow
     this(uint linnum, idx_t acc, T operand)
     {
         ir = Instruction(linnum, code);
@@ -327,7 +333,7 @@ align(size_t.sizeof):
         this.operand = operand;
     }
 
-    debug string toString(uint lineshift)
+    debug string toString()
     {
         import dmdscript.opcodes : IR;
         static if      (is(T : Identifier))
@@ -338,7 +344,7 @@ align(size_t.sizeof):
         {
             import std.array: Appender;
             Appender!string buf;
-            IR.dump(operand.code, b=>buf.put(b), lineshift, 0);
+            IR.dump(operand.code, b=>buf.put(b), 0);
             auto opName = text("function\n{\n", buf.data, "}");
         }
         else static if (is(T : double))
@@ -347,9 +353,9 @@ align(size_t.sizeof):
             auto opName = text("[", operand, "]");
 
         static if (isGet!CODE)
-            return text(ir.toString(lineshift), " [", acc, "] = ", opName);
+            return text(ir.toString, " [", acc, "] = ", opName);
         else
-            return text(ir.toString(lineshift), " ", opName, " = [", acc, "]");
+            return text(ir.toString, " ", opName, " = [", acc, "]");
     }
 }
 
@@ -365,6 +371,7 @@ align(size_t.sizeof):
     T operand1;
     U operand2;
 
+    @safe @nogc pure nothrow
     this(uint linnum, idx_t acc, T o1, U o2)
     {
         ir = Instruction(linnum, code);
@@ -373,6 +380,7 @@ align(size_t.sizeof):
         operand2 = o2;
     }
 
+    @safe @nogc pure nothrow
     this(uint linnum, Opcode op, idx_t acc, T o1, U o2)
     {
         ir = Instruction(linnum, op);
@@ -381,9 +389,9 @@ align(size_t.sizeof):
         operand2 = o2;
     }
 
-    debug string toString(uint lineshift)
+    debug string toString()
     {
-        return text(ir.toString(lineshift), " ", acc, ", ", operand1, ", ",
+        return text(ir.toString, " ", acc, ", ", operand1, ", ",
                     operand2);
     }
 }
@@ -401,6 +409,7 @@ align(size_t.sizeof):
     size_t argc;
     idx_t argv;
 
+    @safe @nogc pure nothrow
     this(uint linnum, idx_t acc, T func, size_t argc, idx_t argv)
     {
         ir = Instruction(linnum, code);
@@ -410,13 +419,13 @@ align(size_t.sizeof):
         this.argv = argv;
     }
 
-    debug string toString(uint lineshift) const
+    debug string toString() const
     {
         static if (is(T : Identifier))
-            return text(ir.toString(lineshift), " [", acc, "] = ",
+            return text(ir.toString, " [", acc, "] = ",
                         func.toString, "([", argv, "..", argv + argc, "])");
         else
-            return text(ir.toString(lineshift), " [", acc, "] = [", func,
+            return text(ir.toString, " [", acc, "] = [", func,
                         "]([", argv, "..", argv + argc, "])");
     }
 }
@@ -434,6 +443,7 @@ align(size_t.sizeof):
     size_t argc;
     idx_t argv;
 
+    @safe @nogc pure nothrow
     this(uint linnum, idx_t acc, idx_t owner, T method, size_t argc, idx_t argv)
     {
         ir = Instruction(linnum, code);
@@ -444,6 +454,7 @@ align(size_t.sizeof):
         this.argv = argv;
     }
 
+    @safe @nogc pure nothrow
     this(uint linnum, Opcode op, idx_t acc, idx_t owner, T method, size_t argc,
          idx_t argv)
     {
@@ -455,14 +466,14 @@ align(size_t.sizeof):
         this.argv = argv;
     }
 
-    debug string toString(uint lineshift) const
+    debug string toString() const
     {
         static if (is(T : Identifier))
-            return text(ir.toString(lineshift),
+            return text(ir.toString,
                         " [", acc, "] = [", owner, "].\"", method.toString,
                         "\"([", argv, " .. ", argv + argc, "])");
         else
-            return text(ir.toString(lineshift),
+            return text(ir.toString,
                         " [", acc, "] = [", owner, "].[", method,
                         "]([", argv, " .. ", argv + argc, "])");
     }
@@ -480,6 +491,7 @@ align(size_t.sizeof):
     idx_t owner;
     T method;
 
+    @safe @nogc pure nothrow
     this(uint linnum, idx_t acc, idx_t owner, T method)
     {
         ir = Instruction(linnum, code);
@@ -488,7 +500,7 @@ align(size_t.sizeof):
         this.method = method;
     }
 
-    debug string toString(uint lineshift) const
+    debug string toString() const
     {
         static if (is(T : Identifier))
             auto mName = text("\"", *method, "\"");
@@ -496,10 +508,10 @@ align(size_t.sizeof):
             auto mName = text("[", method, "]");
 
         static if (isGet!CODE)
-            return text(ir.toString(lineshift),
+            return text(ir.toString,
                         " [", acc, "] = [", owner, "].", mName);
         else
-            return text(ir.toString(lineshift),
+            return text(ir.toString,
                         " [", owner, "].", mName, " = [", acc, "]");
     }
 }
@@ -515,6 +527,7 @@ align(size_t.sizeof):
     Identifier operand;
     size_t hash;
 
+    @safe @nogc pure nothrow
     this(uint linnum, idx_t acc, Identifier operand, size_t hash)
     {
         ir = Instruction(linnum, code);
@@ -523,6 +536,7 @@ align(size_t.sizeof):
         this.hash = hash;
     }
 
+    @safe @nogc pure nothrow
     this(uint linnum, Opcode op, idx_t acc, Identifier operand, size_t hash)
     {
         ir = Instruction(linnum, op);
@@ -531,13 +545,13 @@ align(size_t.sizeof):
         this.hash = hash;
     }
 
-    debug string toString(uint lineshift) const
+    debug string toString() const
     {
         static if (CODE == Opcode.AddAsSScope)
-            return text(ir.toString(lineshift), " [", acc, "] = \"", *operand,
+            return text(ir.toString, " [", acc, "] = \"", *operand,
                         "\"(#", hash, ") += [", acc, "]");
         else
-            return text(ir.toString(lineshift),
+            return text(ir.toString,
                         " [", acc, "] = \"", *operand, "\"(#", hash, ")");
     }
 }
@@ -554,6 +568,7 @@ align(size_t.sizeof):
     T func;
     idx_t iter;
 
+    @safe @nogc pure nothrow
     this(uint linnum, sizediff_t offset, T func, idx_t iter)
     {
         ir = Instruction(linnum, code);
@@ -562,10 +577,11 @@ align(size_t.sizeof):
         this.iter = iter;
     }
 
-    debug string toString(uint lineshift, size_t base = 0) const
+    debug string toString(size_t base = 0) const
     {
-        return text(ir.toString(lineshift),
-                    " if(", func, ", ", iter, ") goto ", offset + base); }
+        return text(ir.toString,
+                    " if(", func, ", ", iter, ") goto ", offset + base);
+    }
 }
 
 // if (owner.method iter) goto offset; iter = iter.next;
@@ -581,6 +597,7 @@ align(size_t.sizeof):
     T method;
     idx_t iter;
 
+    @safe @nogc pure nothrow
     this(uint linnum, sizediff_t offset, idx_t owner, T method, idx_t iter)
     {
         ir = Instruction(linnum, code);
@@ -590,9 +607,9 @@ align(size_t.sizeof):
         this.iter = iter;
     }
 
-    debug string toString(uint lineshift, size_t base = 0) const
+    debug string toString(size_t base) const
     {
-        return text(ir.toString(lineshift),
+        return text(ir.toString,
                     " if(", owner, ".", method, ", ", iter, ") goto ",
                     offset + base);
     }
@@ -608,15 +625,16 @@ align(size_t.sizeof):
     Instruction ir;
     sizediff_t offset;
 
+    @safe @nogc pure nothrow
     this(uint linnum, sizediff_t offset)
     {
         ir = Instruction(linnum, code);
         this.offset = offset;
     }
 
-    debug string toString(uint lineshift, size_t base = 0) const
+    debug string toString(size_t base = 0) const
     {
-        return "%s goto %04d".format(ir.toString(lineshift), offset + base);
+        return "%s goto %04d".format(ir.toString, offset + base);
     }
 }
 //
@@ -630,6 +648,7 @@ align(size_t.sizeof):
     sizediff_t offset;
     idx_t cond;
 
+    @safe @nogc pure nothrow
     this(uint linnum, sizediff_t offset, idx_t cond)
     {
         ir = Instruction(linnum, code);
@@ -637,8 +656,8 @@ align(size_t.sizeof):
         this.cond = cond;
     }
 
-    debug string toString(uint lineshift, size_t base = 0) const
-    { return text(ir.toString(lineshift), " if(", cond, ") ", offset + base); }
+    debug string toString(size_t base = 0) const
+    { return text(ir.toString, " if(", cond, ") ", offset + base); }
 }
 //
 private struct IRjump3(Opcode CODE, T = idx_t)
@@ -652,6 +671,7 @@ align(size_t.sizeof):
     idx_t operand1;
     T operand2;
 
+    @safe @nogc pure nothrow
     this(uint linnum, sizediff_t offset, idx_t o1, T o2)
     {
         ir = Instruction(linnum, code);
@@ -660,7 +680,7 @@ align(size_t.sizeof):
         this.operand2 = o2;
     }
 
-    debug string toString(uint lineshift, size_t base = 0) const
+    debug string toString(size_t base = 0) const
     {
         import std.format;
 
@@ -673,13 +693,13 @@ align(size_t.sizeof):
 
         static if      (CODE == Opcode.JLT || CODE == Opcode.JLE)
             return "%s if([%d] %s [%d]) else goto %04d".format(
-                ir.toString(lineshift), operand1, cmp, operand2, base + offset);
+                ir.toString, operand1, cmp, operand2, base + offset);
         else static if (CODE == Opcode.JLTC || CODE == Opcode.JLEC)
             return "%s if([%d] %s %s) else goto %04d".format(
-                ir.toString(lineshift), operand1, cmp, operand2, base + offset);
+                ir.toString, operand1, cmp, operand2, base + offset);
         else
             return "%s if([%d] %s %s) else goto %04d".format(
-                ir.toString(lineshift), operand1, cmp, operand2, base + offset);
+                ir.toString, operand1, cmp, operand2, base + offset);
     }
 }
 
@@ -695,15 +715,16 @@ align(size_t.sizeof):
     Instruction ir;
     Statement statement;
 
+    @safe @nogc pure nothrow
     this(uint linnum, Statement statement)
     {
         ir = Instruction(linnum, code);
         this.statement = statement;
     }
 
-    debug string toString(uint lineshift, size_t base = 0) const
+    debug string toString(size_t base = 0) const
     {
-        return text(ir.toString(lineshift), " ",
+        return text(ir.toString, " ",
                     (cast(size_t)cast(void*)statement) + base);
     }
 }
@@ -719,6 +740,7 @@ align(size_t.sizeof):
     sizediff_t offset;
     Identifier name;
 
+    @safe @nogc pure nothrow
     this(uint linnum, sizediff_t offset, Identifier name)
     {
         ir = Instruction(linnum, code);
@@ -726,13 +748,13 @@ align(size_t.sizeof):
         this.name = name;
     }
 
-    debug string toString(uint lineshift, size_t base = 0) const
+    debug string toString(size_t base = 0) const
     {
         if (name !is null)
-            return text(ir.toString(lineshift), " ", *name, ", ",
+            return text(ir.toString, " ", *name, ", ",
                         offset + base);
         else
-            return text(ir.toString(lineshift), " \"\"", offset + base);
+            return text(ir.toString, " \"\"", offset + base);
     }
 }
 
@@ -746,18 +768,19 @@ align(size_t.sizeof):
     Instruction ir;
     Identifier operand;
 
+    @safe @nogc pure nothrow
     this(uint linnum, Identifier operand)
     {
         ir = Instruction(linnum, code);
         this.operand = operand;
     }
 
-    debug string toString(uint lineshift) const
+    debug string toString() const
     {
         if (operand !is null)
-            return text(ir.toString(lineshift), " ", *operand);
+            return text(ir.toString, " ", *operand);
         else
-            return text(ir.toString(lineshift), " \"\"");
+            return text(ir.toString, " \"\"");
     }
 }
 
@@ -769,14 +792,15 @@ private struct IRAssert
 
     Instruction ir;
 
+    @safe @nogc pure nothrow
     this(uint linnum)
     {
         ir = Instruction(linnum, code);
     }
 
-    debug string toString(uint lineshift) const
+    debug string toString() const
     {
-        return text(ir.toString(lineshift), " at line ", ir.linnum - lineshift);
+        return text(ir.toString, " at line ", ir.linnum);
     }
 }
 

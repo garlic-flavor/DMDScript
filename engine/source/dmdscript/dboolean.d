@@ -19,18 +19,20 @@ module dmdscript.dboolean;
 
 import dmdscript.primitive: Key;
 import dmdscript.dobject: Dobject;
-import dmdscript.value: DError, Value;
+import dmdscript.value: Value;
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.errmsgs;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 
 //==============================================================================
 ///
 class Dboolean : Dobject
 {
 private:
+    nothrow
     this(Dobject prototype, bool b = false)
     {
         super(prototype, Key.Boolean);
@@ -49,33 +51,44 @@ class DbooleanConstructor : Dconstructor
         install(functionPrototype);
     }
 
+    nothrow
     Dboolean opCall(bool b = false)
     {
         return new Dboolean(classPrototype, b);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.6.2
         bool b;
         Dobject o;
+        Derror* e;
 
-        b = (arglist.length) ? arglist[0].toBoolean() : false;
+        if (0 < arglist.length)
+            e = arglist[0].to(b, cc);
+        else
+            b = false;
+
         o = opCall(b);
         ret.put(o);
-        return null;
+        return e;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 15.6.1
         bool b;
+        Derror* e;
 
-        b = (arglist.length) ? arglist[0].toBoolean() : false;
+        if (0 < arglist.length)
+            e = arglist[0].to(b, cc);
+        else
+            b = false;
+
         ret.put(b);
-        return null;
+        return e;
     }
 }
 
@@ -85,14 +98,16 @@ private:
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toString(
+Derror* toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // othis must be a Boolean
     if (auto db = cast(Dboolean)othis)
     {
-        ret.put(db.value.toString(cc));
+        string s;
+        db.value.to(s, cc);
+        ret.put(s);
     }
     else
     {
@@ -104,7 +119,7 @@ DError* toString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* valueOf(
+Derror* valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

@@ -18,21 +18,23 @@ module dmdscript.program;
 
 import dmdscript.functiondefinition: FunctionDefinition;
 import dmdscript.primitive: ModulePool;
-import dmdscript.value: Value, DError;
-import dmdscript.drealm: Drealm;
+import dmdscript.value: Value;
 import dmdscript.callcontext: CallContext;
+import dmdscript.drealm: Drealm;
+import dmdscript.derror: Derror, onError;
 debug import std.stdio;
 
 /**
+   Throws:
+     ParserException on a SyntaxError found in the script.
+     Throwable       on an unexpected error occurred.
  */
-FunctionDefinition parse(string bufferId, string srctext,
-                         ModulePool modulePool, bool strictMode = false,
-                         string funcName = null)
+FunctionDefinition parse(string srctext, ModulePool modulePool,
+                         bool strictMode = false, string funcName = null)
 {
     import dmdscript.statement: TopStatement;
     import dmdscript.parse: Parser;
     import dmdscript.lexer: Mode;
-    import dmdscript.exception: ScriptException;
     import dmdscript.primitive: PropertyKey;
 
     alias P = Parser!(Mode.UseStringtable);
@@ -40,37 +42,27 @@ FunctionDefinition parse(string bufferId, string srctext,
     assert (modulePool !is null);
     P p;
     bool isglobal = 0 == funcName.length;
-    if (0 == funcName.length)
-        funcName = bufferId;
 
-    try
-    {
-        p = new P(srctext, modulePool, strictMode);
-        auto ts = p.parseProgram;
+    p = new P(srctext, modulePool, strictMode);
+    auto ts = p.parseProgram;
 
-        // Build empty function definition array
-        // Make globalfunction an anonymous one
-        //   (by passing in null for name) so
-        // it won't get instantiated as a property
-        return new FunctionDefinition(0, isglobal, new PropertyKey(funcName),
-                                      null, ts, p.strictMode);
-    }
-    catch (Throwable t)
-    {
-        auto se = t.ScriptException("at parsing.");
-        se.addInfo(bufferId, isglobal ? "global" : funcName,
-                   p is null ? strictMode : p.strictMode);
-        throw se;
-    }
-    assert (0);
+    // Build empty function definition array
+    // Make globalfunction an anonymous one
+    //   (by passing in null for name) so
+    // it won't get instantiated as a property
+    return new FunctionDefinition(
+        0, isglobal, 0 < funcName.length ? new PropertyKey(funcName) : null,
+        null, ts, p.strictMode);
 }
 
 /**
+   Throws:
+     EarlyException on a semantic error occurred.
+     Throwable      on an unexpected error occurred.
  */
 FunctionDefinition analyze(FunctionDefinition fd)
 {
     import dmdscript.scopex: Scope;
-    import dmdscript.exception: ScriptException;
 
     // Any functions parsed in topstatements wind up in the global
     // object (cc.global), where they are found by normal property lookups.
@@ -87,48 +79,32 @@ FunctionDefinition analyze(FunctionDefinition fd)
     // as a property of the global object.
 
     assert (fd !is null);
-    try
-    {
-        Scope sc;
-        sc.ctor (fd);   // create global scope
-        fd.semantic(&sc);
-    }
-    catch (Throwable t) // if semantic() failed
-    {
-        auto se = t.ScriptException ("at semantic");
-        se.addInfo(fd.name is null ? "anonymous" : fd.name.toString, "global",
-                   fd.strictMode);
-        fd.topstatements = null;
-        throw se;
-    }
+
+    Scope sc;
+    sc.ctor (fd);   // create global scope
+    fd.semantic(&sc);
+
     return fd;
 }
 
 /**
+   Throws:
+     EarlyException =
+     Throwable      =
  */
 FunctionDefinition generate(FunctionDefinition fd)
 {
-    import dmdscript.exception: ScriptException;
-    try
-    {
-        fd.toIR(null);
-        // Don't need parse trees anymore, so null'ing the pointer allows
-        // the garbage collector to find & free them.
-        fd.topstatements = null;
-    }
-    catch (Throwable t)
-    {
-        auto se = t.ScriptException ("at compile.");
-        se.addInfo (fd.name is null ? "anonymous" : fd.name.toString, "global",
-                    fd.strictMode);
-        throw se;
-    }
+    fd.toIR(null);
+    // Don't need parse trees anymore, so null'ing the pointer allows
+    // the garbage collector to find & free them.
+    fd.topstatements = null;
     return fd;
 }
 
 /** Execute program.
 */
-DError* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
+nothrow
+Derror* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
                     T args)
 {
     import dmdscript.primitive: Key, PropertyKey;
@@ -166,7 +142,7 @@ DError* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
     {
         Value[] locals;
         Value* v;
-        DError* result;
+        Derror* result;
 
         version (Win32)          // eh and alloca() not working under linux
         {
@@ -187,12 +163,12 @@ DError* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
         fd.instantiate (cc, PA.DontDelete | PA.DontConfig);
 
         ret.putVundefined;
-        result = IR.call(cc, cc.realm, fd.code, ret, locals.ptr);
 
-        if (result !is null)
+        if (IR.call(cc, cc.realm, fd.code, ret, locals.ptr).onError(result))
         {
-            result.exception.addInfo (
-                fd.name is null ? "anonymous" : fd.name.toString,
+            result.updateMessage(cc);
+            result.addInfo (
+                fd.name is null ? "" : fd.name.toString,
                 "global", fd.strictMode);
         }
 
@@ -202,14 +178,13 @@ DError* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
     }
 }
 ///
-void execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
+Derror* execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
                     T args)
 {
     auto cc = CallContext.push (realm, fd);
     auto result = execute(fd, cc, ret, args);
-    if (result !is null)
-        throw result.exception;
     CallContext.pop(cc);
+    return result;
 }
 
 /+
@@ -350,7 +325,7 @@ class Program
 
         Value[] locals;
         Value ret;
-        DError* result;
+        DError result;
         Darray arguments;
         assert (realm !is null);
 

@@ -65,7 +65,7 @@ class Symbol
     final override @safe @nogc pure nothrow
     string toString() const
     {
-        return ident ? "__ident" : "__anonymous";
+        return ident !is null ? ident.text : "__anonymous";
     }
 
     final

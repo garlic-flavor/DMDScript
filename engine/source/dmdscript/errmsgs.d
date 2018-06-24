@@ -5,6 +5,7 @@ module dmdscript.errmsgs;
 
 import dmdscript.protoerror: cTypeError = TypeError, RangeError, SyntaxError,
     cReferenceError = ReferenceError;
+import dmdscript.derror: Derror;
 
 debug import std.stdio;
 
@@ -276,10 +277,9 @@ private:
 //
 struct err(alias Ctor, ARGS...)
 {
-    import dmdscript.value : DError;
     import dmdscript.opcodes : IR;
-    import dmdscript.exception : ScriptException;
     import dmdscript.callcontext: CallContext;
+    import dmdscript.exception: EarlyException;
 
     string fmt; //
 
@@ -291,52 +291,54 @@ struct err(alias Ctor, ARGS...)
     }
 
     //
-    @trusted
-    DError* opCall(CallContext* cc, ARGS args, string file = __FILE__,
-                   size_t line = __LINE__) const
+    nothrow
+    Derror* opCall(CallContext* cc, ARGS args,
+                   string f = __FILE__, size_t l = __LINE__) const
     {
         import std.format : format;
         import dmdscript.value: Value;
-        import dmdscript.protoerror: D0base, EvalError;
+        import dmdscript.protoerror: EvalError;
+        import dmdscript.dobject: Dobject;
 
-        string msg = fmt.format(args);
-        D0base d0;
+        string msg;
+        try msg = fmt.format(args);
+        catch (Exception){ msg = fmt; }
+        Dobject o;
         static if      (is(Ctor == SyntaxError))
-            d0 = cc.realm.dSyntaxError(msg);
+            o = cc.realm.dSyntaxError(msg);
         else static if (is(Ctor == EvalError))
-            d0 = cc.realm.dEvalError(msg);
+            o = cc.realm.dEvalError(msg);
         else static if (is(Ctor == cReferenceError))
-            d0 = cc.realm.dReferenceError(msg);
+            o = cc.realm.dReferenceError(msg);
         else static if (is(Ctor == RangeError))
-            d0 = cc.realm.dRangeError(msg);
+            o = cc.realm.dRangeError(msg);
         else static if (is(Ctor == cTypeError))
-            d0 = cc.realm.dTypeError(msg);
+            o = cc.realm.dTypeError(msg);
         else static if (is(Ctor == UriError))
-            d0 = cc.realm.dUriError(msg);
+            o = cc.realm.dUriError(msg);
         else static assert (0);
 
-        Value v;
-        v.put(d0);
-        return new DError (cc, v, file, line);
+        assert (o !is null);
+        return new Derror(cc, msg, Value(o), f, l);
     }
     alias opCall this;
 
+    // //
+    // @safe
+    // ScriptException toThrow(ARGS args, string file = __FILE__,
+    //                         size_t line = __LINE__) const
+    // {
+    //     import std.format : format;
+    //     return new ScriptException(Ctor.Text, fmt.format(args), file, line);
+    // }
+
     //
     @safe
-    ScriptException toThrow(ARGS args, string file = __FILE__,
-                            size_t line = __LINE__) const
+    EarlyException early(ARGS args, uint linnum, string funcname,
+                         string f = __FILE__, size_t l = __LINE__) const
     {
         import std.format : format;
-        return new ScriptException(Ctor.Text, fmt.format(args), file, line);
-    }
-
-    // //
-    @safe
-    ScriptException toThrow(ARGS args, uint linnum, string funcname,
-                            string f = __FILE__, size_t l = __LINE__) const
-    {
-        import std.format : format;
-        return new ScriptException(
+        return new EarlyException(
             Ctor.Text, fmt.format(args), funcname, linnum, f, l);
     }
 }
@@ -344,23 +346,18 @@ struct err(alias Ctor, ARGS...)
 //------------------------------------------------------------------------------
 struct syntaxerr(ARGS...)
 {
-    import dmdscript.exception : ScriptException;
+    string fmt;
 
-    string fmt; //
+    this(string fmt)
+    {
+        this.fmt = fmt;
+    }
 
     //
-    @safe @nogc pure nothrow
-    this(string fmt) { this.fmt = fmt; }
-
-    //
-    @safe
-    ScriptException opCall(ARGS args, uint linnum = 0, string file = __FILE__,
-                           size_t line = __LINE__) const
+    string opCall(ARGS args)
     {
         import std.format : format;
-
-        return new ScriptException(SyntaxError.Text, fmt.format(args), linnum,
-                                   file, line);
+        return fmt.format(args);
     }
     alias opCall this;
 }

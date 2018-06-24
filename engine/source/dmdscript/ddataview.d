@@ -20,9 +20,10 @@ module dmdscript.ddataview;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
-import dmdscript.value : DError, Value;
+import dmdscript.value : Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 
 //==============================================================================
 ///
@@ -50,7 +51,7 @@ class DdataViewConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -63,7 +64,7 @@ private:
 
 //
 @DFD()
-DError* buffer(
+Derror* buffer(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -72,7 +73,7 @@ DError* buffer(
 
 //
 @DFD
-DError* byteLength(
+Derror* byteLength(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -81,7 +82,7 @@ DError* byteLength(
 
 //
 @DFD
-DError* byteOffset(
+Derror* byteOffset(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -90,7 +91,7 @@ DError* byteOffset(
 
 //
 @DFD
-DError* getFloat32(
+Derror* getFloat32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -99,7 +100,7 @@ DError* getFloat32(
 
 //
 @DFD
-DError* getFloat64(
+Derror* getFloat64(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -108,7 +109,7 @@ DError* getFloat64(
 
 //
 @DFD
-DError* getInt8(
+Derror* getInt8(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -117,7 +118,7 @@ DError* getInt8(
 
 //
 @DFD
-DError* getInt16(
+Derror* getInt16(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -126,7 +127,7 @@ DError* getInt16(
 
 //
 @DFD
-DError* getInt32(
+Derror* getInt32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -135,7 +136,7 @@ DError* getInt32(
 
 //
 @DFD
-DError* getUint8(
+Derror* getUint8(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -144,7 +145,7 @@ DError* getUint8(
 
 //
 @DFD
-DError* getUint16(
+Derror* getUint16(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -153,7 +154,7 @@ DError* getUint16(
 
 //
 @DFD
-DError* getUint32(
+Derror* getUint32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -162,7 +163,7 @@ DError* getUint32(
 
 //
 @DFD
-DError* setFloat32(
+Derror* setFloat32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -171,7 +172,7 @@ DError* setFloat32(
 
 //
 @DFD
-DError* setFloat64(
+Derror* setFloat64(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -180,7 +181,7 @@ DError* setFloat64(
 
 //
 @DFD
-DError* setInt8(
+Derror* setInt8(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -189,7 +190,7 @@ DError* setInt8(
 
 //
 @DFD
-DError* setInt16(
+Derror* setInt16(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -198,7 +199,7 @@ DError* setInt16(
 
 //
 @DFD
-DError* setInt32(
+Derror* setInt32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -207,7 +208,7 @@ DError* setInt32(
 
 //
 @DFD
-DError* setUint8(
+Derror* setUint8(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -216,7 +217,7 @@ DError* setUint8(
 
 //
 @DFD
-DError* setUint16(
+Derror* setUint16(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -225,7 +226,7 @@ DError* setUint16(
 
 //
 @DFD
-DError* setUint32(
+Derror* setUint32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

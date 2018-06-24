@@ -28,9 +28,10 @@ struct CallContext
     import dmdscript.drealm: Drealm;
     import dmdscript.property: Property;
     import dmdscript.dfunction: Dfunction;
-    import dmdscript.value: Value, DError;
+    import dmdscript.value: Value;
     import dmdscript.primitive: PropertyKey;
     import dmdscript.functiondefinition: FunctionDefinition;
+    import dmdscript.derror: Derror;
 
     /* Get current realm environment.
 
@@ -95,7 +96,7 @@ struct CallContext
 
         This couldn't be null
      */
-    @property @safe
+    @property @safe nothrow
     Scope* save()
     {
         Scope* ret, ite;
@@ -150,19 +151,19 @@ struct CallContext
             key   = The name of the variable.
             pthis = The field that contains the searched variable.
     */
-    Value* get (in ref PropertyKey key, out Dobject pthis)
+    Derror* get (in ref PropertyKey key, out Dobject pthis, out Value* v)
     {
-        Value* v;
         Dobject o;
         for (auto s = _scope; s !is null; s = s.next)
         {
             o = s.obj;
             assert (o !is null);
-            v = o.Get(key, &this);
+            if (auto err = o.Get(key, v, &this))
+                return err;
             if (v !is null)
             {
                 pthis = o;
-                return v;
+                return null;
             }
         }
 
@@ -170,15 +171,15 @@ struct CallContext
         return null;
     }
     /// ditto
-    Value* get (in ref PropertyKey key)
+    Derror* get (in ref PropertyKey key, out Value* v)
     {
-        Value* v;
         for (auto s = _scope; s !is null; s = s.next)
         {
             assert (s.obj);
-            v = s.obj.Get(key, &this);
+            if (auto err = s.obj.Get(key, v, &this))
+                return err;
             if (v !is null)
-                return v;
+                break;
         }
         return null;
     }
@@ -193,8 +194,8 @@ struct CallContext
             value =
             attr  =
     */
-    DError* set (in ref PropertyKey key, ref Value value,
-                 Property.Attribute attr = Property.Attribute.None)
+    Derror* set (in ref PropertyKey key, ref Value value,
+                Property.Attribute attr = Property.Attribute.None)
     {
         import dmdscript.errmsgs: CannotAssignToBeforeDeclarationError;
 
@@ -205,7 +206,8 @@ struct CallContext
         {
             o = s.obj;
             assert (o !is null);
-            v = o.Get(key, &this);
+            if (auto err = o.Get(key, v, &this))
+                return err;
             if (v !is null)
             {
                 if (auto err = v.checkReference(&this))
@@ -235,7 +237,7 @@ struct CallContext
             value =
             attr  =
      */
-    DError* setThis(in ref PropertyKey key, ref Value value,
+    Derror* setThis(in ref PropertyKey key, ref Value value,
                     Property.Attribute attr)
     {
         assert (_rootScope !is null);
@@ -249,7 +251,7 @@ struct CallContext
     When the innermost field is composing a function or an eval, no object will
     be removed form the stack, and a null will be returned.
     */
-    @safe
+    @safe nothrow
     Dobject pop()
     {
         auto s = _scope;
@@ -270,7 +272,7 @@ struct CallContext
         Params:
             o = the object that composes a scope.
      */
-    @safe
+    @safe nothrow
     void push (Dobject o)
     {
         assert (o !is null);
@@ -315,7 +317,7 @@ struct CallContext
 package:
     /* This is called from dmdscript.opcodes.IR.call.
      */
-    void addTraceInfoTo(DError* err)
+    void addTraceInfoTo(Derror* err)
     {
         assert (err !is null);
         assert (_callerf !is null);
@@ -323,9 +325,10 @@ package:
         string name = "";
         if (_callerf !is null && _callerf.name !is null)
             name = _callerf.name.toString;
+        else if (_callerf !is null && _callerf.isglobal)
+            name = "global";
 
-
-        err.exception.addInfo (_realm.id, name, _callerf.strictMode);
+        err.addInfo (_realm.id, name, _callerf.strictMode);
     }
 
 private:
@@ -385,7 +388,7 @@ public static:
 
     /** This allocates Scope struct, for speedup.
      */
-    @safe
+    @safe nothrow
     void reserve (size_t num)
     {
         auto ite = _freeScope;
@@ -404,7 +407,7 @@ public static:
 
     /** Push a function scope.
      */
-    @safe
+    @safe nothrow
     CallContext* push (CallContext* outerCC, Dobject actobj, Dfunction caller,
                        FunctionDefinition callerf, Dobject callerothis)
     {
@@ -415,7 +418,7 @@ public static:
     }
 
     /// ditto
-    @safe
+    @safe nothrow
     CallContext* push (CallContext* outerCC, Scope* s, Dobject actobj,
                        Dfunction caller, FunctionDefinition callerf,
                        Dobject callerothis)
@@ -427,7 +430,7 @@ public static:
     }
 
     /// ditto
-    @safe
+    @safe nothrow
     CallContext* push (Drealm realm, FunctionDefinition callerf)
     {
         assert (realm !is null);
@@ -437,7 +440,7 @@ public static:
     }
 
     /// ditto
-    @safe
+    @safe nothrow
     CallContext* push (Drealm realm, bool strictMode)
     {
         assert (realm !is null);
@@ -449,7 +452,7 @@ public static:
 
         This is called only for recycling an instance.
      */
-    @safe
+    @safe nothrow
     CallContext* pop (ref CallContext* cc)
     {
         assert (cc !is null);
@@ -463,7 +466,7 @@ private static:
     CallContext* _freeCC;
     Scope* _freeScope;
 
-    @safe
+    @safe nothrow
     CallContext* newCC(Drealm realm, CallContext* outerCC, Dfunction caller,
                        FunctionDefinition callerf, Dobject callerothis,
                        Scope* s, bool strictMode)
@@ -492,7 +495,7 @@ private static:
         cc = null;
     }
 
-    @safe
+    @safe nothrow
     Scope* newScope(Dobject actObj, Scope* next)
     {
         assert (actObj !is null);
@@ -527,6 +530,7 @@ string[] searchSimilarWord(Dobject target, in ref char[4] key)
     import std.array : Appender;
     import std.string : soundexer;
 
+    assert (target !is null);
     Appender!(string[]) result;
     foreach (one; target.OwnPropertyKeys)
     {

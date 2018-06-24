@@ -20,12 +20,13 @@ module dmdscript.dstring;
 
 import dmdscript.primitive : Key;
 import dmdscript.dobject : Dobject;
-import dmdscript.value : Value, DError;
+import dmdscript.value : Value;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.errmsgs;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.drealm : undefined, Drealm;
 import dmdscript.callcontext: CallContext;
+import dmdscript.derror: Derror;
 
 debug import std.stdio;
 
@@ -36,30 +37,34 @@ class Dstring : Dobject
     import dmdscript.property : Property;
     import dmdscript.primitive : PropertyKey;
 
-    override Value* Get(in PropertyKey key, CallContext* cc)
+    override Derror* Get(in PropertyKey key, out Value* ret, CallContext* cc)
     {
         size_t index;
         if (key.isArrayIndex(index) && index < value.text.length)
         {
-            return new Value(_stringAt(value.text, index));
+            ret = new Value(_stringAt(value.text, index));
+            return null;
 /*            version(TEST262)
             {
                 size_t i = 0;
                 return new Value(CESU8.toCcharAt(value.text, index, i));
             }
-            else static*/ assert (0);
+            */
         }
         else
-            return super.Get(key, cc);
+            return super.Get(key, ret, cc);
     }
 
 private:
+    nothrow
     this(Dobject prototype, string s)
     {
         import std.utf : toUCSindex;
         super(prototype, Key.String);
 
-        auto val = Value(toUCSindex(s, s.length));
+        Value val;
+        try val = Value(toUCSindex(s, s.length));
+        catch (Throwable){}
         DefineOwnProperty(Key.length, val,
                           Property.Attribute.DontEnum |
                           Property.Attribute.DontDelete |
@@ -68,6 +73,7 @@ private:
         value.put(s);
     }
 
+    nothrow
     this(Dobject prototype)
     {
         import dmdscript.primitive : Text;
@@ -96,12 +102,13 @@ class DstringConstructor : Dconstructor
         install(functionPrototype);
     }
 
+    nothrow
     Dstring opCall(string s)
     {
         return new Dstring(classPrototype, s);
     }
 
-    override DError* Construct(CallContext* cc, out Value ret,
+    override Derror* Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Text;
@@ -110,13 +117,16 @@ class DstringConstructor : Dconstructor
         string s;
         Dobject o;
 
-        s = (arglist.length) ? arglist[0].toString(cc) : Text.Empty;
+        if (0 < arglist.length)
+            arglist[0].to(s, cc);
+        else
+            s = Text.Empty;
         o = opCall(s);
         ret.put(o);
         return null;
     }
 
-    override DError* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         import dmdscript.primitive : Text;
@@ -124,7 +134,10 @@ class DstringConstructor : Dconstructor
         // ECMA 15.5.1
         string s;
 
-        s = (arglist.length) ? arglist[0].toString(cc) : Text.Empty;
+        if (0 < arglist.length)
+            arglist[0].to(s, cc);
+        else
+            s = Text.Empty;
         ret.put(s);
         return null;
     }
@@ -158,12 +171,13 @@ double _charCodeAt(in char[] src, in size_t index)
 }
 
 //------------------------------------------------------------------------------
-@safe pure
+@safe pure nothrow
 inout(char)[] _stringAt(inout char[] src, in size_t index)
 {
     import std.utf : decode, stride;
 
     size_t i, cc, len;
+    try
     for (i = 0, cc = 0; i < src.length && cc <= index;)
     {
         if (cc == index)
@@ -177,13 +191,14 @@ inout(char)[] _stringAt(inout char[] src, in size_t index)
             ++cc;
         }
     }
+    catch (Exception){}
 
     return null;
 }
 
 //------------------------------------------------------------------------------
 @DFD(1, DFD.Type.Static)
-DError* fromCharCode(
+Derror* fromCharCode(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -198,10 +213,10 @@ DError* fromCharCode(
     for(size_t i = 0; i < arglist.length; i++)
     {
         Value* v;
-        uint u;
+        ushort u;
 
         v = &arglist[i];
-        u = v.toUint16(cc);
+        v.to(u, cc);
 
         if(!isValidDchar(u))
         {
@@ -218,7 +233,7 @@ DError* fromCharCode(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* fromCodePoint(
+Derror* fromCodePoint(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -227,7 +242,7 @@ DError* fromCodePoint(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* raw(
+Derror* raw(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -237,7 +252,7 @@ DError* raw(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toString(
+Derror* toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -257,7 +272,7 @@ DError* toString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* valueOf(
+Derror* valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -279,7 +294,7 @@ DError* valueOf(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* charAt(
+Derror* charAt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -294,9 +309,11 @@ DError* charAt(
     string result;
 
     v = &othis.value;
-    s = v.toString(cc);
+    v.to(s, cc);
     v = arglist.length ? &arglist[0] : &undefined;
-    pos = cast(int)v.toInteger(cc);
+    double n;
+    v.toInteger(n, cc);
+    pos = cast(int)n;
 
     result = Text.Empty;
 
@@ -324,7 +341,7 @@ DError* charAt(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* charCodeAt(
+Derror* charCodeAt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -340,9 +357,11 @@ DError* charCodeAt(
     double result;
 
     v = &othis.value;
-    s = v.toString(cc);
+    v.to(s, cc);
     v = arglist.length ? &arglist[0] : &undefined;
-    pos = cast(int)v.toInteger(cc);
+    double n;
+    v.toInteger(n, cc);
+    pos = cast(int)n;
 
     result = _charCodeAt(s, pos);
 
@@ -352,7 +371,7 @@ DError* charCodeAt(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* concat(
+Derror* concat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -361,9 +380,13 @@ DError* concat(
 
     //writefln("Dstring.prototype.concat()");
 
-    s = othis.value.toString(cc);
+    othis.value.to(s, cc);
     for(size_t a = 0; a < arglist.length; a++)
-        s ~= arglist[a].toString(cc);
+    {
+        string s2;
+        arglist[a].to(s2, cc);
+        s ~= s2;
+    }
 
     ret.put(s);
     return null;
@@ -371,7 +394,7 @@ DError* concat(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* indexOf(
+Derror* indexOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -393,14 +416,16 @@ DError* indexOf(
 
     Value xx;
     xx.put(othis);
-    s = xx.toString(cc);
+    xx.to(s, cc);
     sUCSdim = s.stride;
 
     v1 = arglist.length ? &arglist[0] : &undefined;
     v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
 
-    searchString = v1.toString(cc);
-    pos = cast(int)v2.toInteger(cc);
+    v1.to(searchString, cc);
+    double n;
+    v2.toInteger(n, cc);
+    pos = cast(int)n;
 
     if(pos < 0)
         pos = 0;
@@ -423,7 +448,7 @@ DError* indexOf(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* lastIndexOf(
+Derror* lastIndexOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -449,12 +474,14 @@ DError* lastIndexOf(
         {
             // This is the 'transferable' version
             Value* v;
-            DError* a;
-            v = othis.Get(Key.toString, cc);
+            Derror* a;
+            if (auto err = othis.Get(Key.toString, v, cc))
+                return err;
+            assert (v !is null);
             a = v.Call(cc, othis, ret, null);
             if(a)                       // if exception was thrown
                 return a;
-            s = ret.toString(cc);
+            ret.to(s, cc);
         }
     }
     else
@@ -465,13 +492,13 @@ DError* lastIndexOf(
     sUCSdim = stride(s);
 
     v1 = arglist.length ? &arglist[0] : &undefined;
-    searchString = v1.toString(cc);
+    v1.to(searchString, cc);
     if(arglist.length >= 2)
     {
         double n;
         Value* v = &arglist[1];
 
-        n = v.toNumber(cc);
+        v.to(n, cc);
         if(isNaN(n) || n > sUCSdim)
             pos = sUCSdim;
         else if(n < 0)
@@ -508,7 +535,7 @@ DError* lastIndexOf(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* localeCompare(
+Derror* localeCompare(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -519,9 +546,11 @@ DError* localeCompare(
     Value* v;
 
     v = &othis.value;
-    s1 = v.toString(cc);
-    s2 = arglist.length ? arglist[0].toString(cc) :
-        undefined.toString(cc);
+    v.to(s1, cc);
+    if (0 < arglist.length)
+        arglist[0].to(s2, cc);
+    else
+        undefined.to(s2, cc);
     n = localeCompare(cc, s1, s2);
     ret.put(n);
     return null;
@@ -536,7 +565,7 @@ int localeCompare(CallContext* cc, string s1, string s2)
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* match(
+Derror* match(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -549,7 +578,11 @@ DError* match(
     Dregexp r;
 
     if (0 < arglist.length && !arglist[0].isPrimitive)
-        r = cast(Dregexp)arglist[0].toObject(cc.realm);
+    {
+        Dobject o;
+        arglist[0].to(o, cc);
+        r = cast(Dregexp)o;
+    }
 
     if (r is null)
     {
@@ -579,7 +612,7 @@ DError* match(
                 break;
             }
             lasti = i;
-            i = cast(int)r.lastIndex.toInt32(cc);
+            r.lastIndex.to(i, cc);
             if(i == lasti)              // if no source was consumed
                 i++;                    // consume a character
 
@@ -598,7 +631,7 @@ DError* match(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-DError* replace(
+Derror* replace(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -628,7 +661,7 @@ DError* replace(
     Value* v;
 
     v = &othis.value;
-    str = v.toString(cc);
+    v.to(str, cc);
     searchValue = (arglist.length >= 1) ? &arglist[0] : &undefined;
     replaceValue = (arglist.length >= 2) ? &arglist[1] : &undefined;
     r = Dregexp.isRegExp(cc, searchValue);
@@ -663,11 +696,11 @@ DError* replace(
                 alist[m + 1].put(re.index);
                 alist[m + 2].put(str);
                 f.Call(cc, f, ret, alist[0 .. m + 3]);
-                replacement = ret.toString(cc);
+                ret.to(replacement, cc);
             }
             else
             {
-                newstring = replaceValue.toString(cc);
+                replaceValue.to(newstring, cc);
                 replacement = re.replace(newstring);
             }
             ptrdiff_t starti = re.index;
@@ -682,7 +715,7 @@ DError* replace(
 
                 // If no source was consumed, consume a character
                 lasti = i;
-                i = cast(int)r.lastIndex.toInt32(cc);
+                r.lastIndex.to(i, cc);
                 if(i == lasti)
                 {
                     i++;
@@ -695,7 +728,7 @@ DError* replace(
     }
     else
     {
-        searchString = searchValue.toString(cc);
+        searchValue.to(searchString, cc);
         ptrdiff_t match = countUntil(str, searchString);
         if(match >= 0)
         {
@@ -708,11 +741,11 @@ DError* replace(
                 alist[1].put(match);
                 alist[2].put(str);
                 f.Call(cc, f, ret, alist);
-                replacement = ret.toString(cc);
+                ret.to(replacement, cc);
             }
             else
             {
-                newstring = replaceValue.toString(cc);
+                replaceValue.to(newstring, cc);
                 replacement = RegExp.replace3(newstring, str, pmatch[]);
             }
             result = str[0 .. match] ~
@@ -731,7 +764,7 @@ DError* replace(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* search(
+Derror* search(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -742,7 +775,11 @@ DError* search(
 
     //writef("String.prototype.search()\n");
     if (0 < arglist.length && !arglist[0].isPrimitive)
-        r = cast(Dregexp)arglist[0].toObject(cc.realm);
+    {
+        Dobject o;
+        arglist[0].to(o, cc);
+        r = cast(Dregexp)o;
+    }
 
     if (r is null)
     {
@@ -759,7 +796,7 @@ DError* search(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-DError* slice(
+Derror* slice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -774,7 +811,7 @@ DError* slice(
     Value* v;
 
     v = &othis.value;
-    s = v.toString(cc);
+    v.to(s, cc);
     sUCSdim = stride(s);
     switch(arglist.length)
     {
@@ -784,13 +821,13 @@ DError* slice(
         break;
 
     case 1:
-        start = arglist[0].toInt32(cc);
+        arglist[0].to(start, cc);
         end = sUCSdim;
         break;
 
     default:
-        start = arglist[0].toInt32(cc);
-        end = arglist[1].toInt32(cc);
+        arglist[0].to(start, cc);
+        arglist[1].to(end, cc);
         break;
     }
 
@@ -826,7 +863,7 @@ DError* slice(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-DError* split(
+Derror* split(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -868,12 +905,12 @@ DError* split(
 
     Value* v;
     v = &othis.value;
-    S = v.toString(cc);
+    v.to(S, cc);
     A = cc.realm.dArray();
     if(limit.isUndefined())
         lim = ~0u;
     else
-        lim = limit.toUint32(cc);
+        limit.to(lim, cc);
     p = 0;
     R = Dregexp.isRegExp(cc, separator);
     if(R)       // regular expression
@@ -886,7 +923,7 @@ DError* split(
     else        // string
     {
         re = null;
-        rs = separator.toString(cc);
+        separator.to(rs, cc);
         str = 1;
     }
     if(lim == 0)
@@ -916,8 +953,8 @@ DError* split(
                         {
                             T = S[p .. q];
                             val.put(T);
-                            A.Set(PropertyKey(cast(uint)A.length.number), val,
-                                  Property.Attribute.None, cc);
+                            A.Set(PropertyKey(cast(uint)A.length.number),
+                                  val, Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
                             p = e;
@@ -936,8 +973,8 @@ DError* split(
                             T = S[p .. q];
                             //writefln("S = '%s', T = '%s', p = %d, q = %d, e = %d\n", S, T, p, q, e);
                             val.put(T);
-                            A.Set(PropertyKey(cast(size_t)A.length.number), val,
-                                  Property.Attribute.None, cc);
+                            A.Set(PropertyKey(cast(size_t)A.length.number),
+                                  val, Property.Attribute.None, cc);
                             if(A.length.number == lim)
                                 goto Lret;
                             p = e;
@@ -988,7 +1025,7 @@ DError* split(
 }
 
 //------------------------------------------------------------------------------
-DError* dstring_substring(string s, size_t sUCSdim, double start,
+Derror* dstring_substring(string s, size_t sUCSdim, double start,
                           double end, out Value ret)
 {
     import std.math : isNaN;
@@ -1030,7 +1067,7 @@ DError* dstring_substring(string s, size_t sUCSdim, double start,
 
 //------------------------------------------------------------------------------
 @DFD(2)
-DError* substr(
+Derror* substr(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1043,18 +1080,18 @@ DError* substr(
     double length;
     string s;
 
-    s = othis.value.toString(cc);
+    othis.value.to(s, cc);
     size_t sUCSdim = stride(s);
     start = 0;
     length = 0;
     if(arglist.length >= 1)
     {
-        start = arglist[0].toInteger(cc);
+        arglist[0].toInteger(start, cc);
         if(start < 0)
             start = sUCSdim + start;
         if(arglist.length >= 2)
         {
-            length = arglist[1].toInteger(cc);
+            arglist[1].toInteger(length, cc);
             if(isNaN(length) || length < 0)
                 length = 0;
         }
@@ -1067,7 +1104,7 @@ DError* substr(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-DError* substring(
+Derror* substring(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1081,15 +1118,15 @@ DError* substring(
     string s;
 
     //writefln("String.prototype.substring()");
-    s = othis.value.toString(cc);
+    othis.value.to(s, cc);
     size_t sUCSdim = stride(s);
     start = 0;
     end = sUCSdim;
     if(arglist.length >= 1)
     {
-        start = arglist[0].toInteger(cc);
+        arglist[0].toInteger(start, cc);
         if(arglist.length >= 2)
-            end = arglist[1].toInteger(cc);
+            arglist[1].toInteger(end, cc);
         //writef("s = '%ls', start = %d, end = %d\n", s, start, end);
     }
 
@@ -1105,13 +1142,13 @@ enum CASE
     LocaleUpper
 };
 
-DError* tocase(CallContext* cc, Dobject othis, out Value ret, CASE caseflag)
+Derror* tocase(CallContext* cc, Dobject othis, out Value ret, CASE caseflag)
 {
     import std.string : toLower, toUpper;
 
     string s;
 
-    s = othis.value.toString(cc);
+    othis.value.to(s, cc);
     switch(caseflag)
     {
     case CASE.Lower:
@@ -1136,7 +1173,7 @@ DError* tocase(CallContext* cc, Dobject othis, out Value ret, CASE caseflag)
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toLowerCase(
+Derror* toLowerCase(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1149,7 +1186,7 @@ DError* toLowerCase(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toLocaleLowerCase(
+Derror* toLocaleLowerCase(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1161,7 +1198,7 @@ DError* toLocaleLowerCase(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toUpperCase(
+Derror* toUpperCase(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1173,7 +1210,7 @@ DError* toUpperCase(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toLocaleUpperCase(
+Derror* toLocaleUpperCase(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1183,7 +1220,7 @@ DError* toLocaleUpperCase(
 }
 
 //------------------------------------------------------------------------------
-DError* dstring_anchor(
+Derror* dstring_anchor(
     CallContext* cc, Dobject othis, out Value ret, string tag,
     string name, Value[] arglist)
 {
@@ -1192,9 +1229,11 @@ DError* dstring_anchor(
     // produces:
     //	<tag name="bar">foo</tag>
 
-    string foo = othis.value.toString(cc);
+    string foo;
+    othis.value.to(foo, cc);
     Value* va = arglist.length ? &arglist[0] : &undefined;
-    string bar = va.toString(cc);
+    string bar;
+    va.to(bar, cc);
 
     string s;
 
@@ -1216,7 +1255,7 @@ DError* dstring_anchor(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* anchor(
+Derror* anchor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1232,7 +1271,7 @@ DError* anchor(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* fontcolor(
+Derror* fontcolor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1241,7 +1280,7 @@ DError* fontcolor(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* fontsize(
+Derror* fontsize(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1250,7 +1289,7 @@ DError* fontsize(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* link(
+Derror* link(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1262,10 +1301,11 @@ DError* link(
 /*
 Produce <tag>othis</tag>
 */
-DError* dstring_bracket(CallContext* cc, Dobject othis, out Value ret,
+Derror* dstring_bracket(CallContext* cc, Dobject othis, out Value ret,
                         string tag)
 {
-    string foo = othis.value.toString(cc);
+    string foo;
+    othis.value.to(foo, cc);
     string s;
 
     s = "<"     ~
@@ -1282,7 +1322,7 @@ DError* dstring_bracket(CallContext* cc, Dobject othis, out Value ret,
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* big(
+Derror* big(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1298,7 +1338,7 @@ DError* big(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* blink(
+Derror* blink(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1307,7 +1347,7 @@ DError* blink(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* bold(
+Derror* bold(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1316,7 +1356,7 @@ DError* bold(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* fixed(
+Derror* fixed(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1325,7 +1365,7 @@ DError* fixed(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* italics(
+Derror* italics(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1334,7 +1374,7 @@ DError* italics(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* small(
+Derror* small(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1343,7 +1383,7 @@ DError* small(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* strike(
+Derror* strike(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1352,7 +1392,7 @@ DError* strike(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* sub(
+Derror* sub(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1361,7 +1401,7 @@ DError* sub(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* sup(
+Derror* sup(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1370,7 +1410,7 @@ DError* sup(
 
 //
 @DFD(1)
-DError* codePointAt(
+Derror* codePointAt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1379,7 +1419,7 @@ DError* codePointAt(
 
 //
 @DFD(1)
-DError* endsWith(
+Derror* endsWith(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1388,7 +1428,7 @@ DError* endsWith(
 
 //
 @DFD(1)
-DError* includes(
+Derror* includes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1397,7 +1437,7 @@ DError* includes(
 
 //
 @DFD(1)
-DError* normalize(
+Derror* normalize(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1406,7 +1446,7 @@ DError* normalize(
 
 //
 @DFD(1)
-DError* repeat(
+Derror* repeat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1415,7 +1455,7 @@ DError* repeat(
 
 //
 @DFD(1)
-DError* startsWith(
+Derror* startsWith(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1424,7 +1464,7 @@ DError* startsWith(
 
 //
 @DFD(1)
-DError* trim(
+Derror* trim(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

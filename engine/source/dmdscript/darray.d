@@ -25,11 +25,12 @@ module dmdscript.darray;
 version =  SliceSpliceExtension;
 
 import dmdscript.dobject: Dobject;
-import dmdscript.value: Value, DError;
+import dmdscript.value: Value;
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
 import dmdscript.callcontext: CallContext;
 import dmdscript.drealm: Drealm;
+import dmdscript.derror: Derror;
 
 //==============================================================================
 ///
@@ -42,7 +43,7 @@ class Darray : Dobject
     size_t ulength;
 
     override
-    DError* Set(in PropertyKey key, ref Value v,
+    Derror* Set(in PropertyKey key, ref Value v,
                 in Property.Attribute attributes, CallContext* cc)
     {
         import dmdscript.errmsgs: LengthIntError;
@@ -57,23 +58,30 @@ class Darray : Dobject
             }
 
             auto pk = PropertyKey(index);
-            proptable.set(pk, v, attributes, cc, this, IsExtensible);
+            proptable.set(pk, v, this, attributes, IsExtensible, cc);
             return null;
         }
         else
         {
             uint i;
             uint c;
-            DError* result;
+            double num;
+            Derror* result;
 
             // ECMA 15.4.5.1
-            result = proptable.set(key, v, attributes, cc, this, IsExtensible);
+            result = proptable.set(key, v, this, attributes, IsExtensible, cc);
             if(!result)
             {
                 if(key == Key.length)
                 {
-                    i = v.toUint32(cc);
-                    if(i != v.toInteger(cc))
+                    result = v.to(i, cc);
+                    if (result !is null)
+                        return result;
+
+                    result = v.toInteger(num, cc);
+                    if (result !is null)
+                        return result;
+                    if(i != num)
                     {
                         return LengthIntError(cc);
                     }
@@ -98,9 +106,9 @@ class Darray : Dobject
                     }
                     ulength = i;
                     length.number = i;
-                    proptable.set(key, v, attributes |
-                                  Property.Attribute.DontEnum, cc, this,
-                                  IsExtensible);
+                    proptable.set(
+                        key, v, this, attributes | Property.Attribute.DontEnum,
+                        IsExtensible, cc);
                 }
 
                 // if (name is an array index i)
@@ -136,17 +144,19 @@ class Darray : Dobject
         }
     }
 
-    override Value* Get(in PropertyKey PropertyName, CallContext* cc)
+    override Derror* Get(in PropertyKey PropertyName, out Value* ret,
+                         CallContext* cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
         if(PropertyName == Key.length)
         {
             length.number = ulength;
-            return &length;
+            ret = &length;
+            return null;
         }
         else
         {
-            return Dobject.Get(PropertyName, cc);
+            return Dobject.Get(PropertyName, ret, cc);
         }
     }
 
@@ -163,6 +173,7 @@ class Darray : Dobject
     }
 
 private:
+    nothrow
     this(Dobject prototype)
     {
         super(prototype, Key.Array);
@@ -224,7 +235,7 @@ class DarrayConstructor : Dconstructor
     }
 
     override
-    DError* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         import dmdscript.primitive : PropertyKey;
         import dmdscript.errmsgs: ArrayLenOutOfBoundsError;
@@ -247,7 +258,8 @@ class DarrayConstructor : Dconstructor
             {
                 uint len;
 
-                len = v.toUint32(cc);
+                if (auto err = v.to(len, cc))
+                    return err;
                 if(cast(double)len != v.number)
                 {
                     ret.putVundefined;
@@ -299,6 +311,7 @@ class DarrayConstructor : Dconstructor
     }
 
 
+    nothrow
     Darray opCall()
     {
         return new Darray(classPrototype);
@@ -312,7 +325,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static)
-DError* from(
+Derror* from(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -321,7 +334,7 @@ DError* from(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* isArray(
+Derror* isArray(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -330,7 +343,7 @@ DError* isArray(
 
 //
 @DFD(1, DFD.Type.Static)
-DError* of(
+Derror* of(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -342,7 +355,7 @@ DError* of(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toString(
+Derror* toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -353,7 +366,7 @@ DError* toString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toLocaleString(
+Derror* toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -375,8 +388,14 @@ DError* toLocaleString(
         return TlsNotTransferrableError(cc);
     }
 
-    v = othis.Get(Key.length, cc);
-    len = v ? v.toUint32(cc) : 0;
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
+    len = 0;
+    if (v !is null)
+    {
+        if (auto err = v.to(len, cc))
+            return err;
+    }
 
     // Program prog = cc.program;
     // if(0 == prog.slist.length)
@@ -392,25 +411,32 @@ DError* toLocaleString(
     {
         if(k)
             r ~= separator;
-        v = othis.Get(PropertyKey(k), cc);
-        if(v && !v.isUndefinedOrNull())
+        if (auto err = othis.Get(PropertyKey(k), v, cc))
+            return err;
+        if(v !is null && !v.isUndefinedOrNull())
         {
             Dobject ot;
 
-            ot = v.toObject(cc.realm);
-            v = ot.Get(Key.toLocaleString, cc);
+            if (auto err = v.to(ot, cc))
+                return err;
+            if (auto err = ot.Get(Key.toLocaleString, v, cc))
+                return err;
             if(v && !v.isPrimitive())   // if it's an Object
             {
-                DError* a;
+                Derror* a;
                 Dobject o;
                 Value rt;
+                string s;
 
                 o = v.object;
                 rt.putVundefined();
                 a = o.Call(cc, ot, rt, null);
                 if(a)                   // if exception was thrown
                     return a;
-                r ~= rt.toString(cc);
+                a = rt.to(s, cc);
+                if (a)
+                    return a;
+                r ~= s;
             }
         }
     }
@@ -421,7 +447,7 @@ DError* toLocaleString(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* concat(
+Derror* concat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -447,7 +473,8 @@ DError* concat(
             len = E.ulength;
             for(k = 0; k != len; k++)
             {
-                v = E.Get(PropertyKey(k), cc);
+                if (auto err = E.Get(PropertyKey(k), v, cc))
+                    return err;
                 if(v)
                     A.Set(PropertyKey(n), *v, Property.Attribute.None, cc);
                 n++;
@@ -471,7 +498,7 @@ DError* concat(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* join(
+Derror* join(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -493,20 +520,32 @@ void array_join(CallContext* cc, Dobject othis, out Value ret,
     Value* v;
 
     //writef("array_join(othis = %p)\n", othis);
-    v = othis.Get(Key.length, cc);
-    len = v ? v.toUint32(cc) : 0;
+    if (auto err = othis.Get(Key.length, v, cc))
+        return;
+    len = 0;
+    if (v !is null)
+    {
+        if (auto err = v.to(len, cc))
+            return;
+    }
     if(arglist.length == 0 || arglist[0].isUndefined())
         separator = Text.comma;
     else
-        separator = arglist[0].toString(cc);
+        arglist[0].to(separator, cc);
 
     for(k = 0; k != len; k++)
     {
         if(k)
             r ~= separator;
-        v = othis.Get(PropertyKey(k), cc);
+        if (auto err = othis.Get(PropertyKey(k), v, cc))
+            return;
         if(v && !v.isUndefinedOrNull())
-            r ~= v.toString(cc);
+        {
+            string s;
+            if (auto err = v.to(s, cc))
+                return;
+            r ~= s;
+        }
     }
 
     ret.put(r);
@@ -514,7 +553,7 @@ void array_join(CallContext* cc, Dobject othis, out Value ret,
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* toSource(
+Derror* toSource(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -526,8 +565,14 @@ DError* toSource(
     uint k;
     Value* v;
 
-    v = othis.Get(Key.length, cc);
-    len = v ? v.toUint32(cc) : 0;
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
+    len = 0;
+    if (v !is null)
+    {
+        if (auto err = v.to(len, cc))
+            return err;
+    }
     separator = ",";
 
     r = "[".idup;
@@ -535,9 +580,15 @@ DError* toSource(
     {
         if(k)
             r ~= separator;
-        v = othis.Get(PropertyKey(k), cc);
+        if (auto err = othis.Get(PropertyKey(k), v, cc))
+            return err;
         if(v && !v.isUndefinedOrNull())
-            r ~= v.toSource(cc);
+        {
+            string s;
+            if (auto err = v.toSource(s, cc))
+                return err;
+            r ~= s;
+        }
     }
     r ~= "]";
 
@@ -548,7 +599,7 @@ DError* toSource(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* pop(
+Derror* pop(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -561,10 +612,12 @@ DError* pop(
     uint u;
 
     // If othis is a Darray, then we can optimize this significantly
-    v = othis.Get(Key.length, cc);
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
     if(!v)
         v = &undefined;
-    u = v.toUint32(cc);
+    if (auto err = v.to(u, cc))
+        return err;
     if(u == 0)
     {
         val.put(0.0);
@@ -573,7 +626,8 @@ DError* pop(
     }
     else
     {
-        v = othis.Get(PropertyKey(u - 1), cc);
+        if (auto err = othis.Get(PropertyKey(u - 1), v, cc))
+            return err;
         if(!v)
             v = &undefined;
         ret = *v;
@@ -586,7 +640,7 @@ DError* pop(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* push(
+Derror* push(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -601,10 +655,12 @@ DError* push(
     uint a;
 
     // If othis is a Darray, then we can optimize this significantly
-    v = othis.Get(Key.length, cc);
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
     if(!v)
         v = &undefined;
-    u = v.toUint32(cc);
+    if (auto err = v.to(u, cc))
+        return err;
     for(a = 0; a < arglist.length; a++)
     {
         val.put(arglist[a]);
@@ -618,7 +674,7 @@ DError* push(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* reverse(
+Derror* reverse(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -635,17 +691,25 @@ DError* reverse(
     uint len;
     Value tmp;
 
-    v = othis.Get(Key.length, cc);
-    len = v ? v.toUint32(cc) : 0;
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
+    len = 0;
+    if (v !is null)
+    {
+        if (auto err = v.to(len, cc))
+            return err;
+    }
     pivot = len / 2;
     for(a = 0; a != pivot; a++)
     {
         b = len - a - 1;
         //writef("a = %d, b = %d\n", a, b);
-        va = othis.Get(PropertyKey(a), cc);
+        if (auto err = othis.Get(PropertyKey(a), va, cc))
+            return err;
         if(va)
             tmp = *va;
-        vb = othis.Get(PropertyKey(b), cc);
+        if (auto err = othis.Get(PropertyKey(b), vb, cc))
+            return err;
         if(vb)
             othis.Set(PropertyKey(a), *vb, Property.Attribute.None, cc);
         else
@@ -662,7 +726,7 @@ DError* reverse(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-DError* shift(
+Derror* shift(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -679,18 +743,22 @@ DError* shift(
 
     // If othis is a Darray, then we can optimize this significantly
     //writef("shift(othis = %p)\n", othis);
-    v = othis.Get(Key.length, cc);
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
     if(!v)
         v = &undefined;
-    len = v.toUint32(cc);
+    if (auto err = v.to(len, cc))
+        return err;
 
     if(len)
     {
-        result = othis.Get(PropertyKey(0u), cc);
+        if (auto err = othis.Get(PropertyKey(0u), result, cc))
+            return err;
         ret = result ? *result : vundefined;
         for(k = 1; k != len; k++)
         {
-            v = othis.Get(PropertyKey(k), cc);
+            if (auto err = othis.Get(PropertyKey(k), v, cc))
+                return err;
             if(v)
             {
                 othis.Set(PropertyKey(k - 1), *v, Property.Attribute.None, cc);
@@ -714,7 +782,7 @@ DError* shift(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-DError* slice(
+Derror* slice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -732,10 +800,12 @@ DError* slice(
     Value* v;
     Darray A;
 
-    v = othis.Get(Key.length, cc);
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
     if(!v)
         v = &undefined;
-    len = v.toUint32(cc);
+    if (auto err = v.to(len, cc))
+        return err;
 
 version(SliceSpliceExtension){
     double start;
@@ -743,24 +813,24 @@ version(SliceSpliceExtension){
     switch(arglist.length)
     {
     case 0:
-        start = vundefined.toNumber(cc);
+        vundefined.to(start, cc);
         end = len;
         break;
 
     case 1:
-        start = arglist[0].toNumber(cc);
+        arglist[0].to(start, cc);
         end = len;
         break;
 
     default:
-        start = arglist[0].toNumber(cc);
+        arglist[0].to(start, cc);
         if(arglist[1].isUndefined())
         {
             end = len;
         }
         else
         {
-            end = arglist[1].toNumber(cc);
+            arglist[1].to(end, cc);
         }
         break;
     }
@@ -855,7 +925,8 @@ else
     A = cc.realm.dArray();
     for(n = 0; k < r8; k++)
     {
-        v = othis.Get(PropertyKey(k), cc);
+        if (auto err = othis.Get(PropertyKey(k), v, cc))
+            return err;
         if(v)
         {
             A.Set(PropertyKey(n), *v, Property.Attribute.None, cc);
@@ -903,7 +974,7 @@ extern (C) int compare_value(scope const void* x, scope const void* y)
             arglist[1] = *vy;
             ret.putVundefined();
             comparefn.Call(compareCC, comparefn, ret, arglist);
-            n = ret.toNumber(compareCC);
+            ret.to(n, compareCC);
             if(n < 0)
                 cmp = -1;
             else if(n > 0)
@@ -913,8 +984,8 @@ extern (C) int compare_value(scope const void* x, scope const void* y)
         }
         else
         {
-            sx = vx.toString(compareCC);
-            sy = vy.toString(compareCC);
+            vx.to(sx, compareCC);
+            vy.to(sy, compareCC);
             cmp = stdcmp(sx, sy);
             if(cmp < 0)
                 cmp = -1;
@@ -927,7 +998,7 @@ extern (C) int compare_value(scope const void* x, scope const void* y)
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* sort(
+Derror* sort(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -941,8 +1012,14 @@ DError* sort(
     size_t u;
 
     //writef("Array.prototype.sort()\n");
-    v = othis.Get(Key.length, cc);
-    len = v ? v.toUint32(cc) : 0;
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
+    len = 0;
+    if (v !is null)
+    {
+        if (auto err = v.to(len, cc))
+            return err;
+    }
 
     // This is not optimal, as isArrayIndex is done at least twice
     // for every array member. Additionally, the qsort() by index
@@ -1011,7 +1088,14 @@ DError* sort(
         if(p.isNoneAttribute && key.isArrayIndex(index))
         {
             pindices[nprops] = index;
-            pvalues[nprops] = *p.get(cc, othis);
+            Value* v;
+            if (auto err = p.get(v, othis, cc))
+            {
+                ret.putVundefined;
+                return err;
+            }
+            if (v !is null)
+                pvalues[nprops] = *v;
             nprops++;
         }
     }
@@ -1055,7 +1139,7 @@ DError* sort(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-DError* splice(
+Derror* splice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1075,10 +1159,12 @@ DError* splice(
     uint inscnt;
     uint startidx;
 
-    v = othis.Get(Key.length, cc);
+    if (auto err = othis.Get(Key.length, v, cc))
+        return err;
     if(!v)
         v = &undefined;
-    len = v.toUint32(cc);
+    if (auto err = v.to(len, cc))
+        return err;
 
 version(SliceSpliceExtension){
     double start;
@@ -1087,18 +1173,18 @@ version(SliceSpliceExtension){
     switch(arglist.length)
     {
     case 0:
-        start = vundefined.toNumber(cc);
+        vundefined.to(start, cc);
         deleteCount = 0;
         break;
 
     case 1:
-        start = arglist[0].toNumber(cc);
-        deleteCount = vundefined.toNumber(cc);
+        arglist[0].to(start, cc);
+        vundefined.to(deleteCount, cc);
         break;
 
     default:
-        start = arglist[0].toNumber(cc);
-        deleteCount = arglist[1].toNumber(cc);
+        arglist[0].to(start, cc);
+        arglist[1].to(deleteCount, cc);
         //checked later
         break;
     }
@@ -1167,7 +1253,8 @@ else
     //writef("Darray.splice(startidx = %d, delcnt = %d)\n", startidx, delcnt);
     for(k = 0; k != delcnt; k++)
     {
-        v = othis.Get(PropertyKey(startidx + k), cc);
+        if (auto err = othis.Get(PropertyKey(startidx + k), v, cc))
+            return err;
         if(v)
             A.Set(PropertyKey(k), *v, Property.Attribute.None, cc);
     }
@@ -1181,7 +1268,8 @@ else
         {
             for(k = startidx; k != (len - delcnt); k++)
             {
-                v = othis.Get(PropertyKey(k + delcnt), cc);
+                if (auto err = othis.Get(PropertyKey(k + delcnt), v, cc))
+                    return err;
                 if(v)
                     othis.Set(PropertyKey(k + inscnt), *v,
                               Property.Attribute.None, cc);
@@ -1196,7 +1284,8 @@ else
         {
             for(k = len - delcnt; k != startidx; k--)
             {
-                v = othis.Get(PropertyKey(k + delcnt - 1), cc);
+                if (auto err = othis.Get(PropertyKey(k + delcnt - 1), v, cc))
+                    return err;
                 if(v)
                     othis.Set(PropertyKey(k + inscnt - 1), *v,
                               Property.Attribute.None, cc);
@@ -1221,7 +1310,7 @@ else
 
 //------------------------------------------------------------------------------
 @DFD(1)
-DError* unshift(
+Derror* unshift(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1234,14 +1323,17 @@ DError* unshift(
     uint k;
     Value val;
 
-    v = othis.Get(PropertyKey(Key.length), cc);
+    if (auto err = othis.Get(PropertyKey(Key.length), v, cc))
+        return err;
     if(!v)
         v = &undefined;
-    len = v.toUint32(cc);
+    if (auto err = v.to(len, cc))
+        return err;
 
     for(k = len; k>0; k--)
     {
-        v = othis.Get(PropertyKey(k - 1), cc);
+        if (auto err = othis.Get(PropertyKey(k - 1), v, cc))
+            return err;
         if(v)
             othis.Set(PropertyKey(cast(uint)(k + arglist.length - 1)), *v,
                       Property.Attribute.None, cc);
@@ -1261,7 +1353,7 @@ DError* unshift(
 
 //
 @DFD(1)
-DError* copyWithin(
+Derror* copyWithin(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1270,7 +1362,7 @@ DError* copyWithin(
 
 //
 @DFD(0)
-DError* entries(
+Derror* entries(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1279,7 +1371,7 @@ DError* entries(
 
 //
 @DFD(1)
-DError* every(
+Derror* every(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1288,7 +1380,7 @@ DError* every(
 
 //
 @DFD(1)
-DError* fill(
+Derror* fill(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1297,7 +1389,7 @@ DError* fill(
 
 //
 @DFD(1)
-DError* filter(
+Derror* filter(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1306,7 +1398,7 @@ DError* filter(
 
 //
 @DFD(1)
-DError* find(
+Derror* find(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1315,7 +1407,7 @@ DError* find(
 
 //
 @DFD(1)
-DError* findIndex(
+Derror* findIndex(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1324,7 +1416,7 @@ DError* findIndex(
 
 //
 @DFD(1)
-DError* forEach(
+Derror* forEach(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1333,7 +1425,7 @@ DError* forEach(
 
 //
 @DFD(1)
-DError* includes(
+Derror* includes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1342,7 +1434,7 @@ DError* includes(
 
 //
 @DFD(1)
-DError* indexOf(
+Derror* indexOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1351,7 +1443,7 @@ DError* indexOf(
 
 //
 @DFD(1)
-DError* keys(
+Derror* keys(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1360,7 +1452,7 @@ DError* keys(
 
 //
 @DFD(1)
-DError* lastIndexOf(
+Derror* lastIndexOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1369,7 +1461,7 @@ DError* lastIndexOf(
 
 //
 @DFD(1)
-DError* map(
+Derror* map(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1378,7 +1470,7 @@ DError* map(
 
 //
 @DFD(1)
-DError* reduce(
+Derror* reduce(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1387,7 +1479,7 @@ DError* reduce(
 
 //
 @DFD(1)
-DError* reduceRight(
+Derror* reduceRight(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1396,7 +1488,7 @@ DError* reduceRight(
 
 //
 @DFD(1)
-DError* some(
+Derror* some(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1405,7 +1497,7 @@ DError* some(
 
 //
 @DFD(1)
-DError* values(
+Derror* values(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

@@ -53,7 +53,7 @@ class FunctionDefinition : TopStatement
     bool strictMode;
 
     Identifier[] varnames;       // array of Identifier's
-    /*    private*/ FunctionDefinition[] functiondefinitions;
+    private FunctionDefinition[] functiondefinitions;
 //    private FunctionDefinition enclosingFunction;
     private int nestDepth;
     int withdepth;              // max nesting of ScopeStatement's
@@ -156,7 +156,8 @@ class FunctionDefinition : TopStatement
                     auto ls = cast(LabelSymbol)s;
                     assert(ls !is null);
                     if (ls.statement is null)
-                        error(sc, UndefinedLabelError(ls.toString, toString));
+                        error(sc, UndefinedLabelError(
+                                  ls.toString, name ? name.text:"anonymous"));
                 }
             }
         }
@@ -206,7 +207,7 @@ class FunctionDefinition : TopStatement
         nlocals = irs.lvm.max;
     }
 
-    final
+    final nothrow
     void instantiate(CallContext* cc, Property.Attribute attributes)
     {
         alias PA = Property.Attribute;
@@ -283,7 +284,7 @@ class FunctionDefinition : TopStatement
             sink(f.name.toString);
         }
         sink("\n");
-        IR.dump(f.code, sink, 0, indent);
+        IR.dump(f.code, sink, indent);
 
         for (size_t i = 0; i < f.functiondefinitions.length; ++i)
         {
