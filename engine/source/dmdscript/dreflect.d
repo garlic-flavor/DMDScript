@@ -48,7 +48,7 @@ class DreflectConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -61,7 +61,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* apply(
+Derror apply(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -70,7 +70,7 @@ Derror* apply(
 
 //
 @DFD(3, DFD.Type.Static)
-Derror* defineProperty(
+Derror defineProperty(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -79,7 +79,7 @@ Derror* defineProperty(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* deleteProperty(
+Derror deleteProperty(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -88,7 +88,7 @@ Derror* deleteProperty(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* get(
+Derror get(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -97,7 +97,7 @@ Derror* get(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* getOwnPropertyDescriptor(
+Derror getOwnPropertyDescriptor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -106,7 +106,7 @@ Derror* getOwnPropertyDescriptor(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* getPrototypeOf(
+Derror getPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -115,7 +115,7 @@ Derror* getPrototypeOf(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* has(
+Derror has(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -124,7 +124,7 @@ Derror* has(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isExtensible(
+Derror isExtensible(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -133,7 +133,7 @@ Derror* isExtensible(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* ownKeys(
+Derror ownKeys(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -142,7 +142,7 @@ Derror* ownKeys(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* preventExtensions(
+Derror preventExtensions(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -151,7 +151,7 @@ Derror* preventExtensions(
 
 //
 @DFD(3, DFD.Type.Static)
-Derror* set(
+Derror set(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -160,7 +160,7 @@ Derror* set(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* setPrototypeOf(
+Derror setPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -170,7 +170,7 @@ Derror* setPrototypeOf(
 
 //
 @DFD(1, DFD.Type.Prototype, "catch")
-Derror* _catch(
+Derror _catch(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -179,7 +179,7 @@ Derror* _catch(
 
 //
 @DFD(2)
-Derror* then(
+Derror then(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

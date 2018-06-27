@@ -37,7 +37,7 @@ class Dstring : Dobject
     import dmdscript.property : Property;
     import dmdscript.primitive : PropertyKey;
 
-    override Derror* Get(in PropertyKey key, out Value* ret, CallContext* cc)
+    override Derror Get(in PropertyKey key, out Value* ret, CallContext* cc)
     {
         size_t index;
         if (key.isArrayIndex(index) && index < value.text.length)
@@ -108,7 +108,7 @@ class DstringConstructor : Dconstructor
         return new Dstring(classPrototype, s);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Text;
@@ -126,7 +126,7 @@ class DstringConstructor : Dconstructor
         return null;
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         import dmdscript.primitive : Text;
@@ -198,7 +198,7 @@ inout(char)[] _stringAt(inout char[] src, in size_t index)
 
 //------------------------------------------------------------------------------
 @DFD(1, DFD.Type.Static)
-Derror* fromCharCode(
+Derror fromCharCode(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -233,7 +233,7 @@ Derror* fromCharCode(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* fromCodePoint(
+Derror fromCodePoint(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -242,7 +242,7 @@ Derror* fromCodePoint(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* raw(
+Derror raw(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -252,7 +252,7 @@ Derror* raw(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -272,7 +272,7 @@ Derror* toString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* valueOf(
+Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -294,7 +294,7 @@ Derror* valueOf(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* charAt(
+Derror charAt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -341,7 +341,7 @@ Derror* charAt(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* charCodeAt(
+Derror charCodeAt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -371,7 +371,7 @@ Derror* charCodeAt(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* concat(
+Derror concat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -394,7 +394,7 @@ Derror* concat(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* indexOf(
+Derror indexOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -448,7 +448,7 @@ Derror* indexOf(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* lastIndexOf(
+Derror lastIndexOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -474,7 +474,7 @@ Derror* lastIndexOf(
         {
             // This is the 'transferable' version
             Value* v;
-            Derror* a;
+            Derror a;
             if (auto err = othis.Get(Key.toString, v, cc))
                 return err;
             assert (v !is null);
@@ -535,7 +535,7 @@ Derror* lastIndexOf(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* localeCompare(
+Derror localeCompare(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -565,7 +565,7 @@ int localeCompare(CallContext* cc, string s1, string s2)
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* match(
+Derror match(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -631,7 +631,7 @@ Derror* match(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-Derror* replace(
+Derror replace(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -764,7 +764,7 @@ Derror* replace(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* search(
+Derror search(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -796,7 +796,7 @@ Derror* search(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-Derror* slice(
+Derror slice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -863,7 +863,7 @@ Derror* slice(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-Derror* split(
+Derror split(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1025,7 +1025,7 @@ Derror* split(
 }
 
 //------------------------------------------------------------------------------
-Derror* dstring_substring(string s, size_t sUCSdim, double start,
+Derror dstring_substring(string s, size_t sUCSdim, double start,
                           double end, out Value ret)
 {
     import std.math : isNaN;
@@ -1067,7 +1067,7 @@ Derror* dstring_substring(string s, size_t sUCSdim, double start,
 
 //------------------------------------------------------------------------------
 @DFD(2)
-Derror* substr(
+Derror substr(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1104,7 +1104,7 @@ Derror* substr(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-Derror* substring(
+Derror substring(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1142,7 +1142,7 @@ enum CASE
     LocaleUpper
 };
 
-Derror* tocase(CallContext* cc, Dobject othis, out Value ret, CASE caseflag)
+Derror tocase(CallContext* cc, Dobject othis, out Value ret, CASE caseflag)
 {
     import std.string : toLower, toUpper;
 
@@ -1173,7 +1173,7 @@ Derror* tocase(CallContext* cc, Dobject othis, out Value ret, CASE caseflag)
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toLowerCase(
+Derror toLowerCase(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1186,7 +1186,7 @@ Derror* toLowerCase(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toLocaleLowerCase(
+Derror toLocaleLowerCase(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1198,7 +1198,7 @@ Derror* toLocaleLowerCase(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toUpperCase(
+Derror toUpperCase(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1210,7 +1210,7 @@ Derror* toUpperCase(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toLocaleUpperCase(
+Derror toLocaleUpperCase(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1220,7 +1220,7 @@ Derror* toLocaleUpperCase(
 }
 
 //------------------------------------------------------------------------------
-Derror* dstring_anchor(
+Derror dstring_anchor(
     CallContext* cc, Dobject othis, out Value ret, string tag,
     string name, Value[] arglist)
 {
@@ -1255,7 +1255,7 @@ Derror* dstring_anchor(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* anchor(
+Derror anchor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1271,7 +1271,7 @@ Derror* anchor(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* fontcolor(
+Derror fontcolor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1280,7 +1280,7 @@ Derror* fontcolor(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* fontsize(
+Derror fontsize(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1289,7 +1289,7 @@ Derror* fontsize(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* link(
+Derror link(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1301,7 +1301,7 @@ Derror* link(
 /*
 Produce <tag>othis</tag>
 */
-Derror* dstring_bracket(CallContext* cc, Dobject othis, out Value ret,
+Derror dstring_bracket(CallContext* cc, Dobject othis, out Value ret,
                         string tag)
 {
     string foo;
@@ -1322,7 +1322,7 @@ Derror* dstring_bracket(CallContext* cc, Dobject othis, out Value ret,
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* big(
+Derror big(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1338,7 +1338,7 @@ Derror* big(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* blink(
+Derror blink(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1347,7 +1347,7 @@ Derror* blink(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* bold(
+Derror bold(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1356,7 +1356,7 @@ Derror* bold(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* fixed(
+Derror fixed(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1365,7 +1365,7 @@ Derror* fixed(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* italics(
+Derror italics(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1374,7 +1374,7 @@ Derror* italics(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* small(
+Derror small(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1383,7 +1383,7 @@ Derror* small(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* strike(
+Derror strike(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1392,7 +1392,7 @@ Derror* strike(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* sub(
+Derror sub(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1401,7 +1401,7 @@ Derror* sub(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* sup(
+Derror sup(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1410,7 +1410,7 @@ Derror* sup(
 
 //
 @DFD(1)
-Derror* codePointAt(
+Derror codePointAt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1419,7 +1419,7 @@ Derror* codePointAt(
 
 //
 @DFD(1)
-Derror* endsWith(
+Derror endsWith(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1428,7 +1428,7 @@ Derror* endsWith(
 
 //
 @DFD(1)
-Derror* includes(
+Derror includes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1437,7 +1437,7 @@ Derror* includes(
 
 //
 @DFD(1)
-Derror* normalize(
+Derror normalize(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1446,7 +1446,7 @@ Derror* normalize(
 
 //
 @DFD(1)
-Derror* repeat(
+Derror repeat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1455,7 +1455,7 @@ Derror* repeat(
 
 //
 @DFD(1)
-Derror* startsWith(
+Derror startsWith(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1464,7 +1464,7 @@ Derror* startsWith(
 
 //
 @DFD(1)
-Derror* trim(
+Derror trim(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

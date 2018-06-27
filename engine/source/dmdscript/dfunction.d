@@ -53,7 +53,7 @@ abstract class Dfunction : Dobject
     Dobject HomeObject;
 
     override abstract
-    Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    Derror Call(CallContext* cc, Dobject othis, out Value ret,
                  Value[] arglist);
 
     //
@@ -75,7 +75,7 @@ abstract class Dfunction : Dobject
     }
 
     //
-    override Derror* HasInstance(ref Value v, out Value ret, CallContext* cc)
+    override Derror HasInstance(ref Value v, out Value ret, CallContext* cc)
     {
         import std.conv : to;
 
@@ -199,12 +199,12 @@ abstract class Dconstructor : Dfunction
 {
     //
     abstract override
-    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist);
+    Derror Construct(CallContext* cc, out Value ret, Value[] arglist);
 
 
     //
     override
-    Derror* Call(CallContext* cc, Dobject, out Value ret, Value[] arglist)
+    Derror Call(CallContext* cc, Dobject, out Value ret, Value[] arglist)
     {
         // ECMA 15.3.1
         return Construct(cc, ret, arglist);
@@ -267,7 +267,7 @@ class DfunctionConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.functiondefinition : FunctionDefinition;
@@ -330,7 +330,8 @@ class DfunctionConstructor : Dconstructor
         catch (Throwable t)
         {
             ret.putVundefined();
-            return new Derror(cc, t, Value(cc.realm.dSyntaxError(t.msg)));
+            auto msg = Value(cc.realm.dSyntaxError(t.msg));
+            return new Derror(t, msg);
         }
     }
 }
@@ -342,7 +343,7 @@ private:
 //------------------------------------------------------------------------------
 //
 @DFD(0)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -370,7 +371,7 @@ Derror* toString(
 //------------------------------------------------------------------------------
 //
 @DFD(2)
-Derror* apply(
+Derror apply(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -386,7 +387,7 @@ Derror* apply(
     Value* thisArg;
     Value* argArray;
     Dobject o;
-    Derror* v;
+    Derror v;
 
     thisArg = &undefined;
     argArray = &undefined;
@@ -472,7 +473,7 @@ Derror* apply(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* bind(
+Derror bind(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -483,14 +484,14 @@ Derror* bind(
 //------------------------------------------------------------------------------
 //
 @DFD(1)
-Derror* call(
+Derror call(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.3.4.4
     Value* thisArg;
     Dobject o;
-    Derror* v;
+    Derror v;
 
     if(arglist.length == 0)
     {

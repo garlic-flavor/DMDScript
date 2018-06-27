@@ -292,7 +292,7 @@ struct err(alias Ctor, ARGS...)
 
     //
     nothrow
-    Derror* opCall(CallContext* cc, ARGS args,
+    Derror opCall(CallContext* cc, ARGS args,
                    string f = __FILE__, size_t l = __LINE__) const
     {
         import std.format : format;
@@ -319,7 +319,8 @@ struct err(alias Ctor, ARGS...)
         else static assert (0);
 
         assert (o !is null);
-        return new Derror(cc, msg, Value(o), f, l);
+        auto v = Value(o);
+        return new Derror(v, f, l);
     }
     alias opCall this;
 

@@ -29,7 +29,7 @@ debug import std.stdio;
 
 //------------------------------------------------------------------------------
 ///
-alias PCall = Derror* function(
+alias PCall = Derror function(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist);
 
@@ -48,11 +48,15 @@ class DnativeFunction : Dfunction
         pcall = func;
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         try return (*pcall)(this, cc, othis, ret, arglist);
-        catch (Throwable t) return new Derror(cc, t, Value("D error"));
+        catch (Throwable t)
+        {
+            auto msg = Value("D error");
+            return new Derror(t, msg);
+        }
     }
 }
 

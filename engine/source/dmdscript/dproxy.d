@@ -69,7 +69,7 @@ class DproxyConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         Dobject proto, attr;
@@ -101,7 +101,7 @@ enum Key : PropertyKey
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* revocable(
+Derror revocable(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

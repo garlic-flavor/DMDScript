@@ -60,7 +60,7 @@ class DbigIntConstructor: Dconstructor
     }
 
     override
-    Derror* Construct (CallContext* cc, out Value ret, Value[] arglist)
+    Derror Construct (CallContext* cc, out Value ret, Value[] arglist)
     {
         BigInt* pbi;
         Dobject o;
@@ -69,7 +69,7 @@ class DbigIntConstructor: Dconstructor
     }
 
     override
-    Derror* Call (CallContext* cc, Dobject othis, out Value ret,
+    Derror Call (CallContext* cc, Dobject othis, out Value ret,
                   Value[] arglist)
     {
         assert (0);
@@ -78,7 +78,7 @@ class DbigIntConstructor: Dconstructor
 
 //
 @DFD(0)
-Derror* valueOf(
+Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

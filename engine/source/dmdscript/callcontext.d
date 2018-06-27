@@ -151,7 +151,7 @@ struct CallContext
             key   = The name of the variable.
             pthis = The field that contains the searched variable.
     */
-    Derror* get (in ref PropertyKey key, out Dobject pthis, out Value* v)
+    Derror get (in ref PropertyKey key, out Dobject pthis, out Value* v)
     {
         Dobject o;
         for (auto s = _scope; s !is null; s = s.next)
@@ -171,7 +171,7 @@ struct CallContext
         return null;
     }
     /// ditto
-    Derror* get (in ref PropertyKey key, out Value* v)
+    Derror get (in ref PropertyKey key, out Value* v)
     {
         for (auto s = _scope; s !is null; s = s.next)
         {
@@ -194,7 +194,7 @@ struct CallContext
             value =
             attr  =
     */
-    Derror* set (in ref PropertyKey key, ref Value value,
+    Derror set (in ref PropertyKey key, ref Value value,
                 Property.Attribute attr = Property.Attribute.None)
     {
         import dmdscript.errmsgs: CannotAssignToBeforeDeclarationError;
@@ -237,7 +237,7 @@ struct CallContext
             value =
             attr  =
      */
-    Derror* setThis(in ref PropertyKey key, ref Value value,
+    Derror setThis(in ref PropertyKey key, ref Value value,
                     Property.Attribute attr)
     {
         assert (_rootScope !is null);
@@ -317,7 +317,7 @@ struct CallContext
 package:
     /* This is called from dmdscript.opcodes.IR.call.
      */
-    void addTraceInfoTo(Derror* err)
+    void addTraceInfoTo(Derror err)
     {
         assert (err !is null);
         assert (_callerf !is null);

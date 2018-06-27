@@ -108,7 +108,7 @@ class Dobject
     //--------------------------------------------------------------------
     //
     nothrow
-    Derror* Get(in PropertyKey PropertyName, out Value* ret, CallContext* cc)
+    Derror Get(in PropertyKey PropertyName, out Value* ret, CallContext* cc)
     {
         return proptable.get(PropertyName, ret, this, cc);
     }
@@ -117,7 +117,7 @@ class Dobject
 
     //
     nothrow
-    Derror* Set(in PropertyKey PropertyName, ref Value value,
+    Derror Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, CallContext* cc)
     {
         // ECMA 8.6.2.2
@@ -193,27 +193,27 @@ class Dobject
     }
 
     nothrow
-    Derror* Call(CallContext* cc, Dobject othis, out Value ret, Value[] arglist)
+    Derror Call(CallContext* cc, Dobject othis, out Value ret, Value[] arglist)
     {
         return SNoCallError(cc, _classname);
     }
 
     nothrow
-    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    Derror Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         return SNoConstructError(cc, _classname);
     }
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* PutDefault(out Value value, CallContext* cc)
+    Derror PutDefault(out Value value, CallContext* cc)
     {
         // Not ECMA, Microsoft extension
         return NoDefaultPutError(cc);
     }
 
     nothrow
-    Derror* put_Value(CallContext* cc, out Value ret, Value[] arglist)
+    Derror put_Value(CallContext* cc, out Value ret, Value[] arglist)
     {
         // Not ECMA, Microsoft extension
         return FunctionNotLvalueError(cc);
@@ -236,13 +236,13 @@ class Dobject
     }
 
     final @trusted nothrow
-    Derror* DefaultValue(out Value ret, CallContext* cc,
+    Derror DefaultValue(out Value ret, CallContext* cc,
                          in Value.Type hint = Value.Type.RefError)
     {
         import dmdscript.ddate: Ddate;
         import dmdscript.property: SpecialSymbols;
 
-        Derror* err;
+        Derror err;
         Dobject o;
         Value* v;
         PropertyKey[] table =
@@ -282,12 +282,28 @@ class Dobject
             // if it's an Object
             else if (v.isCallable)
             {
-                Derror* a;
+                Derror a;
+                Value[] args;
 
                 o = v.object;
-                if (o.Call(cc, this, ret, null).onError(a))
+                args.length = 1;
+                switch (hint)
+                {
+                case Value.Type.String:
+                    args[0].put("string");
+                    break;
+                case Value.Type.Number:
+                    args[0].put("number");
+                    break;
+                default:
+                    args[0].put("default");
+                    break;
+                }
+
+                if (o.Call(cc, this, ret, args).onError(a))
                     return a;                   // if exception was thrown
-                if(ret.isPrimitive)
+
+                if (ret.isPrimitive)
                     return null;
                 else if (i == 0)
                     break;
@@ -302,7 +318,7 @@ class Dobject
     }
 
     nothrow
-    Derror* HasInstance(ref Value v, out Value ret,  CallContext* cc)
+    Derror HasInstance(ref Value v, out Value ret,  CallContext* cc)
     {   // ECMA v3 8.6.2
         return SNoInstanceError(cc, _classname);
     }
@@ -314,7 +330,7 @@ class Dobject
     }
 
     final @trusted nothrow
-    Derror* putIterator(out Value v)
+    Derror putIterator(out Value v)
     {
         import dmdscript.iterator : Iterator;
 
@@ -540,7 +556,7 @@ class DobjectConstructor : Dconstructor
 
     //
     override
-    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    Derror Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         Dobject o;
         Value* v;
@@ -571,11 +587,11 @@ class DobjectConstructor : Dconstructor
     }
 
     //
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         Dobject o;
-        Derror* result;
+        Derror result;
 
         // ECMA 15.2.1
         if(arglist.length == 0)
@@ -611,7 +627,7 @@ private:
 //------------------------------------------------------------------------------
 //
 @DFD(2, DFD.Type.Static)
-Derror* assign(
+Derror assign(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -620,7 +636,7 @@ Derror* assign(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* create(
+Derror create(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -629,7 +645,7 @@ Derror* create(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* defineProperties(
+Derror defineProperties(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -638,14 +654,14 @@ Derror* defineProperties(
 
 //
 @DFD(3, DFD.Type.Static)
-Derror* defineProperty(
+Derror defineProperty(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive : PropertyKey;
     import dmdscript.property : Property;
 
-    Derror* sta;
+    Derror sta;
     Dobject target;
     PropertyKey key;
 
@@ -696,7 +712,7 @@ failure:
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* freeze(
+Derror freeze(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -705,12 +721,12 @@ Derror* freeze(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* getOwnPropertyDescriptor(
+Derror getOwnPropertyDescriptor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import dmdscript.primitive: PropertyKey;
-    Derror* sta;
+    Derror sta;
     Dobject target;
 
     if (arglist.length < 2)
@@ -737,7 +753,7 @@ failure:
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* getOwnPropertySymbol(
+Derror getOwnPropertySymbol(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -746,7 +762,7 @@ Derror* getOwnPropertySymbol(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* getPrototypeOf(
+Derror getPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -770,7 +786,7 @@ Derror* getPrototypeOf(
 
 //
 @DFD(2, DFD.Type.Static, "is")
-Derror* _is(
+Derror _is(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -779,7 +795,7 @@ Derror* _is(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isExtensible(
+Derror isExtensible(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -788,7 +804,7 @@ Derror* isExtensible(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isFrozen(
+Derror isFrozen(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -797,7 +813,7 @@ Derror* isFrozen(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isSealed(
+Derror isSealed(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -806,7 +822,7 @@ Derror* isSealed(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* keys(
+Derror keys(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -815,7 +831,7 @@ Derror* keys(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* preventExtensions(
+Derror preventExtensions(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -846,7 +862,7 @@ Derror* preventExtensions(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* seal(
+Derror seal(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -855,12 +871,12 @@ Derror* seal(
 
 //
 @DFD(2, DFD.Type.Static)
-Derror* setPrototypeOf(
+Derror setPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     Dobject target, proto;
-    Derror* sta;
+    Derror sta;
 
     if (arglist.length < 1)
         goto failure;
@@ -885,7 +901,7 @@ failure:
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -908,7 +924,7 @@ Derror* toString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toLocaleString(
+Derror toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -921,7 +937,7 @@ Derror* toLocaleString(
         return err;
     if(v && !v.isPrimitive())   // if it's an Object
     {
-        Derror* a;
+        Derror a;
         Dobject o;
 
         o = v.object;
@@ -934,7 +950,7 @@ Derror* toLocaleString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* valueOf(
+Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -944,7 +960,7 @@ Derror* valueOf(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toSource(
+Derror toSource(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -983,7 +999,7 @@ Derror* toSource(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* hasOwnProperty(
+Derror hasOwnProperty(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -998,7 +1014,7 @@ Derror* hasOwnProperty(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* isPrototypeOf(
+Derror isPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1030,7 +1046,7 @@ Derror* isPrototypeOf(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* propertyIsEnumerable(
+Derror propertyIsEnumerable(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1047,7 +1063,7 @@ Derror* propertyIsEnumerable(
 
 //------------------------------------------------------------------------------
 @DFD(0, DFD.Type.Getter, "__proto__")
-Derror* proto_Get(
+Derror proto_Get(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1055,7 +1071,7 @@ Derror* proto_Get(
 }
 
 @DFD(0, DFD.Type.Setter, "__proto__")
-Derror* proto_Set(
+Derror proto_Set(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

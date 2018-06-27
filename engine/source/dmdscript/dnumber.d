@@ -101,7 +101,7 @@ class DnumberConstructor : Dconstructor
         return new Dnumber(classPrototype, n);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.7.2
@@ -116,7 +116,7 @@ class DnumberConstructor : Dconstructor
         return null;
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 15.7.1
@@ -159,7 +159,7 @@ enum Key : PropertyKey
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isFinite(
+Derror isFinite(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -168,7 +168,7 @@ Derror* isFinite(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isInteger(
+Derror isInteger(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -177,7 +177,7 @@ Derror* isInteger(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isNaN(
+Derror isNaN(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -186,7 +186,7 @@ Derror* isNaN(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isSafeInteger(
+Derror isSafeInteger(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -195,7 +195,7 @@ Derror* isSafeInteger(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* parseFloat(
+Derror parseFloat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -204,7 +204,7 @@ Derror* parseFloat(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* parseInt(
+Derror parseInt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -215,7 +215,7 @@ Derror* parseInt(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -262,14 +262,14 @@ Derror* toString(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* toLocaleString(
+Derror toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     // ECMA v3 15.7.4.3
 
     // othis must be a Number
-    Derror* err;
+    Derror err;
     string s;
     if (auto dn = cast(Dnumber)othis)
     {
@@ -287,7 +287,7 @@ Derror* toLocaleString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* valueOf(
+Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -347,7 +347,7 @@ number_t deconstruct_real(double x, int f, out int pe)
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* toFixed(
+Derror toFixed(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -474,7 +474,7 @@ Derror* toFixed(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* toExponential(
+Derror toExponential(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -613,7 +613,7 @@ Derror* toExponential(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* toPrecision(
+Derror toPrecision(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

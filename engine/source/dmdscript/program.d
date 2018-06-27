@@ -104,7 +104,7 @@ FunctionDefinition generate(FunctionDefinition fd)
 /** Execute program.
 */
 nothrow
-Derror* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
+Derror execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
                     T args)
 {
     import dmdscript.primitive: Key, PropertyKey;
@@ -142,7 +142,7 @@ Derror* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
     {
         Value[] locals;
         Value* v;
-        Derror* result;
+        Derror result;
 
         version (Win32)          // eh and alloca() not working under linux
         {
@@ -178,7 +178,7 @@ Derror* execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
     }
 }
 ///
-Derror* execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
+Derror execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
                     T args)
 {
     auto cc = CallContext.push (realm, fd);

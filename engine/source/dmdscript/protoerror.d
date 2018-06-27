@@ -77,7 +77,7 @@ class D0_constructor(alias TEXT_D1) : Dconstructor
         // cp.DefineOwnProperty(Key.number, val, Property.Attribute.None);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.11.7.2
@@ -96,7 +96,7 @@ class D0_constructor(alias TEXT_D1) : Dconstructor
         return null;
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA v3 15.11.7.1
@@ -282,14 +282,14 @@ private:
 //------------------------------------------------------------------------------
 //
 @DFD(0)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
     import std.conv: text;
     import dmdscript.primitive: Key;
 
-    Derror* err;
+    Derror err;
     Value* v;
     string message;
 
@@ -317,7 +317,7 @@ Derror* toString(
 
 //
 @DFD(0)
-Derror* valueOf(
+Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

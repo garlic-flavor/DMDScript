@@ -39,7 +39,7 @@ double math_helper(CallContext* cc, Value[] arglist)
     return n;
 }
 @DFD(1)
-Derror* abs(
+Derror abs(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -51,7 +51,7 @@ Derror* abs(
     return null;
 }
 @DFD(1)
-Derror* acos(
+Derror acos(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -63,7 +63,7 @@ Derror* acos(
     return null;
 }
 @DFD(1)
-Derror* asin(
+Derror asin(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -75,7 +75,7 @@ Derror* asin(
     return null;
 }
 @DFD(1)
-Derror* atan(
+Derror atan(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -87,7 +87,7 @@ Derror* atan(
     return null;
 }
 @DFD(2)
-Derror* atan2(
+Derror atan2(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -104,7 +104,7 @@ Derror* atan2(
     return null;
 }
 @DFD(1)
-Derror* ceil(
+Derror ceil(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -117,7 +117,7 @@ Derror* ceil(
 }
 
 @DFD(1)
-Derror* cos(
+Derror cos(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -129,7 +129,7 @@ Derror* cos(
     return null;
 }
 @DFD(1)
-Derror* exp(
+Derror exp(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -141,7 +141,7 @@ Derror* exp(
     return null;
 }
 @DFD(1)
-Derror* floor(
+Derror floor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -153,7 +153,7 @@ Derror* floor(
     return null;
 }
 @DFD(1)
-Derror* log(
+Derror log(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -165,7 +165,7 @@ Derror* log(
     return null;
 }
 @DFD(2)
-Derror* max(
+Derror max(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -196,7 +196,7 @@ Derror* max(
     return null;
 }
 @DFD(2)
-Derror* min(
+Derror min(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -227,7 +227,7 @@ Derror* min(
     return null;
 }
 @DFD(2)
-Derror* pow(
+Derror pow(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -244,7 +244,7 @@ Derror* pow(
     return null;
 }
 @DFD(0)
-Derror* random(
+Derror random(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -274,7 +274,7 @@ Derror* random(
     return null;
 }
 @DFD(1)
-Derror* round(
+Derror round(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -288,7 +288,7 @@ Derror* round(
     return null;
 }
 @DFD(1)
-Derror* sin(
+Derror sin(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -300,7 +300,7 @@ Derror* sin(
     return null;
 }
 @DFD(1)
-Derror* sqrt(
+Derror sqrt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -312,7 +312,7 @@ Derror* sqrt(
     return null;
 }
 @DFD(1)
-Derror* tan(
+Derror tan(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -326,7 +326,7 @@ Derror* tan(
 
 //
 @DFD(1)
-Derror* cbrt(
+Derror cbrt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -335,7 +335,7 @@ Derror* cbrt(
 
 //
 @DFD(1)
-Derror* clz32(
+Derror clz32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -344,7 +344,7 @@ Derror* clz32(
 
 //
 @DFD(1)
-Derror* cosh(
+Derror cosh(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -353,7 +353,7 @@ Derror* cosh(
 
 //
 @DFD(1)
-Derror* expm1(
+Derror expm1(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -362,7 +362,7 @@ Derror* expm1(
 
 //
 @DFD(1)
-Derror* fround(
+Derror fround(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -371,7 +371,7 @@ Derror* fround(
 
 //
 @DFD(1)
-Derror* hypot(
+Derror hypot(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -380,7 +380,7 @@ Derror* hypot(
 
 //
 @DFD(2)
-Derror* imul(
+Derror imul(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -389,7 +389,7 @@ Derror* imul(
 
 //
 @DFD(1)
-Derror* log1p(
+Derror log1p(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -398,7 +398,7 @@ Derror* log1p(
 
 //
 @DFD(1)
-Derror* log10(
+Derror log10(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -407,7 +407,7 @@ Derror* log10(
 
 //
 @DFD(1)
-Derror* log2(
+Derror log2(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -416,7 +416,7 @@ Derror* log2(
 
 //
 @DFD(1)
-Derror* sign(
+Derror sign(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -425,7 +425,7 @@ Derror* sign(
 
 //
 @DFD(1)
-Derror* sinh(
+Derror sinh(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -434,7 +434,7 @@ Derror* sinh(
 
 //
 @DFD(1)
-Derror* tanh(
+Derror tanh(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -443,7 +443,7 @@ Derror* tanh(
 
 //
 @DFD(1)
-Derror* trunc(
+Derror trunc(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

@@ -47,7 +47,7 @@ class DweakMapConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -59,7 +59,7 @@ private:
 
 //
 @DFD()
-Derror* clear(
+Derror clear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -68,7 +68,7 @@ Derror* clear(
 
 //
 @DFD(1, DFD.Type.Prototype, "delete")
-Derror* _delete(
+Derror _delete(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -77,7 +77,7 @@ Derror* _delete(
 
 //
 @DFD()
-Derror* entries(
+Derror entries(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -86,7 +86,7 @@ Derror* entries(
 
 //
 @DFD(1)
-Derror* forEach(
+Derror forEach(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -95,7 +95,7 @@ Derror* forEach(
 
 //
 @DFD(1)
-Derror* get(
+Derror get(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -104,7 +104,7 @@ Derror* get(
 
 //
 @DFD(1)
-Derror* has(
+Derror has(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -113,7 +113,7 @@ Derror* has(
 
 //
 @DFD
-Derror* keys(
+Derror keys(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -122,7 +122,7 @@ Derror* keys(
 
 //
 @DFD(1)
-Derror* set(
+Derror set(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -131,7 +131,7 @@ Derror* set(
 
 //
 @DFD
-Derror* size(
+Derror size(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -140,7 +140,7 @@ Derror* size(
 
 //
 @DFD
-Derror* values(
+Derror values(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

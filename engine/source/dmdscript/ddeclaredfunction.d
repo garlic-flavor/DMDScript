@@ -67,7 +67,7 @@ private
         o.DefineOwnProperty(Key.constructor, val, Property.Attribute.DontEnum);
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // 1. Create activation object per ECMA 10.1.6
@@ -90,7 +90,7 @@ private
         Darguments args;
         Value[] locals;
         uint i;
-        Derror* result;
+        Derror result;
 
         // if it's an empty function, just return
         if(fd.code[0].opcode == Opcode.Ret)
@@ -179,7 +179,7 @@ private
         return result;
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         import dmdscript.primitive : Key;
@@ -188,7 +188,7 @@ private
         Dobject othis;
         Dobject proto;
         Value* v;
-        Derror* result;
+        Derror result;
 
         if (auto err = Get(Key.prototype, v, cc))
             return err;

@@ -164,7 +164,7 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* checkReference(CallContext* cc) const
+    Derror checkReference(CallContext* cc) const
     {
         if(_type == Type.RefError)
         {
@@ -349,10 +349,10 @@ struct Value
       so you should not qualify v with 'out'.
      */
     nothrow
-    Derror* toPrimitive(ref Value v, CallContext* cc,
+    Derror toPrimitive(ref Value v, CallContext* cc,
                         in Type PreferredType = Type.RefError)
     {
-        Derror* err;
+        Derror err;
 
         if     (_type == Type.Object)
         {
@@ -388,7 +388,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted nothrow
-    Derror* to(T : bool)(out T b, CallContext* cc) const
+    Derror to(T : bool)(out T b, CallContext* cc) const
     {
         import std.math : isNaN;
 
@@ -424,7 +424,7 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted nothrow
-    Derror* to(T : double)(out T n, CallContext* cc)
+    Derror to(T : double)(out T n, CallContext* cc)
     {
         import std.uni : isWhite;
 
@@ -492,10 +492,10 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted nothrow
-    Derror* toDtime(out d_time t, CallContext* cc)
+    Derror toDtime(out d_time t, CallContext* cc)
     {
         double d;
-        Derror* err;
+        Derror err;
         if (!to(d, cc).onError(err))
             t = cast(d_time)d;
         return err;
@@ -503,11 +503,11 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted nothrow
-    Derror* toInteger(out double number, CallContext* cc)
+    Derror toInteger(out double number, CallContext* cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
-        Derror* err;
+        Derror err;
 
         final switch(_type)
         {
@@ -547,11 +547,11 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted nothrow
-    Derror* to(T : int)(out T i, CallContext* cc)
+    Derror to(T : int)(out T i, CallContext* cc)
     {
         import std.math : floor, isInfinity, isNaN;
 
-        Derror* err;
+        Derror err;
 
         final switch(_type)
         {
@@ -594,224 +594,6 @@ struct Value
         return err;
     }
 
-    // //--------------------------------------------------------------------
-    // @safe nothrow
-    // Derror* toUint32(CallContext* cc, out uint ui)
-    // {
-    //     import std.math : floor, isInfinity, isNaN;
-
-    //     Derror* err;
-    //     final switch(_type)
-    //     {
-    //     case Type.RefError:
-    //         ui = 0;
-    //         err = UndefinedVarError(cc, _text);
-    //         break;
-    //     case Type.Undefined, Type.Null:
-    //         ui = 0;
-    //         break;
-    //     case Type.Boolean:
-    //         ui = _dbool ? 1 : 0;
-    //         break;
-
-    //     case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
-    //         Type.BigInt:
-    //     {
-    //         double number;
-    //         long ll;
-
-    //         if (toNumber(cc, number).onError(err))
-    //             break;
-    //         if(isNaN(number))
-    //             ui = 0;
-    //         else if(number == 0 || isInfinity(number))
-    //             ui = 0;
-    //         else
-    //         {
-    //             if(number > 0)
-    //                 number = floor(number);
-    //             else
-    //                 number = -floor(-number);
-
-    //             ll = cast(long)number;
-    //             ui = cast(uint)ll;
-    //         }
-    //         break;
-    //     }
-    //     }
-    //     return err;
-    // }
-
-    //--------------------------------------------------------------------
-    // @safe
-    // short toInt16(CallContext* cc)
-    // {
-    //     import std.math : floor, isInfinity, isNaN;
-
-    //     final switch(_type)
-    //     {
-    //     case Type.RefError:
-    //         throwRefError();
-    //         assert(0);
-    //     case Type.Undefined, Type.Null:
-    //         return 0;
-    //     case Type.Boolean:
-    //         return cast(short)(_dbool ? 1 : 0);
-
-    //     case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
-    //         Type.BigInt:
-    //     {
-    //         short int16;
-    //         double number;
-
-    //         number = toNumber(cc);
-    //         if(isNaN(number))
-    //             int16 = 0;
-    //         else if(number == 0 || isInfinity(number))
-    //             int16 = 0;
-    //         else
-    //         {
-    //             if(number > 0)
-    //                 number = floor(number);
-    //             else
-    //                 number = -floor(-number);
-
-    //             int16 = cast(short)number;
-    //         }
-    //         return int16;
-    //     }
-    //     }
-    //     assert(0);
-    // }
-
-    // //--------------------------------------------------------------------
-    // @safe
-    // Derror* toUint16(CallContext* cc, out ushort us)
-    // {
-    //     import std.math : floor, isInfinity, isNaN;
-
-    //     Derror* err;
-    //     final switch(_type)
-    //     {
-    //     case Type.RefError:
-    //         err = UndefinedVarError(cc, _text);
-    //         break;
-    //     case Type.Undefined, Type.Null:
-    //         us = 0;
-    //         break;
-    //     case Type.Boolean:
-    //         us = cast(ushort)(_dbool ? 1 : 0);
-    //         break;
-
-    //     case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
-    //         Type.BigInt:
-    //     {
-    //         double number;
-
-    //         if (toNumber(cc, number).onError(err))
-    //             break;
-    //         if(isNaN(number))
-    //             us = 0;
-    //         else if(number == 0 || isInfinity(number))
-    //             us = 0;
-    //         else
-    //         {
-    //             if(number > 0)
-    //                 number = floor(number);
-    //             else
-    //                 number = -floor(-number);
-
-    //             us = cast(ushort)number;
-    //         }
-    //         break;
-    //     }
-    //     }
-    //     return err;
-    // }
-
-    // //--------------------------------------------------------------------
-    // @safe
-    // byte toInt8(CallContext* cc)
-    // {
-    //     import std.math : floor, isInfinity, isNaN;
-
-    //     final switch(_type)
-    //     {
-    //     case Type.RefError:
-    //         throwRefError();
-    //         assert(0);
-    //     case Type.Undefined, Type.Null:
-    //         return 0;
-    //     case Type.Boolean:
-    //         return cast(byte)(_dbool ? 1 : 0);
-
-    //     case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
-    //         Type.BigInt:
-    //     {
-    //         byte int8;
-    //         double number;
-
-    //         number = toNumber(cc);
-    //         if(isNaN(number))
-    //             int8 = 0;
-    //         else if(number == 0 || isInfinity(number))
-    //             int8 = 0;
-    //         else
-    //         {
-    //             if(number > 0)
-    //                 number = floor(number);
-    //             else
-    //                 number = -floor(-number);
-
-    //             int8 = cast(byte)number;
-    //         }
-    //         return int8;
-    //     }
-    //     }
-    //     assert(0);
-    // }
-
-    // //--------------------------------------------------------------------
-    // @safe
-    // ubyte toUint8(CallContext* cc)
-    // {
-    //     import std.math : floor, isInfinity, isNaN;
-
-    //     final switch(_type)
-    //     {
-    //     case Type.RefError:
-    //         throwRefError();
-    //         assert(0);
-    //     case Type.Undefined, Type.Null:
-    //         return 0;
-    //     case Type.Boolean:
-    //         return cast(ubyte)(_dbool ? 1 : 0);
-
-    //     case Type.Number, Type.String, Type.Object, Type.Iter, Type.Symbol,
-    //         Type.BigInt:
-    //     {
-    //         ubyte uint8;
-    //         double number;
-
-    //         number = toNumber(cc);
-    //         if(isNaN(number))
-    //             uint8 = 0;
-    //         else if(number == 0 || isInfinity(number))
-    //             uint8 = 0;
-    //         else
-    //         {
-    //             if(number > 0)
-    //                 number = floor(number);
-    //             else
-    //                 number = -floor(-number);
-
-    //             uint8 = cast(ubyte)number;
-    //         }
-    //         return uint8;
-    //     }
-    //     }
-    //     assert(0);
-    // }
 
     // //--------------------------------------------------------------------
     // @safe
@@ -854,11 +636,11 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* to(T : PropertyKey)(out T pk, CallContext* cc)
+    Derror to(T : PropertyKey)(out T pk, CallContext* cc)
     {
         import std.format: format;
 
-        Derror* err;
+        Derror err;
         final switch(_type)
         {
         case Type.RefError:
@@ -932,44 +714,12 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    @trusted nothrow
-    string toString() const
-    {
-        import std.format: format;
-
-        final switch(_type)
-        {
-        case Type.RefError:
-            return "RefError!";
-        case Type.Undefined:
-            return Key.undefined;
-        case Type.Null:
-            return Key._null;
-        case Type.Boolean:
-            return _dbool ? Key._true : Key._false;
-        case Type.Number:
-            return NumberToString(_number);
-        case Type.BigInt:
-            try return "%d".format(*_bi);
-            catch (Throwable) return "BigInt";
-        case Type.String, Type.Symbol:
-            return _text;
-        case Type.Object:
-            return Key.Object;
-        case Type.Iter:
-            assert(0);
-        }
-        assert(0);
-    }
-
-
-    //--------------------------------------------------------------------
     nothrow
-    Derror* to(T : string)(out T s, CallContext* cc)
+    Derror to(T : string)(out T s, CallContext* cc)
     {
         import std.format: format;
 
-        Derror* err;
+        Derror err;
         final switch(_type)
         {
         case Type.RefError:
@@ -988,7 +738,7 @@ struct Value
             s = NumberToString(_number);
             break;
         case Type.BigInt:
-            try s = "%dn".format(*_bi);
+            try s = "%d".format(*_bi);
             catch(Throwable) s = "BigInt";
             break;
         case Type.String, Type.Symbol:
@@ -1020,21 +770,21 @@ struct Value
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // needs more implementation.
     nothrow
-    Derror* toLocaleString(out string s, CallContext* cc)
+    Derror toLocaleString(out string s, CallContext* cc)
     {
-        Derror* err;
+        Derror err;
         to(s, cc).onError(err);
         return err;
     }
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* to(T : string)(out T s, in int radix, CallContext* cc)
+    Derror to(T : string)(out T s, in int radix, CallContext* cc)
     {
         import std.math : isFinite;
         import std.conv : sto = to;
 
-        Derror* err;
+        Derror err;
         if(_type == Type.Number)
         {
             assert(2 <= radix && radix <= 36);
@@ -1067,12 +817,12 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* toSource(out string s, CallContext* cc)
+    Derror toSource(out string s, CallContext* cc)
     {
         import dmdscript.drealm: undefined;
         import std.format: format;
 
-        Derror* err;
+        Derror err;
         switch(_type)
         {
         case Type.String:
@@ -1134,14 +884,14 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted nothrow
-    Derror* to(T : Dobject)(out T o, CallContext* cc)
+    Derror to(T : Dobject)(out T o, CallContext* cc)
     {
         import dmdscript.dstring : Dstring;
         import dmdscript.dnumber : Dnumber;
         import dmdscript.dboolean : Dboolean;
         import dmdscript.dsymbol : Dsymbol;
 
-        Derror* err;
+        Derror err;
         final switch(_type)
         {
         case Type.RefError:
@@ -1181,12 +931,12 @@ struct Value
 
     //--------------------------------------------------------------------
     @disable nothrow
-    Derror* ToLength(out double n, CallContext* cc)
+    Derror ToLength(out double n, CallContext* cc)
     {
         import std.math : isInfinity;
         enum MAX_LENGTH = (2UL ^^ 53) - 1;
 
-        Derror* err;
+        Derror err;
         if (toInteger(n, cc).onError(err)){}
         else if (n < 0) n = 0;
         else if (n.isInfinity) n = MAX_LENGTH;
@@ -1194,30 +944,115 @@ struct Value
         return err;
     }
 
+    //--------------------------------------------------------------------
+    @trusted nothrow
+    string toString() const
+    {
+        import std.format: format;
+
+        final switch(_type)
+        {
+        case Type.RefError:
+            return "RefError!";
+        case Type.Undefined:
+            return Key.undefined;
+        case Type.Null:
+            return Key._null;
+        case Type.Boolean:
+            return _dbool ? Key._true : Key._false;
+        case Type.Number:
+            return NumberToString(_number);
+        case Type.BigInt:
+            try return "%d".format(*_bi);
+            catch (Throwable) return "BigInt";
+        case Type.String, Type.Symbol:
+            return _text;
+        case Type.Object:
+            return Key.Object;
+        case Type.Iter:
+            assert(0);
+        }
+        assert(0);
+    }
+
+    // use equals()
     @disable
     bool opEquals(in ref Value v) const{ return true;}
+    // use cmp();
     @disable
     int opCmp(in ref Value v) const { return 0; }
 
     //--------------------------------------------------------------------
-    @safe
-    Derror* equals(in ref Value v, out bool b, CallContext* cc) const
-    {
-        int i;
-        Derror* err;
-        if (!cmp(v, i, cc).onError(err))
-            b = i == 0;
-        return err;
-    }
-
-    //--------------------------------------------------------------------
-    @trusted
-    Derror* cmp()(in auto ref Value v, out int i, CallContext* cc) const
+    @trusted nothrow
+    Derror equals(in ref Value v, out bool b, CallContext* cc) const
     {
         import std.math : isNaN;
         import dmdscript.primitive : stringcmp;
 
-        Derror* err;
+        Derror err;
+        final switch(_type)
+        {
+        case Type.RefError:
+            err = UndefinedVarError(cc, _text);
+            break;
+
+        case Type.Undefined, Type.Null:
+            b =  _type == v._type;
+            break;
+
+        case Type.Boolean:
+            b = Type.Boolean == v._type && v._dbool == _dbool;
+            break;
+
+        case Type.Number:
+            if(v._type == Type.Number)
+            {
+                b = _number == v._number ||
+                    isNaN(_number) && isNaN(v._number);
+            }
+            else if(v._type == Type.String)
+            {
+                b = 0 == stringcmp(NumberToString(_number), v._text);
+            }
+            break;
+
+        case Type.BigInt:
+            b =  v._type == Type.BigInt && (*_bi) == (*v._bi);
+            break;
+
+        case Type.String:
+            if(v._type == Type.String)
+            {
+                b = 0 == stringcmp(_text, v._text);
+            }
+            else if(v._type == Type.Number)
+            {
+                b = 0 == stringcmp(_text, NumberToString(v._number));
+            }
+            break;
+
+        case Type.Symbol:
+            b = v._type == Type.Symbol && _hash == v._hash;
+            break;
+
+        case Type.Object:
+            b = v._type == Type.Object && v._object is _object;
+            break;
+
+        case Type.Iter:
+            assert(0);
+        }
+        return null;
+    }
+
+    //--------------------------------------------------------------------
+    @trusted nothrow
+    Derror cmp()(in auto ref Value v, out int i, CallContext* cc) const
+    {
+        import std.math : isNaN;
+        import dmdscript.primitive : stringcmp;
+
+        Derror err;
         final switch(_type)
         {
         case Type.RefError:
@@ -1286,7 +1121,7 @@ struct Value
     }
 
     //--------------------------------------------------------------------
-    @trusted @nogc pure nothrow
+    @property @trusted @nogc pure nothrow
     string getTypeof() const
     {
         final switch(_type)
@@ -1363,6 +1198,12 @@ struct Value
     bool isBigInt() const
     {
         return _type == Type.BigInt;
+    }
+
+    @property @safe @nogc pure nothrow
+    bool isSymbol() const
+    {
+        return _type == Type.Symbol;
     }
 
 // deprecated
@@ -1494,11 +1335,11 @@ struct Value
 
     //--------------------------------------------------------------------
     @trusted nothrow
-    Derror* toHash(out size_t h, CallContext* cc)
+    Derror toHash(out size_t h, CallContext* cc)
     {
         import dmdscript.primitive : calcHash;
 
-        Derror* err;
+        Derror err;
         final switch(_type)
         {
         case Type.RefError:
@@ -1545,9 +1386,9 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* Get(in PropertyKey PropertyName, out Value* ret, CallContext* cc)
+    Derror Get(in PropertyKey PropertyName, out Value* ret, CallContext* cc)
     {
-        Derror* err;
+        Derror err;
         if(_type == Type.Object)
         {
             _object.Get(PropertyName, ret, cc).onError(err);
@@ -1566,13 +1407,13 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* Set(K, V)(in auto ref K name, auto ref V value, CallContext* cc)
+    Derror Set(K, V)(in auto ref K name, auto ref V value, CallContext* cc)
         if (canHave!V && PropertyKey.IsKey!K)
 
     {
         import std.conv : to;
 
-        Derror* err;
+        Derror err;
         if(_type == Type.Object)
         {
             _object.Set(name, value, Property.Attribute.None, cc).onError(err);
@@ -1602,10 +1443,10 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* GetV(K)(in auto ref K PropertyName, out Value* ret, CallContext* cc)
+    Derror GetV(K)(in auto ref K PropertyName, out Value* ret, CallContext* cc)
     if (PropertyKey.IsKey!K)
     {
-        Derror* err;
+        Derror err;
         Dobject o;
         if (!toObject(cc.realm, o).onError(err))
             o.Get(cc, PropertyName, ret).onError(err);
@@ -1636,12 +1477,12 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    Derror Call(CallContext* cc, Dobject othis, out Value ret,
                  Value[] arglist)
     {
         import std.conv : to;
 
-        Derror* err;
+        Derror err;
         if(_type == Type.Object)
         {
             _object.Call(cc, othis, ret, arglist).onError(err);
@@ -1663,10 +1504,10 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    Derror Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         import std.conv : to;
-        Derror* err;
+        Derror err;
         if(_type == Type.Object)
             _object.Construct(cc, ret, arglist).onError(err);
         else if(_type == Type.RefError)
@@ -1684,9 +1525,9 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* putIterator(out Value v, CallContext* cc)
+    Derror putIterator(out Value v, CallContext* cc)
     {
-        Derror* err;
+        Derror err;
         if(_type == Type.Object)
             _object.putIterator(v).onError(err);
         else
@@ -1699,11 +1540,11 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror* Invoke(K)(CallContext* cc, in auto ref K key,
+    Derror Invoke(K)(CallContext* cc, in auto ref K key,
                       out Value ret, Value[] args)
         if (PropertyKey.IsKey!K)
     {
-        Derror* err;
+        Derror err;
         Dfunction f;
         if (!GetV(cc, key).onError(err) && f !is null)
             f.Call(cc, object, ret, args).onError(err);
@@ -1726,15 +1567,6 @@ private:
 
         Iterator* _iter;         // V_ITER
         BigInt* _bi;
-    }
-
-    //
-    @trusted
-    void throwRefError() const
-    {
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // throw UndefinedVarError.toThrow(_text);
-        // throw new Exception(_text);
     }
 
     //
@@ -1798,51 +1630,3 @@ Value* CanonicalNumericIndexString(CallContext* cc, in string str)
     }
     return value;
 }
-
-
-//------------------------------------------------------------------------------
-/* DError contains the ending status of a function.
-DError is needed for catch statements in the script.
- */
-// struct DError
-// {
-//     import dmdscript.protoerror : D0base;
-
-//     Value entity;
-//     alias entity this;
-
-//     ///
-//     @trusted
-//     this(CallContext* cc, ref Value v,
-//          string file = __FILE__, size_t line = __LINE__)
-//     {
-
-//         if (v.isObject)
-//         {
-//             if (d0 = cast(D0base)v.object)
-//                 entity = v;
-//             else
-//                 entity.put(cc.realm.dTypeError(v, null, file, line));
-//         }
-//         else
-//             entity.put(cc.realm.dTypeError(v, null, file, line));
-//     }
-
-//     ///
-//     this (CallContext* cc, Throwable se,
-//           string file = __FILE__, size_t line = __LINE__)
-//     {
-//         import dmdscript.protoerror;
-//         entity.put(cc.realm.dTypeError(se.msg, se, file, line));
-//     }
-
-//     ///
-//     @property @nogc pure nothrow
-//     D0base d0()
-//     {
-//         assert (v.isObject);
-//         auto d = cast(D0base)value.object;
-//         assert (d !is null);
-//         return d;
-//     }
-// }

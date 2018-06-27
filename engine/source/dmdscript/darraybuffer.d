@@ -50,7 +50,7 @@ class DarrayBufferConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -62,7 +62,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isView(
+Derror isView(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -72,7 +72,7 @@ Derror* isView(
 
 //
 @DFD()
-Derror* byteLength(
+Derror byteLength(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -81,7 +81,7 @@ Derror* byteLength(
 
 //
 @DFD(2)
-Derror* slice(
+Derror slice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

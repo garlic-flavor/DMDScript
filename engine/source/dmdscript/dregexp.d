@@ -136,7 +136,7 @@ class DregexpConstructor : Dconstructor
         return new Dregexp(classPrototype, args);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    override Derror Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         import dmdscript.primitive : Text;
         // ECMA 262 v3 15.10.4.1
@@ -201,7 +201,7 @@ class DregexpConstructor : Dconstructor
         }
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 262 v3 15.10.3.1
@@ -226,14 +226,14 @@ class DregexpConstructor : Dconstructor
     }
 
     override
-    Derror* Get(in PropertyKey PropertyName,  out Value* ret, CallContext* cc)
+    Derror Get(in PropertyKey PropertyName,  out Value* ret, CallContext* cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
         return super.Get(sk, ret, cc);
     }
 
     override
-    Derror* Set(in PropertyKey PropertyName, ref Value value,
+    Derror Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, CallContext* cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
@@ -292,7 +292,7 @@ class DregexpConstructor : Dconstructor
 
 /* ===================== Dregexp_prototype_toString =============== */
 @DFD(0)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -317,7 +317,7 @@ Derror* toString(
 
 /* ===================== Dregexp_prototype_test =============== */
 @DFD(1)
-Derror* test(
+Derror test(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -328,7 +328,7 @@ Derror* test(
 
 /* ===================== Dregexp_prototype_exec ============= */
 @DFD(1)
-Derror* exec(
+Derror exec(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -338,7 +338,7 @@ Derror* exec(
 
 /* ===================== Dregexp_prototype_compile ============= */
 @DFD(2)
-Derror* compile(
+Derror compile(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -503,7 +503,7 @@ class Dregexp : Dobject
         re = new RegExp(null, null);
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // This is the same as calling RegExp.prototype.exec(str)
@@ -534,7 +534,7 @@ static:
         }
     }
 
-    Derror* exec(Dobject othis, CallContext* cc, out Value ret,
+    Derror exec(Dobject othis, CallContext* cc, out Value ret,
                  Value[] arglist, int rettype)
     {
         // othis must be a RegExp

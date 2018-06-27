@@ -249,7 +249,7 @@ class SrcFile
             buffer = null;
     }
 
-    Derror* execute()
+    Derror execute()
     {
         import dmdscript.value: Value;
         import dmdscript.exception;
@@ -468,7 +468,7 @@ class Test262 : Dobject
 static:
 
     @DFD(0)
-    Derror* createRealm(
+    Derror createRealm(
         DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
         Value[] arglist)
     {
@@ -513,7 +513,7 @@ class DemptyRealm: Drealm
 
 static:
     @DFD(1)
-    Derror* eval(
+    Derror eval(
         DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
         Value[] arglist)
     {
@@ -661,7 +661,7 @@ void errinfo(Throwable t)
     }
 }
 
-void errout(Derror* e, ref SrcFile sf)
+void errout(Derror e, ref SrcFile sf)
 {
     import std.format: format;
     import dmdscript.ir: Opcode;
@@ -677,17 +677,10 @@ void errout(Derror* e, ref SrcFile sf)
     stderr.flush;
     scope(exit) stderr.flush;
 
-    assert (e.isObject);
-    auto eo = e.object;
-    auto ti = e.traceinfo;
-
 next:
-    assert (ti !is null);
+    setConsoleColorRed({sink(e.message);}); sink("\n");
 
-    // setConsoleColorRed({sink(eo.classname);}); sink(": ");
-    setConsoleColorRed({sink(ti.message);}); sink("\n");
-
-    if (auto t = ti.throwable)
+    if (auto t = e.throwable)
     {
         if      (auto se = cast(SyntaxException)t)
             errout(se, sf);
@@ -698,7 +691,7 @@ next:
         sink("\n");
     }
 
-    for (auto t = ti.trace; t !is null; t = t.next)
+    for (auto t = e.trace; t !is null; t = t.next)
     {
         debug
         {
@@ -757,10 +750,10 @@ next:
         sink("\n");
     }
 
-    if (auto p = ti.previous)
+    if (auto p = e.previous)
     {
         sink("----------\n");
-        ti = p;
+        e = p;
         goto next;
     }
 }

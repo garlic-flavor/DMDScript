@@ -39,7 +39,7 @@ class DboundFunction : Dobject
     }
 
     override
-    Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    Derror Call(CallContext* cc, Dobject othis, out Value ret,
                  Value[] arglist)
     {
         assert(BoundTargetFunction !is null);

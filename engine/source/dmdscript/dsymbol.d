@@ -125,13 +125,13 @@ class DsymbolConstructor : Dconstructor
         return new Dsymbol(classPrototype, args);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         import dmdscript.primitive: PropertyKey;
@@ -155,7 +155,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static, "for")
-Derror* _for(
+Derror _for(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -163,7 +163,7 @@ Derror* _for(
 }
 
 @DFD(0)
-Derror* valueOf(
+Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

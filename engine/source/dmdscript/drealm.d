@@ -242,11 +242,11 @@ class DmoduleRealm: Drealm
     }
 
     override
-    Derror* Call(CallContext* cc, Dobject othis, out Value ret, Value[] args)
+    Derror Call(CallContext* cc, Dobject othis, out Value ret, Value[] args)
     {
         import dmdscript.program: execute;
 
-        Derror* err;
+        Derror err;
         _fd.execute (this, ret).onError(err);
         return err;
     }
@@ -255,7 +255,7 @@ class DmoduleRealm: Drealm
 //==============================================================================
 
 @DFD(1)
-Derror* CreateRealm (
+Derror CreateRealm (
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -280,7 +280,7 @@ Derror* CreateRealm (
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* eval(
+Derror eval(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -300,7 +300,7 @@ Derror* eval(
     string s;
     FunctionDefinition fd;
     // ScriptException exception;
-    Derror* result;
+    Derror result;
     // Dobject callerothis;
     // Dobject[] scopes;
 
@@ -317,7 +317,10 @@ Derror* eval(
     // topstatements = p.parseProgram;
     try fd = s.parse(cc.realm.modulePool, cc.strictMode);
     catch (SyntaxException se)
-        return new Derror(cc, se, Value(cc.realm.dSyntaxError(se.msg)));
+    {
+        Value msg = Value(cc.realm.dSyntaxError(se.msg));
+        return new Derror(se, msg);
+    }
 
     fd.iseval = 1;
     debug
@@ -331,7 +334,8 @@ Derror* eval(
     {
         import dmdscript.protoerror: toError;
         ee.base = s;
-        return new Derror(cc, ee, Value(ee.type.toError(ee.msg, cc.realm)));
+        auto msg = Value(ee.type.toError(ee.msg, cc.realm));
+        return new Derror(ee, msg);
     }
 
     debug
@@ -482,7 +486,7 @@ Derror* eval(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-Derror* parseInt(
+Derror parseInt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -610,7 +614,7 @@ Derror* parseInt(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* parseFloat(
+Derror parseFloat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -638,7 +642,7 @@ int ISURIALNUM(dchar c)
 char[16 + 1] TOHEX = "0123456789ABCDEF";
 
 @DFD(1)
-Derror* escape(
+Derror escape(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -706,7 +710,7 @@ Derror* escape(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* unescape(
+Derror unescape(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -796,7 +800,7 @@ Derror* unescape(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* isNaN(
+Derror isNaN(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -819,7 +823,7 @@ Derror* isNaN(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* isFinite(
+Derror isFinite(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -841,15 +845,15 @@ Derror* isFinite(
 }
 
 //------------------------------------------------------------------------------
-Derror* URI_error(CallContext* cc, string s)
+Derror URI_error(CallContext* cc, string s)
 {
     auto msg = s ~ "() failure";
     auto o = cc.realm.dUriError(msg);
     auto v = Value(o);
-    return new Derror(cc, msg, v);
+    return new Derror(v);
 }
 @DFD(1)
-Derror* decodeURI(
+Derror decodeURI(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -873,7 +877,7 @@ Derror* decodeURI(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* decodeURIComponent(
+Derror decodeURIComponent(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -898,7 +902,7 @@ Derror* decodeURIComponent(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* encodeURI(
+Derror encodeURI(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -923,7 +927,7 @@ Derror* encodeURI(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* encodeURIComponent(
+Derror encodeURIComponent(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -989,7 +993,7 @@ void dglobal_print(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* print(
+Derror print(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1000,7 +1004,7 @@ Derror* print(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* println(
+Derror println(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1014,7 +1018,7 @@ Derror* println(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* readln(
+Derror readln(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1071,7 +1075,7 @@ Derror* readln(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* getenv(
+Derror getenv(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1097,7 +1101,7 @@ Derror* getenv(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* ScriptEngine(
+Derror ScriptEngine(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1109,7 +1113,7 @@ Derror* ScriptEngine(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* ScriptEngineBuildVersion(
+Derror ScriptEngineBuildVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1119,7 +1123,7 @@ Derror* ScriptEngineBuildVersion(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* ScriptEngineMajorVersion(
+Derror ScriptEngineMajorVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1129,7 +1133,7 @@ Derror* ScriptEngineMajorVersion(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* ScriptEngineMinorVersion(
+Derror ScriptEngineMinorVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

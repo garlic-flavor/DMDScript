@@ -103,7 +103,7 @@ string dateToString(CallContext* cc, d_time t, TIMEFORMAT tf)
 
 /* ===================== Ddate.constructor functions ==================== */
 @DFD(1, DFD.Type.Static)
-Derror* parse(
+Derror parse(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -124,7 +124,7 @@ Derror* parse(
 }
 
 @DFD(7, DFD.Type.Static)
-Derror* UTC(
+Derror UTC(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -184,7 +184,7 @@ Derror* UTC(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* now(
+Derror now(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -208,7 +208,7 @@ class DdateConstructor : Dconstructor
         return new Ddate(classPrototype, args);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.9.3
@@ -293,13 +293,14 @@ class DdateConstructor : Dconstructor
         catch(Throwable t)
         {
             ret.putVundefined;
-            return new Derror(cc, t, Value("date conversion error"));
+            auto msg = Value("date conversion error");
+            return new Derror(t, msg);
         }
         ret.put(o);
         return null;
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
 
@@ -325,7 +326,8 @@ class DdateConstructor : Dconstructor
         catch (Throwable t)
         {
             ret.putVundefined;
-            return new Derror(cc, t, Value("date conversion error."));
+            auto msg = Value("date conversion error.");
+            return new Derror(t, msg);
         }
         ret.put(s);
         return null;
@@ -335,7 +337,7 @@ class DdateConstructor : Dconstructor
 
 /* ===================== Ddate.prototype functions =============== */
 
-Derror* checkdate(CallContext* cc, out Value ret, string name, Dobject othis)
+Derror checkdate(CallContext* cc, out Value ret, string name, Dobject othis)
 {
     ret.putVundefined();
     return FunctionWantsDateError(cc, name, othis.classname);
@@ -364,7 +366,7 @@ int getThisLocalTime(out Value ret, Dobject othis, out d_time n)
     return isn;
 }
 @DFD(0)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -390,7 +392,7 @@ Derror* toString(
     return null;
 }
 @DFD(0)
-Derror* toDateString(
+Derror toDateString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -415,7 +417,7 @@ Derror* toDateString(
     return null;
 }
 @DFD(0)
-Derror* toTimeString(
+Derror toTimeString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -441,7 +443,7 @@ Derror* toTimeString(
     return null;
 }
 @DFD(0)
-Derror* valueOf(
+Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -454,7 +456,7 @@ Derror* valueOf(
     return null;
 }
 @DFD(0)
-Derror* getTime(
+Derror getTime(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -467,7 +469,7 @@ Derror* getTime(
     return null;
 }
 @DFD(0)
-Derror* getYear(
+Derror getYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -494,7 +496,7 @@ Derror* getYear(
     return null;
 }
 @DFD(0)
-Derror* getFullYear(
+Derror getFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -512,7 +514,7 @@ Derror* getFullYear(
     return null;
 }
 @DFD(0)
-Derror* getUTCFullYear(
+Derror getUTCFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -529,7 +531,7 @@ Derror* getUTCFullYear(
     return null;
 }
 @DFD(0)
-Derror* getMonth(
+Derror getMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -547,7 +549,7 @@ Derror* getMonth(
     return null;
 }
 @DFD(0)
-Derror* getUTCMonth(
+Derror getUTCMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -565,7 +567,7 @@ Derror* getUTCMonth(
     return null;
 }
 @DFD(0)
-Derror* getDate(
+Derror getDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -585,7 +587,7 @@ Derror* getDate(
     return null;
 }
 @DFD(0)
-Derror* getUTCDate(
+Derror getUTCDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -603,7 +605,7 @@ Derror* getUTCDate(
     return null;
 }
 @DFD(0)
-Derror* getDay(
+Derror getDay(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -621,7 +623,7 @@ Derror* getDay(
     return null;
 }
 @DFD(0)
-Derror* getUTCDay(
+Derror getUTCDay(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -639,7 +641,7 @@ Derror* getUTCDay(
     return null;
 }
 @DFD(0)
-Derror* getHours(
+Derror getHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -657,7 +659,7 @@ Derror* getHours(
     return null;
 }
 @DFD(0)
-Derror* getUTCHours(
+Derror getUTCHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -675,7 +677,7 @@ Derror* getUTCHours(
     return null;
 }
 @DFD(0)
-Derror* getMinutes(
+Derror getMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -693,7 +695,7 @@ Derror* getMinutes(
     return null;
 }
 @DFD(0)
-Derror* getUTCMinutes(
+Derror getUTCMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -711,7 +713,7 @@ Derror* getUTCMinutes(
     return null;
 }
 @DFD(0)
-Derror* getSeconds(
+Derror getSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -729,7 +731,7 @@ Derror* getSeconds(
     return null;
 }
 @DFD(0)
-Derror* getUTCSeconds(
+Derror getUTCSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -747,7 +749,7 @@ Derror* getUTCSeconds(
     return null;
 }
 @DFD(0)
-Derror* getMilliseconds(
+Derror getMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -765,7 +767,7 @@ Derror* getMilliseconds(
     return null;
 }
 @DFD(0)
-Derror* getUTCMilliseconds(
+Derror getUTCMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -783,7 +785,7 @@ Derror* getUTCMilliseconds(
     return null;
 }
 @DFD(0)
-Derror* getTimezoneOffset(
+Derror getTimezoneOffset(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -801,7 +803,7 @@ Derror* getTimezoneOffset(
     return null;
 }
 @DFD(1)
-Derror* setTime(
+Derror setTime(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -821,7 +823,7 @@ Derror* setTime(
     return null;
 }
 @DFD(1)
-Derror* setMilliseconds(
+Derror setMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -849,7 +851,7 @@ Derror* setMilliseconds(
     return null;
 }
 @DFD(1)
-Derror* setUTCMilliseconds(
+Derror setUTCMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -876,7 +878,7 @@ Derror* setUTCMilliseconds(
     return null;
 }
 @DFD(2)
-Derror* setSeconds(
+Derror setSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -918,7 +920,7 @@ Derror* setSeconds(
     return null;
 }
 @DFD(2)
-Derror* setUTCSeconds(
+Derror setUTCSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -960,7 +962,7 @@ Derror* setUTCSeconds(
     return null;
 }
 @DFD(3)
-Derror* setMinutes(
+Derror setMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1012,7 +1014,7 @@ Derror* setMinutes(
     return null;
 }
 @DFD(3)
-Derror* setUTCMinutes(
+Derror setUTCMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1064,7 +1066,7 @@ Derror* setUTCMinutes(
     return null;
 }
 @DFD(4)
-Derror* setHours(
+Derror setHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1128,7 +1130,7 @@ Derror* setHours(
     return null;
 }
 @DFD(4)
-Derror* setUTCHours(
+Derror setUTCHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1192,7 +1194,7 @@ Derror* setUTCHours(
     return null;
 }
 @DFD(1)
-Derror* setDate(
+Derror setDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1219,7 +1221,7 @@ Derror* setDate(
     return null;
 }
 @DFD(1)
-Derror* setUTCDate(
+Derror setUTCDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1246,7 +1248,7 @@ Derror* setUTCDate(
     return null;
 }
 @DFD(2)
-Derror* setMonth(
+Derror setMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1288,7 +1290,7 @@ Derror* setMonth(
     return null;
 }
 @DFD(2)
-Derror* setUTCMonth(
+Derror setUTCMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1330,7 +1332,7 @@ Derror* setUTCMonth(
     return null;
 }
 @DFD(3)
-Derror* setFullYear(
+Derror setFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1382,7 +1384,7 @@ Derror* setFullYear(
     return null;
 }
 @DFD(3)
-Derror* setUTCFullYear(
+Derror setUTCFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1434,7 +1436,7 @@ Derror* setUTCFullYear(
     return null;
 }
 @DFD(1)
-Derror* setYear(
+Derror setYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1473,7 +1475,7 @@ Derror* setYear(
     return null;
 }
 @DFD(0)
-Derror* toLocaleString(
+Derror toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1492,7 +1494,7 @@ Derror* toLocaleString(
     return null;
 }
 @DFD(0)
-Derror* toLocaleDateString(
+Derror toLocaleDateString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1511,7 +1513,7 @@ Derror* toLocaleDateString(
     return null;
 }
 @DFD(0)
-Derror* toLocaleTimeString(
+Derror toLocaleTimeString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1529,7 +1531,7 @@ Derror* toLocaleTimeString(
     return null;
 }
 @DFD(0)
-Derror* toUTCString(
+Derror toUTCString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1549,7 +1551,7 @@ Derror* toUTCString(
 
 //
 @DFD(1)
-Derror* toJSON(
+Derror toJSON(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

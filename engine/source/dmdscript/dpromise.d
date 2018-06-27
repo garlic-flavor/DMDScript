@@ -49,7 +49,7 @@ class DpromiseConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -61,7 +61,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* all(
+Derror all(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -70,7 +70,7 @@ Derror* all(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* race(
+Derror race(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -79,7 +79,7 @@ Derror* race(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* reject(
+Derror reject(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -88,7 +88,7 @@ Derror* reject(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* resolve(
+Derror resolve(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -100,7 +100,7 @@ Derror* resolve(
 
 //
 @DFD(1, DFD.Type.Prototype, "catch")
-Derror* _catch(
+Derror _catch(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -109,7 +109,7 @@ Derror* _catch(
 
 //
 @DFD(2)
-Derror* then(
+Derror then(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

@@ -43,7 +43,7 @@ class Darray : Dobject
     size_t ulength;
 
     override
-    Derror* Set(in PropertyKey key, ref Value v,
+    Derror Set(in PropertyKey key, ref Value v,
                 in Property.Attribute attributes, CallContext* cc)
     {
         import dmdscript.errmsgs: LengthIntError;
@@ -66,7 +66,7 @@ class Darray : Dobject
             uint i;
             uint c;
             double num;
-            Derror* result;
+            Derror result;
 
             // ECMA 15.4.5.1
             result = proptable.set(key, v, this, attributes, IsExtensible, cc);
@@ -144,7 +144,7 @@ class Darray : Dobject
         }
     }
 
-    override Derror* Get(in PropertyKey PropertyName, out Value* ret,
+    override Derror Get(in PropertyKey PropertyName, out Value* ret,
                          CallContext* cc)
     {
         //writef("Darray.Get(%p, '%s')\n", &proptable, PropertyName);
@@ -235,7 +235,7 @@ class DarrayConstructor : Dconstructor
     }
 
     override
-    Derror* Construct(CallContext* cc, out Value ret, Value[] arglist)
+    Derror Construct(CallContext* cc, out Value ret, Value[] arglist)
     {
         import dmdscript.primitive : PropertyKey;
         import dmdscript.errmsgs: ArrayLenOutOfBoundsError;
@@ -325,7 +325,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* from(
+Derror from(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -334,7 +334,7 @@ Derror* from(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* isArray(
+Derror isArray(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -343,7 +343,7 @@ Derror* isArray(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* of(
+Derror of(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -355,7 +355,7 @@ Derror* of(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -366,7 +366,7 @@ Derror* toString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toLocaleString(
+Derror toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -423,7 +423,7 @@ Derror* toLocaleString(
                 return err;
             if(v && !v.isPrimitive())   // if it's an Object
             {
-                Derror* a;
+                Derror a;
                 Dobject o;
                 Value rt;
                 string s;
@@ -447,7 +447,7 @@ Derror* toLocaleString(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* concat(
+Derror concat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -498,7 +498,7 @@ Derror* concat(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* join(
+Derror join(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -553,7 +553,7 @@ void array_join(CallContext* cc, Dobject othis, out Value ret,
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toSource(
+Derror toSource(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -599,7 +599,7 @@ Derror* toSource(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* pop(
+Derror pop(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -640,7 +640,7 @@ Derror* pop(
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* push(
+Derror push(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -674,7 +674,7 @@ Derror* push(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* reverse(
+Derror reverse(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -726,7 +726,7 @@ Derror* reverse(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* shift(
+Derror shift(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -782,7 +782,7 @@ Derror* shift(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-Derror* slice(
+Derror slice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -998,7 +998,7 @@ extern (C) int compare_value(scope const void* x, scope const void* y)
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* sort(
+Derror sort(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1139,7 +1139,7 @@ Derror* sort(
 
 //------------------------------------------------------------------------------
 @DFD(2)
-Derror* splice(
+Derror splice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1310,7 +1310,7 @@ else
 
 //------------------------------------------------------------------------------
 @DFD(1)
-Derror* unshift(
+Derror unshift(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1353,7 +1353,7 @@ Derror* unshift(
 
 //
 @DFD(1)
-Derror* copyWithin(
+Derror copyWithin(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1362,7 +1362,7 @@ Derror* copyWithin(
 
 //
 @DFD(0)
-Derror* entries(
+Derror entries(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1371,7 +1371,7 @@ Derror* entries(
 
 //
 @DFD(1)
-Derror* every(
+Derror every(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1380,7 +1380,7 @@ Derror* every(
 
 //
 @DFD(1)
-Derror* fill(
+Derror fill(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1389,7 +1389,7 @@ Derror* fill(
 
 //
 @DFD(1)
-Derror* filter(
+Derror filter(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1398,7 +1398,7 @@ Derror* filter(
 
 //
 @DFD(1)
-Derror* find(
+Derror find(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1407,7 +1407,7 @@ Derror* find(
 
 //
 @DFD(1)
-Derror* findIndex(
+Derror findIndex(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1416,7 +1416,7 @@ Derror* findIndex(
 
 //
 @DFD(1)
-Derror* forEach(
+Derror forEach(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1425,7 +1425,7 @@ Derror* forEach(
 
 //
 @DFD(1)
-Derror* includes(
+Derror includes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1434,7 +1434,7 @@ Derror* includes(
 
 //
 @DFD(1)
-Derror* indexOf(
+Derror indexOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1443,7 +1443,7 @@ Derror* indexOf(
 
 //
 @DFD(1)
-Derror* keys(
+Derror keys(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1452,7 +1452,7 @@ Derror* keys(
 
 //
 @DFD(1)
-Derror* lastIndexOf(
+Derror lastIndexOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1461,7 +1461,7 @@ Derror* lastIndexOf(
 
 //
 @DFD(1)
-Derror* map(
+Derror map(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1470,7 +1470,7 @@ Derror* map(
 
 //
 @DFD(1)
-Derror* reduce(
+Derror reduce(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1479,7 +1479,7 @@ Derror* reduce(
 
 //
 @DFD(1)
-Derror* reduceRight(
+Derror reduceRight(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1488,7 +1488,7 @@ Derror* reduceRight(
 
 //
 @DFD(1)
-Derror* some(
+Derror some(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -1497,7 +1497,7 @@ Derror* some(
 
 //
 @DFD(1)
-Derror* values(
+Derror values(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

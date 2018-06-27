@@ -24,185 +24,198 @@ import dmdscript.dobject: Dobject;
 // import dmdscript.drealm: Drealm;
 debug import std.stdio;
 
-struct Derror
-{
-    import dmdscript.value: Value;
-    import dmdscript.callcontext: CallContext;
-    import dmdscript.opcodes: IR;
+// struct Derror
+// {
+//     import dmdscript.value: Value;
+//     import dmdscript.callcontext: CallContext;
+//     import dmdscript.opcodes: IR;
 
-    Value entity;
-    alias entity this;
+//     Value entity;
+//     alias entity this;
 
-    nothrow
-    this(CallContext* cc, Value v,
-         string f = __FILE__, size_t l = __LINE__)
-    {
-        Dobject o;
-        v.to(o, cc);
-        assert (o !is null);
-        entity.put(o);
-        auto ti = traceinfo;
-        ti.addTrace(f, l);
-    }
+//     nothrow
+//     this(CallContext* cc, Value v,
+//          string f = __FILE__, size_t l = __LINE__)
+//     {
+//         Dobject o;
+//         v.to(o, cc);
+//         assert (o !is null);
+//         entity.put(o);
+//         auto ti = traceinfo;
+//         ti.addTrace(f, l);
+//     }
 
-    nothrow
-    this(CallContext* cc, string msg, Value v,
-         string f = __FILE__, size_t l = __LINE__)
-    {
-        import dmdscript.primitive: Key;
-        import dmdscript.property: Property;
-        alias PA = Property.Attribute;
+//     nothrow
+//     this(CallContext* cc, string msg, Value v,
+//          string f = __FILE__, size_t l = __LINE__)
+//     {
+//         import dmdscript.primitive: Key;
+//         import dmdscript.property: Property;
+//         alias PA = Property.Attribute;
 
-        Dobject o;
-        v.to(o, cc);
-        assert (o !is null);
-        entity.put(o);
-        auto ti = traceinfo;
-        ti.addTrace(f, l);
+//         Dobject o;
+//         v.to(o, cc);
+//         assert (o !is null);
+//         entity.put(o);
+//         auto ti = traceinfo;
+//         ti.addTrace(f, l);
 
-        auto m = Value(msg);
-        o.Set(Key.message, m, PA.None, cc);
-    }
+//         auto m = Value(msg);
+//         o.Set(Key.message, m, PA.None, cc);
+//     }
 
-    nothrow
-    this(CallContext* cc, Throwable t, Value v,
-         string f = __FILE__, size_t l = __LINE__)
-    {
-        import dmdscript.primitive: Key;
-        import dmdscript.property: Property;
-        alias PA = Property.Attribute;
+//     nothrow
+//     this(CallContext* cc, Throwable t, Value v,
+//          string f = __FILE__, size_t l = __LINE__)
+//     {
+//         import dmdscript.primitive: Key;
+//         import dmdscript.property: Property;
+//         alias PA = Property.Attribute;
 
-        Dobject o;
-        v.to(o, cc);
-        assert (o !is null);
+//         Dobject o;
+//         v.to(o, cc);
+//         assert (o !is null);
 
-        entity.put(o);
-        auto ti = traceinfo;
+//         entity.put(o);
+//         auto ti = traceinfo;
 
-        ti.throwable = t;
-        ti.addTrace(f, l);
+//         ti.throwable = t;
+//         ti.addTrace(f, l);
 
-        Value m;
-        m.put(t.msg);
-        o.Set(Key.message, m, PA.None, cc);
-    }
+//         Value m;
+//         m.put(t.msg);
+//         o.Set(Key.message, m, PA.None, cc);
+//     }
 
-    @safe @property pure nothrow
-    TraceInfo traceinfo()
-    {
-        import dmdscript.property: Property;
-        alias PA = Property.Attribute;
+//     @safe @property pure nothrow
+//     TraceInfo traceinfo()
+//     {
+//         import dmdscript.property: Property;
+//         alias PA = Property.Attribute;
 
-        Dobject o;
-        Value* ret;
-        Derror* err;
+//         Dobject o;
+//         Value* ret;
+//         Derror* err;
 
-        assert (entity.isObject);
-        o = entity.object;
-        assert (o !is null);
+//         assert (entity.isObject);
+//         o = entity.object;
+//         assert (o !is null);
 
-        if (auto p = o.GetOwnProperty(TraceInfo.key))
-        {
-            assert (!p.isAccessor);
-            ret = p.getAsData;
-            assert (ret !is null);
-            assert (ret.isObject, Value.toString(ret.type));
-            o = ret.object;
-            if (auto ti = cast(TraceInfo)o)
-                return ti;
-        }
+//         if (auto p = o.GetOwnProperty(TraceInfo.key))
+//         {
+//             assert (!p.isAccessor);
+//             ret = p.getAsData;
+//             assert (ret !is null);
+//             assert (ret.isObject, Value.toString(ret.type));
+//             o = ret.object;
+//             if (auto ti = cast(TraceInfo)o)
+//                 return ti;
+//         }
 
-        TraceInfo ti;
-        Value vti;
-        ti = new TraceInfo;
-        vti.put(ti);
-        o.DefineOwnProperty(TraceInfo.key, vti, PA.None);
-        entity.put(o);
-        return ti;
-    }
+//         TraceInfo ti;
+//         Value vti;
+//         ti = new TraceInfo;
+//         vti.put(ti);
+//         o.DefineOwnProperty(TraceInfo.key, vti, PA.None);
+//         entity.put(o);
+//         return ti;
+//     }
 
-    @safe pure nothrow
-    void addTrace(string f = __FILE__, size_t l = __LINE__)
-    {
-        auto ti = traceinfo;
-        assert (ti !is null);
-        ti.addTrace(f, l);
-    }
+//     @safe pure nothrow
+//     void addTrace(string f = __FILE__, size_t l = __LINE__)
+//     {
+//         auto ti = traceinfo;
+//         assert (ti !is null);
+//         ti.addTrace(f, l);
+//     }
 
-    @safe pure nothrow
-    void addTrace(const(IR)* b, const(IR)* c,
-                  string f = __FILE__, size_t l = __LINE__)
-    {
-        auto ti = traceinfo;
-        assert (ti !is null);
-        ti.addTrace(b, c, f, l);
-    }
+//     @safe pure nothrow
+//     void addTrace(const(IR)* b, const(IR)* c,
+//                   string f = __FILE__, size_t l = __LINE__)
+//     {
+//         auto ti = traceinfo;
+//         assert (ti !is null);
+//         ti.addTrace(b, c, f, l);
+//     }
 
-    @safe pure nothrow
-    void addInfo(string id, string fn, bool sm)
-    {
-        auto ti = traceinfo;
-        assert (ti !is null);
-        ti.addInfo(id, fn, sm);
-    }
+//     @safe pure nothrow
+//     void addInfo(string id, string fn, bool sm)
+//     {
+//         auto ti = traceinfo;
+//         assert (ti !is null);
+//         ti.addInfo(id, fn, sm);
+//     }
 
-    @safe pure nothrow
-    void addSource(string src)
-    {
-        auto ti = traceinfo;
-        assert (ti !is null);
-        ti.addSource(src);
-    }
+//     @safe pure nothrow
+//     void addSource(string src)
+//     {
+//         auto ti = traceinfo;
+//         assert (ti !is null);
+//         ti.addSource(src);
+//     }
 
-    nothrow
-    void addMessage(string msg, CallContext* cc)
-    {
-        import dmdscript.primitive: Key;
-        import dmdscript.property: Property;
-        alias PA = Property.Attribute;
+//     nothrow
+//     void addMessage(string msg, CallContext* cc)
+//     {
+//         import dmdscript.primitive: Key;
+//         import dmdscript.property: Property;
+//         alias PA = Property.Attribute;
 
-        assert (entity.isObject);
+//         assert (entity.isObject);
 
-        auto o = entity.object;
-        Value* v;
-        string m;
-        o.Get(Key.message, v, cc);
-        if (v !is null)
-            v.to(m, cc);
-        m ~= msg;
-        v.put(m);
-        o.Set(Key.message, *v, PA.None, cc);
-    }
+//         auto o = entity.object;
+//         Value* v;
+//         string m;
+//         o.Get(Key.message, v, cc);
+//         if (v !is null)
+//             v.to(m, cc);
+//         m ~= msg;
+//         v.put(m);
+//         o.Set(Key.message, *v, PA.None, cc);
+//     }
 
-    nothrow
-    void updateMessage(CallContext* cc)
-    {
-        string m;
-        entity.to(m, cc);
-        traceinfo.message = m;
-    }
+//     nothrow
+//     void updateMessage(CallContext* cc)
+//     {
+//         string m;
+//         entity.to(m, cc);
+//         traceinfo.message = m;
+//     }
 
-    nothrow
-    void addPrev(Derror* prev)
-    {
-        if (prev is null)
-            return;
-        traceinfo.addPrev(prev.traceinfo);
-    }
-}
+//     nothrow
+//     void addPrev(Derror* prev)
+//     {
+//         if (prev is null)
+//             return;
+//         traceinfo.addPrev(prev.traceinfo);
+//     }
+// }
 
-class TraceInfo : Dobject
+class Derror
 {
     import dmdscript.opcodes: IR;
     import dmdscript.property: SpecialSymbols;
+    import dmdscript.value: Value;
+    import dmdscript.callcontext: CallContext;
     alias key = SpecialSymbols.traceinfo;
+
+    Value value;
 
     //--------------------------------------------------------------------
     ///
     @safe pure nothrow
-    this()
+    this(in ref Value v, string f = __FILE__, size_t l = __LINE__)
     {
-        super(null, key);
+        value = v;
+        addTrace(f, l);
+    }
+
+    ///
+    @safe pure nothrow
+    this(Throwable t, in ref Value v, string f = __FILE__, size_t l = __LINE__)
+    {
+        _throwable = t;
+        this(v, f, l);
     }
 
     ///
@@ -279,13 +292,22 @@ class TraceInfo : Dobject
     }
 
     @safe @nogc pure nothrow
-    void addPrev(TraceInfo prev)
+    void addPrev(Derror prev)
     {
         if (_prev !is null)
             _prev.addPrev(prev);
         else
             _prev = prev;
     }
+
+    nothrow
+    void updateMessage(CallContext* cc)
+    {
+        string m;
+        value.to(m, cc);
+        message = m;
+    }
+
 
     struct Trace
     {
@@ -306,7 +328,7 @@ private:
     string _msg;
     Throwable _throwable;
     Trace* _trace;
-    TraceInfo _prev;
+    Derror _prev;
 
     @safe @nogc pure nothrow
     void addTrace(Trace* t)
@@ -330,7 +352,7 @@ private:
 //------------------------------------------------------------------------------
 // return true on error.
 @safe pure nothrow
-bool onError(Derror* err, out Derror* sta,
+bool onError(Derror err, out Derror sta,
              string f = __FILE__, size_t l = __LINE__)
 {
     pragma (inline, true);

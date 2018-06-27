@@ -75,7 +75,7 @@ class Darguments : Dobject
     }
 
     override protected
-    Derror* Get(in PropertyKey PropertyName,  out Value* ret, CallContext* cc)
+    Derror Get(in PropertyKey PropertyName,  out Value* ret, CallContext* cc)
     {
         import dmdscript.primitive : StringToIndex;
 
@@ -86,7 +86,7 @@ class Darguments : Dobject
     }
 
     override
-    Derror* Set(in PropertyKey PropertyName, ref Value value,
+    Derror Set(in PropertyKey PropertyName, ref Value value,
                 in Property.Attribute attributes, CallContext* cc)
     {
         import dmdscript.primitive : StringToIndex;

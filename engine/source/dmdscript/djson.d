@@ -50,7 +50,7 @@ class DJSONConstructor : Dconstructor
         install(functionPrototype);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         assert (0);
@@ -63,7 +63,7 @@ private:
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* parse(
+Derror parse(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -72,7 +72,7 @@ Derror* parse(
 
 //
 @DFD(1, DFD.Type.Static)
-Derror* stringfy(
+Derror stringfy(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

@@ -72,7 +72,7 @@ This aims to alternate test262-harness-py.
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
-### Current progress is 2%(1627/59240)
+### Current progress is 2%(1653/59240)
 
 ### Passed directories.
 * ..\test262\test\annexB\language\comments

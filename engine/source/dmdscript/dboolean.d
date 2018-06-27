@@ -57,13 +57,13 @@ class DbooleanConstructor : Dconstructor
         return new Dboolean(classPrototype, b);
     }
 
-    override Derror* Construct(CallContext* cc, out Value ret,
+    override Derror Construct(CallContext* cc, out Value ret,
                                Value[] arglist)
     {
         // ECMA 15.6.2
         bool b;
         Dobject o;
-        Derror* e;
+        Derror e;
 
         if (0 < arglist.length)
             e = arglist[0].to(b, cc);
@@ -75,12 +75,12 @@ class DbooleanConstructor : Dconstructor
         return e;
     }
 
-    override Derror* Call(CallContext* cc, Dobject othis, out Value ret,
+    override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
         // ECMA 15.6.1
         bool b;
-        Derror* e;
+        Derror e;
 
         if (0 < arglist.length)
             e = arglist[0].to(b, cc);
@@ -98,7 +98,7 @@ private:
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* toString(
+Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {
@@ -119,7 +119,7 @@ Derror* toString(
 
 //------------------------------------------------------------------------------
 @DFD(0)
-Derror* valueOf(
+Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
     Value[] arglist)
 {

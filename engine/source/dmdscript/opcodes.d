@@ -64,13 +64,15 @@ struct IR
      * This is the main interpreter loop.
      */
     static nothrow
-    Derror* call(CallContext* cc, Dobject othis, const(IR)* code,
+    Derror call(CallContext* cc, Dobject othis, const(IR)* code,
                  out Value ret, Value* locals)
     {
         import std.array : join;
         import std.conv : to;
         import std.string : cmp;
         import std.bigint: BigInt;
+        alias PA = Property.Attribute;
+        alias VT = Value.Type;
 
         const(IR*) codestart = code;
         Value* a;
@@ -78,7 +80,7 @@ struct IR
         Value* c;
         Value* v;
         Dobject o;
-        Derror* sta, prevError;
+        Derror sta, prevError;
         Identifier id;
         union AX
         {
@@ -93,7 +95,7 @@ struct IR
             struct { int i1, i2; }
             struct { uint u1, u2; }
         }
-        AX ax;
+        AX ax = void;
 
         //Finally blocks are sort of called, sort of jumped to
         //So we are doing "push IP in some stack" + "jump"
@@ -108,7 +110,7 @@ struct IR
         }
 
         nothrow
-        Derror* unwindStack(Derror* err)
+        Derror unwindStack(Derror err)
         {
             // assert(scopex.length && scopex[0] !is null,
             //        "Null in scopex, Line " ~ code.opcode.linnum.to!string);
@@ -140,7 +142,7 @@ struct IR
                     }
                     else
                     {
-                        o.Set(*ca.name, *err,
+                        o.Set(*ca.name, err.value,
                               Property.Attribute.DontDelete, cc);
                     }
                     cc.push(o);
@@ -256,10 +258,9 @@ struct IR
                         cc, b.type.to!string, ax.s, id.toString);
                     goto Lthrow;
                 }
-                sta = o.Get(*id, v, cc);
-                if (sta !is null)
+                if (o.Get(*id, v, cc).onError(sta))
                     goto Lthrow;
-                if(!v)
+                if(v is null)
                 {
                     v = &undefined;
                 }
@@ -279,7 +280,7 @@ struct IR
                 code += IRTypes[Opcode.CheckRef].size;
                 goto Lnext;
             case Opcode.GetScope:            // a = s
-                a = locals + (code + 1).index;
+                mixin(fill!a);
                 id = (code + 2).id;
                 version(SCOPECACHING)
                 {
@@ -289,14 +290,12 @@ struct IR
                         version(SCOPECACHE_LOG)
                             scopecache_cnt++;
                         *a = *scopecache[si].v;
-                        code += IRTypes[Opcode.GetScope].size;
-                        goto Lnext;
+                        mixin("GetScope".goNext);
                     }
                 }
 
                 // v = scope_get(cc, scopex, id);
-                sta = cc.get(*id, v);
-                if (sta !is null)
+                if (cc.get(*id, v).onError(sta))
                     goto Lthrow;
                 if(v is null)
                 {
@@ -308,7 +307,6 @@ struct IR
 
                     cc.set(*id, undefined);
                     v = signalingUndefined(id.toString);
-                    // realm.set(*id, *v);
                 }
                 else
                 {
@@ -319,8 +317,7 @@ struct IR
                     }
                 }
                 *a = *v;
-                code += IRTypes[Opcode.GetScope].size;
-                goto Lnext;
+                mixin("GetScope".goNext);
 
             case Opcode.PutGetter:
                 assert (0, "not implemented yet");
@@ -518,19 +515,19 @@ struct IR
             case Opcode.PutThis:             // id = a
                 o = cc.getNonFakeObject;
                 id = (code + 2).id;
-                a = locals + (code + 1).index;
+                mixin(fill!a);
                 assert(o);
                 if(o.HasProperty(*id))
-                    sta = o.Set(*id, *a,
-                                Property.Attribute.DontDelete, cc);
+                {
+                    if (o.Set(*id, *a, PA.DontDelete, cc).onError(sta))
+                        goto Lthrow;
+                }
                 else
-                    sta = cc.setThis(*id, *a,
-                                     Property.Attribute.DontDelete);
-                if (sta !is null)
-                    goto Lthrow;
-                code += IRTypes[Opcode.PutThis].size;
-                goto Lnext;
-
+                {
+                    if (cc.setThis(*id, *a, PA.DontDelete).onError(sta))
+                        goto Lthrow;
+                }
+                mixin("PutThis".goNext);
             case Opcode.PutThisLocal:
                 assert (0, "not implemented yet.");
             case Opcode.PutThisLocalConst:
@@ -564,8 +561,9 @@ struct IR
             case Opcode.Number:              // a = number
                 (locals + (code + 1).index).put(
                     *cast(double*)(code + 2));
-                code += IRTypes[Opcode.Number].size;
-                goto Lnext;
+                mixin("Number".goNext);
+                // code += IRTypes[Opcode.Number].size;
+                // goto Lnext;
             case Opcode.BigInt:              // a = BigInt
                 (locals + (code + 1).index).put(
                     *cast(BigInt**)(code + 2));
@@ -663,12 +661,9 @@ struct IR
                 code += IRTypes[Opcode.Instance].size;
                 goto Lnext;
             case Opcode.Add:                     // a = b + c
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                c = locals + (code + 3).index;
+                mixin (fill!(a, b, c));
 
-                if(b.type == Value.Type.Number &&
-                   c.type == Value.Type.Number)
+                if(b.type == VT.Number && c.type == VT.Number)
                 {
                     a.put(b.number + c.number);
                 }
@@ -681,32 +676,34 @@ struct IR
                     if (c.toPrimitive(vc, cc).onError(sta))
                         goto Lthrow;
 
-                    if(vb.isString || vc.isString)
+                    if      (vb.isSymbol || vc.isSymbol)
                     {
-                        vb.to(ax.s1, cc);
-                        vc.to(ax.s2, cc);
+                        sta = TypeError(cc, "Symbol cannot add.");
+                        goto Lthrow;
+                    }
+                    else if (vb.isString || vc.isString)
+                    {
+                        mixin ("ax.s1".from!vb);
+                        mixin ("ax.s2".from!vc);
                         a.put(ax.s1 ~ ax.s2);
                     }
                     else if (vb.isBigInt || vc.isBigInt)
                     {
                         if (!vb.isBigInt || !vc.isBigInt)
                         {
-                            sta = TypeError(
-                                cc, "converting to BigInt");
+                            sta = TypeError(cc, "converting to BigInt");
                             goto Lthrow;
                         }
                         a.put(new BigInt(*vb.bigInt + *vc.bigInt));
                     }
                     else
                     {
-                        vb.to(ax.d1, cc);
-                        vc.to(ax.d2, cc);
+                        mixin ("ax.d1".from!vb);
+                        mixin ("ax.d2".from!vc);
                         a.put(ax.d1 + ax.d2);
                     }
                 }
-
-                code += IRTypes[Opcode.Add].size;
-                goto Lnext;
+                mixin ("Add".goNext);
 
             case Opcode.Sub:                 // a = b - c
                 a = locals + (code + 1).index;
@@ -1595,16 +1592,14 @@ struct IR
                 if      (o is null){}
                 else if (auto didyoumean = cc.searchSimilarWord(o, ax.s1))
                 {
-                    sta.addMessage(
-                        ", did you mean \"" ~
-                        didyoumean.join("\" or \"") ~ "\"?", cc);
+                    sta.message ~= ", did you mean \"" ~
+                        didyoumean.join("\" or \"") ~ "\"?";
                 }
                 goto Lthrow;
             case Opcode.CallScope:   // a = s(argc, argv)
                 id = (code + 2).id;
-                a = locals + (code + 1).index;
-                sta = cc.get(*id, o, v);
-                if (sta !is null)
+                mixin (fill!a);
+                if (cc.get(*id, o, v).onError(sta))
                     goto Lthrow;
 
                 if(v is null)
@@ -1614,9 +1609,8 @@ struct IR
                     sta = UndefinedVarError(cc, n);
                     if (auto didyoumean = cc.searchSimilarWord(n))
                     {
-                        sta.addMessage(
-                            ", did you mean \"" ~
-                            didyoumean.join("\" or \"") ~ "\"?", cc);
+                        sta.message ~= ", did you mean \"" ~
+                            didyoumean.join("\" or \"") ~ "\"?";
                     }
                     goto Lthrow;
                 }
@@ -1634,8 +1628,7 @@ struct IR
                     cc.addTraceInfoTo(sta);
                     goto Lthrow;
                 }
-                code += IRTypes[Opcode.CallScope].size;
-                goto Lnext;
+                mixin ("CallScope".goNext);
 
             case Opcode.CallV:   // v(argc, argv) = a
                 a = locals + (code + 1).index;
@@ -1801,23 +1794,20 @@ struct IR
                 return null;
 
             case Opcode.ImpRet:
-                a = locals + (code + 1).index;
+                mixin (fill!a);
                 if (a.checkReference(cc).onError(sta))
                     goto Lthrow;
                 ret = *a;
-
-                code += IRTypes[Opcode.ImpRet].size;
-                goto Lnext;
+                mixin ("ImpRet".goNext);
 
             case Opcode.Throw:
-                a = locals + (code + 1).index;
-                sta = new Derror(cc, *a);
+                mixin (fill!a);
+                sta = new Derror(*a);
 
             Lthrow:
                 assert(sta !is null);
                 sta.addTrace(codestart, code);
-                sta = unwindStack(sta);
-                if(sta !is null)
+                if (unwindStack(sta).onError(sta))
                 {
                     sta.addTrace(codestart, code);
                     return sta;
@@ -1884,7 +1874,7 @@ struct IR
         catch (Throwable t)
         {
             auto msg = Value("UnknownError : " ~ typeid(t).name);
-            sta = new Derror(cc, t, msg);
+            sta = new Derror(t, msg);
 
             if (unwindStack(sta).onError(sta))
                 return sta;
@@ -2013,7 +2003,7 @@ class Catch : Dobject
     import dmdscript.callcontext: CallContext;
 
     // This is so scope_get() will skip over these objects
-    override Derror* Get(in PropertyKey, out Value*, CallContext*) const
+    override Derror Get(in PropertyKey, out Value*, CallContext*) const
     {
         return null;
     }
@@ -2043,7 +2033,7 @@ class Finally : Dobject
     import dmdscript.opcodes: IR;
     import dmdscript.drealm: Drealm;
 
-    override Derror* Get(in PropertyKey, out Value*, CallContext*) const
+    override Derror Get(in PropertyKey, out Value*, CallContext*) const
     {
         return null;
     }
@@ -2067,10 +2057,10 @@ class Finally : Dobject
 /*
 Helper function for Values that cannot be converted to Objects.
  */
-Derror* cannotConvert(CallContext* cc, Value* b)
+Derror cannotConvert(CallContext* cc, Value* b)
 {
     import std.conv : to;
-    Derror* sta;
+    Derror sta;
 
     if(b.isUndefinedOrNull)
     {
@@ -2084,4 +2074,38 @@ Derror* cannotConvert(CallContext* cc, Value* b)
     }
     return sta;
 }
+
+//------------------------------------------------------------------------------
+// mixin sugar
+// a = locals + (code + 1).index;
+// b = locals + (code + 2).index;
+// c = locals + (code + 3).index;
+template fill(V...)
+{
+    import std.conv: to;
+
+    static if (0 == V.length)
+        enum fill = "";
+    else
+        enum fill = V[0].stringof ~ " = locals + (code + " ~
+            (V[0].stringof[$-1] - 'a' + 1).to!string ~ ").index;" ~
+            fill!(V[1..$]);
+}
+
+// vb.to(ax.s1, cc);
+// vc.to(ax.s2, cc);
+string from(alias V)(string To)
+{
+    return "if(" ~ V.stringof ~ ".to(" ~ To ~
+        ", cc).onError(sta)) goto Lthrow;";
+}
+
+
+// code += IRTypes[Opcode.ImpRet].size;
+// goto Lnext;
+string goNext(string C)
+{
+    return "code += IRTypes[Opcode." ~ C ~ "].size; goto Lnext;";
+}
+
 

@@ -45,20 +45,10 @@ final class PropTable
 
     //--------------------------------------------------------------------
     ///
-    // int opApply(scope int delegate(ref Property) dg)
-    // {
-    //     return _table.opApply(dg);
-    // }
-    /// ditto
     auto opApply(T)(scope T dg)
     {
         return _table.opApply(dg);
     }
-    // /// ditto
-    // int opApply(scope int delegate(ref PropertyKey, ref Property) dg)
-    // {
-    //     return _table.opApply(dg);
-    // }
 
     //--------------------------------------------------------------------
     /**
@@ -98,7 +88,7 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     nothrow
-    Derror* get(in ref PropertyKey key, out Value* ret, Dobject othis,
+    Derror get(in ref PropertyKey key, out Value* ret, Dobject othis,
                 CallContext* cc)
     {
         if (auto p = getProperty(key))
@@ -109,7 +99,7 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     nothrow
-    Derror* set(in ref PropertyKey key, ref Value value,
+    Derror set(in ref PropertyKey key, ref Value value,
                 Dobject othis, in Property.Attribute attributes,
                 in bool extensible, CallContext* cc)
     {
@@ -508,7 +498,7 @@ struct Property
 
         _attr = getAttribute(cc, obj);
         Value* v;
-        Derror* err;
+        Derror err;
         Dobject o;
         err = obj.Get(Key.value, v, cc);
         if (err is null && v !is null )
@@ -691,7 +681,7 @@ struct Property
     //--------------------------------------------------------------------
     ///
     nothrow
-    Derror* get(out Value* ret, Dobject othis, CallContext* cc)
+    Derror get(out Value* ret, Dobject othis, CallContext* cc)
     {
         if (_attr & Attribute.Accessor)
         {
@@ -747,7 +737,7 @@ struct Property
     //--------------------------------------------------------------------
     ///
     nothrow
-    Derror* setForce(ref Value v, Dobject othis, CallContext* cc)
+    Derror setForce(ref Value v, Dobject othis, CallContext* cc)
     {
         if (_attr & Attribute.Accessor)
         {
@@ -923,7 +913,7 @@ private static:
 
         Attribute attr;
         Value* v;
-        Derror* err;
+        Derror err;
         bool b;
         err = obj.Get(Key.enumerable, v, cc);
         if (err is null && v !is null)
@@ -932,8 +922,6 @@ private static:
             if (err is null && !b)
                 attr |= Attribute.DontEnum;
         }
-        // else
-        //     attr |= Attribute.DontEnum;
 
         err = obj.Get(Key.configurable, v, cc);
         if (err is null && v !is null)
@@ -942,8 +930,6 @@ private static:
             if (err is null && !b)
                 attr |= Attribute.DontConfig;
         }
-        // else
-        //     attr |= Attribute.DontConfig;
 
         err = obj.Get(Key.writable, v, cc);
         if (err is null && v !is null)
@@ -952,8 +938,6 @@ private static:
             if (err is null && !b)
                 attr |= Attribute.ReadOnly;
         }
-        // else
-        //     attr |= Attribute.ReadOnly;
 
         return attr;
     }

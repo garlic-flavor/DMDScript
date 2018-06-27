@@ -256,7 +256,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     void remove(in V* v)
     {
         if (v < vals || vals + space <= v)
-            throw new Exception("invalid argument.");
+            throw new Exception("the argument doesn't belong to us.");
 
         size_t i = v - vals;
         _length--;

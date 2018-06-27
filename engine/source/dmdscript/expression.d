@@ -787,8 +787,26 @@ class BinExp : Expression
         }
         else
         {
-            e1.toIR(irs, 0);
-            e2.toIR(irs, 0);
+            // e1.toIR(irs, 0);
+            // e2.toIR(irs, 0);
+
+            // my implementation seems like nonsense,
+            // but some operator overloading may invoke some side effects.
+            // test262\test\language\expressions\addition\coerce-symbol-to-prim-invocation.js needs this.
+            auto b = irs.alloc(2);
+            e1.toIR(irs, b[0]);
+            if(e1.match(e2))
+            {
+                irs.gen!GenIR3(linnum, ircode, b[1], b[0], b[0]);
+            }
+            else
+            {
+                auto c = irs.alloc(1);
+                e2.toIR(irs, c[0]);
+                irs.gen!GenIR3(linnum, ircode, b[1], b[0], c[0]);
+                irs.release(c);
+            }
+            irs.release(b);
         }
     }
 
