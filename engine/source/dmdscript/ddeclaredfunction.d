@@ -100,7 +100,7 @@ private
 
         // Generate the activation object
         // ECMA v3 10.1.6
-        actobj = cc.realm.dObject();
+        actobj = new Dobject(null);//cc.realm.dObject();
 
         Value vtmp;//should not be referenced by the end of func
         if(fd.name)

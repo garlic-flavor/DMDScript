@@ -111,7 +111,7 @@ class DsymbolConstructor : Dconstructor
         // propagete well known symbols.
         Value v;
         PropertyKey pk;
-        foreach (one; [SS.opAssign, SS.toPrimitive])
+        foreach (one; [SS.opAssign, SS.toPrimitive, SS.unscopables])
         {
             pk = Dsymbol.install(one);
             v.putVsymbol(one);

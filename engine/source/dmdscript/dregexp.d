@@ -54,6 +54,7 @@ class DregexpConstructor : Dconstructor
 
     this(Dobject superClassPrototype, Dobject functionPrototype)
     {
+        alias PA = Property.Attribute;
         super(new Dobject(superClassPrototype), functionPrototype,
               Key.RegExp, 2);
         install(functionPrototype);
@@ -68,40 +69,25 @@ class DregexpConstructor : Dconstructor
         vnm1.put(-1);
 
         // Static properties
-        DefineOwnProperty(Key.input, v, Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.multiline, vb, Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.lastMatch, v,
-               Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.lastParen, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.leftContext, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.rightContext, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar1, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar2, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar3, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar4, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar5, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar6, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar7, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar8, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
-        DefineOwnProperty(Key.dollar9, v,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        DefineOwnProperty(Key.input, v, PA.DontDelete);
+        DefineOwnProperty(Key.multiline, vb, PA.DontDelete);
+        DefineOwnProperty(Key.lastMatch, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.lastParen, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.leftContext, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.rightContext, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar1, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar2, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar3, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar4, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar5, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar6, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar7, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar8, v, PA.ReadOnly | PA.DontDelete);
+        DefineOwnProperty(Key.dollar9, v, PA.ReadOnly | PA.DontDelete);
 
-        DefineOwnProperty(Key.index, vnm1,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete);
+        DefineOwnProperty(Key.index, vnm1, PA.ReadOnly | PA.DontDelete);
         DefineOwnProperty(Key.lastIndex, vnm1,
-            Property.Attribute.ReadOnly | Property.Attribute.DontDelete |
-            Property.Attribute.DontConfig);
+                          PA.ReadOnly | PA.DontDelete | PA.DontConfig);
 
         input = proptable.getOwnData(Key.input);
         multiline = proptable.getOwnData(Key.multiline);
@@ -411,6 +397,7 @@ class Dregexp : Dobject
     nothrow
     this(Dobject prototype, string pattern, string attributes)
     {
+        alias PA = Property.Attribute;
         super(prototype, Key.RegExp);
 
         Value v;
@@ -420,26 +407,16 @@ class Dregexp : Dobject
         vb.put(false);
 
         DefineOwnProperty(Key.source, v,
-                          Property.Attribute.ReadOnly |
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum);
+                          PA.ReadOnly | PA.DontDelete | PA.DontEnum);
         DefineOwnProperty(Key.global, vb,
-                          Property.Attribute.ReadOnly |
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum);
+                          PA.ReadOnly | PA.DontDelete | PA.DontEnum);
         DefineOwnProperty(Key.ignoreCase, vb,
-                          Property.Attribute.ReadOnly |
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum);
+                          PA.ReadOnly | PA.DontDelete | PA.DontEnum);
         DefineOwnProperty(Key.multiline, vb,
-                          Property.Attribute.ReadOnly |
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum);
+                          PA.ReadOnly | PA.DontDelete | PA.DontEnum);
         vb.put(0.0);
         DefineOwnProperty(Key.lastIndex, vb,
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum |
-                          Property.Attribute.DontConfig);
+                          PA.DontDelete | PA.DontEnum | PA.DontConfig);
 
         source = proptable.getOwnData(Key.source);
         global = proptable.getOwnData(Key.global);
@@ -473,26 +450,26 @@ class Dregexp : Dobject
         vb.put(false);
 
         DefineOwnProperty(Key.source, v,
-                          Property.Attribute.ReadOnly |
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum);
+                          PA.ReadOnly |
+                          PA.DontDelete |
+                          PA.DontEnum);
         DefineOwnProperty(Key.global, vb,
-                          Property.Attribute.ReadOnly |
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum);
+                          PA.ReadOnly |
+                          PA.DontDelete |
+                          PA.DontEnum);
         DefineOwnProperty(Key.ignoreCase, vb,
-                          Property.Attribute.ReadOnly |
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum);
+                          PA.ReadOnly |
+                          PA.DontDelete |
+                          PA.DontEnum);
         DefineOwnProperty(Key.multiline, vb,
-                          Property.Attribute.ReadOnly |
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum);
+                          PA.ReadOnly |
+                          PA.DontDelete |
+                          PA.DontEnum);
         vb.put(0.0);
         DefineOwnProperty(Key.lastIndex, vb,
-                          Property.Attribute.DontDelete |
-                          Property.Attribute.DontEnum |
-                          Property.Attribute.DontConfig);
+                          PA.DontDelete |
+                          PA.DontEnum |
+                          PA.DontConfig);
 
         source = proptable.getOwnData(Key.source);
         global = proptable.getOwnData(Key.global);

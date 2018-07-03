@@ -236,8 +236,7 @@ protected:
         val.put(_classPrototype);
         DefineOwnProperty (Key.prototype, val,
                            Property.Attribute.DontEnum |
-                           Property.Attribute.DontDelete |
-                           Property.Attribute.ReadOnly);
+                           Property.Attribute.DontDelete);
     }
 
     //

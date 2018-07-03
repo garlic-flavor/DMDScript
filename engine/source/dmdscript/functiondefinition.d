@@ -214,12 +214,13 @@ class FunctionDefinition : TopStatement
         // Instantiate all the Var's per 10.1.3
         auto actobj = cc.variable;
         auto val = vundefined;
+
         foreach(name; varnames)
         {
             // If name is already declared, don't override it
             actobj.DefineOwnProperty(
                 PropertyKey(name.toString), val,
-                PA.Instantiate | PA.DontOverride | attributes);
+                /*PA.Instantiate |*/ PA.DontOverwrite | PA.DontDelete);
         }
 
         // Instantiate the Function's per 10.1.3
@@ -233,9 +234,10 @@ class FunctionDefinition : TopStatement
             if(fd.name !is null && !fd.isliteral && !fd.isglobal)
             {
                 actobj.DefineOwnProperty(
-                    *fd.name, val, PA.Instantiate | attributes);
+                    *fd.name, val, /*PA.Instantiate |*/ attributes);
             }
         }
+
     }
 
 
@@ -269,8 +271,7 @@ class FunctionDefinition : TopStatement
     }
 
     debug static
-    void dump (FunctionDefinition f, scope void delegate(in char[]) sink,
-               size_t indent = 0)
+    void dump (FunctionDefinition f, scope void delegate(in char[]) sink)
     {
         import std.range: take, repeat;
         import std.conv: to;
@@ -279,18 +280,42 @@ class FunctionDefinition : TopStatement
         assert (f !is null);
         if (f.name !is null)
         {
-            sink(' '.repeat.take(indent).to!string);
             sink("function ");
             sink(f.name.toString);
         }
         sink("\n");
-        IR.dump(f.code, sink, indent);
+
+        import std.array: Appender;
+        Appender!(char[]) buf;
+        IR.dump(f.code, b=>buf.put(b));
+
+
+        import std.range: take, repeat;
+        import std.array: array;
+        import std.algorithm: find, max;
+        import std.string: splitLines;
+
+        int indent = 0;
+        int TAB_WIDTH = 4;
+        foreach (line; buf.data.splitLines)
+        {
+            if (0 < line.find('}').length)
+                indent = max(indent-1, 0);
+
+            sink(' '.repeat.take(indent * TAB_WIDTH).array);
+            sink(line);
+            sink("\n");
+
+            if (0 < line.find('{').length)
+                ++indent;
+        }
+
 
         for (size_t i = 0; i < f.functiondefinitions.length; ++i)
         {
             if (f.functiondefinitions[i] is f)
                 continue;
-            dump(f.functiondefinitions[i], sink, indent + 2);
+            dump(f.functiondefinitions[i], sink);
         }
     }
 }

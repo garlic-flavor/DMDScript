@@ -259,7 +259,7 @@ class SrcFile
          */
 
         Value ret;
-        auto realm = new Drealm(srcfile, &modulePool);
+        auto realm = new Drealm(srcfile, &modulePool, strictMode);
 
         debug
         {
@@ -483,7 +483,7 @@ static:
                 v.to(moduleId, cc);
         }
 
-        o = new DemptyRealm(moduleId, cc.realm.modulePool);
+        o = new DemptyRealm(moduleId, cc.realm.modulePool, cc.strictMode);
         assert (o !is null);
 
         o.install("global", o);
@@ -503,10 +503,10 @@ class DemptyRealm: Drealm
     import dmdscript.functiondefinition: FunctionDefinition;
     import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
 
-    this(string scriptId, ModulePool modulePool/*, bool strictMode*/)
+    this(string scriptId, ModulePool modulePool, bool strictMode)
     {
         import dmdscript.dnative: install;
-        super(scriptId, modulePool);
+        super(scriptId, modulePool, strictMode);
 
         install!DemptyRealm(this, functionPrototype);
     }

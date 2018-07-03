@@ -72,7 +72,7 @@ This aims to alternate test262-harness-py.
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
-### Current progress is 2%(1653/59240)
+### Current progress is 2%(1734/59240)
 
 ### Passed directories.
 * ..\test262\test\annexB\language\comments
@@ -80,6 +80,7 @@ This aims to alternate test262-harness-py.
 * ..\test262\test\annexB\language\literals\string
 * ..\test262\test\language\asi
 * ..\test262\test\language\comments
+* ..\test262\test\language\expressions\addition
 * ..\test262\test\language\future-reserved-words
 * ..\test262\test\language\identifier-resolution
 * ..\test262\test\language\identifiers
@@ -100,7 +101,6 @@ This aims to alternate test262-harness-py.
 
 ### Progressing directories.
 * ..\test262\test\language\expressions\delete
-* ..\test262\test\language\expressions\addition
 * ..\test262\test\language\expressions\assignment
 
 ### Failed tests.
@@ -114,6 +114,7 @@ This aims to alternate test262-harness-py.
   do this later.
 * ..\test262\test\language\types\number\S8.5_A2.2.js
   do this later.
+
 
 ### problems.
 * __The Regular expression of ECMAScript differ from dmd's std.regex.__

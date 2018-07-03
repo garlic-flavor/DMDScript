@@ -324,15 +324,6 @@ struct err(alias Ctor, ARGS...)
     }
     alias opCall this;
 
-    // //
-    // @safe
-    // ScriptException toThrow(ARGS args, string file = __FILE__,
-    //                         size_t line = __LINE__) const
-    // {
-    //     import std.format : format;
-    //     return new ScriptException(Ctor.Text, fmt.format(args), file, line);
-    // }
-
     //
     @safe
     EarlyException early(ARGS args, uint linnum, string funcname,

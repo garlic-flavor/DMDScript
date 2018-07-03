@@ -76,7 +76,7 @@ struct Iterator
                 keyindex = 0;
             }
             auto key = &keys[keyindex];
-            p = *key in o.proptable;
+            p =  o.proptable.getOwnProperty(*key);
             if(!p)                      // if no longer in property table
                 continue;
             if(!p.enumerable)
@@ -91,7 +91,7 @@ struct Iterator
                     for(Dobject ot = ostart; ot != o; ot = getPrototype(ot))
                     {
                         // If property p is in t, don't enumerate
-                        if(*key in ot.proptable)
+                        if(ot.proptable.getOwnProperty(*key))
                             goto Lcontinue;
                     }
                 }

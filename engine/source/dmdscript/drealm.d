@@ -22,6 +22,7 @@ import dmdscript.value : Value;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
     installConstants;
 import dmdscript.property : Property;
+alias PA = Property.Attribute;
 import dmdscript.callcontext: CallContext;
 import dmdscript.derror: Derror, onError;
 
@@ -67,7 +68,7 @@ class Drealm : Dobject // aka global environment.
     import dmdscript.dstring: DstringConstructor;
     import dmdscript.dboolean: DbooleanConstructor;
     import dmdscript.dnumber: DnumberConstructor;
-    // import dmdscript.ddate;
+    import dmdscript.ddate: DdateConstructor;
     import dmdscript.dregexp: DregexpConstructor;
     // import dmdscript.derror;
     import dmdscript.dmath: Dmath;
@@ -92,6 +93,7 @@ class Drealm : Dobject // aka global environment.
     DsymbolConstructor dSymbol;
     DproxyConstructor dProxy;
     DbigIntConstructor dBigInt;
+    DdateConstructor dDate;
 
     SyntaxError dSyntaxError;
     EvalError dEvalError;
@@ -102,7 +104,7 @@ class Drealm : Dobject // aka global environment.
 
     Dmath dMath;
 
-    this(string id, ModulePool modulePool)
+    this(string id, ModulePool modulePool, bool strictMode)
     {
         import dmdscript.primitive: PropertyKey;
         import dmdscript.dnative: install;
@@ -118,30 +120,33 @@ class Drealm : Dobject // aka global environment.
 
         Dsymbol.init;
 
+        Value val;
+
         void init(T...)(ref T args)
         {
-            Value val;
             foreach (ref one; args)
             {
                 one = new typeof(one)(rootPrototype, functionPrototype);
                 val.put(one);
-                DefineOwnProperty(one.name, val, Property.Attribute.DontEnum);
+                DefineOwnProperty(one.name, val, PA.DontEnum);
             }
         }
 
         init(dObject, dFunction,
              dArray, dRegexp, dBoolean, dNumber, dString, dSymbol, dProxy,
-             dBigInt,
+             dBigInt, dDate,
              dSyntaxError, dEvalError, dReferenceError, dRangeError,
              dTypeError, dUriError);
+
+        val.put(this);
+        DefineOwnProperty(Key.global, val, PA.DontEnum);
 
         // ECMA 15.1
         installConstants!(
             "NaN", double.nan,
             "Infinity", double.infinity,
-            "undefined", undefined)(this,
-                                     Property.Attribute.DontEnum |
-                                     Property.Attribute.DontDelete);
+            "undefined", undefined)(
+                this, PA.DontEnum | PA.DontDelete | PA.ReadOnly);
 
         debug
         {
@@ -156,8 +161,7 @@ class Drealm : Dobject // aka global environment.
 
         install!(dmdscript.drealm)(this, functionPrototype);
 
-        dMath = new Dmath(rootPrototype, functionPrototype);
-        Value val;
+        dMath = new Dmath(rootPrototype, functionPrototype, strictMode);
         val.put(dMath);
         DefineOwnProperty(Key.Math, val, Property.Attribute.DontEnum);
 
@@ -234,9 +238,10 @@ class DmoduleRealm: Drealm
 
     FunctionDefinition _fd;
 
-    this (string id, ModulePool modulePool, FunctionDefinition fd)
+    this (string id, ModulePool modulePool, FunctionDefinition fd,
+          bool strictMode)
     {
-        super(id, modulePool);
+        super(id, modulePool, strictMode);
 
         this._fd = fd;
     }
@@ -272,7 +277,7 @@ Derror CreateRealm (
             v.to(moduleId, cc);
     }
 
-    o = new DmoduleRealm(moduleId, cc.realm.modulePool, null);
+    o = new DmoduleRealm(moduleId, cc.realm.modulePool, null, cc.strictMode);
     assert (o !is null);
     ret.put(o);
     return null;

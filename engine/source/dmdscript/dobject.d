@@ -34,6 +34,7 @@ class Dobject
 {
     import dmdscript.primitive: Text, Identifier, PropertyKey;
     import dmdscript.property: Property, PropTable;
+    alias PA = Property.Attribute;
     import dmdscript.dfunction: Dfunction;
 
     PropTable proptable;
@@ -121,28 +122,28 @@ class Dobject
                 in Property.Attribute attributes, CallContext* cc)
     {
         // ECMA 8.6.2.2
-        return proptable.set(PropertyName, value, this, attributes,
-                             _extensible, cc);
+        auto a = cast(PA)(attributes | (_extensible ? 0 : PA.DontExtend));
+        return proptable.set(PropertyName, value, this, a, cc);
     }
 
     //--------------------------------------------------------------------
     //
     nothrow
     bool SetGetter(in PropertyKey PropertyName, Dfunction getter,
-                   in Property.Attribute attribute)
+                   in Property.Attribute attributes)
     {
         assert (getter !is null);
-        return proptable.configGetter(PropertyName, getter, attribute,
-                                      _extensible);
+        auto a = cast(PA)(attributes | (_extensible ? 0 : PA.DontExtend));
+        return proptable.configGetter(PropertyName, getter, a);
     }
     //
     nothrow
     bool SetSetter(in PropertyKey PropertyName, Dfunction setter,
-                   in Property.Attribute attribute)
+                   in Property.Attribute attributes)
     {
         assert (setter !is null);
-        return proptable.configSetter(PropertyName, setter, attribute,
-                                      _extensible);
+        auto a = cast(PA)(attributes | (_extensible ? 0 : PA.DontExtend));
+        return proptable.configSetter(PropertyName, setter, a);
     }
 
     //--------------------------------------------------------------------
@@ -163,9 +164,9 @@ class Dobject
     ///
     @safe nothrow
     bool DefineOwnProperty(in PropertyKey PropertyName,
-                           in Property.Attribute attributes)
+                           ref Property p)
     {
-        return proptable.config(PropertyName, attributes, _extensible);
+        return proptable.config(PropertyName, p, _extensible);
     }
 
     /// ditto
@@ -173,16 +174,8 @@ class Dobject
     bool DefineOwnProperty(in PropertyKey PropertyName,
                            ref Value v, in Property.Attribute attributes)
     {
-        return proptable.config(PropertyName, v, attributes, _extensible);
-    }
-
-    /// ditto
-    nothrow
-    bool DefineOwnProperty(in PropertyKey PropertyName, Dobject attr,
-                           CallContext* cc)
-    {
-        auto prop = Property(cc, attr);
-        return proptable.config(PropertyName, prop, _extensible);
+        auto p = Property(v, attributes);
+        return proptable.config(PropertyName, p, _extensible);
     }
 
     //
@@ -304,7 +297,9 @@ class Dobject
                     return a;                   // if exception was thrown
 
                 if (ret.isPrimitive)
+                {
                     return null;
+                }
                 else if (i == 0)
                     break;
             }
@@ -552,6 +547,7 @@ class DobjectConstructor : Dconstructor
     {
         super(classPrototype, functionPrototype, Key.Object, 1);
         install(functionPrototype);
+
     }
 
     //
@@ -681,7 +677,8 @@ Derror defineProperty(
 
     if (arglist.length < 3)
     {
-        if (!target.DefineOwnProperty(key, Property.Attribute.None))
+        auto p = Property(Property.Attribute.None);
+        if (!target.DefineOwnProperty(key, p))
         {
             sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             goto failure;
@@ -691,7 +688,8 @@ Derror defineProperty(
     {
         Dobject o;
         arglist[2].to(o, cc);
-        if (!target.DefineOwnProperty(key, o, cc))
+        auto prop = Property(cc, o);
+        if (!target.DefineOwnProperty(key, prop))
         {
             sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             goto failure;
@@ -1030,9 +1028,9 @@ Derror isPrototypeOf(
         for(;; )
         {
             o = o._prototype;
-            if(!o)
+            if(o is null)
                 break;
-            if(o == othis)
+            if(o is othis)
             {
                 result = true;
                 break;
@@ -1076,4 +1074,42 @@ Derror proto_Set(
     Value[] arglist)
 {
     assert (0);
+}
+
+@DFD()
+struct symbol_unscopables
+{
+    import dmdscript.primitive: PropertyKey;
+    import dmdscript.property: SpecialSymbols;
+
+static:
+    alias name = SpecialSymbols.unscopables;
+
+    @DFD(1)
+    Derror setter(
+        DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
+        Value[] arglist)
+    {
+        import dmdscript.property: Property;
+        alias PA = Property.Attribute;
+
+        if (0 == arglist.length)
+            return null;
+
+        Dobject arg;
+        Derror err;
+        if (arglist[0].to(arg, cc).onError(err))
+            return err;
+
+        foreach(PropertyKey key, Property prop; arg.proptable)
+        {
+            prop.attribute = prop.attribute | PA.DontOverwrite;
+            othis.DefineOwnProperty(key, prop);
+        }
+
+
+        // auto keys = arg.OwnPropertyKeys;
+        // writeln(keys);
+        return null;
+    }
 }

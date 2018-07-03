@@ -38,6 +38,7 @@ class Darray : Dobject
 {
     import dmdscript.primitive: PropertyKey, Key;
     import dmdscript.property: Property;
+    alias PA = Property.Attribute;
 
     Value length;               // length property
     size_t ulength;
@@ -58,7 +59,8 @@ class Darray : Dobject
             }
 
             auto pk = PropertyKey(index);
-            proptable.set(pk, v, this, attributes, IsExtensible, cc);
+            auto a = cast(PA)(attributes | (IsExtensible ? 0 : PA.DontExtend));
+            proptable.set(pk, v, this, a, cc);
             return null;
         }
         else
@@ -69,7 +71,8 @@ class Darray : Dobject
             Derror result;
 
             // ECMA 15.4.5.1
-            result = proptable.set(key, v, this, attributes, IsExtensible, cc);
+            auto a = cast(PA)(attributes | (IsExtensible ? 0 : PA.DontExtend));
+            result = proptable.set(key, v, this, a, cc);
             if(!result)
             {
                 if(key == Key.length)
@@ -106,9 +109,8 @@ class Darray : Dobject
                     }
                     ulength = i;
                     length.number = i;
-                    proptable.set(
-                        key, v, this, attributes | Property.Attribute.DontEnum,
-                        IsExtensible, cc);
+                    a |= PA.DontEnum;
+                    proptable.set(key, v, this, a, cc);
                 }
 
                 // if (name is an array index i)

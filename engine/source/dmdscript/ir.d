@@ -344,7 +344,7 @@ align(size_t.sizeof):
         {
             import std.array: Appender;
             Appender!string buf;
-            IR.dump(operand.code, b=>buf.put(b), 0);
+            IR.dump(operand.code, b=>buf.put(b));
             auto opName = text("function\n{\n", buf.data, "}");
         }
         else static if (is(T : double))

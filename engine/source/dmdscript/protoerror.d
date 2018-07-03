@@ -120,6 +120,7 @@ alias RangeError = D0_constructor!"RangeError";
 alias TypeError = D0_constructor!"TypeError";
 alias UriError = D0_constructor!"URIError";
 
+//------------------------------------------------------------------------------
 Dobject toError(string type, string msg, Drealm realm)
 {
     switch (type)
@@ -139,141 +140,6 @@ Dobject toError(string type, string msg, Drealm realm)
     }
     assert (0);
 }
-
-
-// //------------------------------------------------------------------------------
-// class DError : Dobject
-// {
-//     import dmdscript.primitive : Key, PropertyKey, ModulePool, ModuleCode;
-//     import dmdscript.opcodes: IR;
-
-//     //--------------------------------------------------------------------
-//     this(Dobject prototype, PropertyKey typename, in ref Value m,
-//          string f = __FILE__, size_t l = __LINE__)
-//     {
-//         import dmdscript.property : Property;
-//         alias PAN = Property.Attribute.None;
-
-//         super(prototype, typename);
-//         _dFile = f;
-//         _dLine = l;
-
-//         value.put(0);
-//         DefineOwnProperty(Key.number, value, PAN);
-
-//         value.put(m);
-//         DefineOwnProperty(Key.message, value, PAN);
-//         DefineOwnProperty(Key.description, value, PAN);
-//     }
-
-//     this(Dobject prototype, PropertyKey typename, Throwable t,
-//          string f = __FILE__, size_t l = __LINE__)
-//     {
-//         import dmdscript.property : Property;
-//         alias PAN = Property.Attribute.None;
-
-//         super(prototype, typename);
-//         _dFile = f;
-//         _dLine = l;
-//         _throwable = t;
-
-//         value.put(0);
-//         DefineOwnProperty(Key.number, value, PAN);
-
-//         value.put(t.toString);
-//         DefineOwnProperty(Key.message, value, PAN);
-//         DefineOwnProperty(Key.description, value, PAN);
-//     }
-
-//     //--------------------------------------------------------------------
-//     void addMessage(string message)
-//     {
-//         import dmdscript.property : Property;
-//         alias PAN = Property.Attribute.None;
-
-//         value.put(value.toString ~ message);
-//         DefineOwnProperty(Key.message, value, PAN);
-//         DefineOwnProperty(Key.description, value, PAN);
-//     }
-
-//     //--------------------------------------------------------------------
-//     ///
-//     @safe pure nothrow
-//     void addTrace(const(IR)* b, const(IR)* c,
-//                   string f = __FILE__, size_t l = __LINE__)
-//     {
-//         if (_traces.length == 0 || _traces[$-1].code !is c)
-//             _traces ~= TraceInfo(f, l, b, c);
-//     }
-
-//     //--------------------------------------------------------------------
-//     ///
-//     @safe @nogc pure nothrow
-//     void addInfo(string bufferId, string funcname = "", bool strictMode = false)
-//     {
-//         foreach (ref one; _traces)
-//         {
-//             if (!one.addInfo(bufferId, funcname, strictMode))
-//                 break;
-//         }
-//     }
-
-//     ///
-//     void addInfo(ModulePool pool)
-//     {
-//         foreach (ref one; _traces)
-//         {
-//             if (!one.addInfo(pool))
-//                 break;
-//         }
-//     }
-
-//     //====================================================================
-// private:
-//     struct TraceInfo
-//     {
-//         string dFile;
-//         size_t dLine;
-//         const(IR)* base;
-//         const(IR)* code;
-
-//         string bufferId;
-//         string funcname;
-//         bool strictMode;
-
-//         ModuleCode buffer;
-
-//         //----------------------------------------------------------
-//         @safe @nogc pure nothrow
-//         bool addInfo(string id, string fn, bool sm)
-//         {
-//             if (0 == bufferId.length)
-//             {
-//                 bufferId = id;
-//                 funcname = fn;
-//                 strictMode = sm;
-//                 return true;
-//             }
-//             return false;
-//         }
-
-//         bool addInfo(ModulePool pool)
-//         {
-//             if (buffer.empty && 0 < bufferId.length)
-//             {
-//                 buffer = pool(bufferId);
-//                 return true;
-//             }
-//             return false;
-//         }
-//     }
-
-//     string _dFile;
-//     size_t _dLine;
-//     Throwable _throwable;
-
-//     TraceInfo[] _traces;
-// }
 
 
 //==============================================================================
@@ -300,7 +166,6 @@ Derror toString(
         v.to(message, cc);
 
     ret.put(text(othis.classname, " : ", message));
-
     // import dmdscript.primitive : Key;
     // if (auto d0 = cast(DError)othis)
     //     ret.put(d0.value.toString);

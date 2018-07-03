@@ -143,7 +143,8 @@ struct Value
 
         string text() const
         {
-            assert (_type == Type.String || _type == Type.Symbol);
+            assert (_type == Type.String || _type == Type.Symbol ||
+                    _type == Type.RefError);
             return _text;
         }
 
@@ -750,7 +751,9 @@ struct Value
             if (toPrimitive(val, cc, Type.String).onError(err))
                 break;
             if(val.isPrimitive)
+            {
                 return val.to(s, cc);
+            }
             else
             {
                 Dobject o;

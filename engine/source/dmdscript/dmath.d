@@ -454,17 +454,18 @@ Derror trunc(
 
 class Dmath : Dobject
 {
-    this(Dobject rootPrototype, Dobject functionPrototype)
+    this(Dobject rootPrototype, Dobject functionPrototype, bool strictMode)
     {
         import dmdscript.property: Property;
+        alias PA = Property.Attribute;
         import dmdscript.dnative: install;
 
         super(rootPrototype, Key.Math);
 
         enum attributes =
-            Property.Attribute.DontEnum |
-            Property.Attribute.DontDelete |
-            Property.Attribute.ReadOnly;
+            PA.DontEnum |
+            PA.DontDelete |
+            PA.ReadOnly;
 
         installConstants!(
             "E", std.math.E,
@@ -475,9 +476,7 @@ class Dmath : Dobject
             "PI", std.math.PI,
             "SQRT1_2", std.math.SQRT1_2,
             "SQRT2", std.math.SQRT2)
-            (this, Property.Attribute.DontEnum |
-                   Property.Attribute.DontDelete |
-                   Property.Attribute.SilentReadOnly);
+            (this, PA.DontEnum | PA.DontDelete | PA.ReadOnly);
 
         install!(dmdscript.dmath)(this, functionPrototype, attributes);
     }

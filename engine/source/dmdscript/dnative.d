@@ -65,6 +65,7 @@ class DnativeFunction : Dfunction
 struct DnativeFunctionDescriptor
 {
     import dmdscript.property : Property;
+    import dmdscript.primitive: PropertyKey;
 
     enum Type
     {
@@ -76,10 +77,20 @@ struct DnativeFunctionDescriptor
 
     uint length;  /// is a number of arguments.
     Type type = Type.Prototype; ///
-    string realName; ///
+    PropertyKey realName; ///
     Property.Attribute attr; ///
 
     this (uint l, Type t = Type.Prototype, string rn = null,
+          Property.Attribute attr = Property.Attribute.None)
+    {
+        length = l;
+        type = t;
+        if (0 < rn.length)
+            realName = PropertyKey(rn);
+        attr = attr;
+    }
+
+    this (uint l, Type t,  PropertyKey rn,
           Property.Attribute attr = Property.Attribute.None)
     {
         length = l;
@@ -89,6 +100,15 @@ struct DnativeFunctionDescriptor
     }
 
     this (uint l, string rn, Type t = Type.Prototype,
+          Property.Attribute attr = Property.Attribute.None)
+    {
+        length = l;
+        type = t;
+        realName = PropertyKey(rn);
+        attr = attr;
+    }
+
+    this (uint l, PropertyKey rn, Type t = Type.Prototype,
           Property.Attribute attr = Property.Attribute.None)
     {
         length = l;
@@ -110,6 +130,7 @@ void installConstants(ARGS...)(
     static if      (0 == ARGS.length){}
     else
     {
+        import std.exception: enforce;
         import dmdscript.primitive : PropertyKey;
         import dmdscript.value : Value;
 
@@ -120,7 +141,7 @@ void installConstants(ARGS...)(
 
         auto value = Value(ARGS[1]);
 
-        o.DefineOwnProperty(key, value, prop);
+        o.DefineOwnProperty(key, value, prop).enforce(ARGS[0]);
 
         installConstants!(ARGS[2..$])(o, prop);
     }
@@ -142,7 +163,7 @@ void install(alias M, T)(
     Dfunction f;
     Value val;
 
-    template selectFunc(alias F)
+    template selectDFD(alias A)
     {
         template _impl(T...)
         {
@@ -153,27 +174,26 @@ void install(alias M, T)(
             else
                 enum _impl = _impl!(T[1..$]);
         }
-
-        static if      (is(typeof(&F) == PCall))
-            enum selectFunc = _impl!(__traits(getAttributes, F));
-        else
-            enum selectFunc = false;
+        enum selectDFD = _impl!(__traits(getAttributes, A));
     }
 
+    template isStruct(alias A)
+    {
+        enum isStruct = is(A == struct);
+    }
 
     foreach(one; __traits(derivedMembers, M))
     {
-        static if      (is(typeof(__traits(getMember, M, one))))
-            alias desc = selectFunc!(__traits(getMember, M, one));
-        else
-            alias desc = void;
-
-        static if      (is(typeof(desc) == DFD))
+        static if      (!__traits(compiles, __traits(getMember, M, one))){}
+        else static if (is(typeof(&__traits(getMember, M, one)) == PCall))
         {
-            static if ((desc.type & DFD.Type.Static) == is(T : Dconstructor))
+            alias desc = selectDFD!(__traits(getMember, M, one));
+
+            static if (is(typeof(desc) == DFD) &&
+                       (desc.type & DFD.Type.Static) == is(T : Dconstructor))
             {
-                static if (0 < desc.realName.length)
-                    enum name = PropertyKey(desc.realName);
+                static if (desc.realName.hasString)
+                    enum name = desc.realName;
                 else
                     enum name = PropertyKey(one);
 
@@ -193,6 +213,30 @@ void install(alias M, T)(
                 }
             }
         }
+        else static if (isStruct!(__traits(getMember, M, one)))
+        {
+            alias desc = selectDFD!(__traits(getMember, M, one));
+            static if (is(typeof(desc) == DFD) &&
+                       (desc.type & DFD.Type.Static) == is(T : Dconstructor))
+            {
+                auto name = __traits(getMember, M, one).name;
+
+                static if (__traits(hasMember, __traits(getMember, M, one),
+                                    "setter"))
+                {
+                    alias descS = selectDFD!(
+                        __traits(getMember, __traits(getMember, M, one),
+                                 "setter"));
+                    f = new DnativeFunction(
+                        functionPrototype, name, descS.length,
+                        &__traits(getMember, __traits(getMember, M, one),
+                                  "setter"));
+                    o.SetSetter(name, f, prop | descS.attr);
+                }
+
+
+            }
+        }
     }
 }
 
@@ -207,3 +251,4 @@ void install(Dobject o, string key, Dobject p,
     k = key.PropertyKey;
     o.DefineOwnProperty(k, val, attr);
 }
+

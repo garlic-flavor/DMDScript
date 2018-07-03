@@ -31,7 +31,7 @@ struct CallContext
     import dmdscript.value: Value;
     import dmdscript.primitive: PropertyKey;
     import dmdscript.functiondefinition: FunctionDefinition;
-    import dmdscript.derror: Derror;
+    import dmdscript.derror: Derror, onError;
 
     /* Get current realm environment.
 
@@ -201,19 +201,24 @@ struct CallContext
 
         Value* v;
         Dobject o;
+        Derror err;
         assert (_scope !is null);
         for (auto s = _scope; ; s = s.next)
         {
             o = s.obj;
             assert (o !is null);
-            if (auto err = o.Get(key, v, &this))
+            if (o.Get(key, v, &this).onError(err))
                 return err;
             if (v !is null)
             {
-                if (auto err = v.checkReference(&this))
+                if (v.checkReference(&this).onError(err))
                     return err;
                 else
-                    return o.Set (key, value, attr, &this);
+                {
+                    assert (o !is null);
+                    err = o.Set (key, value, attr, &this);
+                    return err;
+                }
             }
 
             if      (s.next !is null){}
@@ -223,7 +228,9 @@ struct CallContext
                     &this, key.toString);
             }
             else
+            {
                 return o.Set(key, value, attr, &this);
+            }
         }
 
         assert (0);

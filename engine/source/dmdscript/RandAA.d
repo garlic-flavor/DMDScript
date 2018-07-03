@@ -56,14 +56,14 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         space = getNextP2(initSize);
         mask = space - 1;
         _keys = (new K[space]).ptr;
-        vals = (new V[space]).ptr;
+        _vals = (new V[space]).ptr;
 
         static if(storeHash)
         {
-            hashes = (new size_t[space]).ptr;
+            hashes = (new size_t[space+1]).ptr;
         }
 
-        flags = (new ubyte[space]).ptr;
+        _flags = (new ubyte[space]).ptr;
     }
 
     ///
@@ -117,13 +117,14 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
 
     ///
     @safe nothrow
-    void rehash()
+    bool rehash()
     {
         if(cast(float)(_length + nDead) / space < 0.7)
         {
-            return;
+            return false;
         }
         reserve(space + 1);
+        return true;
     }
 
     /**
@@ -142,7 +143,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         }
         else
         {
-            return vals[i];
+            return _vals[i];
         }
     }
 
@@ -160,15 +161,19 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         }
         else
         {
-            return vals + i;
+            return _vals + i;
         }
     }
 
     /// Hackery
-    @trusted @nogc nothrow
+    @trusted pure @nogc nothrow
     inout(V)* findExistingAlt(in ref K key, in size_t hashFull) inout
     {
         size_t pos = hashFull & mask;
+        assert (pos < space);
+        assert (_flags !is null);
+        assert (_keys !is null);
+        assert (_vals !is null);
         static if(useRandom)
             size_t rand = hashFull + 1;
         else
@@ -180,7 +185,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         uint flag = void;
         while(true)
         {
-            flag = flags[pos];
+            flag = _flags[pos];
             static if (storeHash)
             {
                 if (flag == EMPTY || (hashFull == hashes[pos] &&
@@ -209,7 +214,7 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
                 pos = i & mask;
             }
         }
-        return (flag == USED) ? &vals[pos] : null;
+        return (flag == USED) ? _vals + pos : null;
     }
 
     ///
@@ -218,6 +223,15 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     {
         assignNoRehashCheck(key, val, hashFull);
         rehash();
+    }
+
+    @safe nothrow
+    V* insertAlt2(in ref K key, ref V val, in size_t hashFull)
+    {
+        auto nvp = assignNoRehashCheck2(key, val, hashFull);
+        if (!rehash)
+            return nvp;
+        return findExistingAlt(key, hashFull);
     }
 
     ///
@@ -246,8 +260,8 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         {
             _length--;
             nDead++;
-            flags[i] = REMOVED;
-            return vals[i];
+            _flags[i] = REMOVED;
+            return _vals[i];
         }
     }
 
@@ -255,13 +269,13 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     @trusted
     void remove(in V* v)
     {
-        if (v < vals || vals + space <= v)
+        if (v < _vals || _vals + space <= v)
             throw new Exception("the argument doesn't belong to us.");
 
-        size_t i = v - vals;
+        size_t i = v - _vals;
         _length--;
         nDead++;
-        flags[i] = REMOVED;
+        _flags[i] = REMOVED;
     }
 
     /**
@@ -271,14 +285,21 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
     {
         import std.traits : ParameterTypeTuple;
         int result;
-        foreach(i, k; _keys[0..space])
+
+        assert (_keys !is null);
+        assert (_vals !is null);
+        assert (_flags !is null);
+
+
+        foreach (i, k; _keys[0..space])
         {
-            if (flags[i] == USED)
+            if (_flags[i] == USED)
             {
                 static if      (1 == ParameterTypeTuple!Dg.length)
-                    result = dg(vals[i]);
+                    result = dg(_vals[i]);
                 else static if (2 == ParameterTypeTuple!Dg.length)
-                    result = dg(k, vals[i]);
+                    result = dg(k, _vals[i]);
+                else static assert (0);
                 if (result)
                     break;
             }
@@ -297,8 +318,8 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         import core.memory : GC;
 
         GC.free(cast(void*)this._keys);
-        GC.free(cast(void*)this.vals);
-        GC.free(cast(void*)this.flags);
+        GC.free(cast(void*)this._vals);
+        GC.free(cast(void*)this._flags);
 
         static if(storeHash)
         {
@@ -313,8 +334,8 @@ private:
     // alignment overhead and prevents the GC from scanning values if only
     // keys have pointers, or vice-versa.
     K* _keys;
-    V* vals;
-    ubyte* flags;
+    V* _vals;
+    ubyte* _flags;
 
     static if(storeHash)
     {
@@ -334,32 +355,41 @@ private:
     @trusted nothrow
     void reserve(size_t newSize)
     {
-        scope typeof(this)newTable = new typeof(this)(newSize);
+        scope typeof(this) newTable = new typeof(this)(newSize);
 
         foreach(i; 0..space)
         {
-            if(flags[i] == USED)
+            if(_flags[i] == USED)
             {
                 static if(storeHash)
                 {
-                    newTable.assignNoRehashCheck(_keys[i], vals[i], hashes[i]);
+                    newTable.assignNoRehashCheck(_keys[i], _vals[i], hashes[i]);
                 }
                 else
                 {
                     newTable.assignNoRehashCheck(
-                        _keys[i], vals[i], getHash(_keys[i]));
+                        _keys[i], _vals[i], getHash(_keys[i]));
                 }
             }
         }
 
-        // Can't free vals b/c references to it could escape.  Let GC
+        // Can't free _vals b/c references to it could escape.  Let GC
         // handle it.
         free;
 
-        foreach(ti, elem; newTable.tupleof)
-        {
-            this.tupleof[ti] = elem;
-        }
+        // foreach(ti, elem; newTable.tupleof)
+        // {
+        //     this.tupleof[ti] = elem;
+        // }
+        _keys = newTable._keys;
+        _vals = newTable._vals;
+        _flags = newTable._flags;
+        static if (storeHash)
+            hashes = newTable.hashes;
+        mask = newTable.mask;
+        _length = newTable._length;
+        space = newTable.space;
+        nDead = newTable.nDead;
     }
 
     //
@@ -380,7 +410,7 @@ private:
         uint flag = void;
         while(true)
         {
-            flag = flags[pos];
+            flag = _flags[pos];
             static if (storeHash)
             {
                 if(flag == EMPTY || (hashFull == hashes[pos] &&
@@ -428,7 +458,7 @@ private:
         {
             static if (storeHash)
             {
-                if (flags[pos] != USED || (hashes[pos] == hashFull &&
+                if (_flags[pos] != USED || (hashes[pos] == hashFull &&
                                            _keys[pos] == key))
                 {
                     break;
@@ -436,7 +466,7 @@ private:
             }
             else
             {
-                if (flags[pos] != USED || _keys[pos] == key)
+                if (_flags[pos] != USED || _keys[pos] == key)
                 {
                     break;
                 }
@@ -466,8 +496,8 @@ private:
     void assignNoRehashCheck(in ref K key, ref V val, in size_t hashFull)
     {
         const size_t i = findForInsert(key, hashFull);
-        vals[i] = val;
-        const uint flag = flags[i];
+        _vals[i] = val;
+        const uint flag = _flags[i];
         if(flag != USED)
         {
             if(flag == REMOVED)
@@ -476,9 +506,30 @@ private:
                 nDead--;
             }
             _length++;
-            flags[i] = USED;
+            _flags[i] = USED;
             _keys[i] = key;
         }
+    }
+
+    //
+    @trusted @nogc pure nothrow
+    V* assignNoRehashCheck2(in ref K key, ref V val, in size_t hashFull)
+    {
+        const size_t i = findForInsert(key, hashFull);
+        _vals[i] = val;
+        const uint flag = _flags[i];
+        if(flag != USED)
+        {
+            if(flag == REMOVED)
+            {
+                assert(0 < nDead);
+                nDead--;
+            }
+            _length++;
+            _flags[i] = USED;
+            _keys[i] = key;
+        }
+        return _vals + i;
     }
 
     //====================================================================
@@ -503,7 +554,7 @@ private static:
         this(RandAA aa)
         {
             this.aa = aa;
-            while(aa.flags[index] != USED && index < aa.space)
+            while(aa._flags[index] != USED && index < aa.space)
             {
                 index++;
             }
@@ -515,7 +566,7 @@ private static:
         {
             static if      (is(T == V))
             {
-                return aa.vals[index];
+                return aa._vals[index];
             }
             else static if (is(T == K))
             {
@@ -529,7 +580,7 @@ private static:
         void popFront()
         {
             index++;
-            while(aa.flags[index] != USED && index < aa.space)
+            while(aa._flags[index] != USED && index < aa.space)
             {
                 index++;
             }

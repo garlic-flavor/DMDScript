@@ -49,6 +49,7 @@ class DnumberConstructor : Dconstructor
     this(Dobject superClassPrototype, Dobject functionPrototype)
     {
         import dmdscript.property : Property;
+        alias PA = Property.Attribute;
 
         super(new Dobject(superClassPrototype), functionPrototype,
               Key.Number, 1);
@@ -66,33 +67,29 @@ class DnumberConstructor : Dconstructor
         // DefineOwnProperty(Key.NEGATIVE_INFINITY, -double.infinity, attributes);
         // DefineOwnProperty(Key.POSITIVE_INFINITY, double.infinity, attributes);
 
-        version (TEST262)
-        {
-            installConstants!(
-                "EPSILON", double.epsilon,
-                "MAX_SAFE_INTEGER", double.min_exp - 1,
-                "MIN_SAFE_INTEGER", -double.min_exp + 1,
-                "MIN_VALUE", double.min_normal * double.epsilon,
-                "NEGATIVE_INFINITY", -double.infinity,
-                "POSITIVE_INFINITY", double.infinity)(this);
+        installConstants!(
+            "EPSILON", double.epsilon,
+            "MAX_VALUE", double.max,
+            "MAX_SAFE_INTEGER", double.min_exp - 1,
+            "MIN_SAFE_INTEGER", -double.min_exp + 1,
+            "MIN_VALUE", double.min_normal * double.epsilon,
+            "NEGATIVE_INFINITY", -double.infinity,
+            "POSITIVE_INFINITY", double.infinity)(this);
 
-            installConstants!(
-                "NaN", double.nan)(this,
-                                   Property.Attribute.DontEnum |
-                                   Property.Attribute.DontDelete |
-                                   Property.Attribute.SilentReadOnly);
-        }
-        else
-        {
-            installConstants!(
-                "EPSILON", double.epsilon,
-                "MAX_SAFE_INTEGER", double.min_exp - 1,
-                "MIN_SAFE_INTEGER", -double.min_exp + 1,
-                "MIN_VALUE", double.min_normal * double.epsilon,
-                "NaN", double.nan,
-                "NEGATIVE_INFINITY", -double.infinity,
-                "POSITIVE_INFINITY", double.infinity)(this);
-        }
+        installConstants!("NaN", double.nan)(
+            this, PA.DontEnum | PA.DontDelete | PA.ReadOnly);
+        // }
+        // else
+        // {
+        //     installConstants!(
+        //         "EPSILON", double.epsilon,
+        //         "MAX_SAFE_INTEGER", double.min_exp - 1,
+        //         "MIN_SAFE_INTEGER", -double.min_exp + 1,
+        //         "MIN_VALUE", double.min_normal * double.epsilon,
+        //         "NaN", double.nan,
+        //         "NEGATIVE_INFINITY", -double.infinity,
+        //         "POSITIVE_INFINITY", double.infinity)(this);
+        // }
     }
 
     nothrow

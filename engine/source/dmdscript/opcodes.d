@@ -90,6 +90,7 @@ struct IR
             string s;
             double d;
             int i;
+            PA attr;
             struct { double d1, d2; }
             struct { string s1, s2; }
             struct { int i1, i2; }
@@ -470,31 +471,35 @@ struct IR
                 goto Lnext;
 
             case Opcode.PutS:            // b.s = a
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                b.to(o, cc);
-                if(!o)
+                mixin (fill!(a, b));
+                if (b.to(o, cc).onError(sta))
+                    goto Lthrow;
+                if(o is null)
                 {
                     sta = cannotConvert(cc, b);
                     goto Lthrow;
                 }
-                sta = o.Set(*(code + 3).id, *a,
-                            Property.Attribute.None, cc);
-                if(sta !is null)
+                if (cc.strictMode)
+                    ax.attr = PA.None;
+                else
+                    ax.attr = PA.Silent;
+                if (o.Set(*(code + 3).id, *a, ax.attr, cc).onError(sta))
                     goto Lthrow;
-                code += IRTypes[Opcode.PutS].size;
-                goto Lnext;
+                mixin ("PutS".goNext);
 
             case Opcode.PutScope:            // s = a
-                a = locals + (code + 1).index;
-                sta = a.checkReference(cc);
-                if (sta !is null)
+                mixin (fill!a);
+                if (a.checkReference(cc).onError(sta))
                     goto Lthrow;
-                sta = cc.set(*(code + 2).id, *a);
-                if (sta !is null)
+
+                if (cc.strictMode)
+                    ax.attr = PA.None;
+                else
+                    ax.attr = PA.Silent;
+
+                if (cc.set(*(code + 2).id, *a, ax.attr).onError(sta))
                     goto Lthrow;
-                code += IRTypes[Opcode.PutScope].size;
-                goto Lnext;
+                mixin ("PutScope".goNext);
 
             case Opcode.PutDefault:              // b = a
                 a = locals + (code + 1).index;
@@ -513,18 +518,22 @@ struct IR
                 goto Lnext;
 
             case Opcode.PutThis:             // id = a
-                o = cc.getNonFakeObject;
-                id = (code + 2).id;
                 mixin(fill!a);
-                assert(o);
+                id = (code + 2).id;
+                o = cc.getNonFakeObject;
+                assert(o !is null);
+                if (cc.strictMode)
+                    ax.attr = PA.DontDelete;
+                else
+                    ax.attr = PA.DontDelete | PA.Silent;
                 if(o.HasProperty(*id))
                 {
-                    if (o.Set(*id, *a, PA.DontDelete, cc).onError(sta))
+                    if (o.Set(*id, *a, ax.attr, cc).onError(sta))
                         goto Lthrow;
                 }
                 else
                 {
-                    if (cc.setThis(*id, *a, PA.DontDelete).onError(sta))
+                    if (cc.setThis(*id, *a, ax.attr).onError(sta))
                         goto Lthrow;
                 }
                 mixin("PutThis".goNext);
@@ -1081,13 +1090,16 @@ struct IR
                 id = (code + 2).id;
                 //o = scope_tos(scopex);		// broken way
                 // if(!scope_get(cc, scopex, id, o))
+                o = cc.variable;
                 sta = cc.get(*id, o, v);
                 if (sta !is null)
                     goto Lthrow;
-                if (v is null)
+                if      (v is null)
                     ax.b = true;
-                else if(o.implementsDelete())
-                    ax.b = !!o.Delete(*id);
+                // else if (v.isPrimitive)
+                //     ax.b = false;
+                else if (o.implementsDelete())
+                    ax.b = o.Delete(*id);
                 else
                     ax.b = !o.HasProperty(*id);
                 (locals + (code + 1).index).put(ax.b);
@@ -1854,7 +1866,7 @@ struct IR
                 auto name = (code + 2).value.text;
                 auto fd = cast(FunctionDefinition)(code + 3).fd;
                 auto newrealm = new DmoduleRealm(
-                    name, cc.realm.modulePool, fd);
+                    name, cc.realm.modulePool, fd, cc.strictMode);
                 if (newrealm.Call(cc, null, *(locals + (code + 1).index), null)
                     .onError(sta))
                     goto Lthrow;
@@ -1919,8 +1931,7 @@ struct IR
     }
 
     debug static
-    void dump(const(IR)* code, scope void delegate(in char[]) sink,
-              uint indent)
+    void dump(const(IR)* code, scope void delegate(in char[]) sink)
     {
         import std.format: format;
         import std.range: take, repeat;
@@ -1930,7 +1941,6 @@ struct IR
 
         for(;; )
         {
-            sink(' '.repeat.take(indent).to!string);
             sink(format("% 4d[%04d]:", code.opcode.linnum,
                         cast(size_t)(code - codestart)));
             toBuffer(code - codestart, code, sink);
@@ -2062,7 +2072,11 @@ Derror cannotConvert(CallContext* cc, Value* b)
     import std.conv : to;
     Derror sta;
 
-    if(b.isUndefinedOrNull)
+    if      (b.isEmpty)
+    {
+        sta = UndefinedVarError(cc, b.text);
+    }
+    else if (b.isUndefinedOrNull)
     {
         sta = CannotConvertToObject4Error(cc, b.type.to!string);
     }

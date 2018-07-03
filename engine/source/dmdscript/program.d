@@ -144,13 +144,13 @@ Derror execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
         Value* v;
         Derror result;
 
-        version (Win32)          // eh and alloca() not working under linux
+        version (Windows)
         {
-            import core.sys.posix.stdlib: alloca, free;
+            import core.stdc.stdlib: alloca;
             if (fd.nlocals < 128)
-                v = cast(Value*)alloca(fd.nlocals * Value.sizeof);
-            scope (exit) if (v !is null) free(v);
+                v = cast(Value*)alloca(Value.sizeof * fd.nlocals);
         }
+
         if (v !is null)
             locals = v[0 .. fd.nlocals];
         else
@@ -173,7 +173,6 @@ Derror execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
         }
 
         locals = null;
-
         return result;
     }
 }
@@ -181,10 +180,15 @@ Derror execute(T...) (FunctionDefinition fd, CallContext* cc, out Value ret,
 Derror execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
                     T args)
 {
-    auto cc = CallContext.push (realm, fd);
-    auto result = execute(fd, cc, ret, args);
+    assert (fd !is null);
+    assert (realm !is null);
+    CallContext* cc;
+    Derror err;
+    cc = CallContext.push (realm, fd);
+
+    execute(fd, cc, ret, args).onError(err);
     CallContext.pop(cc);
-    return result;
+    return err;
 }
 
 /+
