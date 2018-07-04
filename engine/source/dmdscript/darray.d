@@ -93,7 +93,7 @@ class Darray : Dobject
                         // delete all properties with keys >= i
                         size_t[] todelete;
 
-                        foreach(PropertyKey key, ref Property p; proptable)
+                        foreach(PropertyKey key, Property* p; proptable)
                         {
                             size_t j;
 
@@ -1041,7 +1041,7 @@ Derror sort(
     else
     {
         parraydim = 0;
-        foreach(ref Property p; othis.proptable)
+        foreach(Property* p; othis.proptable)
         {
             if(p.isNoneAttribute)       // don't count special properties
                 parraydim++;
@@ -1083,7 +1083,7 @@ Derror sort(
 
     // Now fill it with all the Property's that are array indices
     nprops = 0;
-    foreach(ref PropertyKey key, ref Property p; othis.proptable)
+    foreach(ref PropertyKey key, Property* p; othis.proptable)
     {
         size_t index;
 

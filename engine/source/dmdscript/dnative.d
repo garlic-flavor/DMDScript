@@ -117,6 +117,12 @@ struct DnativeFunctionDescriptor
         attr = attr;
     }
 
+    this (Property.Attribute attr, Type t = Type.Prototype)
+    {
+        length = 0;
+        type = t;
+        attr = attr;
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -148,6 +154,7 @@ void installConstants(ARGS...)(
 }
 
 
+//------------------------------------------------------------------------------
 ///
 void install(alias M, T)(
     T o, Dobject functionPrototype,
@@ -220,26 +227,34 @@ void install(alias M, T)(
                        (desc.type & DFD.Type.Static) == is(T : Dconstructor))
             {
                 auto name = __traits(getMember, M, one).name;
+                Dfunction getter, setter;
+
+                static if (__traits(hasMember, __traits(getMember, M, one),
+                                    "getter"))
+                {
+                    getter = new DnativeFunction(
+                        functionPrototype, name, 1,
+                        &__traits(getMember, __traits(getMember, M, one)<
+                                  "getter"));
+                }
 
                 static if (__traits(hasMember, __traits(getMember, M, one),
                                     "setter"))
                 {
-                    alias descS = selectDFD!(
-                        __traits(getMember, __traits(getMember, M, one),
-                                 "setter"));
-                    f = new DnativeFunction(
-                        functionPrototype, name, descS.length,
+                    setter = new DnativeFunction(
+                        functionPrototype, name, 1,
                         &__traits(getMember, __traits(getMember, M, one),
                                   "setter"));
-                    o.SetSetter(name, f, prop | descS.attr);
                 }
 
-
+                auto p = new Property(getter, setter, prop | desc.attr);
+                o.DefineOwnProperty(name, p);
             }
         }
     }
 }
 
+//------------------------------------------------------------------------------
 void install(Dobject o, string key, Dobject p,
              Property.Attribute attr = Property.Attribute.DontEnum)
 {

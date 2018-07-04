@@ -225,15 +225,6 @@ final class RandAA(K, V, bool storeHash = shouldStoreHash!K,
         rehash();
     }
 
-    @safe nothrow
-    V* insertAlt2(in ref K key, ref V val, in size_t hashFull)
-    {
-        auto nvp = assignNoRehashCheck2(key, val, hashFull);
-        if (!rehash)
-            return nvp;
-        return findExistingAlt(key, hashFull);
-    }
-
     ///
     @safe nothrow
     void opIndexAssign()(auto ref V val, auto ref K index)
@@ -509,27 +500,6 @@ private:
             _flags[i] = USED;
             _keys[i] = key;
         }
-    }
-
-    //
-    @trusted @nogc pure nothrow
-    V* assignNoRehashCheck2(in ref K key, ref V val, in size_t hashFull)
-    {
-        const size_t i = findForInsert(key, hashFull);
-        _vals[i] = val;
-        const uint flag = _flags[i];
-        if(flag != USED)
-        {
-            if(flag == REMOVED)
-            {
-                assert(0 < nDead);
-                nDead--;
-            }
-            _length++;
-            _flags[i] = USED;
-            _keys[i] = key;
-        }
-        return _vals + i;
     }
 
     //====================================================================

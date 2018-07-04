@@ -163,8 +163,7 @@ class Dobject
     //--------------------------------------------------------------------
     ///
     @safe nothrow
-    bool DefineOwnProperty(in PropertyKey PropertyName,
-                           ref Property p)
+    bool DefineOwnProperty(in PropertyKey PropertyName, Property* p)
     {
         return proptable.config(PropertyName, p, _extensible);
     }
@@ -174,7 +173,7 @@ class Dobject
     bool DefineOwnProperty(in PropertyKey PropertyName,
                            ref Value v, in Property.Attribute attributes)
     {
-        auto p = Property(v, attributes);
+        auto p = new Property(v, attributes);
         return proptable.config(PropertyName, p, _extensible);
     }
 
@@ -677,7 +676,7 @@ Derror defineProperty(
 
     if (arglist.length < 3)
     {
-        auto p = Property(Property.Attribute.None);
+        auto p = new Property(Property.Attribute.None);
         if (!target.DefineOwnProperty(key, p))
         {
             sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -688,7 +687,7 @@ Derror defineProperty(
     {
         Dobject o;
         arglist[2].to(o, cc);
-        auto prop = Property(cc, o);
+        auto prop = new Property(cc, o);
         if (!target.DefineOwnProperty(key, prop))
         {
             sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -970,7 +969,7 @@ Derror toSource(
 
     buf = "{";
     any = 0;
-    foreach(PropertyKey key, Property p; othis.proptable)
+    foreach(PropertyKey key, Property* p; othis.proptable)
     {
         if (p.enumerable /*&& p.deleted /* not used?*/)
         {
@@ -1085,7 +1084,6 @@ struct symbol_unscopables
 static:
     alias name = SpecialSymbols.unscopables;
 
-    @DFD(1)
     Derror setter(
         DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
         Value[] arglist)
@@ -1101,15 +1099,11 @@ static:
         if (arglist[0].to(arg, cc).onError(err))
             return err;
 
-        foreach(PropertyKey key, Property prop; arg.proptable)
+        foreach(PropertyKey key, Property* prop; arg.proptable)
         {
             prop.attribute = prop.attribute | PA.DontOverwrite;
             othis.DefineOwnProperty(key, prop);
         }
-
-
-        // auto keys = arg.OwnPropertyKeys;
-        // writeln(keys);
         return null;
     }
 }

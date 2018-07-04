@@ -16,7 +16,6 @@
  */
 module dmdscript.property;
 
-import dmdscript.errmsgs;
 
 debug import std.stdio;
 
@@ -24,6 +23,7 @@ debug import std.stdio;
 ///
 final class PropTable
 {
+    import dmdscript.errmsgs: CannotPutError;
     import dmdscript.value: Value;
     import dmdscript.derror: Derror;
     import dmdscript.primitive: PropertyKey;
@@ -33,7 +33,7 @@ final class PropTable
     import dmdscript.callcontext: CallContext;
 
     ///
-    alias Table = RandAA!(PropertyKey, Property, false);
+    alias Table = RandAA!(PropertyKey, Property*, false);
     private alias PA = Property.Attribute;
 
     //--------------------------------------------------------------------
@@ -50,7 +50,7 @@ final class PropTable
     {
         import std.traits : ParameterTypeTuple;
         int result;
-        foreach (ref PropertyKey k, ref Property p; _table)
+        foreach (ref PropertyKey k, Property* p; _table)
         {
             if (0 == (p._attr & PA.DontEnum))
             {
@@ -77,7 +77,7 @@ final class PropTable
         for (auto t = this; t !is null; t = t._previous)
         {
             if (auto p = t._table.findExistingAlt(key, key.hash))
-                return cast(typeof(return))p;
+                return *p;
         }
         return null;
     }
@@ -87,7 +87,10 @@ final class PropTable
     @safe @nogc pure nothrow
     Property* getOwnProperty(in ref PropertyKey k)
     {
-        return _table.findExistingAlt(k, k.hash);
+        if (auto p = _table.findExistingAlt(k, k.hash))
+            return *p;
+        else
+            return null;
     }
 
     /// ditto
@@ -96,9 +99,9 @@ final class PropTable
     {
         if (auto prop = _table.findExistingAlt(key, key.hash))
         {
-            if (prop.isAccessor)
+            if ((*prop).isAccessor)
                 return null;
-            return prop.getAsData;
+            return (*prop).getAsData;
         }
         return null;
     }
@@ -124,7 +127,7 @@ final class PropTable
         assert (_table !is null);
 
         if      (auto p = _table.findExistingAlt(key, key.hash))
-            return p.set(value, othis, a, cc);
+            return (*p).set(value, othis, a, cc);
         else if (auto p = getProperty(SpecialSymbols.opAssign))
             return p.set(value, othis, a, cc);
         else if (a & PA.DontExtend)
@@ -140,14 +143,18 @@ final class PropTable
             {
                 if (auto p = t._table.findExistingAlt(key, key.hash))
                 {
-                    if      (p.isAccessor)
-                        return p.set(value, othis, a, cc);
-                    else if (!p.writable)
+                    if      ((*p).isAccessor)
+                        return (*p).set(value, othis, a, cc);
+                    else if ((*p).writable)
+                        break;
+                    else if (a & PA.Silent)
                         return null;
+                    else
+                        return CannotPutError(cc);
                 }
             }
 
-            auto prop = Property(value, a);
+            auto prop = new Property(value, a);
             _table.insertAlt(key, prop, key.hash);
             return null;
         }
@@ -156,10 +163,10 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     @trusted pure nothrow
-    bool config(in ref PropertyKey key, ref Property prop, in bool extensible)
+    bool config(in ref PropertyKey key, Property* prop, in bool extensible)
     {
         if (auto p = toConfig(key, prop, extensible))
-            return p.config(prop);
+            return (*p).config(*prop);
         else
             return false;
     }
@@ -169,7 +176,7 @@ final class PropTable
     bool configGetter(in ref PropertyKey key, Dfunction getter,
                       in Property.Attribute a)
     {
-        auto prop = Property(getter, null, a);
+        auto prop = new Property(getter, null, a);
         if (auto p = toConfig(key, prop, 0 == (a & PA.DontExtend)))
         {
             if (a & PA.DontOverwrite)
@@ -190,7 +197,7 @@ final class PropTable
     bool configSetter(in ref PropertyKey key, Dfunction setter,
                       in Property.Attribute a)
     {
-        auto prop = Property(null, setter, a);
+        auto prop = new Property(null, setter, a);
         if (auto p = toConfig(key, prop, 0 == (a & PA.DontExtend)))
         {
             if (a & PA.DontOverwrite)
@@ -216,10 +223,10 @@ final class PropTable
         {
             if (auto p = t._table.findExistingAlt(key, key.hash))
             {
-                if (p.isAccessor)
-                    return p.configurable;
+                if ((*p).isAccessor)
+                    return (*p).configurable;
                 else
-                    return p.writable;
+                    return (*p).writable;
             }
             t = t._previous;
         } while(t !is null);
@@ -233,7 +240,7 @@ final class PropTable
     {
         if(auto p = _table.findExistingAlt(key, key.hash))
         {
-            if(!p.deletable)
+            if(!(*p).deletable)
                 return false;
             try _table.remove(p);
             catch (Exception) return false;
@@ -269,15 +276,15 @@ private:
     PropTable _previous;
 
     @trusted pure nothrow
-    Property* toConfig(in ref PropertyKey key, ref Property prop,
+    Property* toConfig(in ref PropertyKey key, Property* prop,
                        bool extensible)
     {
         if      (auto p = _table.findExistingAlt(key, key.hash))
         {
-            if (!p.configurable || !p.writable)
+            if (!(*p).configurable || !(*p).writable)
                 return null;
             else
-                return p;
+                return *p;
         }
         else if (!extensible)
             return null;
@@ -286,12 +293,13 @@ private:
         {
             if (auto p = t._table.findExistingAlt(key, key.hash))
             {
-                if (!p.configurable || !p.writable)
+                if (!(*p).configurable || !(*p).writable)
                     return null;
             }
         }
 
-        return _table.insertAlt2(key, prop, key.hash);
+        _table.insertAlt(key, prop, key.hash);
+        return prop;
     }
 }
 
@@ -306,6 +314,7 @@ struct Property
     import dmdscript.callcontext: CallContext;
     import dmdscript.drealm: Drealm;
     import dmdscript.derror: Derror;
+    import dmdscript.errmsgs: CannotPutError;
 
     /// attribute flags
     enum Attribute : uint

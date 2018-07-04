@@ -280,7 +280,7 @@ struct IR
                 }
                 code += IRTypes[Opcode.CheckRef].size;
                 goto Lnext;
-            case Opcode.GetScope:            // a = s
+            mixin("GetScope".op(q{            // a = s
                 mixin(fill!a);
                 id = (code + 2).id;
                 version(SCOPECACHING)
@@ -318,8 +318,7 @@ struct IR
                     }
                 }
                 *a = *v;
-                mixin("GetScope".goNext);
-
+            }));
             case Opcode.PutGetter:
                 assert (0, "not implemented yet");
                 // code += IRTypes[Opcode.PutGetter].size;
@@ -470,7 +469,7 @@ struct IR
                 code += IRTypes[Opcode.AddAsSScope].size;
                 goto Lnext;
 
-            case Opcode.PutS:            // b.s = a
+            mixin("PutS".op(q{            // b.s = a
                 mixin (fill!(a, b));
                 if (b.to(o, cc).onError(sta))
                     goto Lthrow;
@@ -485,9 +484,9 @@ struct IR
                     ax.attr = PA.Silent;
                 if (o.Set(*(code + 3).id, *a, ax.attr, cc).onError(sta))
                     goto Lthrow;
-                mixin ("PutS".goNext);
+            }));
 
-            case Opcode.PutScope:            // s = a
+            mixin("PutScope".op(q{            // s = a
                 mixin (fill!a);
                 if (a.checkReference(cc).onError(sta))
                     goto Lthrow;
@@ -499,7 +498,7 @@ struct IR
 
                 if (cc.set(*(code + 2).id, *a, ax.attr).onError(sta))
                     goto Lthrow;
-                mixin ("PutScope".goNext);
+            }));
 
             case Opcode.PutDefault:              // b = a
                 a = locals + (code + 1).index;
@@ -517,7 +516,7 @@ struct IR
                 code += IRTypes[Opcode.PutDefault].size;
                 goto Lnext;
 
-            case Opcode.PutThis:             // id = a
+            mixin("PutThis".op(q{             // id = a
                 mixin(fill!a);
                 id = (code + 2).id;
                 o = cc.getNonFakeObject;
@@ -536,7 +535,7 @@ struct IR
                     if (cc.setThis(*id, *a, ax.attr).onError(sta))
                         goto Lthrow;
                 }
-                mixin("PutThis".goNext);
+            }));
             case Opcode.PutThisLocal:
                 assert (0, "not implemented yet.");
             case Opcode.PutThisLocalConst:
@@ -567,16 +566,14 @@ struct IR
                 code += IRTypes[Opcode.This].size;
                 goto Lnext;
 
-            case Opcode.Number:              // a = number
+            mixin("Number".op(q{              // a = number
                 (locals + (code + 1).index).put(
                     *cast(double*)(code + 2));
-                mixin("Number".goNext);
-                // code += IRTypes[Opcode.Number].size;
-                // goto Lnext;
+            }));
             case Opcode.BigInt:              // a = BigInt
                 (locals + (code + 1).index).put(
                     *cast(BigInt**)(code + 2));
-                code += IRTypes[Opcode.Object].size;
+                code += IRTypes[Opcode.BigInt].size;
                 goto Lnext;
             case Opcode.Boolean:             // a = boolean
                 (locals + (code + 1).index).put((code + 2).boolean);
@@ -669,7 +666,7 @@ struct IR
                     goto Lthrow;
                 code += IRTypes[Opcode.Instance].size;
                 goto Lnext;
-            case Opcode.Add:                     // a = b + c
+            mixin("Add".op(q{                     // a = b + c
                 mixin (fill!(a, b, c));
 
                 if(b.type == VT.Number && c.type == VT.Number)
@@ -712,7 +709,7 @@ struct IR
                         a.put(ax.d1 + ax.d2);
                     }
                 }
-                mixin ("Add".goNext);
+            }));
 
             case Opcode.Sub:                 // a = b - c
                 a = locals + (code + 1).index;
@@ -1086,29 +1083,24 @@ struct IR
                 code += IRTypes[Opcode.DelS].size;
                 goto Lnext;
             }
-            case Opcode.DelScope:    // a = delete s
+            mixin("DelScope".op(q{    // a = delete s
                 id = (code + 2).id;
                 //o = scope_tos(scopex);		// broken way
-                // if(!scope_get(cc, scopex, id, o))
-                o = cc.variable;
-                sta = cc.get(*id, o, v);
-                if (sta !is null)
+                if (cc.get(*id, o, v).onError(sta))
                     goto Lthrow;
-                if      (v is null)
+                else if (v is null || o is null)
                     ax.b = true;
-                // else if (v.isPrimitive)
-                //     ax.b = false;
                 else if (o.implementsDelete())
                     ax.b = o.Delete(*id);
                 else
                     ax.b = !o.HasProperty(*id);
                 (locals + (code + 1).index).put(ax.b);
-                code += IRTypes[Opcode.DelScope].size;
-                goto Lnext;
+
                 /* ECMA requires that if one of the numeric operands is NAN,
                  * then the result of the comparison is false. D generates a
                  * correct test for NAN operands.
                  */
+            }));
 
             case Opcode.CLT:         // a = (b <   c)
                 a = locals + (code + 1).index;
@@ -1608,7 +1600,7 @@ struct IR
                         didyoumean.join("\" or \"") ~ "\"?";
                 }
                 goto Lthrow;
-            case Opcode.CallScope:   // a = s(argc, argv)
+            mixin("CallScope".op(q{   // a = s(argc, argv)
                 id = (code + 2).id;
                 mixin (fill!a);
                 if (cc.get(*id, o, v).onError(sta))
@@ -1640,7 +1632,7 @@ struct IR
                     cc.addTraceInfoTo(sta);
                     goto Lthrow;
                 }
-                mixin ("CallScope".goNext);
+            }));
 
             case Opcode.CallV:   // v(argc, argv) = a
                 a = locals + (code + 1).index;
@@ -1805,12 +1797,12 @@ struct IR
 
                 return null;
 
-            case Opcode.ImpRet:
+            mixin("ImpRet".op(q{
                 mixin (fill!a);
                 if (a.checkReference(cc).onError(sta))
                     goto Lthrow;
                 ret = *a;
-                mixin ("ImpRet".goNext);
+            }));
 
             case Opcode.Throw:
                 mixin (fill!a);
@@ -2119,7 +2111,10 @@ string from(alias V)(string To)
 // goto Lnext;
 string goNext(string C)
 {
-    return "code += IRTypes[Opcode." ~ C ~ "].size; goto Lnext;";
+    return " code += IRTypes[Opcode." ~ C ~ "].size; goto Lnext;";
 }
 
-
+string op(string OP, string bdy)
+{
+    return "case Opcode." ~ OP ~ ":" ~ bdy ~ goNext(OP);
+}

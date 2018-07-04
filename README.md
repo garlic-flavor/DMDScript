@@ -72,7 +72,7 @@ This aims to alternate test262-harness-py.
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
-### Current progress is 2%(1734/59240)
+### Current progress is 2%(1735/59240)
 
 ### Passed directories.
 * ..\test262\test\annexB\language\comments
@@ -98,8 +98,10 @@ This aims to alternate test262-harness-py.
 * ..\test262\test\language\white-space
 
 ### Failed directories.
+* ..\test262\test\language\expressions\assignment\destructuring
 
 ### Progressing directories.
+* ..\test262\test\language\expressions\assignment\destructuring
 * ..\test262\test\language\expressions\delete
 * ..\test262\test\language\expressions\assignment
 
@@ -108,6 +110,8 @@ This aims to alternate test262-harness-py.
   A invalid Unicode sequence is not allowed.
 * ..\test262\test\language\comments\S7.4_A6.js
   A invalid Unicode sequence is not allowed.
+* ..\test262\test\language\expressions\assignment\destructuring\iterator-destructuring-property-reference-target-evaluation-order.js
+  failed.
 * ..\test262\test\language\source-text\6.1.js
   An invalid escape sequence is not allowed.
 * ..\test262\test\language\types\number\S8.5_A2.1.js
