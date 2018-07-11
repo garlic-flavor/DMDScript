@@ -45,16 +45,20 @@ struct Iterator
     }
 
     nothrow
-    void ctor(Dobject o)
+    Derror ctor(Dobject o, CallContext* cc)
     {
         import std.algorithm.sorting : sort;
+        import dmdscript.property: Property, SpecialSymbols;
 
         debug foo = ITERATOR_VALUE;
         //writef("Iterator: o = %p, p = %p\n", o, p);
+        Derror err;
+        Value* v;
         ostart = o;
         this.o = o;
         keys = o.proptable.keys.sort().release;
         keyindex = 0;
+        return err;
     }
 
     PropertyKey* next()

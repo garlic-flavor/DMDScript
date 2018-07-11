@@ -31,7 +31,7 @@ import dmdscript.property;
 import dmdscript.ddeclaredfunction;
 import dmdscript.dfunction;
 // import dmdscript.protoerror;
-import dmdscript.drealm : undefined, Drealm, DmoduleRealm;
+import dmdscript.drealm : Drealm, DmoduleRealm;
 import dmdscript.callcontext: CallContext;
 import dmdscript.derror: Derror, onError;
 
@@ -78,7 +78,8 @@ struct IR
         Value* a;
         Value* b;
         Value* c;
-        Value* v;
+        Value v;
+        Property* p;
         Dobject o;
         Derror sta, prevError;
         Identifier id;
@@ -95,6 +96,7 @@ struct IR
             struct { string s1, s2; }
             struct { int i1, i2; }
             struct { uint u1, u2; }
+            Dfunction f;
         }
         AX ax = void;
 
@@ -166,10 +168,12 @@ struct IR
             struct ScopeCache
             {
                 Identifier id;
-                Value*   v;     // never null, and never from a Dcomobject
+                Property*   p;     // never null, and never from a Dcomobject
+                Dobject o;
             }
-            size_t si;
+            // size_t si;
             ScopeCache[16] scopecache;
+            ScopeCache* psc;
             version(SCOPECACHE_LOG)
                 int scopecache_cnt = 0;
 
@@ -186,7 +190,6 @@ struct IR
         debug(VERIFY) uint checksum = IR.verify(code);
 
         // scopex = cc.scopex;
-
         // dimsave = scopex.length;
 
         assert(code);
@@ -207,179 +210,132 @@ struct IR
             case Opcode.Error:
                 assert(0);
 
-            case Opcode.Nop:
-                code += IRTypes[Opcode.Nop].size;
-                goto Lnext;
+            mixin("Nop".op(""));
 
-            case Opcode.Get:                 // a = b.c
-            {
-                int i32;
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                b.to(o, cc);
-                if(!o)
-                {
-                    sta = cannotConvert(cc, b);
-                    goto Lthrow;
-                }
-                c = locals + (code + 3).index;
-                c.to(ax.pk, cc);
-                sta = o.Get(ax.pk, v, cc);
-                if (sta !is null)
+            mixin ("Get".op(q{                 // a = b.c
+                mixin (fill!(a, b, c));
+                id = null;
+                mixin ("o".from!b);
+                mixin ("ax.pk".from!c);
+                if (o.Get(ax.pk, v, cc).onError(sta))
                     goto Lthrow;
 
-                if(!v)
-                    v = &undefined;
-                *a = *v;
-                code += IRTypes[Opcode.Get].size;
-                goto Lnext;
-            }
-            case Opcode.Put:                 // b.c = a
-            {
-                int i32;
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                c = locals + (code + 3).index;
-                c.to(ax.pk, cc);
-                sta = b.Set(ax.pk, *a, cc);
-                if(sta)
+                if(v.isEmpty)
+                    a.putVundefined;
+                else
+                    *a = v;
+            }));
+
+            mixin ("PutPrimitive".op(q{
+                mixin (fill!a);
+                if (a.toPrimitive(*a, cc, VT.String).onError(sta))
                     goto Lthrow;
-                code += IRTypes[Opcode.Put].size;
-                goto Lnext;
-            }
-            case Opcode.GetS:                // a = b.s
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
+            }));
+
+            mixin ("Put".op(q{                 // b.c = a
+                mixin(fill!(a, b, c));
+                mixin ("ax.pk".from!c);
+                if (b.Set(ax.pk, *a, cc).onError(sta))
+                    goto Lthrow;
+            }));
+
+            mixin ("GetS".op(q{                // a = b.s
+                mixin (fill!(a, b));
                 id = (code + 3).id;
-                b.to(o, cc);
-                if(o is null)
-                {
-                    b.to(ax.s, cc);
-                    sta = CannotConvertToObject3Error(
-                        cc, b.type.to!string, ax.s, id.toString);
-                    goto Lthrow;
-                }
+                mixin ("o".from!b);
                 if (o.Get(*id, v, cc).onError(sta))
                     goto Lthrow;
-                if(v is null)
-                {
-                    v = &undefined;
-                }
-                *a = *v;
-                code += IRTypes[Opcode.GetS].size;
-                goto Lnext;
-            case Opcode.CheckRef: // s
+                if(v.isEmpty)
+                    v.putVundefined;
+                *a = v;
+            }));
+
+            mixin ("CheckRef".op(q{           // s
                 id = (code+1).id;
-                sta = cc.get(*id, v);
-                if (sta !is null)
+                if (cc.get(*id, v).onError(sta))
                     goto Lthrow;
-                if (v is null)
-                {
-                    sta = UndefinedVarError(cc, id.toString);
-                    goto Lthrow;
-                }
-                code += IRTypes[Opcode.CheckRef].size;
-                goto Lnext;
+                mixin(vCannotBeEmpty);
+            }));
+
             mixin("GetScope".op(q{            // a = s
                 mixin(fill!a);
                 id = (code + 2).id;
-                version(SCOPECACHING)
+                mixin (cachedGetOfP);
+
+                v.clear;
+                if (p !is null)
                 {
-                    si = SCOPECACHE_SI(id);
-                    if(id is scopecache[si].id)
-                    {
-                        version(SCOPECACHE_LOG)
-                            scopecache_cnt++;
-                        *a = *scopecache[si].v;
-                        mixin("GetScope".goNext);
-                    }
+                    assert (o !is null);
+                    if (p.get(v, o, cc).onError(sta))
+                        goto Lthrow;
                 }
 
-                // v = scope_get(cc, scopex, id);
-                if (cc.get(*id, v).onError(sta))
-                    goto Lthrow;
-                if(v is null)
+                if(v.isEmpty)
                 {
-                    // if (realm.strictMode)
-                    // {
-                    //     sta = CannotAssignToError(realm, id.toString);
-                    //     goto Lthrow;
-                    // }
-
-                    cc.set(*id, undefined);
-                    v = signalingUndefined(id.toString);
-                }
-                else
-                {
-                    version(SCOPECACHING)
+                    v.putVundefined;
+                    if (p !is null)
                     {
-                        scopecache[si].id = id;
-                        scopecache[si].v = v;
+                        assert (o !is null);
+                        p.set(v, o, PA.None, cc);
                     }
+                    else
+                        cc.set(*id, v);
+                    v.putSignalingUndefined(id.toString);
                 }
-                *a = *v;
+
+                *a = v;
             }));
             case Opcode.PutGetter:
                 assert (0, "not implemented yet");
                 // code += IRTypes[Opcode.PutGetter].size;
                 // break;
-            case Opcode.PutGetterS:
-            {
-                a = locals + (code + 1).index;
-                a.to(o, cc);
-                auto f = cast(Dfunction)o;
-                if (f is null)
+            mixin ("PutGetterS".op(q{
+                mixin (fill!(a, b));
+                mixin ("o".from!a);
+                ax.f = cast(Dfunction)o;
+                if (ax.f is null)
                 {
-                    sta = cannotConvert(cc, a);
+                    a.to(ax.s, cc);
+                    sta = CannotConvertToObject2Error(
+                        cc, Value.toString(a.type), ax.s);
                     goto Lthrow;
                 }
-                b = locals + (code + 2).index;
-                b.to(o, cc);
-                if(o is null)
-                {
-                    sta = cannotConvert(cc, b);
-                    goto Lthrow;
-                }
-                if (!o.SetGetter(*(code+3).id, f, Property.Attribute.None))
+                mixin ("o".from!b);
+
+                if (!o.SetGetter(*(code+3).id, ax.f, PA.None))
                 {
                     sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!
                     goto Lthrow;
                 }
-                code += IRTypes[Opcode.PutGetterS].size;
-                goto Lnext;
-            }
+            }));
+
             case Opcode.PutSetter:
                 assert (0, "not implemented yet");
                 // code += IRTypes[Opcode.PutSetter].size;
                 // break;
-            case Opcode.PutSetterS:
-            {
-                a = locals + (code + 1).index;
-                a.to(o, cc);
-                auto f = cast(Dfunction)o;
-                if (f is null)
+
+            mixin ("PutSetterS".op(q{
+                mixin (fill!(a, b));
+                mixin ("o".from!a);
+                ax.f = cast(Dfunction)o;
+                if (ax.f is null)
                 {
-                    sta = cannotConvert(cc, a);
+                    a.to(ax.s, cc);
+                    sta = CannotConvertToObject2Error(
+                        cc, Value.toString(a.type), ax.s);
                     goto Lthrow;
                 }
-                b = locals + (code + 2).index;
-                b.to(o, cc);
-                if(!o)
-                {
-                    sta = cannotConvert(cc, b);
-                    goto Lthrow;
-                }
-                if (!o.SetSetter(*(code+3).id, f, Property.Attribute.None))
+                mixin ("o".from!b);
+                if (!o.SetSetter(*(code+3).id, ax.f, PA.None))
                 {
                     sta = CannotPutError(cc); // !!!!!!!!!!!!!!!!!!!!!!!!!!!
                     goto Lthrow;
                 }
-                code += IRTypes[Opcode.PutSetterS].size;
-                goto Lnext;
-            }
+            }));
+
             case Opcode.AddAsS:              // a = (b.c += a)
-                c = locals + (code + 3).index;
-                c.to(ax.pk, cc);
+                mixin (fill!c);
+                mixin ("ax.pk".from!c);
                 id = &ax.pk;
                 goto Laddass;
 
@@ -389,51 +345,38 @@ struct IR
             Laddass:
                 assert (id !is null);
 
-                b = locals + (code + 2).index;
-                sta = b.Get(*id, v, cc);
-                if (sta !is null)
+                mixin (fill!b);
+                if (b.GetProperty(*id, p, o, cc).onError(sta))
                     goto Lthrow;
+                mixin(pCannotBeNull);
                 goto Laddass2;
 
-            case Opcode.AddAsSScope:         // a = (s += a)
+            mixin ("AddAsSScope".op(q{         // a = (s += a)
                 b = null;
                 id = (code + 2).id;
-                version(SCOPECACHING)
-                {
-                    si = SCOPECACHE_SI(id);
-                    if(id is scopecache[si].id)
-                        v = scopecache[si].v;
-                    else
-                    {
-                        sta = cc.get(*id, v);
-                        if (sta !is null)
-                            goto Lthrow;
-                    }
-                }
-                else
-                {
-                    sta = cc.get(*id, v);
-                    if (sta !is null)
-                        goto Lthrow;
-                }
+                mixin (cachedGetOfP);
+                mixin (pCannotBeNull);
+
             Laddass2:
-                a = locals + (code + 1).index;
-                if(!v)
-                {
-                    sta = UndefinedVarError(cc, id.toString);
-                    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    // To_Do: add b's information
+                assert (p !is null);
+                assert (o !is null);
+
+                if (p.get(v, o, cc).onError(sta))
                     goto Lthrow;
-                }
-                else if(a.type == Value.Type.Number &&
+
+                mixin (fill!a);
+                //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                // To_Do: add b's information
+                mixin (vCannotBeEmpty);
+
+                if     (a.type == Value.Type.Number &&
                         v.type == Value.Type.Number)
                 {
-                    a.number += v.number;
-                    v.number = a.number;
+                    a.put(a.number + v.number);
                 }
                 else
                 {
-                    v.toPrimitive(*v, cc);
+                    v.toPrimitive(v, cc);
                     a.toPrimitive(*a, cc);
                     if(v.isString)
                     {
@@ -459,29 +402,25 @@ struct IR
                         v.to(ax.d2, cc);
                         a.put(ax.d1 + ax.d2);
                     }
-                    *v = *a; //full copy
                 }
+                if (p.set(*a, o, PA.None, cc).onError(sta))
+                    goto Lthrow;
 
                 static assert(IRTypes[Opcode.AddAsS].size
                               == IRTypes[Opcode.AddAsSS].size &&
                               IRTypes[Opcode.AddAsS].size
                               == IRTypes[Opcode.AddAsSScope].size);
-                code += IRTypes[Opcode.AddAsSScope].size;
-                goto Lnext;
+            }));
 
             mixin("PutS".op(q{            // b.s = a
                 mixin (fill!(a, b));
-                if (b.to(o, cc).onError(sta))
-                    goto Lthrow;
-                if(o is null)
-                {
-                    sta = cannotConvert(cc, b);
-                    goto Lthrow;
-                }
+                mixin ("o".from!b);
+
                 if (cc.strictMode)
                     ax.attr = PA.None;
                 else
                     ax.attr = PA.Silent;
+
                 if (o.Set(*(code + 3).id, *a, ax.attr, cc).onError(sta))
                     goto Lthrow;
             }));
@@ -500,21 +439,13 @@ struct IR
                     goto Lthrow;
             }));
 
-            case Opcode.PutDefault:              // b = a
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                b.to(o, cc);
-                if(!o)
-                {
-                    sta = CannotAssignError(cc, a.type.to!string,
-                                            b.type.to!string);
+            mixin ("PutDefault".op(q{              // b = a
+                mixin (fill!(a, b));
+                mixin ("o".from!b);
+
+                if (o.PutDefault(*a, cc).onError(sta))
                     goto Lthrow;
-                }
-                sta = o.PutDefault(*a, cc);
-                if(sta)
-                    goto Lthrow;
-                code += IRTypes[Opcode.PutDefault].size;
-                goto Lnext;
+            }));
 
             mixin("PutThis".op(q{             // id = a
                 mixin(fill!a);
@@ -567,14 +498,13 @@ struct IR
                 goto Lnext;
 
             mixin("Number".op(q{              // a = number
-                (locals + (code + 1).index).put(
-                    *cast(double*)(code + 2));
+                (locals + (code + 1).index).put(*cast(double*)(code + 2));
             }));
-            case Opcode.BigInt:              // a = BigInt
-                (locals + (code + 1).index).put(
-                    *cast(BigInt**)(code + 2));
-                code += IRTypes[Opcode.BigInt].size;
-                goto Lnext;
+
+            mixin ("BigInt".op(q{              // a = BigInt
+                (locals + (code + 1).index).put(*cast(BigInt**)(code + 2));
+            }));
+
             case Opcode.Boolean:             // a = boolean
                 (locals + (code + 1).index).put((code + 2).boolean);
                 code += IRTypes[Opcode.Boolean].size;
@@ -595,9 +525,9 @@ struct IR
                 sta = othis.Get(*(code + 2).id, v, cc);
                 if (sta !is null)
                     goto Lthrow;
-                if(!v)
-                    v = &undefined;
-                *a = *v;
+                if(v.isEmpty)
+                    v.putVundefined;
+                *a = v;
                 code += IRTypes[Opcode.ThisGet].size;
                 goto Lnext;
 
@@ -629,12 +559,9 @@ struct IR
 
             case Opcode.Not:                 // a = !a
                 a = locals + (code + 1).index;
-                sta = a.to(ax.b, cc);
-                if (sta !is null)
-                {
-                    sta.addTrace;
+                if (a.to(ax.b, cc).onError(sta))
                     goto Lthrow;
-                }
+
                 a.put(!ax.b);
                 code += IRTypes[Opcode.Not].size;
                 goto Lnext;
@@ -666,6 +593,7 @@ struct IR
                     goto Lthrow;
                 code += IRTypes[Opcode.Instance].size;
                 goto Lnext;
+
             mixin("Add".op(q{                     // a = b + c
                 mixin (fill!(a, b, c));
 
@@ -853,101 +781,77 @@ struct IR
                 /********************/
 
             case Opcode.PreInc:     // a = ++b.c
-                c = locals + (code + 3).index;
-                if (c.to(ax.pk, cc).onError(sta))
-                    goto Lthrow;
+                mixin (fill!c);
+                mixin ("ax.pk".from!c);
                 id = &ax.pk;
                 goto Lpreinc;
-            case Opcode.PreIncS:    // a = ++b.s
+
+            mixin ("PreIncS".op(q{    // a = ++b.s
                 id = (code + 3).id;
+
             Lpreinc:
                 ax.inc = 1;
             Lpre:
                 assert (id !is null);
 
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                if (b.Get(*id, v, cc).onError(sta))
+                mixin (fill!(a, b));
+                v.clear;
+                if (b.GetProperty(*id, p, o, cc).onError(sta))
                     goto Lthrow;
-                if(!v)
-                    v = &undefined;
-                if (v.to(ax.d2, cc).onError(sta))
-                    goto Lthrow;
+                if (p !is null)
+                {
+                    assert (o !is null);
+                    if (p.get(v, o, cc).onError(sta))
+                        goto Lthrow;
+                }
+
+                if(v.isEmpty)
+                    v.putVundefined;
+                mixin ("ax.d2".from!v);
+
                 a.put(ax.d2 + ax.inc);
-                b.Set(*id, *a, cc);
+
+                if (p !is null)
+                    p.set(*a, o, PA.None, cc);
+                else
+                    b.Set(*id, *a, cc);
 
                 static assert(IRTypes[Opcode.PreInc].size
                               == IRTypes[Opcode.PreIncS].size &&
                               IRTypes[Opcode.PreDec].size
                               == IRTypes[Opcode.PreIncS].size &&
                               IRTypes[Opcode.PreDecS].size);
-                code += IRTypes[Opcode.PreIncS].size;
-                goto Lnext;
+            }));
 
-            case Opcode.PreIncScope:        // a = ++s
+            mixin ("PreIncScope".op(q{        // a = ++s
                 ax.inc = 1;
+
             Lprescope:
-                a = locals + (code + 1).index;
+                mixin (fill!a);
                 id = (code + 2).id;
-                version(SCOPECACHING)
-                {
-                    si = SCOPECACHE_SI(id);
-                    if(id is scopecache[si].id)
-                    {
-                        v = scopecache[si].v;
-                        v.to(ax.d2, cc);
-                        auto n = ax.d2 + ax.inc;
-                        v.put(n);
-                        a.put(n);
-                    }
-                    else
-                    {
-                        // v = scope_get(cc, scopex, id, o);
-                        sta = cc.get(*id, o, v);
-                        if (sta !is null)
-                            goto Lthrow;
-                        if(v)
-                        {
-                            v.to(ax.d2, cc);
-                            auto n = ax.d2 + ax.inc;
-                            v.put(n);
-                            a.put(n);
-                        }
-                        else
-                        {
-                            sta = UndefinedVarError(cc, id.toString);
-                            goto Lthrow;
-                        }
-                    }
-                }
-                else
-                {
-                    v = cc.get(id, o);
-                    if(v)
-                    {
-                        v.toNumber(ax.d2, cc);
-                        ax.d = ax.d2 + ax.inc;
-                        a.put(ax.d);
-                        v.put(ax.d);
-                    }
-                    else
-                    {
-                        sta = UndefinedVarError(s);
-                        goto Lthrow;
-                    }
-                }
+                mixin (cachedGetOfP);
+                mixin (pCannotBeNull);
+                if (p.get(v, o, cc).onError(sta))
+                    goto Lthrow;
+
+                mixin ("ax.d2".from!v);
+                a.put(ax.d2 + ax.inc);
+                p.set(*a, o, PA.None, cc);
+
                 static assert(IRTypes[Opcode.PreIncScope].size
                               == IRTypes[Opcode.PreDecScope].size);
-                code += IRTypes[Opcode.PreIncScope].size;
-                goto Lnext;
+
+            }));
 
             case Opcode.PreDec:     // a = --b.c
-                c = locals + (code + 3).index;
-                c.to(ax.pk, cc);
+                mixin (fill!c);
+                mixin ("ax.pk".from!c);
                 id = &ax.pk;
                 goto Lpredec;
+
             case Opcode.PreDecS:    // a = --b.s
                 id = (code + 3).id;
+
             Lpredec:
                 ax.inc = -1;
                 goto Lpre;
@@ -959,95 +863,92 @@ struct IR
                 /********************/
 
             case Opcode.PostInc:     // a = b.c++
-                c = locals + (code + 3).index;
-                c.to(ax.pk, cc);
+                mixin (fill!c);
+                mixin ("ax.pk".from!c);
                 id = &ax.pk;
                 goto Lpostinc;
-            case Opcode.PostIncS:    // a = b.s++
+
+            mixin ("PostIncS".op(q{    // a = b.s++
                 id = (code + 3).id;
+
             Lpostinc:
+                ax.inc = 1;
+
+            Lpost:
                 assert (id !is null);
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                sta = b.Get(*id, v, cc);
-                if (sta !is null)
+                mixin (fill!(a, b));
+
+                if (b.GetProperty(*id, p, o, cc).onError(sta))
                     goto Lthrow;
-                if(!v)
-                    v = &undefined;
-                v.to(ax.d, cc);
-                a.put(ax.d + 1);
-                b.Set(*id, *a, cc);
-                a.put(ax.d);
+                if (p !is null)
+                {
+                    assert (o !is null);
+                    if (p.get(v, o, cc).onError(sta))
+                        goto Lthrow;
+                }
+                if (v.isEmpty)
+                    v.putVundefined;
+
+                mixin ("ax.d2".from!v);
+                a.put(ax.d2 + ax.inc);
+                if (p !is null)
+                {
+                    if (p.set(*a, o, PA.None, cc).onError(sta))
+                        goto Lthrow;
+                }
+                else
+                {
+                    if (b.Set(*id, *a, cc).onError(sta))
+                        goto Lthrow;
+                }
+                a.put(ax.d2);
 
                 static assert(IRTypes[Opcode.PostInc].size
                               == IRTypes[Opcode.PostIncS].size);
-                code += IRTypes[Opcode.PostIncS].size;
-                goto Lnext;
-            case Opcode.PostIncScope:        // a = s++
+            }));
+
+            mixin ("PostIncScope".op(q{        // a = s++
+                ax.inc = 1;
+
+            Lpostscope:
                 id = (code + 2).id;
-                // v = scope_get(cc, scopex, id, o);
-                sta = cc.get(*id, o, v);
-                if (sta !is null)
+
+                mixin (cachedGetOfP);
+                mixin (pCannotBeNull);
+                if (p.get(v, o, cc).onError(sta))
                     goto Lthrow;
-                if(v && v != &undefined)
-                {
-                    a = locals + (code + 1).index;
-                    v.to(ax.d, cc);
-                    v.put(ax.d + 1);
-                    a.put(ax.d);
-                }
-                else
+
+                if (v.isEmpty || v.isUndefined)
                 {
                     sta = ReferenceError(cc, id.toString);
                     goto Lthrow;
                 }
-                code += IRTypes[Opcode.PostIncScope].size;
-                goto Lnext;
+
+                mixin (fill!a);
+
+                mixin ("ax.d2".from!v);
+                a.put(ax.d2 + ax.inc);
+                if (p.set(*a, o, PA.None, cc).onError(sta))
+                    goto Lthrow;
+                a.put(ax.d2);
+
+            }));
 
             case Opcode.PostDec:     // a = b.c--
-                c = locals + (code + 3).index;
-                c.to(ax.pk, cc);
+                mixin (fill!c);
+                mixin ("ax.pk".from!c);
                 id = &ax.pk;
                 goto Lpostdec;
+
             case Opcode.PostDecS:    // a = b.s--
                 id = (code + 3).id;
             Lpostdec:
-                assert (id !is null);
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                sta = b.Get(*id, v, cc);
-                if (sta !is null)
-                    goto Lthrow;
-                if(!v)
-                    v = &undefined;
-                v.to(ax.d, cc);
-                a.put(ax.d - 1);
-                b.Set(*id, *a, cc);
-                a.put(ax.d);
+                ax.inc = -1;
+                goto Lpost;
 
-                static assert(IRTypes[Opcode.PostDecS].size
-                              == IRTypes[Opcode.PostDec].size);
-                code += IRTypes[Opcode.PostDecS].size;
-                goto Lnext;
             case Opcode.PostDecScope:        // a = s--
-                id = (code + 2).id;
-                sta = cc.get(*id, o, v);
-                if (sta !is null)
-                    goto Lthrow;
-                if(v && v != &undefined)
-                {
-                    v.to(ax.d, cc);
-                    a = locals + (code + 1).index;
-                    v.put(ax.d - 1);
-                    a.put(ax.d);
-                }
-                else
-                {
-                    sta = ReferenceError(cc, id.toString);
-                    goto Lthrow;
-                }
-                code += IRTypes[Opcode.PostDecScope].size;
-                goto Lnext;
+                ax.inc = -1;
+                goto Lpostscope;
 
             case Opcode.Del:     // a = delete b.c
             case Opcode.DelS:    // a = delete b.s
@@ -1058,12 +959,7 @@ struct IR
                     bo = true;
                 else
                 {
-                    b.to(o, cc);
-                    if(!o)
-                    {
-                        sta = cannotConvert(cc, b);
-                        goto Lthrow;
-                    }
+                    mixin ("o".from!b);
                     if (code.opcode == Opcode.Del)
                     {
                         (locals + (code + 3).index).to(ax.pk, cc);
@@ -1088,7 +984,7 @@ struct IR
                 //o = scope_tos(scopex);		// broken way
                 if (cc.get(*id, o, v).onError(sta))
                     goto Lthrow;
-                else if (v is null || o is null)
+                else if (v.isEmpty || o is null)
                     ax.b = true;
                 else if (o.implementsDelete())
                     ax.b = o.Delete(*id);
@@ -1494,21 +1390,13 @@ struct IR
                     code += IRTypes[Opcode.JLEC].size;
                 goto Lnext;
 
-            case Opcode.Iter:                // a = iter(b)
-                a = locals + (code + 1).index;
-                b = locals + (code + 2).index;
-                b.to(o, cc);
-                if(!o)
-                {
-                    sta = cannotConvert(cc, b);
+            mixin ("Iter".op(q{                // a = iter(b)
+                mixin (fill!(a, b));
+                id = null;
+                mixin ("o".from!b);
+                if (o.putIterator(*a, cc).onError(sta))
                     goto Lthrow;
-                }
-                sta = o.putIterator(*a);
-                if(sta)
-                    goto Lthrow;
-                code += IRTypes[Opcode.Iter].size;
-                goto Lnext;
-
+            }));
             case Opcode.Next:        // a, b.c, iter
                 // if (!(b.c = iter)) goto a; iter = iter.next
                 (locals + (code + 3).index).to(ax.pk, cc);
@@ -1571,12 +1459,13 @@ struct IR
                 sta = o.Get(*id, v, cc);
                 if (sta !is null)
                     goto Lthrow;
-                if(!v)
+                if(v.isEmpty)
                     goto Lcallerror;
 
-                a.putVundefined();
                 sta = v.Call(cc, o, *a, (locals + (code + 5).index)
                              [0 .. (code + 4).index]);
+                if (a.isEmpty)
+                    a.putVundefined;
 
                 debug(VERIFY)
                     assert(checksum == IR.verify(codestart));
@@ -1606,7 +1495,7 @@ struct IR
                 if (cc.get(*id, o, v).onError(sta))
                     goto Lthrow;
 
-                if(v is null)
+                if(v.isEmpty)
                 {
                     //a = Dobject.RuntimeError(&errinfo, errmsgtbl[ERR_UNDEFINED_NO_CALL2], "property", s);
                     auto n = id.toString;
@@ -1620,9 +1509,10 @@ struct IR
                 }
                 // Should we pass othis or o? I think othis.
                 // cc.callerothis = othis;        // pass othis to eval()
-                a.putVundefined();
                 sta = v.Call(cc, o, *a, (locals + (code + 4).index)
                              [0 .. (code + 3).index]);
+                if (a.isEmpty)
+                    a.putVundefined;
 
                 debug(VERIFY)
                     assert(checksum == IR.verify(codestart));
@@ -1673,7 +1563,7 @@ struct IR
                 sta = o.Get(*id, v, cc);
                 if (sta !is null)
                     goto Lthrow;
-                if(v is null)
+                if(v.isEmpty)
                     goto Lcallerror;
                 //writef("calling... '%s'\n", v.toString());
                 v.to(o, cc);
@@ -1698,7 +1588,7 @@ struct IR
                 sta = cc.get(*id, o, v);
                 if (sta !is null)
                     goto Lthrow;
-                if(v is null)
+                if(v.isEmpty)
                 {
                     sta = UndefinedNoCall2Error(cc, "property",
                                                 id.toString);
@@ -1751,12 +1641,7 @@ struct IR
             case Opcode.Push:
                 SCOPECACHE_CLEAR();
                 a = locals + (code + 1).index;
-                a.to(o, cc);
-                if(!o)
-                {
-                    sta = cannotConvert(cc, a);
-                    goto Lthrow;
-                }
+                mixin ("o".from!a);
                 cc.push(o);
                 code += IRTypes[Opcode.Push].size;
                 goto Lnext;
@@ -2005,7 +1890,7 @@ class Catch : Dobject
     import dmdscript.callcontext: CallContext;
 
     // This is so scope_get() will skip over these objects
-    override Derror Get(in PropertyKey, out Value*, CallContext*) const
+    override Derror Get(in PropertyKey, out Value v, CallContext*) const
     {
         return null;
     }
@@ -2035,7 +1920,7 @@ class Finally : Dobject
     import dmdscript.opcodes: IR;
     import dmdscript.drealm: Drealm;
 
-    override Derror Get(in PropertyKey, out Value*, CallContext*) const
+    override Derror Get(in PropertyKey, out Value, CallContext*) const
     {
         return null;
     }
@@ -2059,30 +1944,31 @@ class Finally : Dobject
 /*
 Helper function for Values that cannot be converted to Objects.
  */
-Derror cannotConvert(CallContext* cc, Value* b)
-{
-    import std.conv : to;
-    Derror sta;
+// Derror cannotConvert(CallContext* cc, Value* b)
+// {
+//     import std.conv : to;
+//     Derror sta;
 
-    if      (b.isEmpty)
-    {
-        sta = UndefinedVarError(cc, b.text);
-    }
-    else if (b.isUndefinedOrNull)
-    {
-        sta = CannotConvertToObject4Error(cc, b.type.to!string);
-    }
-    else
-    {
-        string s;
-        b.to(s, cc);
-        sta = CannotConvertToObject2Error(cc, b.type.to!string, s);
-    }
-    return sta;
-}
+//     if      (b.isEmpty)
+//     {
+//         sta = UndefinedVarError(cc, b.text);
+//     }
+//     else if (b.isUndefinedOrNull)
+//     {
+//         sta = CannotConvertToObject4Error(cc, b.type.to!string);
+//     }
+//     else
+//     {
+//         string s;
+//         b.to(s, cc);
+//         sta = CannotConvertToObject2Error(cc, b.type.to!string, s);
+//     }
+//     return sta;
+// }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 // mixin sugar
+
 // a = locals + (code + 1).index;
 // b = locals + (code + 2).index;
 // c = locals + (code + 3).index;
@@ -2102,19 +1988,102 @@ template fill(V...)
 // vc.to(ax.s2, cc);
 string from(alias V)(string To)
 {
-    return "if(" ~ V.stringof ~ ".to(" ~ To ~
-        ", cc).onError(sta)) goto Lthrow;";
+    if (To == "o")
+    {
+        return "
+        if      (" ~ V.stringof ~ ".to(o, cc).onError(sta))
+            goto Lthrow;
+        else if (o !is null){}
+        else if (" ~ V.stringof ~ ".isEmpty)
+        {
+            sta = UndefinedVarError(cc, " ~ V.stringof ~ ".text);
+            goto Lthrow;
+        }
+        else if (" ~ V.stringof ~ ".isUndefinedOrNull)
+        {
+            sta = CannotConvertToObject4Error(cc, Value.toString("
+            ~ V.stringof ~ ".type));
+            goto Lthrow;
+        }
+        else if (id !is null)
+        {
+            " ~ V.stringof ~ ".to(ax.s, cc);
+            sta = CannotConvertToObject3Error(
+                cc, " ~ V.stringof ~ ".type.to!string, ax.s, id.toString);
+            goto Lthrow;
+        }
+        else
+        {
+            " ~ V.stringof ~ ".to(ax.s, cc);
+            sta = CannotConvertToObject2Error(
+                cc, Value.toString(" ~ V.stringof ~ ".type), ax.s);
+            goto Lthrow;
+        }
+        assert (o !is null);
+        ";
+    }
+    else
+        return "if(" ~ V.stringof ~ ".to(" ~ To ~
+            ", cc).onError(sta)) goto Lthrow;";
 }
 
 
-// code += IRTypes[Opcode.ImpRet].size;
-// goto Lnext;
-string goNext(string C)
-{
-    return " code += IRTypes[Opcode." ~ C ~ "].size; goto Lnext;";
-}
-
+// case Opcode.OP:
+//     bdy
+//     code += IRTypes[Opcode.ImpRet].size;
+//     goto Lnext;
 string op(string OP, string bdy)
 {
-    return "case Opcode." ~ OP ~ ":" ~ bdy ~ goNext(OP);
+    return "case Opcode." ~ OP ~ ":" ~ bdy ~ " code += IRTypes[Opcode." ~ OP ~
+        "].size; goto Lnext;";
 }
+
+//
+enum pCannotBeNull = q{
+    if (p is null)
+    {
+        sta = UndefinedVarError(cc, id.toString);
+        goto Lthrow;
+    }
+    assert (o !is null);
+};
+
+//
+enum vCannotBeEmpty = q{
+    if (v.isEmpty)
+    {
+        sta = UndefinedVarError(cc, id.toString);
+        goto Lthrow;
+    }
+};
+
+//
+enum cachedGetOfP = q{
+    version (SCOPECACHING)
+    {
+        psc = &scopecache[SCOPECACHE_SI(id)];
+        if (id is psc.id)
+        {
+            version (SCOPECACHE_LOG)
+                ++scopecache_cnt;
+            p = psc.p;
+            o = psc.o;
+            assert (p !is null);
+            assert (o !is null);
+        }
+        else
+        {
+            cc.get(*id, p, o);
+            if (p !is null)
+            {
+                assert (o !is null);
+                (*psc) = ScopeCache(id, p, o);
+            }
+        }
+    }
+    else
+    {
+        cc.get(*id, p, o);
+    }
+
+};

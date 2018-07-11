@@ -280,9 +280,9 @@ static public:
 
     ///
     @safe pure nothrow
-    const(PropertyKey)* build(string str, size_t hash)
+    const(PropertyKey)* build(in PropertyKey k)
     {
-        return new PropertyKey(str, hash);
+        return new PropertyKey(k);
     }
 }
 ///

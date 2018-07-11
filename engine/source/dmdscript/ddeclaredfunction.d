@@ -77,7 +77,6 @@ private
 
         import core.sys.posix.stdlib : alloca;
         import dmdscript.primitive : Key;
-        import dmdscript.drealm : undefined;
         import dmdscript.darguments : Darguments;
         import dmdscript.property : Property;
         import dmdscript.primitive : PropertyKey;
@@ -113,8 +112,17 @@ private
             uint a = 0;
             foreach(p; fd.parameters)
             {
-                Value* v = (a < arglist.length) ? &arglist[a++] : &undefined;
-                actobj.Set(*p, *v, Property.Attribute.DontDelete, cc);
+                if (a < arglist.length)
+                {
+                    actobj.Set(*p, arglist[a++],
+                               Property.Attribute.DontDelete, cc);
+                }
+                else
+                {
+                    Value v;
+                    v.putVundefined;
+                    actobj.Set(*p, v, Property.Attribute.DontDelete, cc);
+                }
             }
         }
 
@@ -138,12 +146,12 @@ private
         Set(Key.arguments, vtmp, Property.Attribute.DontDelete, cc);
         // make grannymail bug work
 
-        auto ncc = CallContext.push(cc, scopex, actobj, this, fd, othis);
+        auto ncc = CallContext(cc, scopex, actobj, this, fd, othis);
         // auto dfs = new DefinedFunctionScope(scopex, actobj, this, fd, othis);
         // realm.push(dfs);
 
         // auto newCC = CallContext(cc, actobj, this, fd);
-        fd.instantiate(ncc, Property.Attribute.DontDelete |
+        fd.instantiate(&ncc, Property.Attribute.DontDelete |
                        Property.Attribute.DontConfig);
 
         Value[] p1;
@@ -158,15 +166,13 @@ private
             locals = p1;
         }
 
-        if (IR.call(ncc, othis, fd.code, ret, locals.ptr).onError(result))
+        if (IR.call(&ncc, othis, fd.code, ret, locals.ptr).onError(result))
         {
             result.addInfo (
                 cc.realm.id, fd.name !is null ?
                 "function " ~ fd.name.toString : "anonymous",
                 fd.strictMode);
         }
-
-        CallContext.pop(ncc);
 
         p1.destroy; p1 = null;
 
@@ -187,27 +193,27 @@ private
         // ECMA 3 13.2.2
         Dobject othis;
         Dobject proto;
-        Value* v;
+        Value v;
         Derror result;
 
-        if (auto err = Get(Key.prototype, v, cc))
-            return err;
-        assert (v !is null);
-        if(v.isPrimitive())
+        if (Get(Key.prototype, v, cc).onError(result))
+            return result;
+        assert (!v.isEmpty);
+        if(v.isPrimitive)
             proto = cc.realm.rootPrototype;
         else
         {
-            if (auto err = v.to(proto, cc))
-                return err;
+            if (v.to(proto, cc).onError(result))
+                return result;
         }
 
         othis = new Dobject(proto, name);
-        result = Call(cc, othis, ret, arglist);
-        if(!result)
-        {
-            if(ret.isPrimitive())
-                ret.put(othis);
-        }
+        if (Call(cc, othis, ret, arglist).onError(result))
+            return result;
+
+        if(!ret.isObject)
+            ret.put(othis);
+
         return result;
     }
 

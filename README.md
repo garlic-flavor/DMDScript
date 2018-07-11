@@ -68,11 +68,12 @@ This aims to alternate test262-harness-py.
     + [x] The first compile.
     + [x] Run a script marked with 'module' as module.
     + [x] Run a script with strict mode.
+    + [x] Implement "includes:" feature.
     + [ ] Implement very useful functionalities.
 * [ ] Read the specification again. (0/586)
 * [ ] Make pull requests?(0/???)
 
-### Current progress is 2%(1735/59240)
+### Current progress is 2%(1736/59240)
 
 ### Passed directories.
 * ..\test262\test\annexB\language\comments
@@ -98,7 +99,6 @@ This aims to alternate test262-harness-py.
 * ..\test262\test\language\white-space
 
 ### Failed directories.
-* ..\test262\test\language\expressions\assignment\destructuring
 
 ### Progressing directories.
 * ..\test262\test\language\expressions\assignment\destructuring
@@ -110,15 +110,12 @@ This aims to alternate test262-harness-py.
   A invalid Unicode sequence is not allowed.
 * ..\test262\test\language\comments\S7.4_A6.js
   A invalid Unicode sequence is not allowed.
-* ..\test262\test\language\expressions\assignment\destructuring\iterator-destructuring-property-reference-target-evaluation-order.js
-  failed.
 * ..\test262\test\language\source-text\6.1.js
   An invalid escape sequence is not allowed.
 * ..\test262\test\language\types\number\S8.5_A2.1.js
   do this later.
 * ..\test262\test\language\types\number\S8.5_A2.2.js
   do this later.
-
 
 ### problems.
 * __The Regular expression of ECMAScript differ from dmd's std.regex.__

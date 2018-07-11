@@ -23,25 +23,26 @@ import std.random;
 import dmdscript.value : Value, vundefined;
 import dmdscript.dobject : Dobject;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
-    installConstants;
+    installConstants, ArgList;
 import dmdscript.primitive : Key;
-import dmdscript.drealm : undefined, Drealm;
+import dmdscript.drealm : Drealm;
 import dmdscript.callcontext: CallContext;
 import dmdscript.derror: Derror;
 
-double math_helper(CallContext* cc, Value[] arglist)
+double math_helper(CallContext* cc, ArgList arglist)
 {
-    Value *v;
-
-    v = arglist.length ? &arglist[0] : &undefined;
     double n;
-    v.to(n, cc);
+    if (0 < arglist.length)
+        arglist[0].to(n, cc);
+    else
+        vundefined.to(n, cc);
+
     return n;
 }
 @DFD(1)
 Derror abs(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.1
     double result;
@@ -53,7 +54,7 @@ Derror abs(
 @DFD(1)
 Derror acos(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.2
     double result;
@@ -65,7 +66,7 @@ Derror acos(
 @DFD(1)
 Derror asin(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.3
     double result;
@@ -77,7 +78,7 @@ Derror asin(
 @DFD(1)
 Derror atan(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.4
     double result;
@@ -89,16 +90,18 @@ Derror atan(
 @DFD(2)
 Derror atan2(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.5
     double n1, n2;
-    Value* v2;
     double result;
 
     n1 = math_helper(cc, arglist);
-    v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
-    v2.to(n2, cc);
+    if (1 < arglist.length)
+        arglist[1].to(n2, cc);
+    else
+        vundefined.to(n2, cc);
+
     result = std.math.atan2(n1, n2);
     ret.put(result);
     return null;
@@ -106,7 +109,7 @@ Derror atan2(
 @DFD(1)
 Derror ceil(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.6
     double result;
@@ -119,7 +122,7 @@ Derror ceil(
 @DFD(1)
 Derror cos(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.7
     double result;
@@ -131,7 +134,7 @@ Derror cos(
 @DFD(1)
 Derror exp(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.8
     double result;
@@ -143,7 +146,7 @@ Derror exp(
 @DFD(1)
 Derror floor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.9
     double result;
@@ -155,7 +158,7 @@ Derror floor(
 @DFD(1)
 Derror log(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.10
     double result;
@@ -167,7 +170,7 @@ Derror log(
 @DFD(2)
 Derror max(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA v3 15.8.2.11
     double n;
@@ -198,7 +201,7 @@ Derror max(
 @DFD(2)
 Derror min(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA v3 15.8.2.12
     double n;
@@ -229,16 +232,17 @@ Derror min(
 @DFD(2)
 Derror pow(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.13
     double n1, n2;
-    Value *v2;
     double result;
 
     n1 = math_helper(cc, arglist);
-    v2 = (arglist.length >= 2) ? &arglist[1] : &undefined;
-    v2.to(n2, cc);
+    if (1 < arglist.length)
+        arglist[1].to(n2, cc);
+    else
+        vundefined.to(n2, cc);
     result = std.math.pow(n1, n2);
     ret.put(result);
     return null;
@@ -246,7 +250,7 @@ Derror pow(
 @DFD(0)
 Derror random(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.14
     // 0.0 <= result < 1.0
@@ -276,7 +280,7 @@ Derror random(
 @DFD(1)
 Derror round(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.15
     double result;
@@ -290,7 +294,7 @@ Derror round(
 @DFD(1)
 Derror sin(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.16
     double result;
@@ -302,7 +306,7 @@ Derror sin(
 @DFD(1)
 Derror sqrt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.17
     double result;
@@ -314,7 +318,7 @@ Derror sqrt(
 @DFD(1)
 Derror tan(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.8.2.18
     double result;
@@ -328,7 +332,7 @@ Derror tan(
 @DFD(1)
 Derror cbrt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -337,7 +341,7 @@ Derror cbrt(
 @DFD(1)
 Derror clz32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -346,7 +350,7 @@ Derror clz32(
 @DFD(1)
 Derror cosh(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -355,7 +359,7 @@ Derror cosh(
 @DFD(1)
 Derror expm1(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -364,7 +368,7 @@ Derror expm1(
 @DFD(1)
 Derror fround(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -373,7 +377,7 @@ Derror fround(
 @DFD(1)
 Derror hypot(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -382,7 +386,7 @@ Derror hypot(
 @DFD(2)
 Derror imul(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -391,7 +395,7 @@ Derror imul(
 @DFD(1)
 Derror log1p(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -400,7 +404,7 @@ Derror log1p(
 @DFD(1)
 Derror log10(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -409,7 +413,7 @@ Derror log10(
 @DFD(1)
 Derror log2(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -418,7 +422,7 @@ Derror log2(
 @DFD(1)
 Derror sign(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -427,7 +431,7 @@ Derror sign(
 @DFD(1)
 Derror sinh(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -436,7 +440,7 @@ Derror sinh(
 @DFD(1)
 Derror tanh(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -445,7 +449,7 @@ Derror tanh(
 @DFD(1)
 Derror trunc(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

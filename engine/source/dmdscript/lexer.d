@@ -1975,14 +1975,14 @@ final class IdTable
     @safe nothrow
     Identifier build(string str)
     {
-        import dmdscript.primitive : calcHash;
-        auto hash = calcHash(str);
+        import dmdscript.primitive : PropertyKey;
+        auto k = PropertyKey(str);
 
-        if (auto pid = _table.findExistingAlt(str, hash))
+        if (auto pid = _table.findExistingAlt(str, k.hash))
             return *pid;
 
-        auto id = Identifier.build(str, hash);
-        _table.insertAlt(str, id, hash);
+        auto id = Identifier.build(k);
+        _table.insertAlt(str, id, k.hash);
         return id;
     }
 

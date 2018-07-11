@@ -19,7 +19,8 @@ module dmdscript.darraybuffer;
 
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.dobject: Dobject;
-import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative: DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value: Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
@@ -64,7 +65,7 @@ private:
 @DFD(1, DFD.Type.Static)
 Derror isView(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -74,7 +75,7 @@ Derror isView(
 @DFD()
 Derror byteLength(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -83,7 +84,7 @@ Derror byteLength(
 @DFD(2)
 Derror slice(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

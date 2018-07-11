@@ -28,10 +28,53 @@ import dmdscript.derror: Derror;
 debug import std.stdio;
 
 //------------------------------------------------------------------------------
+struct ArgList
+{
+    Value[] entity;
+    alias entity this;
+
+    @safe @nogc pure nothrow
+    this(Value[] a)
+    {
+        entity = a;
+    }
+
+    @safe @nogc nothrow
+    ref Value opIndex(size_t i)
+    {
+        if (i < entity.length)
+            return entity[i];
+        else
+            return _ud;
+    }
+
+    // @property @safe @nogc pure nothrow
+    // Value[] opSlice()
+    // {
+    //     return _args[];
+    // }
+
+
+    // @property @safe @nogc pure nothrow
+    // size_t length() const
+    // {
+    //     return _args.length;
+    // }
+
+    import dmdscript.value: vundefined;
+    private static Value _ud = vundefined;
+
+    invariant
+    {
+        assert (_ud.isUndefined);
+    }
+}
+
+//------------------------------------------------------------------------------
 ///
 alias PCall = Derror function(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist);
+    ArgList arglist);
 
 //------------------------------------------------------------------------------
 ///
@@ -51,7 +94,7 @@ class DnativeFunction : Dfunction
     override Derror Call(CallContext* cc, Dobject othis, out Value ret,
                           Value[] arglist)
     {
-        try return (*pcall)(this, cc, othis, ret, arglist);
+        try return (*pcall)(this, cc, othis, ret, ArgList(arglist));
         catch (Throwable t)
         {
             auto msg = Value("D error");
@@ -189,67 +232,71 @@ void install(alias M, T)(
         enum isStruct = is(A == struct);
     }
 
+    static Dfunction getMember(alias U, string mem)(
+        PropertyKey name, size_t len, Dobject fp)
+    {
+        static if (__traits(hasMember, U, mem))
+        {
+            return new DnativeFunction(
+                fp, name, len, &__traits(getMember, U, mem));
+        }
+        else
+            return null;
+    }
+
     foreach(one; __traits(derivedMembers, M))
     {
-        static if      (!__traits(compiles, __traits(getMember, M, one))){}
-        else static if (is(typeof(&__traits(getMember, M, one)) == PCall))
+        static if (!__traits(compiles, __traits(getMember, M, one))){}
+        else
         {
             alias desc = selectDFD!(__traits(getMember, M, one));
-
-            static if (is(typeof(desc) == DFD) &&
-                       (desc.type & DFD.Type.Static) == is(T : Dconstructor))
+            static if (is(typeof(desc) == DFD))
             {
-                static if (desc.realName.hasString)
-                    enum name = desc.realName;
-                else
-                    enum name = PropertyKey(one);
-
-                //
-                f = new DnativeFunction(
-                    functionPrototype, PropertyKey(one), desc.length,
-                    &__traits(getMember, M, one));
-
-                static if      (desc.type & DFD.Type.Getter)
-                    o.SetGetter(name, f, prop | desc.attr);
-                else static if (desc.type & DFD.Type.Setter)
-                    o.SetSetter(name, f, prop | desc.attr);
-                else
+                static if ((desc.type & DFD.Type.Static) ==
+                           is (T : Dconstructor))
                 {
-                    val.put(f);
-                    o.DefineOwnProperty(name, val, prop | desc.attr);
+                    static if (is(typeof(&__traits(getMember, M, one)) ==
+                                  PCall))
+                    {
+                        static if (desc.realName.hasString)
+                            enum name = desc.realName;
+                        else
+                            enum name = PropertyKey(one);
+
+                        //
+                        f = new DnativeFunction(
+                            functionPrototype, PropertyKey(one), desc.length,
+                            &__traits(getMember, M, one));
+
+                        static if      (desc.type & DFD.Type.Getter)
+                            o.SetGetter(name, f, prop | desc.attr);
+                        else static if (desc.type & DFD.Type.Setter)
+                            o.SetSetter(name, f, prop | desc.attr);
+                        else
+                        {
+                            val.put(f);
+                            o.DefineOwnProperty(name, val, prop | desc.attr);
+                        }
+
+                    }
+                    else static if (isStruct!(__traits(getMember, M, one)))
+                    {
+                        auto name = __traits(getMember, M, one).name;
+                        auto getter = getMember!(
+                            __traits(getMember, M, one), "getter")(
+                                name, 0, functionPrototype);
+                        auto setter = getMember!(
+                            __traits(getMember, M, one), "setter")(
+                                name, 1, functionPrototype);
+                        auto p = new Property(getter, setter, prop | desc.attr);
+                        o.DefineOwnProperty(name, p);
+                    }
+                    else static assert (
+                        0, "'" ~ one ~ "' is not a valid member for " ~
+                        "DnativeFunctionDescriptor");
                 }
             }
-        }
-        else static if (isStruct!(__traits(getMember, M, one)))
-        {
-            alias desc = selectDFD!(__traits(getMember, M, one));
-            static if (is(typeof(desc) == DFD) &&
-                       (desc.type & DFD.Type.Static) == is(T : Dconstructor))
-            {
-                auto name = __traits(getMember, M, one).name;
-                Dfunction getter, setter;
 
-                static if (__traits(hasMember, __traits(getMember, M, one),
-                                    "getter"))
-                {
-                    getter = new DnativeFunction(
-                        functionPrototype, name, 1,
-                        &__traits(getMember, __traits(getMember, M, one)<
-                                  "getter"));
-                }
-
-                static if (__traits(hasMember, __traits(getMember, M, one),
-                                    "setter"))
-                {
-                    setter = new DnativeFunction(
-                        functionPrototype, name, 1,
-                        &__traits(getMember, __traits(getMember, M, one),
-                                  "setter"));
-                }
-
-                auto p = new Property(getter, setter, prop | desc.attr);
-                o.DefineOwnProperty(name, p);
-            }
         }
     }
 }

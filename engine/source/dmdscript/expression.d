@@ -81,17 +81,6 @@ class Expression
         }
 
         throw CannotAssignToError.early(toString, linnum, funcname);
-
-//         if (sc.exception is null)
-//         {
-//             sc.exception = CannotAssignToError.toThrow(
-//                 toString, linnum, funcname);
-//         }
-//         assert(sc.exception !is null);
-
-// /*        version (TEST262) {}
-//           else*/
-//         debug throw sc.exception;
     }
 
     // Do we match for purposes of optimization?
@@ -191,7 +180,7 @@ final class BigIntExpression : Expression
     override @trusted
     void toBuffer (scope void delegate(in char[]) sink) const
     {
-        value.toString(sink, "%d");
+        value.toString(sink, "BigInt(%d)");
     }
 }
 
@@ -253,7 +242,11 @@ final class IdentifierExpression : Expression
     }
 
     override void toBuffer(scope void delegate(in char[]) sink) const
-    { sink(ident.toString); }
+    {
+        sink("Identifier(");
+        sink(ident.toString);
+        sink(")");
+    }
 }
 
 /******************************** ThisExpression **************************/
@@ -552,7 +545,7 @@ final class ArrayLiteral : Expression
     {
         uint i;
 
-        sink("[");
+        sink("ArrayLit[");
         foreach(e; elements)
         {
             if(i)
@@ -1153,6 +1146,7 @@ final class CallExp : UnaExp
 
     override void toBuffer(scope void delegate(in char[]) sink) const
     {
+        sink("CallExp{");
         e1.toBuffer(sink);
         sink("(");
         for(size_t u = 0; u < arguments.length; u++)
@@ -1161,7 +1155,7 @@ final class CallExp : UnaExp
                 sink(", ");
             arguments[u].toBuffer(sink);
         }
-        sink(")");
+        sink(")}");
     }
 }
 /************************************************************/
@@ -1456,16 +1450,18 @@ final class ArrayExp : BinExp
         irs.collect(tmp);
 
         e2.toIR(irs, index);
+        irs.gen!(Opcode.PutPrimitive)(linnum, index);
         property.index = index;
         opoff = OpOffset.None;
     }
 
     override void toBuffer(scope void delegate(in char[]) sink) const
     {
+        sink("Array{");
         e1.toBuffer(sink);
         sink("[");
         e2.toBuffer(sink);
-        sink("]");
+        sink("]}");
     }
 }
 
@@ -1483,8 +1479,18 @@ final class AssignExp : BinExp
     {
         //writefln("AssignExp.semantic()");
         super.semantic(sc);
-        if(e1.op != Tok.Call)            // special case for CallExp lvalue's
+
+        // special case for CallExp lvalue's
+        if      (e1.op == Tok.Arraylit)
+        {
+            auto al = cast(ArrayLiteral)e1;
+            assert (al !is null);
+            foreach (one; al.elements)
+                one.checkLvalue(sc);
+        }
+        else if (e1.op != Tok.Call)
             e1.checkLvalue(sc);
+
         return this;
     }
 
@@ -1492,7 +1498,7 @@ final class AssignExp : BinExp
     {
         idx_t b;
 
-        if(e1.op == Tok.Call)            // if CallExp
+        if      (e1.op == Tok.Call)            // if CallExp
         {
             assert(cast(CallExp)(e1));  // make sure we got it right
 
@@ -1553,6 +1559,96 @@ final class AssignExp : BinExp
                 break;
             }
             irs.release(argv);
+        }
+        else if (e1.op == Tok.Arraylit) // [a, b, c] = iter
+        {
+            import dmdscript.property: SpecialSymbols;
+            auto al = cast(ArrayLiteral)e1;
+            assert (al !is null);
+
+            auto step1 = irs.alloc(2);
+            idx_t iterobj, iter;
+            iterobj = step1[0];
+            iter = step1[1];
+
+            e2.toIR(irs, iterobj);
+            irs.gen!(Opcode.CallS)(
+                linnum, iter, iterobj, &SpecialSymbols.iterator, 0, 0);
+
+            LocalVariables step2;
+            idx_t right, next, done;
+            if (0 < ret)
+            {
+                step2 = irs.alloc(2);
+                right = ret;
+                next = step2[0];
+                done = step2[1];
+            }
+            else
+            {
+                step2 = irs.alloc(3);
+                right = step2[0];
+                next = step2[1];
+                done = step2[2];
+            }
+
+            auto nextId = PropertyKey.build("next");
+            auto valueId = PropertyKey.build("value");
+            auto doneId = PropertyKey.build("done");
+            idx_t base;
+            IR property;
+            OpOffset opoff;
+            auto fixups = new idx_t[al.elements.length];
+            for (size_t i = 0; i < al.elements.length; ++i)
+            {
+                al.elements[i].toLvalue(irs, base, &property, opoff);
+                irs.gen!(Opcode.CallS)(linnum, next, iter, nextId, 0, 0);
+                irs.gen!(Opcode.GetS)(linnum, done, next, doneId);
+                fixups[i] = irs.getIP;
+                irs.gen!(Opcode.JT)(linnum, 0, done);
+                irs.gen!(Opcode.GetS)(linnum, right, next, valueId);
+                final switch (opoff)
+                {
+                case OpOffset.None:
+                    irs.gen!(Opcode.Put)(linnum, right, base, property.index);
+                    break;
+                case OpOffset.S:
+                    irs.gen!(Opcode.PutS)(linnum, right, base, property.id);
+                    break;
+                case OpOffset.Scope:
+                    irs.gen!(Opcode.PutScope)(linnum, right, property.id);
+                    break;
+                case OpOffset.V:
+                    assert(0);
+                }
+            }
+
+            auto lastfix = irs.getIP;
+            irs.gen!(Opcode.JF)(linnum, 0, done);
+
+            for (size_t i = 0; i < fixups.length; ++i)
+            {
+                irs.patchJmp(fixups[i], irs.getIP);
+                irs.gen!(Opcode.Undefined)(linnum, right);
+                final switch (opoff)
+                {
+                case OpOffset.None:
+                    irs.gen!(Opcode.Put)(linnum, right, base, property.index);
+                    break;
+                case OpOffset.S:
+                    irs.gen!(Opcode.PutS)(linnum, right, base, property.id);
+                    break;
+                case OpOffset.Scope:
+                    irs.gen!(Opcode.PutScope)(linnum, right, property.id);
+                    break;
+                case OpOffset.V:
+                    assert(0);
+                }
+            }
+            irs.patchJmp(lastfix, irs.getIP);
+
+            irs.release(step2);
+            irs.release(step1);
         }
         else
         {

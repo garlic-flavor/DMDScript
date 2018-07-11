@@ -20,7 +20,7 @@ module dmdscript.drealm;
 import dmdscript.dobject : Dobject;
 import dmdscript.value : Value;
 import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor,
-    installConstants;
+    installConstants, ArgList;
 import dmdscript.property : Property;
 alias PA = Property.Attribute;
 import dmdscript.callcontext: CallContext;
@@ -62,6 +62,7 @@ string banner()
 ///
 class Drealm : Dobject // aka global environment.
 {
+    import dmdscript.value: vundefined;
     import dmdscript.dobject: Dobject, DobjectConstructor;
     import dmdscript.dfunction: DfunctionConstructor, Dfunction;
     import dmdscript.darray: DarrayConstructor;
@@ -145,15 +146,15 @@ class Drealm : Dobject // aka global environment.
         installConstants!(
             "NaN", double.nan,
             "Infinity", double.infinity,
-            "undefined", undefined)(
+            "undefined", vundefined)(
                 this, PA.DontEnum | PA.DontDelete | PA.ReadOnly);
 
         debug
         {
-            auto cc = CallContext.push(this, false);
-            Value* v;
-            assert (Get(PropertyKey("Infinity"), v, cc) is null);
-            assert (v !is null);
+            auto cc = CallContext(this, false);
+            Value v;
+            assert (Get(PropertyKey("Infinity"), v, &cc) is null);
+            assert (!v.isEmpty);
             assert (!v.isUndefined);
             assert (v.type == Value.Type.Number);
             assert (v.number is double.infinity);
@@ -169,8 +170,8 @@ class Drealm : Dobject // aka global environment.
         {
             import dmdscript.primitive : PropertyKey;
 
-            assert(dString.Get(PropertyKey("fromCharCode"), v, cc) is null);
-            assert (v !is null);
+            assert(dString.Get(PropertyKey("fromCharCode"), v, &cc) is null);
+            assert (!v.isEmpty);
 
             auto prop = dObject.classPrototype
                 .GetOwnProperty(PropertyKey("__proto__"));
@@ -262,7 +263,7 @@ class DmoduleRealm: Drealm
 @DFD(1)
 Derror CreateRealm (
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import dmdscript.ddeclaredfunction: DdeclaredFunction;
 
@@ -287,7 +288,7 @@ Derror CreateRealm (
 @DFD(1)
 Derror eval(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import dmdscript.functiondefinition : FunctionDefinition;
@@ -301,7 +302,7 @@ Derror eval(
     import dmdscript.exception: SyntaxException, EarlyException;
 
     // ECMA 15.1.2.1
-    Value* v;
+    Value v;
     string s;
     FunctionDefinition fd;
     // ScriptException exception;
@@ -310,10 +311,13 @@ Derror eval(
     // Dobject[] scopes;
 
     // Parse program
-    v = arglist.length ? &arglist[0] : &undefined;
+    if (0 < arglist.length)
+        v = arglist[0];
+    else
+        v.putVundefined;
     if(v.type != Value.Type.String)
     {
-        ret = *v;
+        ret = v;
         return null;
     }
     v.to(s, cc);
@@ -350,15 +354,14 @@ Derror eval(
     }
 
     Dobject actobj = cc.realm.dObject();
-    auto ncc = CallContext.push(cc, actobj, pthis, fd, othis);
-    if (fd.execute(ncc, ret).onError(result))
+    auto ncc = CallContext(cc, actobj, pthis, fd, othis);
+    if (fd.execute(&ncc, ret).onError(result))
     {
         result.addInfo("eval", "global", cc.strictMode);
         result.addSource(s);
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // result.addInfo(cc, id=>ModuleCode(s, "eval", s));
     }
-    CallContext.pop(ncc);
     // }
     // catch (Throwable t)
     // {
@@ -493,7 +496,7 @@ Derror eval(
 @DFD(2)
 Derror parseInt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.utf : decode;
     import std.uni : isWhite;
@@ -621,7 +624,7 @@ Derror parseInt(
 @DFD(1)
 Derror parseFloat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import dmdscript.primitive : StringNumericLiteral;
 
@@ -649,7 +652,7 @@ char[16 + 1] TOHEX = "0123456789ABCDEF";
 @DFD(1)
 Derror escape(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.exception : assumeUnique;
     import std.string : indexOf;
@@ -717,7 +720,7 @@ Derror escape(
 @DFD(1)
 Derror unescape(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.exception : assumeUnique;
     import std.traits : Unqual, ForeachType;
@@ -807,20 +810,19 @@ Derror unescape(
 @DFD(1)
 Derror isNaN(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.math : isNaN;
+    import dmdscript.value: vundefined;
 
     // ECMA 15.1.2.6
-    Value* v;
     double n;
     bool b;
 
     if(arglist.length)
-        v = &arglist[0];
+        arglist[0].to(n, cc);
     else
-        v = &undefined;
-    v.to(n, cc);
+        vundefined.to(n, cc);
     b = isNaN(n) ? true : false;
     ret.put(b);
     return null;
@@ -830,20 +832,19 @@ Derror isNaN(
 @DFD(1)
 Derror isFinite(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.math : isFinite;
+    import dmdscript.value: vundefined;
 
     // ECMA 15.1.2.7
-    Value* v;
     double n;
     bool b;
 
-    if(arglist.length)
-        v = &arglist[0];
+    if(0 < arglist.length)
+        arglist[0].to(n, cc);
     else
-        v = &undefined;
-    v.to(n, cc);
+        vundefined.to(n, cc);
     b = isFinite(n) ? true : false;
     ret.put(b);
     return null;
@@ -860,7 +861,7 @@ Derror URI_error(CallContext* cc, string s)
 @DFD(1)
 Derror decodeURI(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.uri : decode, URIException;
     // ECMA v3 15.1.3.1
@@ -884,7 +885,7 @@ Derror decodeURI(
 @DFD(1)
 Derror decodeURIComponent(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.uri : decodeComponent, URIException;
     import dmdscript.primitive;
@@ -909,7 +910,7 @@ Derror decodeURIComponent(
 @DFD(1)
 Derror encodeURI(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.uri : encode, URIException;
 
@@ -934,7 +935,7 @@ Derror encodeURI(
 @DFD(1)
 Derror encodeURIComponent(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.uri : encodeComponent, URIException;
     // ECMA v3 15.1.3.4
@@ -956,7 +957,7 @@ Derror encodeURIComponent(
 
 //------------------------------------------------------------------------------
 void dglobal_print(
-    CallContext* cc, Dobject othis, out Value ret, Value[] arglist)
+    CallContext* cc, Dobject othis, out Value ret, ArgList arglist)
 {
     import std.stdio : writef;
     // Our own extension
@@ -1000,7 +1001,7 @@ void dglobal_print(
 @DFD(1)
 Derror print(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // Our own extension
     dglobal_print(cc, othis, ret, arglist);
@@ -1011,7 +1012,7 @@ Derror print(
 @DFD(1)
 Derror println(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.stdio : writef;
 
@@ -1025,7 +1026,7 @@ Derror println(
 @DFD(0)
 Derror readln(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.exception : assumeUnique;
     import std.traits : Unqual, ForeachType;
@@ -1082,7 +1083,7 @@ Derror readln(
 @DFD(1)
 Derror getenv(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.string : toStringz;
     import core.sys.posix.stdlib : getenv;
@@ -1108,7 +1109,7 @@ Derror getenv(
 @DFD(0)
 Derror ScriptEngine(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import dmdscript.primitive : Text;
 
@@ -1120,7 +1121,7 @@ Derror ScriptEngine(
 @DFD(0)
 Derror ScriptEngineBuildVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     ret.put(BUILD_VERSION);
     return null;
@@ -1130,7 +1131,7 @@ Derror ScriptEngineBuildVersion(
 @DFD(0)
 Derror ScriptEngineMajorVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     ret.put(MAJOR_VERSION);
     return null;
@@ -1140,7 +1141,7 @@ Derror ScriptEngineMajorVersion(
 @DFD(0)
 Derror ScriptEngineMinorVersion(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     ret.put(MINOR_VERSION);
     return null;
@@ -1149,14 +1150,14 @@ Derror ScriptEngineMinorVersion(
 //------------------------------------------------------------------------------
 
 //
-string arg0string(CallContext* cc, Value[] arglist)
+string arg0string(CallContext* cc, ArgList arglist)
 {
-    Value* v = arglist.length ? &arglist[0] : &undefined;
+    import dmdscript.value: vundefined;
     string s;
-    v.to(s, cc);
+    if (0 < arglist.length)
+        arglist[0].to(s, cc);
+    else
+        vundefined.to(s, cc);
     return s;
 }
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// I want to remove this.
-public auto undefined = Value(Value.Type.Undefined);

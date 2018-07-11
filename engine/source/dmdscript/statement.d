@@ -100,26 +100,6 @@ class TopStatement
         }
 
         throw new EarlyException(SyntaxError.Text, msg, funcname, linnum, f, l);
-
-        // se.addTrace(funcname, linnum);
-
-        // if (sc.exception is null)
-        // {
-        //     string funcname;
-        //     if (sc.funcdef !is null)
-        //     {
-        //         if      (sc.funcdef.isAnonymous)
-        //             funcname = "anonymous";
-        //         else if (sc.funcdef.name)
-        //             funcname = sc.funcdef.name.toString;
-        //     }
-
-        //     se.addTrace(funcname, linnum);
-        //     sc.exception = se;
-        // }
-        // assert(se !is null);
-
-        // debug throw se;
     }
 
     debug static:
@@ -248,11 +228,10 @@ class ExpStatement : Statement
 
     override void toIR(IRstate* irs)
     {
-        if(exp)
+        if(exp !is null)
         {
             auto marksave = irs.mark;
 
-            assert(exp);
             exp.toIR(irs, 0);
             irs.release(marksave);
 
@@ -262,7 +241,7 @@ class ExpStatement : Statement
 
     override void toBuffer(scope void delegate(in char[]) sink) const
     {
-        if(exp)
+        if(exp !is null)
         {
             sink(typeid(exp).toString);
             sink(":");
@@ -324,7 +303,7 @@ class VarStatement : Statement
 
     override void toIR(IRstate* irs)
     {
-        if(vardecls.length)
+        if(0 < vardecls.length)
         {
             auto marksave = irs.mark();
             auto ret = irs.alloc(1);
@@ -696,7 +675,7 @@ final class IfStatement : Statement
         size_t u1;
         size_t u2;
 
-        assert(condition);
+        assert(condition !is null);
         c = irs.alloc(1);
         condition.toIR(irs, c[0]);
         u1 = irs.getIP();

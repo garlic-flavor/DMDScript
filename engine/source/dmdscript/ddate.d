@@ -23,7 +23,8 @@ import dmdscript.primitive : d_time, d_time_nan, PropertyKey, PKey = Key;
 import dmdscript.dobject;
 import dmdscript.value;
 import dmdscript.dfunction;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.property;
 import dmdscript.errmsgs;
 import dmdscript.drealm: Drealm;
@@ -105,7 +106,7 @@ string dateToString(CallContext* cc, d_time t, TIMEFORMAT tf)
 @DFD(1, DFD.Type.Static)
 Derror parse(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.4.2
     string s;
@@ -126,7 +127,7 @@ Derror parse(
 @DFD(7, DFD.Type.Static)
 Derror UTC(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.4.3 - 15.9.4.10
 
@@ -186,7 +187,7 @@ Derror UTC(
 @DFD(1, DFD.Type.Static)
 Derror now(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -368,7 +369,7 @@ int getThisLocalTime(out Value ret, Dobject othis, out d_time n)
 @DFD(0)
 Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.2
     d_time n;
@@ -394,7 +395,7 @@ Derror toString(
 @DFD(0)
 Derror toDateString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.3
     d_time n;
@@ -419,7 +420,7 @@ Derror toDateString(
 @DFD(0)
 Derror toTimeString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.4
     d_time n;
@@ -445,7 +446,7 @@ Derror toTimeString(
 @DFD(0)
 Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.3
     d_time n;
@@ -458,7 +459,7 @@ Derror valueOf(
 @DFD(0)
 Derror getTime(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.4
     d_time n;
@@ -471,7 +472,7 @@ Derror getTime(
 @DFD(0)
 Derror getYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.5
     d_time n;
@@ -498,7 +499,7 @@ Derror getYear(
 @DFD(0)
 Derror getFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.6
     d_time n;
@@ -516,7 +517,7 @@ Derror getFullYear(
 @DFD(0)
 Derror getUTCFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.7
     d_time n;
@@ -533,7 +534,7 @@ Derror getUTCFullYear(
 @DFD(0)
 Derror getMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.8
     d_time n;
@@ -551,7 +552,7 @@ Derror getMonth(
 @DFD(0)
 Derror getUTCMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.9
     d_time n;
@@ -569,7 +570,7 @@ Derror getUTCMonth(
 @DFD(0)
 Derror getDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.10
     d_time n;
@@ -589,7 +590,7 @@ Derror getDate(
 @DFD(0)
 Derror getUTCDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.11
     d_time n;
@@ -607,7 +608,7 @@ Derror getUTCDate(
 @DFD(0)
 Derror getDay(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.12
     d_time n;
@@ -625,7 +626,7 @@ Derror getDay(
 @DFD(0)
 Derror getUTCDay(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.13
     d_time n;
@@ -643,7 +644,7 @@ Derror getUTCDay(
 @DFD(0)
 Derror getHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.14
     d_time n;
@@ -661,7 +662,7 @@ Derror getHours(
 @DFD(0)
 Derror getUTCHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.15
     d_time n;
@@ -679,7 +680,7 @@ Derror getUTCHours(
 @DFD(0)
 Derror getMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.16
     d_time n;
@@ -697,7 +698,7 @@ Derror getMinutes(
 @DFD(0)
 Derror getUTCMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.17
     d_time n;
@@ -715,7 +716,7 @@ Derror getUTCMinutes(
 @DFD(0)
 Derror getSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.18
     d_time n;
@@ -733,7 +734,7 @@ Derror getSeconds(
 @DFD(0)
 Derror getUTCSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.19
     d_time n;
@@ -751,7 +752,7 @@ Derror getUTCSeconds(
 @DFD(0)
 Derror getMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.20
     d_time n;
@@ -769,7 +770,7 @@ Derror getMilliseconds(
 @DFD(0)
 Derror getUTCMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.21
     d_time n;
@@ -787,7 +788,7 @@ Derror getUTCMilliseconds(
 @DFD(0)
 Derror getTimezoneOffset(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.22
     d_time n;
@@ -805,7 +806,7 @@ Derror getTimezoneOffset(
 @DFD(1)
 Derror setTime(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.23
     d_time n;
@@ -825,7 +826,7 @@ Derror setTime(
 @DFD(1)
 Derror setMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.24
 
@@ -853,7 +854,7 @@ Derror setMilliseconds(
 @DFD(1)
 Derror setUTCMilliseconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.25
     d_time ms;
@@ -880,7 +881,7 @@ Derror setUTCMilliseconds(
 @DFD(2)
 Derror setSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.26
     d_time ms;
@@ -922,7 +923,7 @@ Derror setSeconds(
 @DFD(2)
 Derror setUTCSeconds(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.27
     d_time ms;
@@ -964,7 +965,7 @@ Derror setUTCSeconds(
 @DFD(3)
 Derror setMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.28
     d_time ms;
@@ -1016,7 +1017,7 @@ Derror setMinutes(
 @DFD(3)
 Derror setUTCMinutes(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.29
     d_time ms;
@@ -1068,7 +1069,7 @@ Derror setUTCMinutes(
 @DFD(4)
 Derror setHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.30
     d_time ms;
@@ -1132,7 +1133,7 @@ Derror setHours(
 @DFD(4)
 Derror setUTCHours(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.31
     d_time ms;
@@ -1196,7 +1197,7 @@ Derror setUTCHours(
 @DFD(1)
 Derror setDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.32
     d_time date;
@@ -1223,7 +1224,7 @@ Derror setDate(
 @DFD(1)
 Derror setUTCDate(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.33
     d_time date;
@@ -1250,7 +1251,7 @@ Derror setUTCDate(
 @DFD(2)
 Derror setMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.34
     d_time date;
@@ -1292,7 +1293,7 @@ Derror setMonth(
 @DFD(2)
 Derror setUTCMonth(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.35
     d_time date;
@@ -1334,7 +1335,7 @@ Derror setUTCMonth(
 @DFD(3)
 Derror setFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.36
     d_time date;
@@ -1386,7 +1387,7 @@ Derror setFullYear(
 @DFD(3)
 Derror setUTCFullYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.37
     d_time date;
@@ -1438,7 +1439,7 @@ Derror setUTCFullYear(
 @DFD(1)
 Derror setYear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.38
     d_time date;
@@ -1477,7 +1478,7 @@ Derror setYear(
 @DFD(0)
 Derror toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.39
     string s;
@@ -1496,7 +1497,7 @@ Derror toLocaleString(
 @DFD(0)
 Derror toLocaleDateString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.6
     string s;
@@ -1515,7 +1516,7 @@ Derror toLocaleDateString(
 @DFD(0)
 Derror toLocaleTimeString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.7
     string s;
@@ -1533,7 +1534,7 @@ Derror toLocaleTimeString(
 @DFD(0)
 Derror toUTCString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA 15.9.5.40
     string s;
@@ -1553,7 +1554,7 @@ Derror toUTCString(
 @DFD(1)
 Derror toJSON(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

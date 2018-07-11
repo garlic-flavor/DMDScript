@@ -19,7 +19,8 @@ module dmdscript.dset;
 
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value : Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
@@ -63,7 +64,7 @@ private:
 @DFD()
 Derror add(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -72,7 +73,7 @@ Derror add(
 @DFD()
 Derror clear(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -81,7 +82,7 @@ Derror clear(
 @DFD(1, DFD.Type.Prototype, "delete")
 Derror _delete(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -90,7 +91,7 @@ Derror _delete(
 @DFD()
 Derror entries(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -99,7 +100,7 @@ Derror entries(
 @DFD(1)
 Derror forEach(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -108,7 +109,7 @@ Derror forEach(
 @DFD(1)
 Derror get(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -117,7 +118,7 @@ Derror get(
 @DFD(1)
 Derror has(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -126,7 +127,7 @@ Derror has(
 @DFD
 Derror keys(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -135,7 +136,7 @@ Derror keys(
 @DFD(1)
 Derror set(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -144,7 +145,7 @@ Derror set(
 @DFD
 Derror size(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -153,7 +154,7 @@ Derror size(
 @DFD
 Derror values(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

@@ -19,7 +19,8 @@ module dmdscript.dreflect;
 
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value : Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
@@ -63,7 +64,7 @@ private:
 @DFD(1, DFD.Type.Static)
 Derror apply(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -72,7 +73,7 @@ Derror apply(
 @DFD(3, DFD.Type.Static)
 Derror defineProperty(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -81,7 +82,7 @@ Derror defineProperty(
 @DFD(2, DFD.Type.Static)
 Derror deleteProperty(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -90,7 +91,7 @@ Derror deleteProperty(
 @DFD(2, DFD.Type.Static)
 Derror get(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -99,7 +100,7 @@ Derror get(
 @DFD(2, DFD.Type.Static)
 Derror getOwnPropertyDescriptor(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -108,7 +109,7 @@ Derror getOwnPropertyDescriptor(
 @DFD(2, DFD.Type.Static)
 Derror getPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -117,7 +118,7 @@ Derror getPrototypeOf(
 @DFD(1, DFD.Type.Static)
 Derror has(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -126,7 +127,7 @@ Derror has(
 @DFD(1, DFD.Type.Static)
 Derror isExtensible(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -135,7 +136,7 @@ Derror isExtensible(
 @DFD(1, DFD.Type.Static)
 Derror ownKeys(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -144,7 +145,7 @@ Derror ownKeys(
 @DFD(1, DFD.Type.Static)
 Derror preventExtensions(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -153,7 +154,7 @@ Derror preventExtensions(
 @DFD(3, DFD.Type.Static)
 Derror set(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -162,7 +163,7 @@ Derror set(
 @DFD(2, DFD.Type.Static)
 Derror setPrototypeOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -172,7 +173,7 @@ Derror setPrototypeOf(
 @DFD(1, DFD.Type.Prototype, "catch")
 Derror _catch(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -181,7 +182,7 @@ Derror _catch(
 @DFD(2)
 Derror then(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

@@ -217,6 +217,7 @@ enum Opcode : ubyte
     PutThisLocalConst,
 
     Import,
+    PutPrimitive,
 }
 
 // this holds an index value that points a Value* in the local variable array.
@@ -929,6 +930,7 @@ alias IRTypes = AliasSeq!(
     IR2!(Opcode.PutThisLocalConst, Identifier), // const identifier = exp
 
     IR3!(Opcode.Import, Value*, FunctionDefinition), // import 'hoge.ds'
+    IR1!(Opcode.PutPrimitive), // idx_t to primitive
     );
 
 unittest
@@ -1178,6 +1180,8 @@ auto IRTypeDispatcher(alias PROC, ARGS...)(Opcode op, ARGS args)
 
     case Opcode.Import:
         return PROC!(IRTypes[Opcode.Import])(args);
+    case Opcode.PutPrimitive:
+        return PROC!(IRTypes[Opcode.PutPrimitive])(args);
     }
 }
 
@@ -1215,7 +1219,7 @@ private template isGet(Opcode CODE)
 
             Opcode.PutThisLocal, Opcode.PutThisLocalConst,
 
-            Opcode.Import:
+            Opcode.Import, Opcode.PutPrimitive:
             return false;
 
         case Opcode.String, Opcode.ThisGet, Opcode.Number, Opcode.BigInt,

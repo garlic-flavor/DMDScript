@@ -22,9 +22,10 @@ import dmdscript.dobject: Dobject;
 import dmdscript.value: Value;
 import dmdscript.errmsgs;
 import dmdscript.primitive: Key;
-import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative: DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.callcontext: CallContext;
-import dmdscript.derror: Derror;
+import dmdscript.derror: Derror, onError;
 debug import std.stdio;
 
 //==============================================================================
@@ -81,24 +82,25 @@ abstract class Dfunction : Dobject
 
         // ECMA v3 15.3.5.3
         Dobject V;
-        Value* w;
+        Value w;
         Dobject o;
+        Derror err;
 
         if(v.isPrimitive())
             goto Lfalse;
-        if (auto err = v.to(V, cc))
+        if (v.to(V, cc).onError(err))
             return err;
-        if (auto err = Get(Key.prototype, w, cc))
+        if (Get(Key.prototype, w, cc).onError(err))
             return err;
-        assert (w !is null);
-        if(w.isPrimitive())
+        assert (!w.isEmpty);
+        if(w.isPrimitive)
         {
             string msg;
             try msg = w.type.to!string;
             catch(Throwable t){}
             return MustBeObjectError(cc, msg);
         }
-        if (auto err = w.to(o, cc))
+        if (w.to(o, cc).onError(err))
             return err;
         for(;; )
         {
@@ -344,7 +346,7 @@ private:
 @DFD(0)
 Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // othis must be a Function
     if (auto f = cast(Dfunction)othis)
@@ -372,7 +374,7 @@ Derror toString(
 @DFD(2)
 Derror apply(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA v3 15.3.4.3
 
@@ -381,15 +383,16 @@ Derror apply(
     import dmdscript.darray: Darray;
     import dmdscript.darguments: Darguments;
     import dmdscript.value: vundefined;
-    import dmdscript.drealm: undefined;
 
     Value* thisArg;
     Value* argArray;
+    Value ud;
     Dobject o;
     Derror v;
 
-    thisArg = &undefined;
-    argArray = &undefined;
+    ud.putVundefined;
+    thisArg = &ud;
+    argArray = &ud;
     switch(arglist.length)
     {
     case 0:
@@ -431,17 +434,14 @@ Derror apply(
         uint len;
         uint i;
         Value[] alist;
-        Value* x;
+        Value x;
 
-        if (auto err = a.Get(Key.length, x, cc))
-            return err;
-        assert (x !is null);
+        if (a.Get(Key.length, x, cc).onError(v))
+            return v;
+        assert (!x.isEmpty);
         len = 0;
-        if (x !is null)
-        {
-            if (auto err = x.to(len, cc))
-                return err;
-        }
+        if (x.to(len, cc).onError(v))
+            return v;
 
         Value[] p1;
         Value* v1;
@@ -457,10 +457,10 @@ Derror apply(
 
         for(i = 0; i < len; i++)
         {
-            if (auto err = a.Get(PropertyKey(i), x, cc))
-                return err;
-            assert (x !is null);
-            alist[i] = *x;
+            if (a.Get(PropertyKey(i), x, cc).onError(v))
+                return v;
+            assert (!x.isEmpty);
+            alist[i] = x;
         }
 
         v = othis.Call(cc, o, ret, alist);
@@ -474,7 +474,7 @@ Derror apply(
 @DFD(1)
 Derror bind(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert(0);
 }
@@ -485,7 +485,7 @@ Derror bind(
 @DFD(1)
 Derror call(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA v3 15.3.4.4
     Value* thisArg;

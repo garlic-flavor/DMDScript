@@ -74,7 +74,10 @@ final class PropTable
     @trusted @nogc pure nothrow
     Property* getProperty(in ref PropertyKey key)
     {
-        for (auto t = this; t !is null; t = t._previous)
+        if (auto p = _table.findExistingAlt(key, key.hash))
+            return *p;
+
+        for (auto t = _previous; t !is null; t = t._previous)
         {
             if (auto p = t._table.findExistingAlt(key, key.hash))
                 return *p;
@@ -109,13 +112,16 @@ final class PropTable
     //--------------------------------------------------------------------
     ///
     nothrow
-    Derror get(in ref PropertyKey key, out Value* ret, Dobject othis,
+    Derror get(in ref PropertyKey key, out Value ret, Dobject othis,
                CallContext* cc)
     {
         if (auto p = getProperty(key))
             return p.get(ret, othis, cc);
         else
+        {
+            ret.putSignalingUndefined(key);
             return null;
+        }
     }
 
     //--------------------------------------------------------------------
@@ -153,7 +159,6 @@ final class PropTable
                         return CannotPutError(cc);
                 }
             }
-
             auto prop = new Property(value, a);
             _table.insertAlt(key, prop, key.hash);
             return null;
@@ -240,7 +245,7 @@ final class PropTable
     {
         if(auto p = _table.findExistingAlt(key, key.hash))
         {
-            if(!(*p).deletable)
+            if (!(*p).deletable)
                 return false;
             try _table.remove(p);
             catch (Exception) return false;
@@ -332,10 +337,9 @@ struct Property
         DontExtend     = 0x0010, // make new if absence
         DontOverwrite  = 0x0020, //
         Silent         = 0x0040, //
-        Reference      = 0x0080 | ReadOnly | DontEnum | DontConfig,
 
         // internal use.
-        _mask          = 0x801f,
+        _mask          = 0x800f,
     }
     private alias A = Attribute;
 
@@ -370,13 +374,13 @@ struct Property
         assert(obj);
 
         _attr = getAttribute(obj, cc);
-        Value* v;
+        Value v;
         Derror err;
         Dobject o;
         err = obj.Get(Key.value, v, cc);
-        if (err is null && v !is null )
+        if (err is null && !v.isEmpty)
         {
-            _value = *v;
+            _value = v;
             _attr = _attr & ~A.Accessor;
         }
         else
@@ -385,14 +389,14 @@ struct Property
             _Set = null;
 
             err = obj.Get(Key.get, v, cc);
-            if (err is null && v !is null)
+            if (err is null && !v.isEmpty)
             {
                 v.to(o, cc);
                 _Get = cast(Dfunction)o;
             }
 
             err = obj.Get(Key.set, v, cc);
-            if (err is null && v !is null)
+            if (err is null && !v.isEmpty)
             {
                 v.to(o, cc);
                 _Set = cast(Dfunction)o;
@@ -416,11 +420,6 @@ struct Property
     // }
 
     //
-    this(Property* original)
-    {
-        _attr = A.Reference;
-        _original = original;
-    }
 
     /*
     See_Also: Ecma-262-v7/9.1.6.3 ValidateAndApplyPropertyDescriptor.
@@ -515,18 +514,15 @@ struct Property
     //--------------------------------------------------------------------
     ///
     nothrow
-    Derror get(out Value* ret, Dobject othis, CallContext* cc)
+    Derror get(out Value ret, Dobject othis, CallContext* cc)
     {
         if (_attr & A.Accessor)
         {
             if (_Get !is null)
-            {
-                ret = new Value;
-                return _Get.Call(cc, othis, *ret, null);
-            }
+                return _Get.Call(cc, othis, ret, null);
         }
         else
-            ret = &_value;
+            ret = _value;
 
         return null;
     }
@@ -698,7 +694,6 @@ private:
             Dfunction _Get;
             Dfunction _Set;
         }
-        Property* _original;
     }
 
     Attribute  _attr;
@@ -713,14 +708,14 @@ private static:
         assert(obj !is null);
 
         Attribute attr;
-        Value* v;
+        Value v;
         Derror err;
         bool b;
 
         attr = A.ReadOnly | A.DontEnum | A.DontConfig;
 
         err = obj.Get(Key.enumerable, v, cc);
-        if (err is null && v !is null)
+        if (err is null && !v.isEmpty)
         {
             err = v.to(b, cc);
             if (err is null && b)
@@ -728,7 +723,7 @@ private static:
         }
 
         err = obj.Get(Key.configurable, v, cc);
-        if (err is null && v !is null)
+        if (err is null && !v.isEmpty)
         {
             err = v.to(b, cc);
             if (err is null && b)
@@ -736,7 +731,7 @@ private static:
         }
 
         err = obj.Get(Key.writable, v, cc);
-        if (err is null && v !is null)
+        if (err is null && !v.isEmpty)
         {
             err = v.to(b, cc);
             if (err is null && b)
@@ -771,6 +766,7 @@ struct SpecialSymbols
     PropertyKey toPrimitive;
 
     PropertyKey unscopables;
+    PropertyKey iterator;
 }
 
 

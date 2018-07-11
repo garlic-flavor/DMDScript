@@ -163,6 +163,7 @@ struct IRstate
             value = s.getTarget();
             patchJmp(index, value);
         }
+        fixups = null;
     }
 
     void optimize()

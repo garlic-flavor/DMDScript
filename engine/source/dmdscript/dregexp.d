@@ -26,10 +26,11 @@ import dmdscript.darray;
 import dmdscript.dfunction;
 import dmdscript.property;
 import dmdscript.errmsgs;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
-import dmdscript.drealm: undefined, Drealm;
+import dmdscript.dnative : DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
+import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
-import dmdscript.derror: Derror;
+import dmdscript.derror: Derror, onError;
 
 debug import std.stdio;
 
@@ -133,11 +134,13 @@ class DregexpConstructor : Dconstructor
         string F;
         Dregexp r;
         Dregexp R;
+        Value ud;
 
+        ud.putVundefined;
         //writef("Dregexp_constructor.Construct()\n");
         ret.putVundefined();
-        pattern = &undefined;
-        flags = &undefined;
+        pattern = &ud;
+        flags = &ud;
         switch(arglist.length)
         {
         case 0:
@@ -212,7 +215,7 @@ class DregexpConstructor : Dconstructor
     }
 
     override
-    Derror Get(in PropertyKey PropertyName,  out Value* ret, CallContext* cc)
+    Derror Get(in PropertyKey PropertyName,  out Value ret, CallContext* cc)
     {
         auto sk = PropertyKey(perlAlias(PropertyName.toString));
         return super.Get(sk, ret, cc);
@@ -280,7 +283,7 @@ class DregexpConstructor : Dconstructor
 @DFD(0)
 Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // othis must be a RegExp
     if (auto r = cast(Dregexp)othis)
@@ -305,7 +308,7 @@ Derror toString(
 @DFD(1)
 Derror test(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA v3 15.10.6.3 says this is equivalent to:
     //	RegExp.prototype.exec(string) != null
@@ -316,7 +319,7 @@ Derror test(
 @DFD(1)
 Derror exec(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     return Dregexp.exec(othis, cc, ret, arglist, EXEC_ARRAY);
 }
@@ -326,7 +329,7 @@ Derror exec(
 @DFD(2)
 Derror compile(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.regex : RegexException;
 
@@ -484,11 +487,12 @@ class Dregexp : Dobject
                           Value[] arglist)
     {
         // This is the same as calling RegExp.prototype.exec(str)
-        Value* v;
+        Value v;
+        Derror err;
 
-        if (auto err = Get(Key.exec, v, cc))
+        if (Get(Key.exec, v, cc).onError(err))
             return err;
-        if (v !is null)
+        if (!v.isEmpty)
         {
             Dobject o;
             v.to(o, cc);
@@ -522,6 +526,7 @@ static:
             DregexpConstructor dc;
             uint i;
             int lasti;
+            Value ud = vundefined;
 //            CallContext cc;
 
             if(arglist.length)
@@ -571,7 +576,7 @@ static:
                 dc.lastIndex.put(r.lastIndex);
 
                 // Fill in $1..$9
-                lastv = &undefined;
+                lastv = &ud;
                 nmatches = r.nmatches;
                 for(i = 1; i <= 9; i++)
                 {

@@ -20,7 +20,8 @@ import dmdscript.dobject: Dobject;
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.value: Value;
 import dmdscript.callcontext: CallContext;
-import dmdscript.dnative: DFD = DnativeFunctionDescriptor, DnativeFunction;
+import dmdscript.dnative: DFD = DnativeFunctionDescriptor,
+    DnativeFunction, ArgList;
 import dmdscript.derror: Derror;
 
 //==============================================================================
@@ -80,7 +81,7 @@ class DbigIntConstructor: Dconstructor
 @DFD(0)
 Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import dmdscript.primitive: Key;
     import dmdscript.errmsgs: FunctionWantsNumberError;

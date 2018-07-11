@@ -75,7 +75,7 @@ class Darguments : Dobject
     }
 
     override protected
-    Derror Get(in PropertyKey PropertyName,  out Value* ret, CallContext* cc)
+    Derror Get(in PropertyKey PropertyName, out Value ret, CallContext* cc)
     {
         import dmdscript.primitive : StringToIndex;
 

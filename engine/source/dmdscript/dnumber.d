@@ -25,7 +25,7 @@ import dmdscript.dfunction: Dconstructor;
 import dmdscript.value: Value;
 import dmdscript.errmsgs;
 import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor,
-    installConstants;
+    installConstants, ArgList;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
 import dmdscript.derror: Derror;
@@ -158,7 +158,7 @@ enum Key : PropertyKey
 @DFD(1, DFD.Type.Static)
 Derror isFinite(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -167,7 +167,7 @@ Derror isFinite(
 @DFD(1, DFD.Type.Static)
 Derror isInteger(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -176,7 +176,7 @@ Derror isInteger(
 @DFD(1, DFD.Type.Static)
 Derror isNaN(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -185,7 +185,7 @@ Derror isNaN(
 @DFD(1, DFD.Type.Static)
 Derror isSafeInteger(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -194,7 +194,7 @@ Derror isSafeInteger(
 @DFD(1, DFD.Type.Static)
 Derror parseFloat(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -203,7 +203,7 @@ Derror parseFloat(
 @DFD(1, DFD.Type.Static)
 Derror parseInt(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -214,7 +214,7 @@ Derror parseInt(
 @DFD(1)
 Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA v3 15.7.4.2
     string s;
@@ -261,7 +261,7 @@ Derror toString(
 @DFD(1)
 Derror toLocaleString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // ECMA v3 15.7.4.3
 
@@ -286,7 +286,7 @@ Derror toLocaleString(
 @DFD(0)
 Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // othis must be a Number
     if (auto dn = cast(Dnumber)othis)
@@ -346,7 +346,7 @@ number_t deconstruct_real(double x, int f, out int pe)
 @DFD(1)
 Derror toFixed(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.exception : assumeUnique;
@@ -473,7 +473,7 @@ Derror toFixed(
 @DFD(1)
 Derror toExponential(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
@@ -612,15 +612,14 @@ Derror toExponential(
 @DFD(1)
 Derror toPrecision(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import core.sys.posix.stdlib : alloca;
     import std.string : format, sformat;
-    import dmdscript.drealm: undefined;
     import dmdscript.primitive : Text;
 
     // ECMA v3 15.7.4.7
-    Value* varg;
+    Value varg;
     Value* v;
     double x;
     double precision;
@@ -629,7 +628,10 @@ Derror toPrecision(
     v = &othis.value;
     v.to(x, cc);
 
-    varg = (arglist.length == 0) ? &undefined : &arglist[0];
+    if (0 < arglist.length)
+        varg = arglist[0];
+    else
+        varg.putVundefined;
 
     if(arglist.length == 0 || varg.isUndefined())
     {

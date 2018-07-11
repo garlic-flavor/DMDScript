@@ -355,6 +355,11 @@ void doInit(in ref ArgsInfo info)
                         if (info.verbose && md.result != MetaData.Result.none)
                             writeln ("The result of ", md.path,
                                      " is inherited as ", md.result, ".");
+                        md.resultOfStrict = eq.front.resultOfStrict;
+                        if (info.verbose &&
+                            md.resultOfStrict != MetaData.Result.none)
+                            writeln ("The result of Strict of ", md.path,
+                                     " is inherited as ", md.result, ".");
                         md.complaint = eq.front.complaint;
                         if (info.verbose && 0 < md.complaint.length)
                             writeln ("The complaint of ", md.path,
@@ -816,6 +821,9 @@ void toMetaData(YAML[] yamls, ref MetaData meta)
         case "features":
             meta.features = yaml.value.get!(string[]);
             break;
+        case "includes":
+            meta.includes = yaml.value.get!(string[]);
+            break;
         default:
         }
     }
@@ -827,9 +835,10 @@ void runTest(in ref ArgsInfo info)
 {
     import std.stdio: stdout, stdin;
     import std.file: exists, isFile, read, write;
+    import std.path: buildPath;
     import std.conv: to;
     import std.json: JSONValue, parseJSON, toJSON;
-    import std.algorithm: filter, map, find;
+    import std.algorithm: filter, map, find, fold;
     import std.range: empty;
     import std.process: pipeProcess, Redirect, wait;
     import std.string: strip;
@@ -984,13 +993,15 @@ void runTest(in ref ArgsInfo info)
 
             {
                 // モジュールとして実行すべきファイル
-                string path = meta.path;
+                auto path = [meta.path];
                 if (meta.flags.moduleCode)
                 {
                     info.tmp.write (MODULE_TEMPLATE.format (
-                                        path.replace("\\", "\\\\")));
-                    path = info.tmp;
+                                        path[0].replace("\\", "\\\\")));
+                    path = [info.tmp];
                 }
+                path = meta.includes.fold!(
+                    (a, b)=>("-i" ~ info.harness.buildPath(b)) ~ a)(path);
 
                 // 実行
                 string[] command;

@@ -454,7 +454,7 @@ debug public:
 class Test262 : Dobject
 {
     import dmdscript.dnative: DFD = DnativeFunctionDescriptor,
-        DnativeFunction, install;
+        DnativeFunction, install, ArgList;
     import dmdscript.value: Value;
     import dmdscript.derror: Derror;
 
@@ -470,7 +470,7 @@ static:
     @DFD(0)
     Derror createRealm(
         DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-        Value[] arglist)
+        ArgList arglist)
     {
         Value* v;
         string moduleId = "anonymous";
@@ -501,7 +501,8 @@ class DemptyRealm: Drealm
     import dmdscript.derror: Derror;
     import dmdscript.primitive: ModulePool;
     import dmdscript.functiondefinition: FunctionDefinition;
-    import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+    import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor,
+        ArgList;
 
     this(string scriptId, ModulePool modulePool, bool strictMode)
     {
@@ -515,14 +516,13 @@ static:
     @DFD(1)
     Derror eval(
         DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-        Value[] arglist)
+        ArgList arglist)
     {
         import dmdscript.drealm: superEval = eval;
         assert (cast(Drealm)othis !is null);
 
-        auto ncc = CallContext.push(cast(Drealm)othis, cc.strictMode);
-        auto r = superEval(pthis, ncc, othis, ret, arglist);
-        CallContext.pop(ncc);
+        auto ncc = CallContext(cast(Drealm)othis, cc.strictMode);
+        auto r = superEval(pthis, &ncc, othis, ret, arglist);
         return r;
     }
 }

@@ -20,7 +20,8 @@ module dmdscript.protoerror;
 
 import dmdscript.dobject: Dobject;
 import dmdscript.dfunction: Dconstructor;
-import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative: DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value: Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
@@ -53,7 +54,6 @@ class D0_constructor(alias TEXT_D1) : Dconstructor
 {
     import dmdscript.primitive: PropertyKey;
     import dmdscript.value: Value;
-    import dmdscript.drealm: undefined;
 
     enum Text = PropertyKey(TEXT_D1);
     alias Type = D0!Text;
@@ -84,10 +84,12 @@ class D0_constructor(alias TEXT_D1) : Dconstructor
         Value* m;
         Dobject o;
         string s;
+        Value ud;
+        ud.putVundefined;
 
-        m = (arglist.length) ? &arglist[0] : &undefined;
+        m = (arglist.length) ? &arglist[0] : &ud;
         // ECMA doesn't say what we do if m is undefined
-        if(m.isUndefined())
+        if(m.isUndefined)
             s = classname;
         else
             m.to(s, cc);
@@ -150,19 +152,19 @@ private:
 @DFD(0)
 Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import std.conv: text;
     import dmdscript.primitive: Key;
 
     Derror err;
-    Value* v;
+    Value v;
     string message;
 
     if (othis.Get(Key.message, v, cc).onError(err))
         return err;
 
-    if (v !is null)
+    if (!v.isEmpty)
         v.to(message, cc);
 
     ret.put(text(othis.classname, " : ", message));
@@ -184,12 +186,12 @@ Derror toString(
 @DFD(0)
 Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import dmdscript.primitive : Key;
-    Value* v;
+    Value v;
     if (auto err = othis.Get(Key.number, v, cc))
         return err;
-    ret = *v;
+    ret = v;
     return null;
 }

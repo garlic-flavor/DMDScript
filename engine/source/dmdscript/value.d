@@ -706,11 +706,17 @@ struct Value
             }
             break;
         case Type.Object:
-            pk = Key.Object;
+        {
+            string s;
+            if (to(s, cc).onError(err))
+                break;
+            pk = PropertyKey(s);
             break;
+        }
         case Type.Iter:
             assert(0);
         }
+
         return err;
     }
 
@@ -822,7 +828,6 @@ struct Value
     nothrow
     Derror toSource(out string s, CallContext* cc)
     {
-        import dmdscript.drealm: undefined;
         import std.format: format;
 
         Derror err;
@@ -842,14 +847,14 @@ struct Value
             break;
         case Type.Object:
         {
-            Value* v;
+            Value v;
 
             auto pk = PropertyKey(Key.toSource);
             if (Get(pk, v, cc).onError(err))
                 break;
-            if(!v)
-                v = &undefined;
-            if(v.isPrimitive())
+            if(v.isEmpty)
+                v.putVundefined;
+            if(v.isPrimitive)
             {
                 if (v.toSource(s, cc).onError(err))
                     break;
@@ -857,12 +862,10 @@ struct Value
             else          // it's an Object
             {
                 Dobject o;
-                Value* ret;
                 Value val;
 
                 o = v._object;
-                ret = &val;
-                if (o.Call(cc, this._object, *ret, null).onError(err))
+                if (o.Call(cc, this._object, val, null).onError(err))
                     break;
                 // if(a)                             // if exception was thrown
                 // {
@@ -870,9 +873,9 @@ struct Value
                 //     return a;
                 //    // debug writef("Vobject.toSource() failed with %x\n", a);
                 // }
-                else if(ret.isPrimitive())
+                else if(val.isPrimitive)
                 {
-                    if (ret.to(s, cc).onError(err))
+                    if (val.to(s, cc).onError(err))
                         break;
                 }
             }
@@ -1194,7 +1197,7 @@ struct Value
     @property @safe @nogc pure nothrow
     bool isPrimitive() const
     {
-        return _type != Type.Object;
+        return _type != Type.Object && _type != Type.RefError;
     }
 
     @property @safe @nogc pure nothrow
@@ -1389,7 +1392,7 @@ struct Value
 
     //--------------------------------------------------------------------
     nothrow
-    Derror Get(in PropertyKey PropertyName, out Value* ret, CallContext* cc)
+    Derror Get(in PropertyKey PropertyName, out Value ret, CallContext* cc)
     {
         Derror err;
         if(_type == Type.Object)
@@ -1403,7 +1406,29 @@ struct Value
             to(s, cc);
             err = CannotGetFromPrimitiveError
                 (cc, PropertyName.toString, toString(_type), s);
-            //return &vundefined;
+            ret.putVundefined;
+        }
+        return err;
+    }
+
+    nothrow
+    Derror GetProperty(
+        in ref PropertyKey name, out Property* ret, out Dobject othis,
+        CallContext* cc)
+    {
+        Derror err;
+        if (_type == Type.Object)
+        {
+            ret = _object.GetProperty(name);
+            othis = _object;
+        }
+        else
+        {
+            string s;
+            to(s, cc);
+            err = CannotGetFromPrimitiveError(
+                cc, name.toString, toString(_type), s);
+            ret = null;
         }
         return err;
     }
@@ -1532,7 +1557,7 @@ struct Value
     {
         Derror err;
         if(_type == Type.Object)
-            _object.putIterator(v).onError(err);
+            _object.putIterator(v, cc).onError(err);
         else
         {
             v.putVundefined();
@@ -1554,10 +1579,26 @@ struct Value
         return err;
     }
 
+    //
+    @trusted @nogc pure nothrow
+    void putSignalingUndefined(string id)
+    {
+        _type = Type.RefError;
+        _text = id;
+    }
+
+    @trusted @nogc pure nothrow
+    void clear()
+    {
+        _type = Type.RefError;
+        _hash = 0;
+        _text = null;
+    }
+
     //====================================================================
 private:
     size_t  _hash;               // cache 'hash' value
-    Type _type = Type.Undefined;
+    Type _type = Type.RefError;
     union
     {
         bool      _dbool;        // can be true or false
@@ -1572,13 +1613,6 @@ private:
         BigInt* _bi;
     }
 
-    //
-    @trusted @nogc pure nothrow
-    void putSignalingUndefined(string id)
-    {
-        _type = Type.RefError;
-        _text = id;
-    }
 }
 static if (size_t.sizeof == 4)
   static assert(Value.sizeof == 16);
@@ -1592,13 +1626,13 @@ enum vundefined = Value(Value.Type.Undefined);
 enum vnull = Value(Value.Type.Null);
 
 //------------------------------------------------------------------------------
-@safe pure nothrow
-Value* signalingUndefined(in string id)
-{
-    auto p = new Value;
-    p.putSignalingUndefined(id);
-    return p;
-}
+// @safe pure nothrow
+// Value* signalingUndefined(in string id)
+// {
+//     auto p = new Value;
+//     p.putSignalingUndefined(id);
+//     return p;
+// }
 
 //------------------------------------------------------------------------------
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1606,7 +1640,6 @@ Value* signalingUndefined(in string id)
 @disable
 Value* CanonicalNumericIndexString(CallContext* cc, in string str)
 {
-    import dmdscript.drealm: undefined;
     import dmdscript.primitive : stringcmp;
 
     auto value = new Value;
@@ -1627,7 +1660,10 @@ Value* CanonicalNumericIndexString(CallContext* cc, in string str)
             string s;
             v2.to(s, cc);
             if(0 != stringcmp(s, str))
-                return &undefined;
+            {
+                value.putVundefined;
+                return value;
+            }
         }
         value.put(number);
     }

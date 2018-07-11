@@ -17,11 +17,10 @@
 
 module dmdscript.djson;
 
-
-
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.dobject: Dobject;
-import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative: DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value: Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
@@ -65,7 +64,7 @@ private:
 @DFD(1, DFD.Type.Static)
 Derror parse(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -74,7 +73,7 @@ Derror parse(
 @DFD(1, DFD.Type.Static)
 Derror stringfy(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

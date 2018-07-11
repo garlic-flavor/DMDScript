@@ -22,7 +22,8 @@ import dmdscript.dobject: Dobject;
 import dmdscript.value: Value;
 import dmdscript.dfunction: Dconstructor;
 import dmdscript.errmsgs;
-import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative: DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
 import dmdscript.derror: Derror;
@@ -100,7 +101,7 @@ private:
 @DFD(0)
 Derror toString(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     // othis must be a Boolean
     if (auto db = cast(Dboolean)othis)
@@ -121,7 +122,7 @@ Derror toString(
 @DFD(0)
 Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     //FuncLog f("Boolean.prototype.valueOf()");
     //logflag = 1;

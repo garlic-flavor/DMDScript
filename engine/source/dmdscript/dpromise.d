@@ -19,7 +19,8 @@ module dmdscript.dpromise;
 
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value : Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
@@ -63,7 +64,7 @@ private:
 @DFD(1, DFD.Type.Static)
 Derror all(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -72,7 +73,7 @@ Derror all(
 @DFD(1, DFD.Type.Static)
 Derror race(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -81,7 +82,7 @@ Derror race(
 @DFD(1, DFD.Type.Static)
 Derror reject(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -90,7 +91,7 @@ Derror reject(
 @DFD(1, DFD.Type.Static)
 Derror resolve(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -102,7 +103,7 @@ Derror resolve(
 @DFD(1, DFD.Type.Prototype, "catch")
 Derror _catch(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -111,7 +112,7 @@ Derror _catch(
 @DFD(2)
 Derror then(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

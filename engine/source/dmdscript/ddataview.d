@@ -19,7 +19,8 @@ module dmdscript.ddataview;
 
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value : Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
@@ -66,7 +67,7 @@ private:
 @DFD()
 Derror buffer(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -75,7 +76,7 @@ Derror buffer(
 @DFD
 Derror byteLength(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -84,7 +85,7 @@ Derror byteLength(
 @DFD
 Derror byteOffset(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -93,7 +94,7 @@ Derror byteOffset(
 @DFD
 Derror getFloat32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -102,7 +103,7 @@ Derror getFloat32(
 @DFD
 Derror getFloat64(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -111,7 +112,7 @@ Derror getFloat64(
 @DFD
 Derror getInt8(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -120,7 +121,7 @@ Derror getInt8(
 @DFD
 Derror getInt16(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -129,7 +130,7 @@ Derror getInt16(
 @DFD
 Derror getInt32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -138,7 +139,7 @@ Derror getInt32(
 @DFD
 Derror getUint8(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -147,7 +148,7 @@ Derror getUint8(
 @DFD
 Derror getUint16(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -156,7 +157,7 @@ Derror getUint16(
 @DFD
 Derror getUint32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -165,7 +166,7 @@ Derror getUint32(
 @DFD
 Derror setFloat32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -174,7 +175,7 @@ Derror setFloat32(
 @DFD
 Derror setFloat64(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -183,7 +184,7 @@ Derror setFloat64(
 @DFD
 Derror setInt8(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -192,7 +193,7 @@ Derror setInt8(
 @DFD
 Derror setInt16(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -201,7 +202,7 @@ Derror setInt16(
 @DFD
 Derror setInt32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -210,7 +211,7 @@ Derror setInt32(
 @DFD
 Derror setUint8(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -219,7 +220,7 @@ Derror setUint8(
 @DFD
 Derror setUint16(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }
@@ -228,7 +229,7 @@ Derror setUint16(
 @DFD
 Derror setUint32(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

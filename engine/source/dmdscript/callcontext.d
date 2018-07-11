@@ -151,38 +151,71 @@ struct CallContext
             key   = The name of the variable.
             pthis = The field that contains the searched variable.
     */
-    Derror get (in ref PropertyKey key, out Dobject pthis, out Value* v)
+    Derror get (in ref PropertyKey key, out Dobject pthis, out Value v)
     {
         Dobject o;
+        int counter = 0;
         for (auto s = _scope; s !is null; s = s.next)
         {
             o = s.obj;
             assert (o !is null);
             if (auto err = o.Get(key, v, &this))
                 return err;
-            if (v !is null)
+            if (!v.isEmpty)
             {
                 pthis = o;
                 return null;
             }
+            counter++;
         }
 
         pthis = null;
         return null;
     }
     /// ditto
-    Derror get (in ref PropertyKey key, out Value* v)
+    Derror get (in ref PropertyKey key, out Value v)
     {
+        Derror err;
         for (auto s = _scope; s !is null; s = s.next)
         {
             assert (s.obj);
-            if (auto err = s.obj.Get(key, v, &this))
-                return err;
-            if (v !is null)
+            if (s.obj.Get(key, v, &this).onError(err) || !v.isEmpty)
                 break;
         }
-        return null;
+        return err;
     }
+
+    ///
+    bool get (
+        in ref PropertyKey key, out Property* p, out Dobject pthis)
+    {
+        Dobject o;
+        for (auto s = _scope; s !is null; s = s.next)
+        {
+            o = s.obj;
+            assert (o);
+            p = o.GetProperty(key);
+            if (p !is null)
+            {
+                pthis = o;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    ///
+    // bool get (in ref PropertyKey key, out Property* p)
+    // {
+    //     for (auto s = _scope; s !is null; s = s.next)
+    //     {
+    //         assert (s.obj !is null);
+    //         p = s.obj.GetProperty(key);
+    //         if (p !is null)
+    //             return true;
+    //     }
+    //     return false;
+    // }
 
     //--------------------------------------------------------------------
     /** Assign to a variable in current scope chain.
@@ -199,7 +232,7 @@ struct CallContext
     {
         import dmdscript.errmsgs: CannotAssignToBeforeDeclarationError;
 
-        Value* v;
+        Value v;
         Dobject o;
         Derror err;
         assert (_scope !is null);
@@ -209,28 +242,15 @@ struct CallContext
             assert (o !is null);
             if (o.Get(key, v, &this).onError(err))
                 return err;
-            if (v !is null)
-            {
-                if (v.checkReference(&this).onError(err))
-                    return err;
-                else
-                {
-                    assert (o !is null);
-                    err = o.Set (key, value, attr, &this);
-                    return err;
-                }
-            }
 
-            if      (s.next !is null){}
+            if      (!v.isEmpty)
+                return o.Set (key, value, attr, &this);
+            else if (s.next !is null){}
             else if (_strictMode)
-            {
                 return CannotAssignToBeforeDeclarationError(
                     &this, key.toString);
-            }
             else
-            {
                 return o.Set(key, value, attr, &this);
-            }
         }
 
         assert (0);
@@ -321,6 +341,76 @@ struct CallContext
         return .searchSimilarWord(target, key);
     }
 
+    /** Push a function scope.
+     */
+    @safe nothrow
+    this (CallContext* outerCC, Dobject actobj, Dfunction caller,
+          FunctionDefinition callerf, Dobject callerothis)
+    {
+        assert (outerCC !is null);
+        assert (callerf !is null);
+
+        _realm = outerCC.realm;
+        _caller = caller;
+        _callerf = callerf;
+        _strictMode = callerf.strictMode;
+        _callerothis = callerothis;
+
+        _next = outerCC;
+        _rootScope = _scope = newScope(actobj, outerCC._scope);
+    }
+
+    /// ditto
+    @safe nothrow
+    this (CallContext* outerCC, Scope* s, Dobject actobj,
+          Dfunction caller, FunctionDefinition callerf, Dobject callerothis)
+    {
+        assert (outerCC !is null);
+        assert (callerf !is null);
+
+        _realm = outerCC.realm;
+        _caller = caller;
+        _callerf = callerf;
+        _strictMode = callerf.strictMode;
+        _callerothis = callerothis;
+
+        _next = outerCC;
+        _rootScope = _scope = newScope(actobj, s);
+    }
+
+    /// ditto
+    @safe nothrow
+    this (Drealm realm, FunctionDefinition callerf)
+    {
+        assert (realm !is null);
+        assert (callerf !is null);
+
+        _realm = realm;
+        _caller = null;
+        _callerf = callerf;
+        _strictMode = callerf.strictMode;
+        _callerothis = realm;
+
+        _next = null;
+        _rootScope = _scope = newScope(realm, null);
+    }
+
+    /// ditto
+    @safe nothrow
+    this (Drealm realm, bool strictMode)
+    {
+        assert (realm !is null);
+
+        _realm = realm;
+        _caller = null;
+        _callerf = null;
+        _strictMode = strictMode;
+        _callerothis = null;
+
+        _next = null;
+        _rootScope = _scope = newScope(realm, null);
+    }
+
 package:
     /* This is called from dmdscript.opcodes.IR.call.
      */
@@ -348,40 +438,6 @@ private:
     CallContext* _next;
     Scope* _scope;
     Scope* _rootScope;
-
-    @safe @nogc nothrow
-    void zero()
-    {
-        _realm = null;
-        _caller = null;
-        _callerf = null;
-        _callerothis = null;
-        _strictMode = false;
-
-        _next = null;
-        _scope = null;
-        if (_rootScope !is null)
-            dtor (_rootScope);
-    }
-
-    @safe @nogc pure nothrow
-    void initialize (Drealm realm, CallContext* outerCC, Dfunction caller,
-                     FunctionDefinition callerf, Dobject callerothis, Scope* s,
-                     bool strictMode)
-    {
-        assert (realm !is null);
-        assert (s !is null);
-
-        _realm = realm;
-        _caller = caller;
-        _callerf = callerf;
-        _strictMode = strictMode;
-        _callerothis = callerothis;
-
-        _next = outerCC;
-        _scope = s;
-        _rootScope = s;
-    }
 
 public static:
 
@@ -412,95 +468,8 @@ public static:
         }
     }
 
-    /** Push a function scope.
-     */
-    @safe nothrow
-    CallContext* push (CallContext* outerCC, Dobject actobj, Dfunction caller,
-                       FunctionDefinition callerf, Dobject callerothis)
-    {
-        assert (outerCC !is null);
-        assert (callerf !is null);
-        return newCC (outerCC.realm, outerCC, caller, callerf, callerothis,
-                      newScope(actobj, outerCC._scope), callerf.strictMode);
-    }
-
-    /// ditto
-    @safe nothrow
-    CallContext* push (CallContext* outerCC, Scope* s, Dobject actobj,
-                       Dfunction caller, FunctionDefinition callerf,
-                       Dobject callerothis)
-    {
-        assert (outerCC !is null);
-        assert (callerf !is null);
-        return newCC (outerCC.realm, outerCC, caller, callerf, callerothis,
-                      newScope(actobj, s), callerf.strictMode);
-    }
-
-    /// ditto
-    @safe nothrow
-    CallContext* push (Drealm realm, FunctionDefinition callerf)
-    {
-        assert (realm !is null);
-        assert (callerf !is null);
-        return newCC (realm, null, null, callerf, realm, newScope(realm, null),
-                      callerf.strictMode);
-    }
-
-    /// ditto
-    @safe nothrow
-    CallContext* push (Drealm realm, bool strictMode)
-    {
-        assert (realm !is null);
-        return newCC (realm, null, null, null, null, newScope(realm, null),
-                      strictMode);
-    }
-
-    /** Remove a function scope indicated by cc.
-
-        This is called only for recycling an instance.
-     */
-    @safe nothrow
-    CallContext* pop (ref CallContext* cc)
-    {
-        assert (cc !is null);
-        auto outerCC = cc._next;
-        dtor(cc);
-        return outerCC;
-    }
-
-
 private static:
-    CallContext* _freeCC;
     Scope* _freeScope;
-
-    @safe nothrow
-    CallContext* newCC(Drealm realm, CallContext* outerCC, Dfunction caller,
-                       FunctionDefinition callerf, Dobject callerothis,
-                       Scope* s, bool strictMode)
-    {
-        CallContext* cc;
-
-        if (_freeCC is null)
-            cc = new CallContext;
-        else
-        {
-            cc = _freeCC;
-            _freeCC = cc._next;
-        }
-        cc.initialize (realm, outerCC, caller, callerf, callerothis, s,
-                       strictMode);
-        return cc;
-    }
-
-    @safe @nogc nothrow
-    void dtor (ref CallContext* cc)
-    {
-        assert (cc !is null);
-        cc.zero;
-        cc._next = _freeCC;
-        _freeCC = cc;
-        cc = null;
-    }
 
     @safe nothrow
     Scope* newScope(Dobject actObj, Scope* next)

@@ -182,12 +182,10 @@ Derror execute(T...) (FunctionDefinition fd, Drealm realm, out Value ret,
 {
     assert (fd !is null);
     assert (realm !is null);
-    CallContext* cc;
     Derror err;
-    cc = CallContext.push (realm, fd);
+    auto cc = CallContext(realm, fd);
 
-    execute(fd, cc, ret, args).onError(err);
-    CallContext.pop(cc);
+    execute(fd, &cc, ret, args).onError(err);
     return err;
 }
 

@@ -20,13 +20,14 @@ module dmdscript.dproxy;
 import dmdscript.primitive : PKey = Key, PropertyKey;
 import dmdscript.dfunction : Dconstructor;
 import dmdscript.dobject : Dobject;
-import dmdscript.dnative : DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative : DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value: Value;
 import dmdscript.errmsgs;
 import dmdscript.property : Property;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
-import dmdscript.derror: Derror;
+import dmdscript.derror: Derror, onError;
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // NOT IMPLEMENTED YET.
@@ -41,10 +42,11 @@ private:
         import dmdscript.property: SpecialSymbols;
         super(prototype, Key.Proxy);
 
-        Value* ret;
-        if (auto err = prop.Get(Key.set, ret, cc))
+        Value ret;
+        Derror err;
+        if (prop.Get(Key.set, ret, cc).onError(err))
             return;
-        if (ret !is null)
+        if (!ret.isEmpty)
         {
             Dobject o;
             ret.to(o, cc);
@@ -103,7 +105,7 @@ enum Key : PropertyKey
 @DFD(2, DFD.Type.Static)
 Derror revocable(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert (0);
 }

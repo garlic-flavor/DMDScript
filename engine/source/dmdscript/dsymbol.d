@@ -19,7 +19,8 @@ module dmdscript.dsymbol;
 
 import dmdscript.dobject: Dobject;
 import dmdscript.dfunction: Dconstructor;
-import dmdscript.dnative: DnativeFunction, DFD = DnativeFunctionDescriptor;
+import dmdscript.dnative: DnativeFunction, ArgList,
+    DFD = DnativeFunctionDescriptor;
 import dmdscript.value: Value;
 import dmdscript.drealm: Drealm;
 import dmdscript.callcontext: CallContext;
@@ -111,11 +112,14 @@ class DsymbolConstructor : Dconstructor
         // propagete well known symbols.
         Value v;
         PropertyKey pk;
-        foreach (one; [SS.opAssign, SS.toPrimitive, SS.unscopables])
+        foreach (one; __traits(derivedMembers, SS))
         {
-            pk = Dsymbol.install(one);
-            v.putVsymbol(one);
-            DefineOwnProperty(pk, v, ATTR );
+            static if (is(typeof(__traits(getMember, SS, one)) : PropertyKey))
+            {
+                pk = Dsymbol.install(__traits(getMember, SS, one));
+                v.putVsymbol(__traits(getMember, SS, one));
+                DefineOwnProperty(pk, v, ATTR);
+            }
         }
     }
 
@@ -157,7 +161,7 @@ private:
 @DFD(1, DFD.Type.Static, "for")
 Derror _for(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     assert(0);
 }
@@ -165,7 +169,7 @@ Derror _for(
 @DFD(0)
 Derror valueOf(
     DnativeFunction pthis, CallContext* cc, Dobject othis, out Value ret,
-    Value[] arglist)
+    ArgList arglist)
 {
     import dmdscript.primitive: Key;
     import dmdscript.errmsgs: FunctionWantsStringError;
