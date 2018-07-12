@@ -1488,6 +1488,13 @@ final class AssignExp : BinExp
             foreach (one; al.elements)
                 one.checkLvalue(sc);
         }
+        else if (e1.op == Tok.Objectlit)
+        {
+            auto ol = cast(ObjectLiteral)e1;
+            assert (ol !is null);
+            foreach (one; ol.fields)
+                one.exp.checkLvalue(sc);
+        }
         else if (e1.op != Tok.Call)
             e1.checkLvalue(sc);
 
@@ -1650,6 +1657,51 @@ final class AssignExp : BinExp
             irs.release(step2);
             irs.release(step1);
         }
+        else if (e1.op == Tok.Objectlit)
+        {
+            auto ol = cast(ObjectLiteral)e1;
+            assert (ol !is null);
+
+            auto step1 = irs.alloc(3);
+            idx_t rightObj, iterKey;
+            rightObj = step1[0];
+            iterKey = step1[1];
+
+            e2.toIR(irs, rightObj);
+
+            idx_t base;
+            IR property;
+            OpOffset opoff;
+            idx_t r;
+            LocalVariables tmp;
+            if (0 < ret)
+                r = ret;
+            else
+            {
+                tmp = irs.alloc(1);
+                r = tmp[0];
+            }
+            foreach (f; ol.fields)
+            {
+                if      (f.type == Field.Type.Normal)
+                {
+                    irs.gen!(Opcode.GetS)(linnum, r, rightObj, f.ident);
+                    f.exp.toLvalue(irs, base, &property, opoff);
+                }
+                else if (f.type == Field.Type.Computed)
+                {
+                    f.idExp.toIR(irs, iterKey);
+                    irs.gen!(Opcode.PutPrimitive)(linnum, iterKey);
+                    f.exp.toLvalue(irs, base, &property, opoff);
+                    irs.gen!(Opcode.Get)(linnum, r, rightObj, iterKey);
+                }
+
+                dispatchOffset!(Opcode.Put)(
+                    irs, linnum, r, base, &property, opoff);
+            }
+            irs.release(tmp);
+            irs.release(step1);
+        }
         else
         {
             idx_t base;
@@ -1685,6 +1737,55 @@ final class AssignExp : BinExp
         }
     }
 }
+
+private
+void dispatchOffset(Opcode OP)(
+    IRstate* irs, size_t linnum, idx_t ret, idx_t base, in IR* prop,
+    OpOffset ofset, size_t argc = 0, idx_t argv = 0)
+{
+    static if      (OP == Opcode.Get || OP == Opcode.Put)
+    {
+        final switch (ofset)
+        {
+        case OpOffset.None:
+            irs.gen!OP(linnum, ret, base, prop.index);
+            break;
+        case OpOffset.S:
+            irs.gen!(cast(Opcode)(OP + OpOffset.S))
+                (linnum, ret, base, prop.id);
+            break;
+        case OpOffset.Scope:
+            irs.gen!(cast(Opcode)(OP + OpOffset.Scope))
+                (linnum, ret, prop.id);
+            break;
+        case OpOffset.V:
+            assert (0);
+        }
+    }
+    else static if (OP == Opcode.Call || OP == Opcode.PutCall)
+    {
+        final switch (ofset)
+        {
+        case OpOffset.None:
+            irs.gen!OP(linnum, ret, base, prop.index, argc, argv);
+            break;
+        case OpOffset.S:
+            irs.gen!(cast(Opcode)(OP + OpOffset.S))
+                (linnum, ret, base, prop.id, argc, argv);
+            break;
+        case OpOffset.Scope:
+            irs.gen!(cast(Opcode)(OP + OpOffset.Scope))
+                (linnum, ret, base, prop.id, argc, argv);
+            break;
+        case OpOffset.V:
+            irs.gen!(cast(Opcode)(OP + OpOffset.V))
+                (linnum, ret, base, argc, argv);
+            break;
+        }
+    }
+    else static assert (0);
+}
+
 
 /************************* AddAssignExp ***********************************/
 
